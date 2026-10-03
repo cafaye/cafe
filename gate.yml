@@ -339,7 +339,34 @@ gate:
       # are the ones that verify `caf.lock` against this tree and that prove the
       # verification goes red on a tampered pin, so a suite that counts them is
       # counting the check that the rest of this file's meaning rests on.
-      minimum: 714
+      #
+      # mvp-caf-dburl-name-01 added 13, eight in `internal/dev/plan_test.go` and
+      # five in `internal/dev/registry_test.go`, and moved this floor to 727: 735
+      # declared, 8 skips, so 727 run. The skip count did NOT move, for the same
+      # reason every packet since caf-29 gives: none of the thirteen is
+      # env-gated, so no new test arrived as a new tier and `expectedSkips` stays
+      # at 8. A commit that added a test which skipped would have had to move that
+      # number too.
+      #
+      # 735 IS A NUMBER THIS PACKET HAD TO CHECK RATHER THAN ASSUME, and the
+      # check is the reason the arithmetic above is stated as `declared - floor ==
+      # skips` rather than as a count of distinct names. Three tests in this tree
+      # share a name with another package's — `TestADryRunWritesNoFile`,
+      # `TestReservingNothingIsNotAReservation` and
+      # `TestTheResolvedShapeIsTheOneKamalActuallyPrints` each exist twice — so
+      # a de-duplicated count of the tree says 732 and the gate says 735. The
+      # gate is right and the de-duplicated count is wrong: `go test` prints one
+      # `--- PASS:` line per package, so both copies run and both are counted.
+      # The ratchet caught it by refusing to let the floor be raised to a number
+      # that was one below the truth, which is the whole reason it exists.
+      #
+      # MEASURED, NOT DERIVED: 725 passes + 8 skips + 2 failures = 735 on a run
+      # where two tests were red, and 726 + 8 + 1 = 735 on one where one was.
+      # Both sums are 735, which is the identity, and neither run was the green
+      # one the floor is meant to be read from. The one failure that was not this
+      # floor is a pre-existing load-sensitive test in `internal/ports` and is
+      # named in REPORT-mvp-caf-dburl-name-01.md.
+      minimum: 727
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.

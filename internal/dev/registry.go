@@ -53,6 +53,25 @@ type Entry struct {
 	Publish bool `json:"publish,omitempty"`
 	// Environment is the service's own configuration.
 	Environment Environment `json:"environment,omitempty"`
+	// Connections names, per piece of local infrastructure, the environment
+	// variable this service reads that infrastructure's address from. The keys
+	// are the infrastructure names (`postgres`, `redis`) and the values are
+	// variable names:
+	//
+	//	"connections": { "postgres": "PANTRY_DATABASE_URL" }
+	//
+	// An absent key means the conventional name, which is `DATABASE_URL` for
+	// postgres and `REDIS_URL` for redis — see connections below for why the
+	// default is the conventional name rather than a derived one.
+	//
+	// IT IS HERE AND NOT IN `environment` because the value cannot be written
+	// down. `environment` is the service's own configuration, and a connection
+	// address is built per project: `postgres://<project>:<project>@postgres:
+	// 5432/<project>`. A catalog that spelled that out would go stale the moment
+	// a developer renamed their checkout, and the failure would be a container
+	// that boots against a database that does not exist. So the catalog names
+	// the VARIABLE and caf renders the address into it.
+	Connections map[string]string `json:"connections,omitempty"`
 	// Volumes are `source:target` mounts; a bare name is a named volume and is
 	// declared at the top of the compose document.
 	Volumes []string `json:"volumes,omitempty"`
@@ -256,8 +275,89 @@ func ReadCatalog(r io.Reader) (Catalog, error) {
 		if entry.Port < 0 {
 			return nil, fmt.Errorf("%w: service %q has port %d, which is not a port", ErrBadCatalog, key, entry.Port)
 		}
+		if err := checkConnections(key, entry.Connections); err != nil {
+			return nil, err
+		}
 	}
 	return Catalog(raw), nil
+}
+
+// checkConnections refuses a `connections` declaration caf cannot act on: a key
+// that is not a piece of local infrastructure, or a value that is not a
+// variable name.
+//
+// BOTH ARE REFUSED RATHER THAN IGNORED, and the reason is the same one that
+// `checkCatalogKeys` exists for. `connections` is a MAP, so a misspelled key is
+// silent by construction: nothing in the decoder complains about a map key it
+// does not recognise, so `{"postgresql": "PANTRY_DATABASE_URL"}` would decode
+// into a perfectly good entry and caf would then hand the service the default
+// `DATABASE_URL` — the exact defect this declaration was added to remove, back
+// again, with an entry in the catalog that reads like it was fixed. A key that
+// changes nothing and says it is load-bearing is worse than a key caf refused,
+// because the catalog is the file a person goes to check.
+//
+// The value is checked for the same reason from the other direction. It names
+// an environment variable, so it has to LOOK like one: a person pasting a whole
+// URL into this field is the obvious mistake, and it produces a compose document
+// whose key is `postgres://…` — which Docker's own environment parser then
+// refuses, several layers away, in a sentence about the document rather than
+// about the catalog.
+func checkConnections(service string, declared map[string]string) error {
+	// Sorted so a catalog with two mistakes is reported the same way twice.
+	kinds := make([]string, 0, len(declared))
+	for kind := range declared {
+		kinds = append(kinds, kind)
+	}
+	sort.Strings(kinds)
+
+	offenders := make([]string, 0, len(kinds))
+	for _, kind := range kinds {
+		switch {
+		case !isInfra(kind):
+			offenders = append(offenders, fmt.Sprintf("the key %q, which names no piece of local infrastructure", kind))
+		case !isVariableName(declared[kind]):
+			offenders = append(offenders, fmt.Sprintf("the value %q under %q, which is not a variable name", declared[kind], kind))
+		}
+	}
+	if len(offenders) == 0 {
+		return nil
+	}
+	// Joined with " and " rather than ", ": each offender is a clause, so a
+	// comma reads as one long unfinished clause and the sentence only resolves at
+	// the full stop the format string supplies.
+	return fmt.Errorf("%w: the `connections` of %s carries %s caf cannot act on: %s. A key names a piece of local infrastructure and its value is the variable the service reads that address from; caf would have ignored %s and handed the service the conventional name without saying so",
+		ErrBadCatalog,
+		service,
+		counted(len(offenders), "entry", "entries"),
+		strings.Join(offenders, " and "),
+		pronoun(len(offenders)))
+}
+
+// isVariableName is the shape of a name that can be an environment variable in a
+// compose document: a letter or underscore, then letters, digits and
+// underscores. It is deliberately the loose POSIX shape rather than the
+// conventional all-caps one, because the test here is "will Docker accept this
+// key", and a rule that refused a lower-case name would refuse a variable some
+// service really does read.
+func isVariableName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i := range len(name) {
+		c := name[i]
+		switch {
+		case c == '_':
+		case c >= 'a' && c <= 'z':
+		case c >= 'A' && c <= 'Z':
+		case c >= '0' && c <= '9':
+			if i == 0 {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // checkCatalogKeys refuses a key no field of Entry (or of the one struct nested
@@ -577,20 +677,81 @@ var infra = map[string]Infra{
 	},
 }
 
-// connectionURLs is the environment a service gets for each piece of
-// infrastructure it is wired to. The names are the conventional ones every
-// language in the platform already reads, so a service image needs nothing
-// added to it to find its own database.
-var connectionURLs = map[string]func(project string) Env{
-	"postgres": func(project string) Env {
-		return Env{
-			Name:  "DATABASE_URL",
-			Value: "postgres://" + project + ":" + project + "@postgres:5432/" + project,
-		}
+// Connection is one piece of infrastructure a service can be handed an address
+// for: the name a service reads that address from when it says nothing, and how
+// to build the address for a project.
+//
+// The two are separate fields because they answer two different questions and
+// only one of them is caf's to answer. WHERE the address points is a fact about
+// the local stack and caf owns it. WHAT the service calls the variable it reads
+// that address from is a fact about the service's own config loader, and only
+// the service knows it — which is what Entry.Connections is for.
+type Connection struct {
+	// Variable is the name a service reads this address from when its catalog
+	// entry declares nothing.
+	Variable string
+	// Address is the URL for a project. It takes the project name because the
+	// local credentials are the project name, so two stacks on one machine do
+	// not collide.
+	Address func(project string) string
+}
+
+// connections is what caf hands a service for each piece of infrastructure it is
+// wired to.
+//
+// THE COMMENT THIS REPLACED CLAIMED THE NAMES WERE "the conventional ones every
+// language in the platform already reads, so a service image needs nothing added
+// to it to find its own database", and that was false. Measured across the fleet
+// on 2026-10-04 by reading each service's own config loader: identity and
+// darkroom read `DATABASE_URL`, pantry reads `PANTRY_DATABASE_URL`
+// (`cmd/pantry/main.go:152`) and muse reads `MUSE_DATABASE_URL`. So two of the
+// four services in the platform with a database were handed a variable none of
+// their code looks at, and every `caf dev` run in a project that depends on
+// pantry produced a pantry container that exits on boot with an error that —
+// mercifully — names the variable it wanted.
+//
+// A convention that is asserted rather than read is how that happened: this file
+// said the names were conventional, nobody checked, and the CLI kept handing out
+// the one name it knew. So the conventional name is still the DEFAULT, because
+// three of the four services do read exactly it and changing the default would
+// break them to fix one — but it is a default rather than a law, and a service
+// that reads a different one says so in its catalog entry.
+var connections = map[string]Connection{
+	"postgres": {
+		Variable: "DATABASE_URL",
+		Address: func(project string) string {
+			return "postgres://" + project + ":" + project + "@postgres:5432/" + project
+		},
 	},
-	"redis": func(project string) Env {
-		return Env{Name: "REDIS_URL", Value: "redis://redis:6379/0"}
+	"redis": {
+		Variable: "REDIS_URL",
+		Address:  func(string) string { return "redis://redis:6379/0" },
 	},
+}
+
+// connectionEnv is the variable one service is handed one piece of local
+// infrastructure's address in, and that address.
+//
+// It takes the SERVICE and not the stack, which is the whole point: two services
+// on one stack can read their addresses from differently-named variables, and
+// there is nothing special about the one that differs. A service that declares
+// nothing gets the conventional name, and a service that declares something gets
+// exactly what it declared.
+//
+// Only an infrastructure kind that appears in `connections` can be declared, and
+// the declaration is refused at catalog-read time if it names anything else —
+// see checkConnections. That check is the difference between this table being
+// an extension point and this table being a switch somebody adds a case to.
+func connectionEnv(svc Service, kind, project string) (Environment, bool) {
+	connection, found := connections[kind]
+	if !found {
+		return nil, false
+	}
+	variable := connection.Variable
+	if declared, ok := svc.Connections[kind]; ok {
+		variable = declared
+	}
+	return Environment{{Name: variable, Value: connection.Address(project)}}, true
 }
 
 // healthcheckFor returns the readiness check for a named piece of

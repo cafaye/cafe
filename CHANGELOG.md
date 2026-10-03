@@ -184,6 +184,85 @@ All notable changes to caf are recorded here. The format follows
 
 ### Fixed
 
+- **`caf dev` handed every service with a database the same environment
+  variable, and two of the four services in the platform do not read it.** Any
+  `caf dev` run in a project that depends on pantry produced a pantry container
+  that exited on boot.
+
+  `connectionURLs` in `internal/dev/registry.go` hardcoded one name per piece of
+  infrastructure and its comment said they were "the conventional ones every
+  language in the platform already reads, so a service image needs nothing added
+  to it to find its own database". That was false, and it was false in the one
+  way a comment that asserts a convention instead of reading it always is.
+  Measured on 2026-10-04 by reading each service's own config loader:
+
+  | service | the variable it reads |
+  | --- | --- |
+  | identity, darkroom | `DATABASE_URL` |
+  | **pantry** | **`PANTRY_DATABASE_URL`** (`cmd/pantry/main.go:152`, `internal/pantrydb/db.go:106,114,150`) |
+  | muse | `MUSE_DATABASE_URL` (unchanged by this entry) |
+
+  Reproduced, before:
+
+  ```
+  $ cd pantry && caf dev --dry-run
+        DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantry
+  ```
+
+  and pantry's own loader refuses that stack in one sentence —
+  `no database is configured: PANTRY_DATABASE_URL is unset, so there is no
+  address to reach the registry`.
+
+  **A service catalog entry now names the variable it reads**, and `caf dev`
+  renders the local postgres address into that name:
+
+  ```json
+  "pantry": {
+    "name": "pantry",
+    "image": "ghcr.io/cafaye/pantry:0.4.1",
+    "connections": { "postgres": "PANTRY_DATABASE_URL" }
+  }
+  ```
+
+  after, on the same catalog:
+
+  ```
+  pantry:
+      PANTRY_DATABASE_URL: postgres://demo:demo@postgres:5432/demo
+  darkroom:
+      DATABASE_URL: postgres://demo:demo@postgres:5432/demo
+  ```
+
+  Four things about the shape, each of which is a decision:
+
+  - **The keys are infrastructure names, so there is no service-specific
+    anywhere in caf.** `connections` is a map from `postgres`/`redis` to a
+    variable name; `wire` reads the service's own declaration. A hardcoded
+    `if service == "pantry"` is the defect with a longer name, and a test now
+    fails if one appears by asserting that a *second* service on the same stack
+    keeps `DATABASE_URL` while the first gets its declared name.
+  - **`DATABASE_URL` stays the default.** Three of the four services read exactly
+    it, and a default that moved would break them to fix one. The default is now
+    a default rather than a law: `TestAServiceThatDeclaresNothingStillGetsThe-
+    ConventionalName` was watched going red on a one-line change to the `postgres`
+    row in `internal/dev/registry.go`, while the declaration test stayed green.
+  - **It is on the catalog entry rather than in `environment`.** A connection
+    address is built per project
+    (`postgres://<project>:<project>@postgres:5432/<project>`), so a catalog that
+    spelled one out would go stale the moment a developer renamed their checkout.
+    The catalog names the variable; caf renders the address.
+  - **A declaration caf cannot act on is refused, not ignored.** `connections` is
+    a map, so a misspelled key is silent by construction — `{"postgresql": …}`
+    would decode fine and the service would get the default `DATABASE_URL`, which
+    is the original defect back again in a catalog that reads as though it were
+    fixed. `ReadCatalog` now refuses a key that is not in `infra` and a value
+    that is not a variable name, naming every mistake at once.
+
+  `connections` is honoured for the project service and for registry-resolved
+  dependencies alike, for `postgres` and `redis` alike, and a registry entry's
+  own literal value still outranks the rendered address. `-no-infra` still wins:
+  a stack that asked for no database gets no variable under any name.
+
 - **Any caf command that failed while running an external program exited
   non-zero and printed nothing at all.** This is the defect this binary exists
   to prevent, and it was in `Run`.
