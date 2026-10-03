@@ -218,7 +218,7 @@ own_migrations() {
     skip=0
     for d in $FIXTURE_DIRS; do
       case "$rel" in "$d"/*) skip=1 ;; esac
-    esac
+    done
     [ "$skip" -eq 0 ] && printf '%s\n' "$rel"
   done <<EOF
 $(find "$base" \( -name .git \) -prune -o -type f -name '*.sql' -print 2>/dev/null)
@@ -246,20 +246,39 @@ EOF
 # A two-way count (occurs / does not occur) is what the packet's note did and it
 # read thirteen telemetry attribute names as "a start". So the buckets are named
 # and every line is printed.
+# The classifier is TWO extended regular expressions rather than a shell `case`,
+# for one reason worth recording: the first draft spelled the SQL bucket as one
+# `case` arm per SQL keyword and bash's parser could not read the arm. A
+# measurement script that will not parse is a measurement script that measures
+# nothing, and the failure lands at parse time rather than at the verdict. A
+# regex states the same bucket in one line and has no quoting regime of its own
+# to get wrong.
+#
+# PREDICATE  the line carries an account FILTER. A WHERE that mentions the
+#            account is the shape a breakage removes; the DML keywords catch a
+#            statement that binds the account in a column list.
+PREDICATE_RE="WHERE.*account_id|where.*account_id|account_id[[:space:]]*(=|==|:)[[:space:]]*[0-9$\?]|^[^:]*INSERT INTO|insert into| UPDATE | DELETE FROM| delete from"
+
+# TELEMETRY  the line NAMES an OpenTelemetry attribute rather than filtering on
+#            one: an allowlist entry, a schema property, a resource-attribute
+#            list. All thirteen of caf's occurrences land here.
+TELEMETRY_RE="telemetry|otel|resourceAttributes|resource_attributes|description|allowlist|[Aa]ttribute|schema"
+
 classify_account_lines() {
   local dir="$1"
+  # `.git` and this recipe's own directory are excluded: a measurement that
+  # counts its own receipt is a measurement with a floor of one.
   grep -rn "account_id" "$dir" 2>/dev/null \
-    | grep -v "/.git/" \
-    | grep -v "^$OUT/" \
+    | grep -v "/\.git/" \
+    | grep -v "^$dir/reports/caf-adopt-isolation-01/" \
     | while IFS= read -r line; do
-        case "$line" in
-          *WHERE*|*where*|*"INSERT INTO"*|*"insert into"*|*UPDATE*|*update "*|*"DELETE FROM"*|*delete from*)
-            printf 'PREDICATE\t%s\n' "$line" ;;
-          *"account_id"*'"'*|*"account_id"*': '*|*"account_id"*)
-            printf 'OTHER\t%s\n' "$line" ;;
-          *)
-            printf 'OTHER\t%s\n' "$line" ;;
-        esac
+        if printf '%s' "$line" | grep -qE "$PREDICATE_RE"; then
+          printf 'PREDICATE\t%s\n' "$line"
+        elif printf '%s' "$line" | grep -qE "$TELEMETRY_RE"; then
+          printf 'TELEMETRY\t%s\n' "$line"
+        else
+          printf 'OTHER\t%s\n' "$line"
+        fi
       done
 }
 
@@ -287,8 +306,13 @@ measure() {
   tenancy="absent"
   [ -f "$dir/tenancy.yml" ] && tenancy="present"
 
-  pred="$(classify_account_lines "$dir" | grep '^PREDICATE' || true)"
-  other="$(classify_account_lines "$dir" | grep '^OTHER' || true)"
+  # Classified ONCE and split, not classified per bucket: three calls would be
+  # three greps over the same tree and could disagree if the tree moved between
+  # them, which is the shape of a self-inconsistent measurement.
+  classified="$(classify_account_lines "$dir")"
+  pred="$(printf '%s' "$classified" | grep '^PREDICATE' || true)"
+  tele="$(printf '%s' "$classified" | grep '^TELEMETRY' || true)"
+  other="$(printf '%s' "$classified" | grep '^OTHER' || true)"
 
   say "  [$label]"
   say "      IMPORTS a db driver (non-test) : $n_imports"
@@ -311,6 +335,7 @@ EOF
   say "      goose migrations/ directory    : $goose_dir"
   say "      tenancy.yml                    : $tenancy"
   say "      account_id PREDICATE lines     : $(count_lines "$pred")"
+  say "      account_id TELEMETRY lines     : $(count_lines "$tele")"
   say "      account_id OTHER lines         : $(count_lines "$other")"
 
   # THE TALLY THE FINDING RESTS ON: a database exists to this probe if the
