@@ -45,10 +45,10 @@ adapter_prepare should SUCCEED (caf has a go.mod and compiles), and
 adapter_migrate should FAIL for want of migrations. Which of those two
 happens is the receipt; predicting it would prove nothing.
 
-  harness: up — kit-tenant-iso-97198 on host port 15898 (postgres:17), session 97198
+  harness: up — kit-tenant-iso-48433 on host port 15533 (postgres:17), session 48433
   harness: preparing a throwaway copy of wt-m39-caf-adopt-isolation-01
     identity's own migrations failed; tail of the log:
-    2026/10/03 18:40:52 goose run: migrations directory does not exist
+    2026/10/03 18:45:48 goose run: migrations directory does not exist
   cross_tenant_harness: the service's own migrations did not apply to a real database. Exiting 2 — a harness that seeds into a schema nobody migrated proves nothing.
 
   harness exit status: 2   (2 = a run that could not happen, never 0)

@@ -286,9 +286,25 @@ classify_account_lines() {
   local dir="$1" src_path body body_is_comment
   # `.git` and this recipe's own directory are excluded: a measurement that
   # counts its own receipt is a measurement with a floor of one.
+  # `.git`, this recipe's own directory, AND this packet's report are excluded.
+  #
+  # The report exclusion is not tidiness. MEASURED on the final verification run:
+  # with `reports/caf-adopt-isolation-01/` excluded and the report NOT, caf's tally
+  # moved from 13 TELEMETRY / 1 OTHER to 14 / 11 the moment
+  # `REPORT-caf-adopt-isolation-01.md` was written at the repository root — ten
+  # mentions of `account_id` in a document ABOUT this measurement. A probe whose
+  # numbers change because someone documented it is measuring the documentation,
+  # and the failure is silent: every number still looked plausible.
+  #
+  # This is kit's own rule about the staleness reporter — "the reporter never
+  # commits its output, because a committed report is the generated output this
+  # rule forbids and the kind of file that rots" — arriving from the other
+  # direction. A probe that reads its own report is a measurement with a floor
+  # that moves every time somebody writes the finding down.
   grep -rn "account_id" "$dir" 2>/dev/null \
     | grep -v "/\.git/" \
     | grep -v "^$dir/reports/caf-adopt-isolation-01/" \
+    | grep -v "^$dir/REPORT-caf-adopt-isolation-01.md" \
     | while IFS= read -r line; do
         # Structural first: is this file somewhere a predicate could live at all?
         #

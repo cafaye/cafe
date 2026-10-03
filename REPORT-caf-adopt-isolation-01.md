@@ -177,6 +177,22 @@ A third, smaller one: ARM 2's narration contained raw backticks, so bash execute
 evidence. Now escaped, and the receipt is extracted by matching the meaningful
 lines rather than by `tail`.
 
+**(c) The probe measured its own report.** Caught by the final reproducibility
+check, and the worst of the three because it was silent. Writing
+`REPORT-caf-adopt-isolation-01.md` at the repository root added ten mentions of
+`account_id` in a document *about this measurement*, and caf's tally moved from
+13 TELEMETRY / 1 OTHER to 14 / 11. Every number still looked plausible and nothing
+went red. The first draft excluded `reports/caf-adopt-isolation-01/` and forgot
+the report sitting beside it.
+
+That is kit's own rule about the staleness reporter arriving from the other
+direction -- "the reporter never commits its output, because a committed report is
+the generated output this rule forbids and the kind of file that rots." A probe
+that reads its own report has a floor that moves every time somebody writes the
+finding down, which is to say exactly when it is most used. Both artifacts are now
+excluded, and the reproducibility check below is what notices if either is ever
+dropped from that list.
+
 ---
 
 ## 4. The tallies, separately from the passes
@@ -216,6 +232,14 @@ account_id PREDICATE lines     : 14
 
 Both directions are now measured: green on caf (the finding), red on a subject
 holding rows (the tripwire).
+
+**Reproducibility:** the committed recipe was run three times after the last edit.
+Two consecutive runs are byte-identical apart from the `goose` log timestamp, and
+the committed `RUN.txt` matches a fresh run. caf reads 0 PREDICATE / 13 TELEMETRY /
+1 OTHER and identity reads 69 / 14 / 520 on every run, and a self-reference count
+of the report inside its own measurement is 0. caf's own gate is unaffected:
+`gofmt -l .` empty, `go vet ./...` clean, `bin/prime` green at 714 top-level and
+876 subtest passes, 0 failures, 8 skips.
 
 **Not exercised:** ARM 2's red branch (`harness up` exiting 0 against caf). It
 needs a caf that holds rows, which does not exist. Its green branch — the
@@ -266,8 +290,10 @@ this packet changed is the *fleet table* rather than the language list: caf was
 recorded as the last in-scope Go service holding rows and needing proof, and the
 measurement says caf holds none, so the "exactly one left" premise this packet was
 dispatched on was never true and the MVP's in-scope set of row-holding services
-is now **proven in full** — courier (Elixir) and identity (Go), both with six and
-nineteen cross-tenant negative tests respectively. What remains unproven is
+is now **proven in full**, and by the two the fleet has already named: **courier**
+(Elixir, 19 cross-tenant negative tests) and **identity** (Go, six breakages in
+`kit/reports/tenant-adapter-go-01/mutations.sh`, plus seven in identity's own
+`internal/tenancy` audit). What remains unproven is
 unchanged and is not about caf: four languages with no adapter, of which
 TypeScript is the strongest case, because no TypeScript service in the fleet holds
 a database at all, so the harness has nothing to measure there; Ruby, Python and
