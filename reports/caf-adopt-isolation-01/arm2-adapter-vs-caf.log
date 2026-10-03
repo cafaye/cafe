@@ -1,1 +1,2 @@
-harness: up — kit-tenant-iso-32684 on host port 15784 (postgres:17), session 32684
+harness: up — kit-tenant-iso-97198 on host port 15898 (postgres:17), session 97198
+harness: preparing a throwaway copy of wt-m39-caf-adopt-isolation-01

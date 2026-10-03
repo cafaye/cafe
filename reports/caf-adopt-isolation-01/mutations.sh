@@ -52,7 +52,7 @@
 # WHERE THE MEASUREMENT LIVES, AND WHY IT IS NOT JUST A COUNT
 #
 #   caf does mention `account_id`. It mentions it THIRTEEN TIMES, in four Go
-#   files and four JSON schemas — and not one of the thirteen is a predicate.
+#   files and four JSON schemas — and not one of the fourteen is a predicate.
 #   All of them are the NAME of a telemetry attribute: an allowlist entry in
 #   `internal/telemetry/telemetry.go`, the same name in core's vendored
 #   telemetry schemas, and the resource-attribute list in
@@ -65,7 +65,7 @@
 #   appears, and it appears as the name of an OpenTelemetry dimension. So ARM 1
 #   does not COUNT `account_id` — counting is what produced the wrong reading.
 #   It CLASSIFIES every occurrence and requires that none of them is a SQL
-#   predicate, and it prints all thirteen so the classification is a receipt a
+#   predicate, and it prints all fourteen so the classification is a receipt a
 #   reader can check rather than a verdict they have to trust.
 #
 # WHAT IT PROVES, AND WHAT IT DOES NOT
@@ -238,43 +238,92 @@ EOF
 #               make a six-breakage recipe writable.
 #   TELEMETRY    the line is the NAME of an OpenTelemetry attribute — an
 #               allowlist entry, a schema property, a resource-attribute list.
-#               caf has thirteen of these and zero of the other kind, which is
+#               caf has fourteen of these and zero of the other kind, which is
 #               a sentence about caf's architecture, not about its SQL.
 #   OTHER        anything else, printed so the classification cannot quietly
 #               absorb a case it does not understand.
 #
-# A two-way count (occurs / does not occur) is what the packet's note did and it
-# read thirteen telemetry attribute names as "a start". So the buckets are named
-# and every line is printed.
-# The classifier is TWO extended regular expressions rather than a shell `case`,
-# for one reason worth recording: the first draft spelled the SQL bucket as one
-# `case` arm per SQL keyword and bash's parser could not read the arm. A
-# measurement script that will not parse is a measurement script that measures
-# nothing, and the failure lands at parse time rather than at the verdict. A
-# regex states the same bucket in one line and has no quoting regime of its own
-# to get wrong.
+# A two-way count (occurs / does not occur) is what the packet's note did: it
+# counted the files rather than the lines, found two, and read them as "a start"
+# rather than as the only place the string appears at all. So the buckets are
+# named and every line is printed with its path and its line number.
+# THE CLASSIFIER, AND WHAT IT GOT WRONG THE FIRST TIME
 #
-# PREDICATE  the line carries an account FILTER. A WHERE that mentions the
-#            account is the shape a breakage removes; the DML keywords catch a
-#            statement that binds the account in a column list.
-PREDICATE_RE="WHERE.*account_id|where.*account_id|account_id[[:space:]]*(=|==|:)[[:space:]]*[0-9$\?]|^[^:]*INSERT INTO|insert into| UPDATE | DELETE FROM| delete from"
+# The first draft of this recipe reported caf with TWO account_id PREDICATE
+# lines. Both were false: they are the `description` prose of two properties in
+# core's vendored `metrics.schema.json`, and one of them matches the classifier
+# only because the word "update" appears in an English sentence about telemetry
+# cards. caf has ZERO account predicates, and a classifier that says two is the
+# defect this repository has a written rule about — a measurement whose number
+# nobody looked at.
+#
+# It was caught by ARM 3, which is the control doing the job it exists for, and
+# it was NOT caught by the control's original assertion: "identity has at least
+# one predicate" is satisfied by a classifier that buckets everything as a
+# predicate. The assertion was too weak for the classifier it was policing. So
+# the rule below is structural rather than lexical, and the assertion was
+# tightened with it.
+#
+# THE RULE: a predicate lives in CODE or in SQL, never in a schema description.
+#
+#   Not "the line mentions a SQL keyword" — a JSON `description` mentions plenty.
+#   The file must be a source or SQL file, AND the line must carry a statement.
+#   Two conditions, and a prose line in a `.json` fails the first one by
+#   construction rather than by luck.
+#
+# `SOURCE_EXT` is the file extension half. `SQL_SHAPE` is the statement half,
+# widened to cover what a Go or Elixir store actually spells: the DML keywords,
+# a `WHERE`/`USING`/`ON` clause carrying the account, and `CREATE POLICY`,
+# which is how identity's own migrations express the boundary.
+SOURCE_EXT="\.go$|\.ex$|\.exs$|\.rb$|\.py$|\.ts$|\.tsx$|\.rs$|\.sql$"
+SQL_SHAPE="WHERE|where|USING|using|CREATE POLICY|create policy|INSERT INTO|insert into| UPDATE | DELETE FROM| delete from"
 
-# TELEMETRY  the line NAMES an OpenTelemetry attribute rather than filtering on
-#            one: an allowlist entry, a schema property, a resource-attribute
-#            list. All thirteen of caf's occurrences land here.
+# TELEMETRY — the line NAMES an OpenTelemetry attribute rather than filtering on
+# one. caf's occurrences all land here, which is the whole finding.
 TELEMETRY_RE="telemetry|otel|resourceAttributes|resource_attributes|description|allowlist|[Aa]ttribute|schema"
 
 classify_account_lines() {
-  local dir="$1"
+  local dir="$1" src_path body body_is_comment
   # `.git` and this recipe's own directory are excluded: a measurement that
   # counts its own receipt is a measurement with a floor of one.
   grep -rn "account_id" "$dir" 2>/dev/null \
     | grep -v "/\.git/" \
     | grep -v "^$dir/reports/caf-adopt-isolation-01/" \
     | while IFS= read -r line; do
-        if printf '%s' "$line" | grep -qE "$PREDICATE_RE"; then
-          printf 'PREDICATE\t%s\n' "$line"
-        elif printf '%s' "$line" | grep -qE "$TELEMETRY_RE"; then
+        # Structural first: is this file somewhere a predicate could live at all?
+        #
+        # The extension is tested against the PATH, not against the line. The
+        # first draft tested it against the whole `grep -rn` line — which is
+        # `path:lineno:content` — and therefore matched a file ending in `.go`
+        # exactly never, on every line, including identity's own
+        # `WHERE account_id = $1`. A classifier that recognises nothing is
+        # indistinguishable from a classifier that is right about a tree that
+        # contains nothing, and ARM 1's subject happens to be such a tree, so
+        # this one would have shipped GREEN having measured nothing at all.
+        # Only ARM 3 could see it, which is the second argument for the control.
+        src_path="${line%%:*}"
+        # A `--` line is a comment about a statement, not a statement. identity's
+        # own 00016 migration explains the whole account boundary in SQL comments
+        # that quote `WHERE account_id = ?` six times, so without this the bucket
+        # would be counting the documentation of the boundary as the boundary.
+        body="${line#*:}"
+        body="${body#*:}"
+        # Leading whitespace trimmed by PARAMETER EXPANSION rather than by `sed`.
+        # Two reasons, both measured on the first draft: the `sed` form broke
+        # under the nesting it needed here, and it forks once per candidate line
+        # — identity has six hundred — where this is arithmetic.
+        body="${body#"${body%%[![:space:]]*}"}"
+        case "$body" in
+          --*) body_is_comment=1 ;;
+          *) body_is_comment=0 ;;
+        esac
+        if [ "$body_is_comment" -eq 0 ] && printf '%s' "$src_path" | grep -qE "$SOURCE_EXT"; then
+          if printf '%s' "$line" | grep -qE "$SQL_SHAPE"; then
+            printf 'PREDICATE\t%s\n' "$line"
+            continue
+          fi
+        fi
+        if printf '%s' "$line" | grep -qE "$TELEMETRY_RE"; then
           printf 'TELEMETRY\t%s\n' "$line"
         else
           printf 'OTHER\t%s\n' "$line"
@@ -338,6 +387,12 @@ EOF
   say "      account_id TELEMETRY lines     : $(count_lines "$tele")"
   say "      account_id OTHER lines         : $(count_lines "$other")"
 
+  # `pred` is local to this function; the control reads it after the function
+  # returns, so it is published here rather than being made global.
+  CLASSIFIED_PRED="$pred"
+  CLASSIFIED_TELE="$tele"
+  CLASSIFIED_OTHER="$other"
+
   # THE TALLY THE FINDING RESTS ON: a database exists to this probe if the
   # service imports a driver, declares one, or ships its own migrations. Any one
   # of the three is enough, and requiring all three would be a weaker claim
@@ -362,8 +417,8 @@ say ""
 say "A service that HOLDS ROWS has a query layer to measure: a driver it imports,"
 say "migrations of its own, and an account predicate that could be dropped. This"
 say "arm reports which of those caf has, and prints every account_id line it"
-say "found with a bucket, because caf names account_id thirteen times and none"
-say "of the thirteen is a predicate."
+say "found with a bucket, because caf names account_id fourteen times and none"
+say "of the fourteen is a predicate."
 say ""
 measure "$ROOT" "caf"
 say "  every account_id occurrence in caf, classified:"
@@ -448,9 +503,22 @@ if command -v docker >/dev/null 2>&1; then
   "$TIMEOUT_BIN" 60 docker rm -f "kit-tenant-iso-$SESSION" >/dev/null 2>&1 || true
 fi
 
-tail -20 "$ARM2_LOG" | sed 's/^/  /'
+# The receipt is the MEANINGFUL line, not the tail. `goose` prints its whole
+# usage block when it cannot find the migrations directory, so `tail -20` of
+# this log is goose's help text and not the reason the run stopped. This was
+# measured: the first draft printed 60 lines of goose usage as its evidence.
+ARM2_LOG_BODY="$(cat "$ARM2_LOG" 2>/dev/null || true)"
+while IFS= read -r l; do
+  case "$l" in
+    *"migrations directory does not exist"*|*"migrations failed"*|*"Exiting 2"*|*"harness: "*|*"preparing a throwaway"*)
+      say "  $l" ;;
+  esac
+done <<EOF
+$ARM2_LOG_BODY
+EOF
 say ""
 say "  harness exit status: $ARM2_RC   (2 = a run that could not happen, never 0)"
+say "  full log: ${ARM2_LOG#"$ROOT"/}"
 say ""
 
 if [ "$ARM2_RC" -eq 0 ]; then
@@ -460,18 +528,22 @@ if [ "$ARM2_RC" -eq 0 ]; then
   say "  signal that a six-breakage recipe is now writable."
   observed_red=$(( observed_red + 1 ))
   breakages=$(( breakages + 1 ))
-elif contains "$(cat "$ARM2_LOG")" "migrations failed"; then
-  say "ARM 2 as predicted: the adapter compiled caf, then stopped at"
-  say "  adapter_migrate — `goose -dir migrations` against a directory caf does"
-  say "  not have. It is the fourth of the harness's five steps and the second"
-  say "  that needs something the subject holds. Full log: ${ARM2_LOG#"$ROOT"/}"
+elif contains "$ARM2_LOG_BODY" "migrations directory does not exist"; then
+  say "ARM 2 as predicted: adapter_prepare SUCCEEDED — caf has a go.mod and the"
+  say "  whole module compiles — and adapter_migrate FAILED at"
+  say "  'goose -dir migrations' against a directory caf does not have."
   say ""
-  say "  This is the receipt. `adapter_migrate` is where the adapter contract"
-  say "  says \"no hand-written schema — a harness that seeds a table it invented"
-  say "  is measuring its own DDL\", and caf has nothing to apply. Writing a"
-  say "  schema here would produce a green line resting on the harness's own"
-  say "  DDL, which is the vacuous green this repository has a written rule about."
-elif contains "$(cat "$ARM2_LOG")" "is not the Go service this adapter was written"; then
+  say "  That is step two of five, and the first one that needs something the"
+  say "  subject holds. adapter_prepare succeeding is the half of this receipt"
+  say "  that matters as much as the other: caf IS a Go service the adapter can"
+  say "  build, and the thing it lacks is not a toolchain."
+  say ""
+  say "  This is where the adapter contract says \"no hand-written schema — a"
+  say "  harness that seeds a table it invented is measuring its own DDL\", and"
+  say "  caf has nothing to apply. Writing a schema here would produce a green"
+  say "  line resting on the harness's own DDL, which is the vacuous green this"
+  say "  repository has a written rule about."
+elif contains "$ARM2_LOG_BODY" "is not the Go service this adapter was written"; then
   say "ARM 2: the adapter rejected caf as not a Go service — which is wrong, and"
   say "  is itself a finding. caf is a go.mod module and it compiles."
   failures=$(( failures + 1 ))
@@ -511,6 +583,7 @@ say ""
 
 CAF_HOLDS="$HOLDS_ROWS"
 CAF_PREDICATES="$N_PREDICATES"
+CAF_PREDICATE_LINES="$CLASSIFIED_PRED"
 measure "$IDENTITY" "identity (control — expected: HOLDS ROWS yes)"
 
 if [ "$HOLDS_ROWS" != "yes" ]; then
@@ -522,10 +595,28 @@ if [ "$HOLDS_ROWS" != "yes" ]; then
 elif [ "$N_PREDICATES" -lt 1 ]; then
   say "FAIL: the control holds rows but this recipe classified ZERO account_id"
   say "  lines as a SQL PREDICATE in it. identity's store.go spells"
-  say "  \`WHERE account_id = \$1\` in five functions, so the classifier is"
+  say "  'WHERE account_id = \$1' in five functions, so the classifier is"
   say "  mis-bucketing the very lines ARM 1's verdict rests on — and a"
   say "  classifier that cannot recognise a real predicate would call caf's"
-  say "  thirteen telemetry attribute names predicates too."
+  say "  fourteen telemetry attribute names predicates too."
+  failures=$(( failures + 1 ))
+elif [ "$CAF_PREDICATES" -ne 0 ]; then
+  say "FAIL: caf reported $CAF_PREDICATES account_id PREDICATE lines. caf has no"
+  say "  query layer, so that number must be zero, and a non-zero one means the"
+  say "  classifier is bucketing something that is not a statement."
+  say ""
+  say "  This assertion is here because the first run of this recipe got it"
+  say "  WRONG: it reported caf with two predicates, and both were English prose"
+  say "  in a JSON schema description. The control's original assertion —"
+  say "  \"identity has at least one predicate\" — could not see that, because a"
+  say "  classifier that buckets everything as a predicate also satisfies it."
+  say "  The rule is now structural (a predicate lives in code or SQL, never in a"
+  say "  description) and the assertion matches the rule rather than a proxy"
+  say "  for it."
+  printf '%s' "$CAF_PREDICATE_LINES" | while IFS= read -r l; do
+    [ -n "$l" ] && say "      $l"
+  done
+  say ""
   failures=$(( failures + 1 ))
 else
   say "PASS control 3/3: the identical logic answers the OTHER way for identity."
@@ -576,7 +667,7 @@ say "  template matcher, and NOT ONE of them is a database driver. It imports"
 say "  no database package, ships no .sql and no migrations/ directory, and has"
 say "  no tenancy.yml."
 say ""
-say "  It names \`account_id\` thirteen times and not one of the thirteen is a"
+say "  It names \`account_id\` fourteen times and not one of the fourteen is a"
 say "  predicate: every one is the NAME of an OpenTelemetry attribute. That is"
 say "  the opposite of a query layer. It is the signature of a service that"
 say "  emits telemetry about accounts it forwards to, and forwards the"

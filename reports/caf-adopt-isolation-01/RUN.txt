@@ -9,8 +9,8 @@ control:  /Users/kaka/Code/any/moon/cafaye/identity
 A service that HOLDS ROWS has a query layer to measure: a driver it imports,
 migrations of its own, and an account predicate that could be dropped. This
 arm reports which of those caf has, and prints every account_id line it
-found with a bucket, because caf names account_id thirteen times and none
-of the thirteen is a predicate.
+found with a bucket, because caf names account_id fourteen times and none
+of the fourteen is a predicate.
 
   [caf]
       IMPORTS a db driver (non-test) : 0
@@ -18,8 +18,8 @@ of the thirteen is a predicate.
       MIGRATES (.sql own schema)      : 0
       goose migrations/ directory    : absent
       tenancy.yml                    : absent
-      account_id PREDICATE lines     : 2
-      account_id TELEMETRY lines     : 11
+      account_id PREDICATE lines     : 0
+      account_id TELEMETRY lines     : 13
       account_id OTHER lines         : 1
       => HOLDS ROWS                  : no
 
@@ -28,8 +28,8 @@ of the thirteen is a predicate.
       TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/telemetry_test.go:263:	for _, name := range []string{"tenant_id", "account_id"} {
       TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/telemetry_test.go:295:		"tenant_id", "account_id",
       TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/traces.schema.json:203:        "account_id": { "type": "string", "maxLength": 64, "description": "The account, same reasoning as tenant_id." }
-      PREDICATE	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:5:  "description": "What a cafaye metric is permitted to carry, and the hard prohibition this schema exists to enforce. OpenTelemetry caps aggregation at 2000 distinct attribute combinations per metric stream; on overflow the SDK folds everything into a single point carrying otel.metric.overflow=true and DROPS ALL MEASUREMENT ATTRIBUTES. Totals remain correct and every per-dimension breakdown silently undercounts. That is the worst shape a bug can have: the dashboard still renders, the total still looks right, and the breakdown is wrong, with no error anywhere. So `tenant_id`, `user_id`, `account_id`, `request_id`, `trace_id` and every other unbounded identifier are prohibited here and required on `resourceAttributes` instead, which are attached once per process, are exempt from the cap, and stay queryable on the overflow point. The two attribute maps are disjoint by construction: a name on the resource list cannot be used as a measurement attribute even if someone adds it to the allowlist, and `additionalProperties: false` means a name on neither list is a failure rather than a silent new dimension. See docs/observability.md.",
-      PREDICATE	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:34:      "description": "Identity, attached once per process. This is where `tenant_id` and `account_id` go; the prohibition above is a prohibition with a destination, and this is the destination."
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:5:  "description": "What a cafaye metric is permitted to carry, and the hard prohibition this schema exists to enforce. OpenTelemetry caps aggregation at 2000 distinct attribute combinations per metric stream; on overflow the SDK folds everything into a single point carrying otel.metric.overflow=true and DROPS ALL MEASUREMENT ATTRIBUTES. Totals remain correct and every per-dimension breakdown silently undercounts. That is the worst shape a bug can have: the dashboard still renders, the total still looks right, and the breakdown is wrong, with no error anywhere. So `tenant_id`, `user_id`, `account_id`, `request_id`, `trace_id` and every other unbounded identifier are prohibited here and required on `resourceAttributes` instead, which are attached once per process, are exempt from the cap, and stay queryable on the overflow point. The two attribute maps are disjoint by construction: a name on the resource list cannot be used as a measurement attribute even if someone adds it to the allowlist, and `additionalProperties: false` means a name on neither list is a failure rather than a silent new dimension. See docs/observability.md.",
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:34:      "description": "Identity, attached once per process. This is where `tenant_id` and `account_id` go; the prohibition above is a prohibition with a destination, and this is the destination."
       TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:100:          { "required": ["account_id"] },
       TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:129:        "account_id": { "type": "string", "maxLength": 64, "description": "Same reasoning as tenant_id. The cafe is multi-tenant, so these two are the values a careless implementation reaches for first." }
       TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/logs.schema.json:102:        "account_id": { "type": "string", "maxLength": 64, "description": "Same reasoning as tenant_id." }
