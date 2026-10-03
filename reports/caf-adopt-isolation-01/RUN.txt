@@ -1,0 +1,169 @@
+recipe:   reports/caf-adopt-isolation-01/mutations.sh
+subject:  /Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01   (caf)
+kit:      /Users/kaka/Code/any/moon/cafaye/kit
+adapter:  /Users/kaka/Code/any/moon/cafaye/kit/tests/tenant_isolation/adapters/go.sh
+control:  /Users/kaka/Code/any/moon/cafaye/identity
+
+=== ARM 1: THE STATIC MEASUREMENT, over caf's own tree ===
+
+A service that HOLDS ROWS has a query layer to measure: a driver it imports,
+migrations of its own, and an account predicate that could be dropped. This
+arm reports which of those caf has, and prints every account_id line it
+found with a bucket, because caf names account_id fourteen times and none
+of the fourteen is a predicate.
+
+  [caf]
+      IMPORTS a db driver (non-test) : 0
+      DECLARES a driver in go.mod     : -
+      MIGRATES (.sql own schema)      : 0
+      goose migrations/ directory    : absent
+      tenancy.yml                    : absent
+      account_id PREDICATE lines     : 0
+      account_id TELEMETRY lines     : 13
+      account_id OTHER lines         : 1
+      => HOLDS ROWS                  : no
+
+  every account_id occurrence in caf, classified:
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/telemetry_test.go:251:		"tenant_id", "user_id", "account_id", "request_id", "trace_id",
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/telemetry_test.go:263:	for _, name := range []string{"tenant_id", "account_id"} {
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/telemetry_test.go:295:		"tenant_id", "account_id",
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/traces.schema.json:203:        "account_id": { "type": "string", "maxLength": 64, "description": "The account, same reasoning as tenant_id." }
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:5:  "description": "What a cafaye metric is permitted to carry, and the hard prohibition this schema exists to enforce. OpenTelemetry caps aggregation at 2000 distinct attribute combinations per metric stream; on overflow the SDK folds everything into a single point carrying otel.metric.overflow=true and DROPS ALL MEASUREMENT ATTRIBUTES. Totals remain correct and every per-dimension breakdown silently undercounts. That is the worst shape a bug can have: the dashboard still renders, the total still looks right, and the breakdown is wrong, with no error anywhere. So `tenant_id`, `user_id`, `account_id`, `request_id`, `trace_id` and every other unbounded identifier are prohibited here and required on `resourceAttributes` instead, which are attached once per process, are exempt from the cap, and stay queryable on the overflow point. The two attribute maps are disjoint by construction: a name on the resource list cannot be used as a measurement attribute even if someone adds it to the allowlist, and `additionalProperties: false` means a name on neither list is a failure rather than a silent new dimension. See docs/observability.md.",
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:34:      "description": "Identity, attached once per process. This is where `tenant_id` and `account_id` go; the prohibition above is a prohibition with a destination, and this is the destination."
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:100:          { "required": ["account_id"] },
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/metrics.schema.json:129:        "account_id": { "type": "string", "maxLength": 64, "description": "Same reasoning as tenant_id. The cafe is multi-tenant, so these two are the values a careless implementation reaches for first." }
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/contract/schemas/telemetry/logs.schema.json:102:        "account_id": { "type": "string", "maxLength": 64, "description": "Same reasoning as tenant_id." }
+      OTHER	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/gen/render.go:1114:	for _, name := range []string{"tenant_id", "account_id"} {
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/telemetry/telemetry_test.go:134:	for _, name := range []string{"tenant_id", "account_id"} {
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/telemetry/telemetry.go:574:	"account_id",
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/internal/telemetry/telemetry.go:607:	"account_id",
+      TELEMETRY	/Users/kaka/Code/any/moon/cafaye/wt-m39-caf-adopt-isolation-01/telemetry/otel-endpoint.json:36:    "account_id"
+
+=== ARM 2: THE EMPIRICAL RECEIPT — kit's Go adapter, really invoked ===
+
+adapter_prepare should SUCCEED (caf has a go.mod and compiles), and
+adapter_migrate should FAIL for want of migrations. Which of those two
+happens is the receipt; predicting it would prove nothing.
+
+  harness: up — kit-tenant-iso-48433 on host port 15533 (postgres:17), session 48433
+  harness: preparing a throwaway copy of wt-m39-caf-adopt-isolation-01
+    identity's own migrations failed; tail of the log:
+    2026/10/03 18:45:48 goose run: migrations directory does not exist
+  cross_tenant_harness: the service's own migrations did not apply to a real database. Exiting 2 — a harness that seeds into a schema nobody migrated proves nothing.
+
+  harness exit status: 2   (2 = a run that could not happen, never 0)
+  full log: reports/caf-adopt-isolation-01/arm2-adapter-vs-caf.log
+
+ARM 2 as predicted: adapter_prepare SUCCEEDED — caf has a go.mod and the
+  whole module compiles — and adapter_migrate FAILED at
+  'goose -dir migrations' against a directory caf does not have.
+
+  That is step two of five, and the first one that needs something the
+  subject holds. adapter_prepare succeeding is the half of this receipt
+  that matters as much as the other: caf IS a Go service the adapter can
+  build, and the thing it lacks is not a toolchain.
+
+  This is where the adapter contract says "no hand-written schema — a
+  harness that seeds a table it invented is measuring its own DDL", and
+  caf has nothing to apply. Writing a schema here would produce a green
+  line resting on the harness's own DDL, which is the vacuous green this
+  repository has a written rule about.
+--------------------------------------------------------------------------
+=== ARM 3: THE CONTROL — the same measurement, pointed at identity ===
+
+identity is the Go service kit's adapter was written for, and the one
+  service in the fleet measured to hold rows. The logic below is ARM 1's
+  logic, unchanged, with identity substituted for caf. If it answers the
+  SAME way it answered for caf, ARM 1 measured nothing and this run's
+  finding is not a finding.
+
+  [identity (control — expected: HOLDS ROWS yes)]
+      IMPORTS a db driver (non-test) : 18
+          cmd/identity/main.go
+          internal/accounts/store.go
+          internal/apikeys/store.go
+          internal/mfa/store.go
+          internal/oauth/store.go
+          internal/oidc/accesstoken.go
+          internal/oidc/authrequest.go
+          internal/oidc/profiles.go
+          internal/oidc/store.go
+          internal/outbox/store.go
+          internal/platform/db/db.go
+          internal/platform/db/seam.go
+          internal/platform/db/tx.go
+          internal/platform/dbtest/dbtest.go
+          internal/platform/id/id.go
+          internal/recovery/store.go
+          internal/sessions/store.go
+          internal/users/store.go
+      DECLARES a driver in go.mod     : github.com/jackc/pgx
+      MIGRATES (.sql own schema)      : 18
+          migrations/00009_oidc_clients.sql
+          migrations/00016_account_isolation.sql
+          migrations/00004_outbox_events.sql
+          migrations/00005_accounts.sql
+          migrations/00013_account_invitation_revocation.sql
+          migrations/00015_recovery_tokens.sql
+          migrations/00010_mfa.sql
+          migrations/00002_users.sql
+          migrations/00001_init.sql
+          migrations/00003_sessions.sql
+          migrations/00008_connected_accounts.sql
+          migrations/00007_account_invitations.sql
+          migrations/00017_credential_audit_dependencies.sql
+          migrations/00011_api_keys.sql
+          migrations/00012_account_audit_log.sql
+          migrations/00006_account_users.sql
+          migrations/00014_user_email_verified_at.sql
+          internal/tenancy/isolation.sql
+      goose migrations/ directory    : present
+      tenancy.yml                    : present
+      account_id PREDICATE lines     : 69
+      account_id TELEMETRY lines     : 14
+      account_id OTHER lines         : 520
+      => HOLDS ROWS                  : yes
+
+PASS control 3/3: the identical logic answers the OTHER way for identity.
+  identity HOLDS ROWS (yes) with 69 account_id lines classified
+  as SQL predicates. caf answered no, with 0.
+  So the difference is a property of the two trees and not of the probe.
+
+--------------------------------------------------------------------------
+=== VERDICT ===
+
+FINDING: caf holds no rows, and the cross-tenant harness is UNDEFINED
+  against it — not unfinished. There is no query layer here for it to
+  measure.
+
+  caf is a CLI and a gate. It declares no HTTP surface and publishes no
+  events (`cafaye.yml`, in its own words). Its four direct dependencies
+  are a YAML parser, the MCP SDK, a JSON Schema validator and a URI
+  template matcher, and NOT ONE of them is a database driver. It imports
+  no database package, ships no .sql and no migrations/ directory, and has
+  no tenancy.yml.
+
+  It names `account_id` fourteen times and not one of the fourteen is a
+  predicate: every one is the NAME of an OpenTelemetry attribute. That is
+  the opposite of a query layer. It is the signature of a service that
+  emits telemetry about accounts it forwards to, and forwards the
+  authorisation to the service that holds the rows.
+
+  So the packet's premise — `caf | Go | holds rows | yes` — is not
+  supported by the tree, and this is reported rather than worked around.
+  Manufacturing a subject here would have meant writing a schema for the
+  harness to seed, and a green line resting on DDL this repository wrote.
+
+  THE TALLIES, SEPARATELY:
+    controls green        : 1
+    breakages planted     : 0
+    observed RED          : 0
+
+  There are no breakages because there is no statement to break. The one
+  control that matters is ARM 3, and it is the reason the finding is a
+  measurement: the same logic, run against identity, answers the opposite
+  way and finds 69 account predicates where it found zero in caf.
+
+  This is a FINDING and not a PASS. It is also a tripwire: the moment caf
+  gains a driver, a migration or a tenancy.yml, this script exits 1 and
+  names what appeared.
