@@ -84,6 +84,7 @@ func TestCatalogWireShape(t *testing.T) {
 	    "port": 8080,
 	    "publish": true,
 	    "environment": {"DATABASE_URL": "postgres://identity:identity@postgres:5432/identity"},
+	    "connections": {"postgres": "IDENTITY_DATABASE_URL"},
 	    "volumes": ["identity-data:/var/lib/identity"],
 	    "healthcheck": {
 	      "test": ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"],
@@ -119,6 +120,9 @@ func TestCatalogWireShape(t *testing.T) {
 	}
 	if strings.Join(entry.Dependencies, ",") != "postgres,redis" {
 		t.Errorf("Dependencies = %v, want postgres and redis", entry.Dependencies)
+	}
+	if got := entry.Connections["postgres"]; got != "IDENTITY_DATABASE_URL" {
+		t.Errorf("Connections[postgres] = %q, want IDENTITY_DATABASE_URL: a field nothing reads on the wire is a field that only works in a test", got)
 	}
 	if strings.Join(entry.Volumes, ",") != "identity-data:/var/lib/identity" {
 		t.Errorf("Volumes = %v, want the named volume", entry.Volumes)
@@ -388,13 +392,13 @@ func TestTheKeyListNamesEveryFieldTheStructActuallyHas(t *testing.T) {
 	// A key list that has drifted from the struct tells a developer to fix a
 	// key that is already correct, so both directions are checked: every field
 	// the struct has is offered, and nothing else is.
-	for _, want := range []string{"name", "image", "command", "port", "publish", "environment", "volumes", "healthcheck", "dependencies"} {
+	for _, want := range []string{"name", "image", "command", "port", "publish", "environment", "connections", "volumes", "healthcheck", "dependencies"} {
 		if !slices.Contains(entryKeys, want) {
 			t.Errorf("the entry's key list offers %v, want it to include %q — a list that has drifted from the struct sends people to edit a file that is already right", entryKeys, want)
 		}
 	}
-	if extra := len(entryKeys) - 9; extra != 0 {
-		t.Errorf("the entry's key list offers %d keys, want exactly the 9 the struct has: %v", len(entryKeys), entryKeys)
+	if extra := len(entryKeys) - 10; extra != 0 {
+		t.Errorf("the entry's key list offers %d keys, want exactly the 10 the struct has: %v", len(entryKeys), entryKeys)
 	}
 
 	for _, want := range []string{"test", "interval", "timeout", "retries", "startPeriod"} {
@@ -405,6 +409,144 @@ func TestTheKeyListNamesEveryFieldTheStructActuallyHas(t *testing.T) {
 	if extra := len(healthKeys) - 5; extra != 0 {
 		t.Errorf("the healthcheck's key list offers %d keys, want exactly the 5 the struct has: %v", len(healthKeys), healthKeys)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// `connections` — the names a service reads its addresses from, and the two ways
+// a catalog can get that wrong without anything complaining.
+// ---------------------------------------------------------------------------
+
+// A declaration caf cannot act on is REFUSED, not ignored.
+//
+// It is a map, so a misspelled key is silent by construction: nothing in the
+// decoder complains about a map key it does not recognise. `{"postgresql": …}`
+// decodes into a perfectly good entry and caf then hands the service the
+// conventional `DATABASE_URL` — the exact defect the declaration was added to
+// remove, back again, in a catalog that reads as though it were fixed. A key
+// that changes nothing and says it is load-bearing is worse than a key caf
+// refused, because the catalog is the file somebody opens to check.
+//
+// The names are derived from `infra` rather than written out here, so a third
+// piece of local infrastructure is covered on the day it is added rather than on
+// the day this test is next read.
+func TestReadCatalogRefusesAConnectionsKeyThatNamesNoInfrastructure(t *testing.T) {
+	names := infraNames()
+	if len(names) == 0 {
+		t.Fatal("infraNames() is empty; this test refuses a key not in it and would pass for any input")
+	}
+
+	// Every real name is accepted, and a name one edit away from a real one is
+	// not. The pairs below are derived from the table rather than listed, so the
+	// test cannot rot into asserting about infrastructure caf has removed.
+	for _, name := range names {
+		document := `{"pantry": {"name": "pantry", "image": "x:1", "connections": {` + quote(name) + `: "P_DATABASE_URL"}}}`
+		if _, err := ReadCatalog(strings.NewReader(document)); err != nil {
+			t.Errorf("ReadCatalog with connections[%q] = %v, want it accepted: it names a piece of local infrastructure", name, err)
+		}
+	}
+
+	// `postgresql` is the mistake this exists for and it is spelled that way on
+	// purpose; a misspelling that is not a near-miss is not what a person types.
+	_, err := ReadCatalog(strings.NewReader(`{"pantry": {"name": "pantry", "image": "x:1", "connections": {"postgresql": "PANTRY_DATABASE_URL"}}}`))
+	if err == nil {
+		t.Fatal("ReadCatalog = nil error for connections[postgresql], want a refusal")
+	}
+	if !errors.Is(err, ErrBadCatalog) {
+		t.Errorf("err = %v, want it to wrap ErrBadCatalog", err)
+	}
+	for _, want := range []string{"pantry", "postgresql"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("err = %q, want it to name %q", err, want)
+		}
+	}
+}
+
+// The same silence, from the other direction: the value has to be a variable
+// name. The mistake is pasting a whole URL into the field, and the failure that
+// produces is several layers away — Docker's own environment parser refusing a
+// key called `postgres://…`, in a sentence about the document rather than about
+// the catalog that wrote it.
+func TestReadCatalogRefusesAConnectionsValueThatIsNotAVariableName(t *testing.T) {
+	for _, value := range []string{
+		"postgres://pantry:pantry@postgres:5432/pantry",
+		"PANTRY DATABASE URL",
+		"PANTRY-DATABASE-URL",
+		"9PANTRY",
+		"",
+	} {
+		document := `{"pantry": {"name": "pantry", "image": "x:1", "connections": {"postgres": ` + quote(value) + `}}}`
+		if _, err := ReadCatalog(strings.NewReader(document)); err == nil {
+			t.Errorf("ReadCatalog = nil error for connections[postgres] = %q, want a refusal", value)
+		}
+	}
+}
+
+// The refusal names the service and every mistake in one sentence, and it says
+// what caf would have done instead — because "nothing" is the sentence that
+// sends a developer looking for the bug somewhere else.
+func TestTheConnectionsErrorNamesTheServiceAndEveryMistake(t *testing.T) {
+	_, err := ReadCatalog(strings.NewReader(`{"pantry": {"name": "pantry", "image": "x:1", "connections": {"postgresql": "A_URL", "postgres": "postgres://x/y"}}}`))
+	if err == nil {
+		t.Fatal("ReadCatalog = nil error, want a refusal")
+	}
+	for _, want := range []string{"pantry", "postgresql", "postgres://x/y", "2 entries"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("err = %q, want it to name %q", err, want)
+		}
+	}
+}
+
+// And the count agrees, which is the same grammar rule the misspelled-key check
+// follows: a counted noun takes the number and a pronoun does not. One offender
+// and two are the two sentences a reader will actually meet.
+func TestTheConnectionsErrorReadsAsASentenceAtEveryCount(t *testing.T) {
+	one := `{"pantry": {"name": "pantry", "image": "x:1", "connections": {"postgresql": "A_URL"}}}`
+	two := `{"pantry": {"name": "pantry", "image": "x:1", "connections": {"postgresql": "A_URL", "mysql": "B_URL"}}}`
+
+	_, oneErr := ReadCatalog(strings.NewReader(one))
+	_, twoErr := ReadCatalog(strings.NewReader(two))
+	if oneErr == nil || twoErr == nil {
+		t.Fatalf("ReadCatalog errors = %v and %v, want both to be refusals", oneErr, twoErr)
+	}
+	if !strings.Contains(oneErr.Error(), "carries 1 entry caf") {
+		t.Errorf("one offender reads %q, want \"carries 1 entry caf\"", oneErr)
+	}
+	if !strings.Contains(twoErr.Error(), "carries 2 entries caf") {
+		t.Errorf("two offenders reads %q, want \"carries 2 entries caf\"", twoErr)
+	}
+	if strings.Contains(oneErr.Error(), "caf would have ignored them") {
+		t.Errorf("one offender reads %q, want \"ignored it\": a pronoun must not take a count", oneErr)
+	}
+	if !strings.Contains(twoErr.Error(), "caf would have ignored them") {
+		t.Errorf("two offenders read %q, want \"ignored them\"", twoErr)
+	}
+}
+
+// An entry that declares nothing is the common case and must stay free: three of
+// the four services in the platform with a database declare nothing, and a check
+// that refused the undeclared shape would be refusing most of the fleet.
+func TestReadCatalogAcceptsAnEntryThatDeclaresNoConnections(t *testing.T) {
+	for _, document := range []string{
+		`{"pantry": {"name": "pantry", "image": "x:1"}}`,
+		`{"pantry": {"name": "pantry", "image": "x:1", "connections": {}}}`,
+	} {
+		if _, err := ReadCatalog(strings.NewReader(document)); err != nil {
+			t.Errorf("ReadCatalog = %v, want an undeclared entry accepted:\n%s", err, document)
+		}
+	}
+}
+
+// quote is a JSON string literal, so the fixtures above build their documents
+// from the same names the code derives rather than pasting them. Hand-rolled
+// rather than json.Marshal because the documents above are deliberately
+// malformed-looking for a reader — a reader who sees them has to be able to see
+// the mistake in them.
+func quote(s string) string {
+	encoded, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	return string(encoded)
 }
 
 // keysOffered reads the comma-separated key list a message prints between two

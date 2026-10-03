@@ -101,6 +101,12 @@ type Service struct {
 	Port        int
 	Published   int
 	Environment Environment
+	// Connections is what the service's catalog entry said about the names of
+	// the variables it reads each piece of infrastructure's address from. It is
+	// carried rather than applied here because it is per service and not per
+	// stack: two services on one stack can disagree, and that disagreement is
+	// the normal case rather than an edge.
+	Connections map[string]string
 	Volumes     []string
 	DependsOn   []Dep
 	Healthcheck *Healthcheck
@@ -434,6 +440,7 @@ func (r *resolver) add(name string, soft bool) error {
 		Port:        entry.Port,
 		Published:   publishedPort(entry),
 		Environment: entry.Environment,
+		Connections: entry.Connections,
 		Volumes:     entry.Volumes,
 		Healthcheck: entry.Healthcheck,
 	}
@@ -460,6 +467,7 @@ func (r *resolver) addProject(name string) error {
 		svc.Image = entry.Image
 		svc.Command = entry.Command
 		svc.Environment = entry.Environment
+		svc.Connections = entry.Connections
 		svc.Healthcheck = entry.Healthcheck
 		if entry.Port > 0 {
 			svc.Port = entry.Port
@@ -534,7 +542,10 @@ func (r *resolver) wire() {
 		}
 		// The registry's own values are merged last, so a service the registry
 		// knows about keeps its real configuration and caf's local default is
-		// only a floor for a service nobody has described.
+		// only a floor for a service nobody has described. The address of each
+		// piece of infrastructure goes in under the variable THIS service reads
+		// it from — a declared name when the catalog entry gave one, and the
+		// conventional name when it did not.
 		env := Environment{}
 		if usesInfra && svc.Origin != OriginInfra {
 			for _, dep := range infraNames() {
@@ -542,8 +553,8 @@ func (r *resolver) wire() {
 					continue
 				}
 				deps = append(deps, Dep{Name: dep, Condition: r.condition(dep)})
-				if url, found := connectionURLs[dep]; found {
-					env = env.With(Environment{url(r.service)})
+				if address, found := connectionEnv(svc, dep, r.service); found {
+					env = env.With(address)
 				}
 			}
 		}

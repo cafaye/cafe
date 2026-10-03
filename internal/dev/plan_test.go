@@ -1320,3 +1320,279 @@ func between(t *testing.T, document, after, before string) string {
 	}
 	return text
 }
+
+// ---------------------------------------------------------------------------
+// The variable a service reads its database address from.
+//
+// The defect these cover was measured, not imagined. `caf dev` hardcoded
+// `DATABASE_URL` for every service wired to postgres and its comment said the
+// name was "the conventional one every language in the platform already reads".
+// Reading each service's own config loader on 2026-10-04 says otherwise:
+// identity and darkroom read `DATABASE_URL`, pantry reads `PANTRY_DATABASE_URL`
+// and muse reads `MUSE_DATABASE_URL`. So every `caf dev` run in a project that
+// depends on pantry produced a pantry container that exited on boot.
+//
+// The fix is that the catalog entry names the variable. These four tests are the
+// whole argument for it, and they are deliberately paired: the first proves a
+// declaration is honoured and the second proves that honouring one is not the
+// same as renaming the default.
+// ---------------------------------------------------------------------------
+
+// pantryRegistry is the shape the defect was found in: a service that reads its
+// own database address from a prefixed variable. It is pantry's shape and not
+// pantry's NAME on purpose — a fixture called `pantry` proves only that someone
+// typed pantry into a test.
+func pantryRegistry() Catalog {
+	return Catalog{
+		"pantry": {
+			Name:        "pantry",
+			Image:       "ghcr.io/cafaye/pantry:0.4.1",
+			Port:        8080,
+			Connections: map[string]string{"postgres": "PANTRY_DATABASE_URL"},
+		},
+	}
+}
+
+// pantryManifest is stackManifest with `pantry` as the declared dependency
+// rather than `alpha`, because the defect was found in a stack that depends on
+// pantry and the fixture has to be that stack.
+const pantryManifest = `name: stack
+description: The service under development.
+language: go
+core: ^0.2.0
+exposes:
+  api: openapi/openapi.yaml
+dependencies:
+  - name: pantry
+    version: ^0.1.0
+    required: true
+repository:
+  url: git@github.com:cafaye/stack.git
+owner:
+  team: stack
+`
+
+// A service that says what it calls its database variable gets that variable.
+// The assertion is on the RENDERED DOCUMENT and not only on the plan, because
+// the document is what Docker reads; a plan that carried the right name and a
+// renderer that ignored it would pass every assertion below this line.
+func TestAServiceThatDeclaresItsDatabaseVariableIsHandedThatName(t *testing.T) {
+	stack := mustPlan(t, pantryManifest, pantryRegistry(), Options{Build: buildGo})
+
+	env := envOf(service(t, stack, "pantry"))
+	if got, want := env["PANTRY_DATABASE_URL"], "postgres://stack:stack@postgres:5432/stack"; got != want {
+		t.Errorf("pantry PANTRY_DATABASE_URL = %q, want %q", got, want)
+	}
+	// The address is the same one the default would have carried. Only the name
+	// moved — a fix that also changed the address would be a second defect
+	// wearing this one's clothes.
+	if _, present := env["DATABASE_URL"]; present {
+		t.Errorf("pantry was also handed DATABASE_URL = %q; caf handed it two names for one address and the service reads neither of the wrong ones", env["DATABASE_URL"])
+	}
+	// Scoped to pantry's own block. A document-wide `DATABASE_URL` search would
+	// be red here for the right behaviour rather than the wrong one: `stack`
+	// declares nothing and so gets the conventional name, which is the whole
+	// point of the test below.
+	block := between(t, stack.Compose, "  pantry:\n", "\n  postgres:")
+	if !strings.Contains(block, "      PANTRY_DATABASE_URL: postgres://stack:stack@postgres:5432/stack\n") {
+		t.Errorf("pantry's block does not carry PANTRY_DATABASE_URL:\n%s", block)
+	}
+	// Anchored on the newline and the indent rather than on the bare key, because
+	// `PANTRY_DATABASE_URL` CONTAINS `DATABASE_URL` — a substring check here
+	// would be red for a document that is exactly right.
+	if strings.Contains(block, "\n      DATABASE_URL:") {
+		t.Errorf("pantry's block still carries a DATABASE_URL of its own:\n%s", block)
+	}
+}
+
+// THE OTHER HALF, and the one that makes this a fix rather than a rename.
+//
+// A service that declares nothing still gets `DATABASE_URL`. That has to be
+// asserted rather than assumed, because the obvious way to "fix" this defect is
+// to make the name derived from the service — `PANTRY_` for pantry, `DARKROOM_`
+// for darkroom — which is the same bug with the hardcode moved from a literal to
+// a template. Three of the four services in the platform with a database read
+// exactly `DATABASE_URL`, and a change to the default breaks all three to fix
+// one.
+//
+// It is watched going red in this packet's own report: change the `postgres`
+// row's Variable in internal/dev/registry.go to `PANTRY_DATABASE_URL` and this
+// fails, while the test above still passes. A check that cannot fail is not a
+// check.
+func TestAServiceThatDeclaresNothingStillGetsTheConventionalName(t *testing.T) {
+	stack := mustPlan(t, stackManifest, alphaRegistry(), Options{Build: buildGo})
+
+	// Both services on the stack: alpha, which the catalog describes, and stack
+	// itself, which no catalog describes at all. A default that only survived for
+	// registry entries would pass on the first and fail on the second, which is
+	// why this walks both rather than one.
+	for _, name := range []string{"alpha", "stack"} {
+		env := envOf(service(t, stack, name))
+		if got, want := env["DATABASE_URL"], "postgres://stack:stack@postgres:5432/stack"; got != want {
+			t.Errorf("%s DATABASE_URL = %q, want %q", name, got, want)
+		}
+	}
+	if got := len(envOf(service(t, stack, "alpha"))); got != 3 {
+		t.Errorf("alpha carries %d variables (%v), want exactly ALPHA_MODE, DATABASE_URL and REDIS_URL: a service that declared nothing should gain no other name", got, envOf(service(t, stack, "alpha")))
+	}
+}
+
+// declaredAndUndeclaredManifest declares one service that names its own
+// database variable and one that does not, so a stack carries both at once — the
+// state the platform is actually in today, with pantry on `PANTRY_DATABASE_URL`
+// and identity and darkroom on `DATABASE_URL`.
+const declaredAndUndeclaredManifest = `name: stack
+description: The service under development.
+language: go
+core: ^0.2.0
+exposes:
+  api: openapi/openapi.yaml
+dependencies:
+  - name: pantry
+    version: ^0.1.0
+  - name: alpha
+    version: ^0.1.0
+repository:
+  url: git@github.com:cafaye/stack.git
+owner:
+  team: stack
+`
+
+// The declaration is per SERVICE and not per stack. Two services on one stack
+// read the same address from differently-named variables, which is the normal
+// case the moment one service in the platform picks a prefix and another does
+// not — and it is the case a single global switch cannot express at all.
+//
+// This is also the assertion that would fail if the implementation had been the
+// forbidden one: a `if service == "pantry"` anywhere in `wire` would make alpha's
+// name depend on whether pantry happens to be on the stack.
+func TestADeclaredNameBelongsToTheServiceThatDeclaredIt(t *testing.T) {
+	registry := alphaRegistry()
+	registry["pantry"] = pantryRegistry()["pantry"]
+
+	stack := mustPlan(t, declaredAndUndeclaredManifest, registry, Options{Build: buildGo})
+
+	for _, tc := range []struct{ service, want string }{
+		{"pantry", "PANTRY_DATABASE_URL"},
+		{"alpha", "DATABASE_URL"},
+		{"stack", "DATABASE_URL"},
+	} {
+		env := envOf(service(t, stack, tc.service))
+		if got := env[tc.want]; got != "postgres://stack:stack@postgres:5432/stack" {
+			t.Errorf("%s %s = %q, want the postgres address", tc.service, tc.want, got)
+		}
+		if _, wrong := env["DATABASE_URL"]; tc.want != "DATABASE_URL" && wrong {
+			t.Errorf("%s was also handed DATABASE_URL; a declared name must replace the default, not sit beside it", tc.service)
+		}
+	}
+}
+
+// The project service is not special. `addProject` resolves it through the same
+// registry lookup as any dependency, so an entry that describes the project
+// carries the same declaration — and this is the direction that is easy to leave
+// out, because `add` is the path a reader looks at first.
+func TestTheProjectServiceHonoursItsOwnDeclaredName(t *testing.T) {
+	registry := pantryRegistry()
+	registry["stack"] = Entry{
+		Name:        "stack",
+		Image:       "ghcr.io/cafaye/stack:0.1.0",
+		Connections: map[string]string{"postgres": "STACK_DATABASE_URL"},
+	}
+
+	stack := mustPlan(t, pantryManifest, registry, Options{Build: buildGo})
+
+	env := envOf(service(t, stack, "stack"))
+	if got, want := env["STACK_DATABASE_URL"], "postgres://stack:stack@postgres:5432/stack"; got != want {
+		t.Errorf("stack STACK_DATABASE_URL = %q, want %q", got, want)
+	}
+	if _, present := env["DATABASE_URL"]; present {
+		t.Errorf("the project service was also handed DATABASE_URL = %q", env["DATABASE_URL"])
+	}
+}
+
+// A declaration is honoured whatever the variable is called, which is the whole
+// constraint against hardcoding one service's spelling. The rows are three
+// different prefixes and one that is not a prefix at all, because a mechanism
+// that only understands `<SERVICE>_DATABASE_URL` is a mechanism with the same
+// hardcode in it wearing a loop.
+func TestAnyDeclaredVariableNameIsHonoured(t *testing.T) {
+	for _, variable := range []string{
+		"PANTRY_DATABASE_URL",
+		"DARKROOM_SQL_DSN",
+		"db",
+		"_INTERNAL",
+		"X9_URL",
+	} {
+		registry := alphaRegistry()
+		registry["alpha"] = withConnections(registry["alpha"], "postgres", variable)
+
+		stack := mustPlan(t, stackManifest, registry, Options{Build: buildGo})
+
+		env := envOf(service(t, stack, "alpha"))
+		if got, want := env[variable], "postgres://stack:stack@postgres:5432/stack"; got != want {
+			t.Errorf("alpha %s = %q, want %q", variable, got, want)
+		}
+	}
+}
+
+// A declaration for the cache is honoured on the same terms as one for the
+// database, because the table has no special case in it. `REDIS_URL` is the
+// conventional name and nothing in the platform disagrees, so this row exists to
+// show the mechanism is the table's and not the database's: the day a service
+// reads `PANTOPHERY_REDIS_URL`, the fix is already in place.
+func TestADeclaredNameAppliesToAnyPieceOfInfrastructure(t *testing.T) {
+	registry := alphaRegistry()
+	registry["alpha"] = withConnections(registry["alpha"], "redis", "ALPHA_REDIS_URL")
+
+	stack := mustPlan(t, stackManifest, registry, Options{Build: buildGo})
+
+	env := envOf(service(t, stack, "alpha"))
+	if got, want := env["ALPHA_REDIS_URL"], "redis://redis:6379/0"; got != want {
+		t.Errorf("alpha ALPHA_REDIS_URL = %q, want %q", got, want)
+	}
+	if _, present := env["REDIS_URL"]; present {
+		t.Errorf("alpha was also handed REDIS_URL = %q", env["REDIS_URL"])
+	}
+	// The database is untouched by a declaration about the cache. A merge that
+	// dropped the other infrastructure's default would leave a service with no
+	// database at all, which is a worse version of the defect this fixed.
+	if _, present := env["DATABASE_URL"]; !present {
+		t.Errorf("alpha lost DATABASE_URL when only its redis name was declared: %v", env)
+	}
+}
+
+// A catalog entry's own `environment` still wins over the address, because a
+// service that hands caf a literal connection string has said more than a
+// declaration of what to call one. The declaration chooses the NAME; it does not
+// outrank a value the registry supplied.
+func TestARegistryValueStillOutranksTheDeclaredAddress(t *testing.T) {
+	registry := pantryRegistry()
+	registry["pantry"] = withEnv(registry["pantry"], Env{Name: "PANTRY_DATABASE_URL", Value: "postgres://elsewhere/db"})
+
+	stack := mustPlan(t, pantryManifest, registry, Options{Build: buildGo})
+
+	env := envOf(service(t, stack, "pantry"))
+	if got, want := env["PANTRY_DATABASE_URL"], "postgres://elsewhere/db"; got != want {
+		t.Errorf("pantry PANTRY_DATABASE_URL = %q, want the registry's own %q", got, want)
+	}
+}
+
+// `-no-infra` still removes the database, so a stack that asked for none does
+// not get a variable pointing at a container that is not there. The declaration
+// names a variable; it does not conjure the infrastructure behind it.
+func TestANoInfraStackCarriesNoDatabaseVariableUnderAnyName(t *testing.T) {
+	stack := mustPlan(t, pantryManifest, pantryRegistry(), Options{Build: buildGo, NoInfra: true})
+
+	env := envOf(service(t, stack, "pantry"))
+	if _, present := env["PANTRY_DATABASE_URL"]; present {
+		t.Errorf("a -no-infra stack handed pantry PANTRY_DATABASE_URL = %q", env["PANTRY_DATABASE_URL"])
+	}
+	if _, present := env["DATABASE_URL"]; present {
+		t.Errorf("a -no-infra stack handed pantry DATABASE_URL = %q", env["DATABASE_URL"])
+	}
+}
+
+func withConnections(entry Entry, kind, variable string) Entry {
+	entry.Connections = map[string]string{kind: variable}
+	return entry
+}
