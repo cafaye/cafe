@@ -108,7 +108,7 @@ func Parse(data []byte) (Manifest, error) {
 }
 
 // ServiceName is the cafaye namespace name, which is also the repository
-// name, the event envelope `source` and the guard routing prefix.
+// name, the event envelope `source` and the gateway routing prefix.
 func (m Manifest) ServiceName() string { return m.fields.Name }
 
 // Publishes is exposes.events: the event types this service emits.

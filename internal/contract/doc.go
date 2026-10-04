@@ -114,7 +114,7 @@
 //     `int` (which is ambiguously sized, depending on target platform)." An
 //     OpenAPI `integer` with no `format` IS the ambiguous width, and the honest
 //     rule would refuse it. Measured on this tree's own fleet before deciding:
-//     18 bare `integer`s in identity's document, 9 in billing's and guard's, 3 in
+//     18 bare `integer`s in identity's document, 9 in billing's and gateway's, 3 in
 //     pantry's. A rule that is red on every document in the fleet on the day it
 //     lands is not a gate, it is a migration nobody agreed to, so what ships is
 //     `openapi.no-unsigned-integer` and `openapi.int64-must-be-js-safe` and the
