@@ -140,6 +140,7 @@ services:
       - serve
     environment:
       ALPHA_MODE: local
+      ALPHA_OTEL_ENDPOINT: http://otel-collector:4317
       DATABASE_URL: postgres://stack:stack@postgres:5432/stack
       REDIS_URL: redis://redis:6379/0
     depends_on:
@@ -201,6 +202,7 @@ services:
     environment:
       DATABASE_URL: postgres://stack:stack@postgres:5432/stack
       REDIS_URL: redis://redis:6379/0
+      STACK_OTEL_ENDPOINT: http://otel-collector:4317
     depends_on:
       alpha:
         condition: service_healthy
@@ -653,7 +655,13 @@ func TestPlanIsDeterministic(t *testing.T) {
 	// are the two ways a generated document stops being reproducible in a diff:
 	// a reshuffled block, and a value that comes back out of the parser as an
 	// integer rather than the string the service was configured with.
-	if got := first.Compose; !strings.Contains(got, "      ALPHA: \"2\"\n      DATABASE_URL:") ||
+	//
+	// The endpoint variable is in the middle of the block rather than appended,
+	// which is the point of sorting by name: `CACHE_OTEL_ENDPOINT` lands between
+	// `ALPHA` and `DATABASE_URL` because that is where it belongs
+	// alphabetically, and a renderer that appended it would produce a different
+	// document from the same manifest depending on which code path added it.
+	if got := first.Compose; !strings.Contains(got, "      ALPHA: \"2\"\n      CACHE_OTEL_ENDPOINT: http://otel-collector:4317\n      DATABASE_URL:") ||
 		!strings.Contains(got, "\n      ZED: \"1\"\n") {
 		t.Errorf("cache environment is not sorted by name, or a numeric value is unquoted\n%s", got)
 	}
@@ -1432,8 +1440,16 @@ func TestAServiceThatDeclaresNothingStillGetsTheConventionalName(t *testing.T) {
 			t.Errorf("%s DATABASE_URL = %q, want %q", name, got, want)
 		}
 	}
-	if got := len(envOf(service(t, stack, "alpha"))); got != 3 {
-		t.Errorf("alpha carries %d variables (%v), want exactly ALPHA_MODE, DATABASE_URL and REDIS_URL: a service that declared nothing should gain no other name", got, envOf(service(t, stack, "alpha")))
+	// The count, and it is a count rather than a set because the point is that
+	// caf adds no name beyond the ones it means to add. ALPHA_OTEL_ENDPOINT is
+	// one of those — it is core's only endpoint contract, rendered for every
+	// cafaye service — so it is in the four and its absence would be the defect
+	// `internal/dev/telemetry_test.go` covers. What must not appear is a fifth
+	// variable derived from something nobody asked for.
+	if got := len(envOf(service(t, stack, "alpha"))); got != 4 {
+		t.Errorf("alpha carries %d variables (%v), want exactly ALPHA_MODE, ALPHA_OTEL_ENDPOINT, "+
+			"DATABASE_URL and REDIS_URL: a service that declared nothing should gain no other name",
+			got, envOf(service(t, stack, "alpha")))
 	}
 }
 
