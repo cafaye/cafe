@@ -15,7 +15,7 @@
 // error.type vocabulary, the span-name grammar, the OTEL_SDK_DISABLED switch, the three per-signal switches, and the four negative
 // properties of the no-op path.
 //
-// From the manifest: the service name ("courier") and the language, which is what decided that
+// From the manifest: the service name ("caf") and the language, which is what decided that
 // Go was the right file to write.
 //
 // Written down here, and not derived from anything, because core's schemas
@@ -493,11 +493,11 @@ func TestEveryAllowlistedIntegerStaysInsideTheSafeJSONRange(t *testing.T) {
 // when the manifest or the contract changes, and a setup whose service name has
 // drifted from its manifest has spans nobody can attribute.
 func TestTheServiceIdentityMatchesTheManifest(t *testing.T) {
-	if ServiceName != "courier" {
-		t.Errorf("ServiceName = %q, want %q", ServiceName, "courier")
+	if ServiceName != "caf" {
+		t.Errorf("ServiceName = %q, want %q", ServiceName, "caf")
 	}
-	if EndpointVariable != "COURIER_OTEL_ENDPOINT" {
-		t.Errorf("EndpointVariable = %q, want %q", EndpointVariable, "COURIER_OTEL_ENDPOINT")
+	if EndpointVariable != "CAF_OTEL_ENDPOINT" {
+		t.Errorf("EndpointVariable = %q, want %q", EndpointVariable, "CAF_OTEL_ENDPOINT")
 	}
 	if !strings.HasPrefix(EndpointVariable, strings.ToUpper(ServiceName)) {
 		t.Errorf("EndpointVariable = %q, which does not start with the upper-cased service name, and the "+

@@ -12,8 +12,8 @@
     {"path": "internal/contract/schemas/telemetry/redaction.schema.json", "kind": "vendored-schema", "sha256": "1e5cd92a79bd7d63fffaa2caba6f6e49d99e291de3362be8d7281991c5581171"},
     {"path": "internal/contract/schemas/telemetry/span-naming.schema.json", "kind": "vendored-schema", "sha256": "d846c78dec600456d0de20383510e6bcb37e23cd083e1d82717dbe401d3cd495"},
     {"path": "internal/contract/schemas/telemetry/traces.schema.json", "kind": "vendored-schema", "sha256": "101132a6792318670c352a8f61a3231387748eb53ec86d0a23dbac55a71ed576"},
-    {"path": "internal/telemetry/telemetry.go", "kind": "generated-client", "sha256": "a98e03587ef60ebc94f8da3db67da3cf8eb3eb0f3bca80a7f023079fc807a941"},
-    {"path": "internal/telemetry/telemetry_test.go", "kind": "generated-client", "sha256": "4694193af6ef4d5a1ae563297086c82a53cd6df72754adbf6d090791bf587235"},
-    {"path": "telemetry/otel-endpoint.json", "kind": "generated-client", "sha256": "968e1dbf4e6955fc8c56abf89451a90ae696036f2d4e96019c53ada3806fabfc"}
+    {"path": "internal/telemetry/telemetry.go", "kind": "generated-client", "sha256": "71532e474a91860f9e87a0bb8371c05d3c4588ec0106428b524be6d086d191c1"},
+    {"path": "internal/telemetry/telemetry_test.go", "kind": "generated-client", "sha256": "852447859ef40ce69918082ea72f6433e21b71e0432370860766f59dfb361462"},
+    {"path": "telemetry/otel-endpoint.json", "kind": "generated-client", "sha256": "97e0deddd6d17582ff340e4817c346d01b564967e0f517a9b4f7346b2f9ca2a7"}
   ]
 }

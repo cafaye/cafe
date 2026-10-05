@@ -15,7 +15,7 @@
 // error.type vocabulary, the span-name grammar, the OTEL_SDK_DISABLED switch, the three per-signal switches, and the four negative
 // properties of the no-op path.
 //
-// From the manifest: the service name ("courier") and the language, which is what decided that
+// From the manifest: the service name ("caf") and the language, which is what decided that
 // Go was the right file to write.
 //
 // Written down here, and not derived from anything, because core's schemas
@@ -56,7 +56,7 @@ const (
 // mandatory prefix of every span this process creates. An unprefixed span name
 // says what happened and not who did it, so a fleet-wide query has to guess
 // which of six services to attribute it to.
-const ServiceName = "courier"
+const ServiceName = "caf"
 
 // Namespace is what this service groups under in a backend. It is what lets one
 // collector show the fleet as one thing rather than as six unrelated services,
@@ -77,7 +77,7 @@ const Namespace = "cafaye"
 const (
 	// EndpointVariable is `<SERVICE>_OTEL_ENDPOINT`: the name a reader
 	// can know without reading this file.
-	EndpointVariable = "COURIER_OTEL_ENDPOINT"
+	EndpointVariable = "CAF_OTEL_ENDPOINT"
 
 	// DefaultEndpoint is the collector that ships with the local stack. It is a
 	// default value and not a constant of behaviour: changing it changes where a
@@ -105,7 +105,7 @@ const (
 
 // Endpoint is where OTLP goes.
 //
-// COURIER_OTEL_ENDPOINT wins over the standard `OTEL_EXPORTER_OTLP_ENDPOINT`, which
+// CAF_OTEL_ENDPOINT wins over the standard `OTEL_EXPORTER_OTLP_ENDPOINT`, which
 // is honoured as a fallback so the service also works with generic OTel tooling.
 // That precedence is written down rather than left to be discovered, because a
 // contract with an undocumented precedence order is a bug report.
