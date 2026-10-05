@@ -63,7 +63,7 @@ var updateGolden = flag.Bool("update", false,
 // repository root and this package is `internal/gen`. A relative path that had to
 // agree with the test's own location would be one more thing to keep in step.
 func TestTheGeneratedTelemetryHasNotDrifted(t *testing.T) {
-	out := generate(t, manifestFor)
+	out := generate(t, ownManifest(t))
 	root := filepath.Join("..", "..")
 
 	if *updateGolden {
@@ -288,8 +288,45 @@ func TestTheCommittedCopyCarriesTheProvenanceAHandWrittenOneWouldNot(t *testing.
 func generatedNames(t *testing.T) []string {
 	t.Helper()
 
-	out := generate(t, manifestFor)
+	out := generate(t, ownManifest(t))
 	return out.Paths()
+}
+
+// ownManifest is THIS repository's `cafaye.yml`, read from the tree rather than
+// assembled from the fixture above.
+//
+// The first version of this gate generated from `manifestFor` — courier's
+// manifest — and compared the result against files in a repository whose own
+// manifest says `name: caf`. It was green, and it was green because it was
+// comparing courier's output with courier's output. So the committed copy was
+// courier's: `internal/telemetry/telemetry.go` declared `ServiceName = "courier"`
+// and read `COURIER_OTEL_ENDPOINT`, in the cafaye platform CLI, and the drift
+// gate could not see it.
+//
+// The failure mode is worth naming, because it is the one this whole file exists
+// to prevent. `AGENTS.md` says "caf runs its own generator on its own
+// `cafaye.yml`, so `internal/telemetry/` is a committed copy of generated Go" —
+// and the sentence was true of the intent and false of the bytes. A gate whose
+// input is a fixture is a gate that proves the generator is deterministic, which
+// `telemetry_test.go` already asserts, and says nothing whatever about the files
+// this repository ships. Two green gates, and the one that mattered was measuring
+// a fixture.
+//
+// Reading the real manifest also makes this the check it claims to be: rename
+// `caf` in `cafaye.yml` and this test is red until somebody regenerates, which is
+// the whole contract between a manifest and the telemetry setup derived from it.
+func ownManifest(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join("..", "..", "cafaye.yml")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read this repository's own manifest %s: %v\n"+
+			"  The drift gate compares the committed telemetry files against what the generator writes for "+
+			"THIS repository's manifest. Without it there is nothing to compare against that anyone deploys.",
+			path, err)
+	}
+	return string(body)
 }
 
 // Every signal has a vendored schema to validate against, so a rename in

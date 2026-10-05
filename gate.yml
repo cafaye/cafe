@@ -128,6 +128,13 @@ gate:
       # file that did not compile would still have moved the suite floor — by a
       # number — and nobody would have been sent to the file.
       #
+      # 16, which is 15 plus `internal/emitter` — the package that makes a `caf`
+      # invocation emit one root span. The same argument as above and a different
+      # failure: this one is hand-written, and its whole job is to be invisible
+      # when the endpoint is unset. A wiring bug there changes no command's exit
+      # code and no command's stdout, so only a test count tells you the package
+      # is still covered.
+      #
       # 15, which is 14 plus `internal/lock` — `caf lock`, its writer and its
       # verifier. It is the second package here whose whole job is to be a gate:
       # `internal/ci`'s new tests verify this repository's `caf.lock` against the
@@ -366,7 +373,20 @@ gate:
       # one the floor is meant to be read from. The one failure that was not this
       # floor is a pre-existing load-sensitive test in `internal/ports` and is
       # named in REPORT-mvp-caf-dburl-name-01.md.
-      minimum: 727
+      #
+      # 753, which is 727 plus the 26 top-level tests `internal/emitter` and its
+      # `internal/cli` wiring rows add. Raised in the same commit that added
+      # them, which is the rule this whole format exists to enforce: the floor
+      # moved because tests were added, not because a number was edited.
+      #
+      # 759, plus the six wire tests that bind a loopback port and speak real
+      # OTLP/gRPC to a real in-process collector. They are in the floor for the
+      # same reason the emitter package is in the packages floor: they are the
+      # only tests in this tree that reach the transport, and MEASURED, they are
+      # the only ones that went red when the exporter was dialling with TLS at a
+      # plaintext collector. Every other test injects an exporter and passes with
+      # the transport wrong.
+      minimum: 759
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.

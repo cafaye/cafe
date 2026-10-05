@@ -13,7 +13,10 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"text/tabwriter"
+
+	"github.com/cafaye/caf/internal/emitter"
 )
 
 // errUsage marks a mistake in how caf was invoked, as opposed to a command
@@ -78,9 +81,43 @@ type Env struct {
 //	0  the command succeeded, or the user asked for help
 //	1  the command ran and failed
 //	2  caf was invoked wrongly (unknown command or flag, bad argument count)
+//
+// This is where the invocation's one span is opened and closed, and the reason it
+// is HERE rather than in `main` is that `Run` is where the outcome is known. A
+// span ended in `main` would have to be handed the exit code across a boundary,
+// and a boundary that carries an exit code is a second place the mapping from
+// exit code to failure lives — which is the mapping core's `error.type`
+// vocabulary exists to make single.
 func Run(opts Options) int {
 	env := opts.env()
-	err := newRoot(env).execute(env, opts.Args)
+	session := installTelemetry(env)
+	ctx, endInvocation := session.StartInvocation(env.Context, opts.Args)
+
+	err := newRoot(env).execute(withContext(env, ctx), opts.Args)
+	code := codeFor(env, err)
+	if spanErr := endInvocation(outcomeForCode(code, err)); spanErr != nil {
+		// Nothing here can act on this: a span that will not end is telemetry
+		// that will not arrive, and the command the user asked for has already
+		// run. Saying so on stderr and moving on is the only honest option —
+		// swallowing it silently would make a broken exporter indistinguishable
+		// from a disabled one, which is the confusion core's
+		// otel-endpoint.schema.json exists to prevent.
+		fmt.Fprintf(env.Stderr, "caf: could not end the invocation span: %v\n", spanErr)
+	}
+	// A flush error is not printed. `emitter.Shutdown` already returns nil for
+	// the one failure a developer hits constantly — a collector that is not
+	// running — and anything else it does return is a fault worth surfacing,
+	// which core's noOp.warnings rule cannot mean for a CLI whose every command
+	// would then carry it.
+	if err := session.Shutdown(ctx); err != nil {
+		fmt.Fprintf(env.Stderr, "caf: could not flush telemetry: %v\n", err)
+	}
+	return code
+}
+
+// codeFor maps an error to an exit code and prints it, and it is the whole of the
+// router's error handling in one function so the three classes have one home.
+func codeFor(env Env, err error) int {
 	if err == nil {
 		return exitSuccess
 	}
@@ -103,6 +140,56 @@ func Run(opts Options) int {
 		return exitUsage
 	}
 	return exitFailure
+}
+
+// outcomeForCode is the exit code to core's `error.type` vocabulary.
+//
+// A usage error is `invalid_request` because the person typed the command
+// wrongly, which is the one class where the cause is outside the process — see
+// emitter.OutcomeUsage for why filing it as an internal error would put a typo
+// in the same dashboard bucket as a caf bug.
+//
+// A cancelled context is `cancelled` for the same reason `caf dev`'s Ctrl-C is:
+// an operator stopping a long command is not an error an alert should page on.
+func outcomeForCode(code int, err error) emitter.Outcome {
+	switch {
+	case code == exitSuccess:
+		return emitter.OutcomeSuccess
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return emitter.OutcomeCancelled
+	case code == exitUsage:
+		return emitter.OutcomeUsage
+	default:
+		return emitter.OutcomeFailure
+	}
+}
+
+// installTelemetry wires the SDK for this process.
+//
+// It reads the switches BEFORE any command runs and cannot fail the invocation:
+// core's endpoint contract makes the endpoint `required: false`, so a caf whose
+// collector is unreachable still runs every command it has always run. The
+// function exists as a seam rather than being inlined into Run because a test
+// has to be able to prove the no-op path, and the only way to prove that is to
+// run `Run` with a controlled environment.
+func installTelemetry(env Env) emitter.Session {
+	session, err := emitter.Install(env.Context, emitter.Options{
+		Version:     env.Version.Semver,
+		Environment: os.Getenv("DEPLOYMENT_ENVIRONMENT"),
+		TenantID:    os.Getenv("TENANT_ID"),
+	})
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "caf: telemetry is unavailable (%v); running without it.\n", err)
+	}
+	return session
+}
+
+// withContext returns an Env whose context is the one the invocation span lives
+// in, so a command that reads `env.Context` — `dev` is the one that does — sees
+// the span and not the bare background context.
+func withContext(env Env, ctx context.Context) Env {
+	env.Context = ctx
+	return env
 }
 
 // Exit codes are a contract: scripts branch on them, so they do not change
