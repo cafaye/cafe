@@ -184,6 +184,84 @@ All notable changes to caf are recorded here. The format follows
 
 ### Fixed
 
+- **`caf dev` rendered no telemetry endpoint at all, so a service started by the
+  CLI could not be told where the collector is.** `internal/dev` mentioned
+  neither `<SERVICE>_OTEL_ENDPOINT` nor 4317/4318 anywhere, and pantry's
+  `HANDOFF-otel-01.md` names why that mattered: pantry holds no
+  `docker-compose.yml` by design, so the compose half of the fleet's endpoint
+  convention is only closeable in the generator that renders the stack.
+
+  `wire` now hands every cafaye service the variable, with core's documented
+  collector address read out of `contract.Endpoint.Default` rather than written
+  down a third time. A registry entry's own value still outranks it — that is the
+  self-hoster escape hatch core's schema describes.
+
+  ```
+  $ caf dev -dry-run -registry catalog.json demo-svc
+    my-service:
+      environment:
+        DATABASE_URL: postgres://my-service:my-service@postgres:5432/my-service
+        MYSERVICE_OTEL_ENDPOINT: http://otel-collector:4317
+        REDIS_URL: redis://redis:6379/0
+    pantry:
+      environment:
+        PANTRY_DATABASE_URL: postgres://my-service:my-service@postgres:5432/my-service
+        PANTRY_OTEL_ENDPOINT: http://otel-collector:4317
+        REDIS_URL: redis://redis:6379/0
+  ```
+
+  Three shapes are asserted rather than assumed, because each is a different
+  answer somebody could have given. Local infrastructure is handed nothing: it is
+  a third-party image with no cafaye identity. `-no-infra` still renders the
+  variable, because that flag names postgres and redis and widening it would make
+  a flag a developer reaches for during a database outage silently turn telemetry
+  off. And the variable name is derived with the dash dropped, the same
+  transformation `caf gen telemetry` performs, because two derivations that
+  disagree leave a kebab-case service handed a variable its own generated code
+  does not read.
+
+  There is deliberately **no `depends_on: otel-collector`**. The collector is not
+  in `internal/dev`'s `infra` table — it needs kit's `otel-collector.yml`, which
+  this repository does not own — and an edge to a container nothing starts is a
+  stack that never comes up. An endpoint variable naming an address nothing
+  serves is the documented state: core's schema means "not required" by it.
+
+- **The endpoint precedence held for the address and not for the scheme, so the
+  standard variable won half of a contract it is documented to lose.**
+  `CAF_OTEL_ENDPOINT` "wins over the standard `OTEL_EXPORTER_OTLP_ENDPOINT`", per
+  the generated `Endpoint()`'s own comment. courier's worker measured the
+  opposite over a real exporter. Measured here it was half true, and the half
+  that was wrong is the one that decides whether the bytes are encrypted.
+
+  An OTel exporter resolves its configuration in this order: built-in defaults,
+  then `ApplyGRPCEnvConfigs` — which reads `OTEL_EXPORTER_OTLP_ENDPOINT` from the
+  **process** environment — then the caller's options. `newGRPCExporter` passed the
+  address explicitly, so its option was applied last and the address was right. It
+  appended a scheme option only when it wanted plaintext, so with an `https`
+  cafaye value nothing overrode whatever the standard variable had said. Measured,
+  reading the first bytes of the connection:
+
+  ```
+  CAF_OTEL_ENDPOINT=https://127.0.0.1:PORT
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:PORT
+  -> 50 52 49 20 2a 20 48 54 54 50 2f 32 2e   ("PRI * HTTP/2.0", plaintext)
+  ```
+
+  The converse direction was already right, which is what made it invisible: an
+  asymmetry rather than a rule. The exporter now states the scheme in both
+  directions — `otlptracegrpc` has no `WithSecure` and resolves
+  `GRPCCredentials` before `Insecure`, so the secure case names
+  `credentials.NewTLS(nil)`, which is what the secure default branch built
+  anyway. What changes is which input decides, not what is dialled.
+
+  `caf gen telemetry` now emits `Scheme`, `Secure` and `PlaintextScheme` beside
+  the endpoint resolution, and the emitted setup states that the precedence covers
+  the scheme, why that is measured rather than restated, and that a caller must
+  hand the exporter **both** the address and the scheme. The generated suite's
+  precedence table is five rows with a scheme column, and the both-set-and-
+  conflicting row conflicts on the address *and* the scheme — the only row a
+  resolution with no precedence at all cannot pass.
+
 - **`caf dev` handed every service with a database the same environment
   variable, and two of the four services in the platform do not read it.** Any
   `caf dev` run in a project that depends on pantry produced a pantry container
