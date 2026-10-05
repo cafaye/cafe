@@ -25,16 +25,30 @@ import (
 
 // EndpointFor is the generated Endpoint(), over an injected lookup.
 //
-// The precedence is unchanged and is core's: `CAF_OTEL_ENDPOINT` wins, the
-// standard `OTEL_EXPORTER_OTLP_ENDPOINT` is the fallback so caf works with
-// generic OTel tooling, and the shipped collector is the default value of the
-// first.
+// The precedence is core's: `CAF_OTEL_ENDPOINT` wins, the standard
+// `OTEL_EXPORTER_OTLP_ENDPOINT` is the fallback so caf works with generic OTel
+// tooling, and the shipped collector is the default value of the first.
 //
 // The `CAF_` prefix is read from the generated `EndpointVariable` rather than
 // written here, because that constant is derived from the manifest by the same
 // code that derived it before and a second derivation is a second thing to keep
 // in step — which is exactly what the drift gate was measuring courier against
 // courier before the previous commit.
+//
+// WHAT THIS FUNCTION IS NOT is the whole of the precedence, and the second half
+// is the part that was wrong. `secure()` reads the scheme off whatever this
+// returns, but an OTel exporter resolves its own configuration as: defaults, then
+// its read of `OTEL_EXPORTER_OTLP_ENDPOINT` from the process environment, then the
+// caller's options. So the address this function returns does win — the caller
+// passes it and the caller's option is applied last — while the SCHEME loses
+// unless the caller states it too. MEASURED over the wire, in
+// precedence_test.go: with `CAF_OTEL_ENDPOINT=https://…` beside
+// `OTEL_EXPORTER_OTLP_ENDPOINT=http://…`, the first bytes on the connection were
+// the HTTP/2 client preface, not a TLS record.
+//
+// So `newGRPCExporter` now states the scheme in both directions, and the rule is
+// the one to keep: resolve once here, then pass the answer AND the scheme, and
+// never let the SDK's environment read decide either.
 func EndpointFor(lookup func(string) string) string {
 	if endpoint := lookup(telemetry.EndpointVariable); endpoint != "" {
 		return endpoint

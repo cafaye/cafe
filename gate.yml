@@ -395,7 +395,25 @@ gate:
       # reason caf-30's seven and caf-33's two did not: none of the six is
       # env-gated, so no new test arrived as a new tier and `expectedSkips` stays
       # at 8.
-      minimum: 765
+      #
+      # 771, which is 765 plus the six top-level tests caf-otlreg-01 added, and the
+      # split is worth naming because two of the six are in a GENERATED file:
+      #
+      #   * `internal/emitter/precedence_test.go`, one test whose five rows are the
+      #     endpoint precedence measured over the wire — only-standard,
+      #     only-service, both-agree and both-conflict, with the conflicting row
+      #     also conflicting on the scheme, which is the one that was wrong;
+      #   * `internal/gen/telemetry_precedence_test.go`, three tests asserting the
+      #     generator EMITS that precedence rather than describing it;
+      #   * `internal/telemetry/telemetry_test.go`, two new tests in the regenerated
+      #     suite — the no-scheme case and the shipped-collector-is-plaintext case.
+      #
+      # 779 declared, 8 skips, so 771 run. `expectedSkips` stays at 8 for the same
+      # reason every packet since caf-29 gives: none of the six is env-gated, so no
+      # new test arrived as a new tier. The subtest floor below is what notices the
+      # other half — the precedence table is five rows inside one test, and the
+      # suite floor above cannot tell that from a single new test.
+      minimum: 771
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.

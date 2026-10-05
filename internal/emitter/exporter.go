@@ -2,11 +2,13 @@ package emitter
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc/credentials"
+
+	"github.com/cafaye/caf/internal/telemetry"
 )
 
 // newGRPCExporter is the one real exporter.
@@ -36,9 +38,48 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 		otlptracegrpc.WithEndpoint(endpoint),
 		otlptracegrpc.WithTimeout(exportTimeout),
 	}
-	// TLS or not, decided by the SCHEME the endpoint was written with.
+	// TLS or not, decided by the SCHEME the endpoint was written with, and passed
+	// EXPLICITLY IN BOTH DIRECTIONS.
 	//
-	// MEASURED, and this was a real bug rather than a missing feature. The
+	// The second half is the fix, and it is a precedence leak rather than a
+	// missing feature. `otlptracegrpc` builds its config as: defaults, then
+	// `ApplyGRPCEnvConfigs`, then the caller's options. So a caller's options win
+	// — which is why the ADDRESS half of the documented precedence already held
+	// and `WithEndpoint` is enough for it.
+	//
+	// The SCHEME half did not, because `newGRPCExporter` used to append an option
+	// only when it wanted plaintext. With no option appended, the config keeps
+	// whatever `ApplyGRPCEnvConfigs` decided, and that function calls
+	// `withEndpointScheme(u)` on the value of `OTEL_EXPORTER_OTLP_ENDPOINT` —
+	// the standard variable the cafaye one is documented to beat. MEASURED, over
+	// the wire, on a plain socket reading the first bytes a dial produces:
+	//
+	//	CAF_OTEL_ENDPOINT=https://127.0.0.1:PORT     (caf's own answer: TLS)
+	//	OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:PORT
+	//	-> first bytes on the wire: 50 52 49 20 2a 20 48 54 54 50 2f 32 2e
+	//	   which is "PRI * HTTP/2.0" — the plaintext h2 client preface.
+	//
+	// So the standard variable won the scheme while losing the address, and a
+	// self-hoster who set `OTEL_EXPORTER_OTLP_ENDPOINT=http://…` next to their own
+	// `https://` endpoint silently downgraded the connection to plaintext. The
+	// converse — a cafaye `http://` beside a standard `https://` — was already
+	// right, and stayed right, because that direction appends an option.
+	//
+	// `WithTLSCredentials` is how the secure case is stated rather than assumed.
+	// `otlptracegrpc` has no `WithSecure`, and its own config resolves
+	// `GRPCCredentials` BEFORE `Insecure` ("Prioritize GRPCCredentials over
+	// Insecure"), so naming credentials makes the choice survive whatever the
+	// environment said. `credentials.NewTLS(nil)` is the host's root CA pool,
+	// which is exactly what the secure default branch builds — so this changes
+	// which input decides, and not what is dialled.
+	//
+	// The scheme is the last thing on the endpoint string and therefore the only
+	// thing a reader has to look at twice, so it is worth stating that it is
+	// carried through explicitly rather than left to an option that is present
+	// in one direction and absent in the other.
+	//
+	// The plaintext half of that is not a guess either, and this was a real bug
+	// before this packet. The
 	// gRPC exporter defaults to TLS, and core's shipped default is
 	// `http://otel-collector:4317` — plaintext gRPC on the collector's 4317.
 	// Without this, `caf` opened NO connection at all: `lsof` against a real
@@ -53,25 +94,29 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 	// before handing it over loses it. `hostPort` therefore does not strip it
 	// destructively: `schemeOf` reads the scheme and `hostPort` removes it,
 	// and the two are called at the same site so they cannot disagree.
-	if !secure {
+	if secure {
+		opts = append(opts, otlptracegrpc.WithTLSCredentials(credentials.NewTLS(nil)))
+	} else {
 		opts = append(opts, otlptracegrpc.WithInsecure())
 	}
 	return otlptracegrpc.New(ctx, opts...)
 }
 
-// secure reports whether an endpoint wants TLS.
+// secure reports whether an endpoint wants TLS, and it is the generated
+// `telemetry.Secure` rather than a second implementation of it.
 //
-// Only `https` does. `http`, `grpc` and a bare host:port are plaintext, and the
-// bare form has to be plaintext because it is what a self-hoster writes when the
-// collector is on the same host with no scheme in front of it — and an operator
-// who writes no scheme is saying "the address", not " the encryption".
+// The three rules that answer are core's and are now in the generated file, which
+// is where a service that adopts `caf gen telemetry` will read them: only `https`
+// encrypts; a bare host:port is plaintext, because an operator who writes no
+// scheme is saying "the address" and not "the encryption"; and the comparison is
+// case-folded, because a person typing `HTTPS://` means what they mean by
+// `https://`.
 //
-// Case-folded, because a URL scheme is case-insensitive and a person typing
-// `HTTPS://` means exactly what they mean by `https://`. Getting that wrong in the
-// other direction is the silent failure: TLS on to a plaintext collector exports
-// nothing and reports nothing.
+// Getting it wrong in either direction is the same silent failure: TLS at a
+// plaintext collector exports nothing and reports nothing, and so does plaintext
+// at a TLS one.
 func secure(endpoint string) bool {
-	return strings.HasPrefix(strings.ToLower(endpoint), "https://")
+	return telemetry.Secure(endpoint)
 }
 
 // exportTimeout bounds one OTLP export.

@@ -85,6 +85,89 @@ const (
 	DefaultEndpoint = "http://otel-collector:4317"
 )
 
+// The scheme, and why a reader of this file has to look at it.
+//
+// DefaultEndpoint above is written `http://` on the collector's 4317, which is
+// PLAINTEXT gRPC. That is not a typo and not a way of writing an https address:
+// 4317 speaks gRPC and the prefix says whether the bytes on it are encrypted.
+//
+// Every OTel SDK decides that from the scheme and defaults the other way round —
+// the Go gRPC exporter uses TLS unless told otherwise, and the Go HTTP one the
+// other way about — so a caller who passes this address to an exporter without
+// passing the scheme gets TLS at a collector that does not speak it. The
+// connection is attempted, fails, and the failure is silent by core's own
+// `noOp.warnings` rule: a service that exported nothing and said nothing.
+//
+// So the scheme travels WITH the address and is not re-derived by a caller. Strip
+// it and you have thrown away the only thing on the string that says whether the
+// bytes are encrypted.
+const (
+	// SchemeSeparator divides the scheme from the host in an endpoint. It is
+	// spelled once so that a reader looking for the scheme and a function looking
+	// for it are looking at the same bytes.
+	SchemeSeparator = "://"
+
+	// SchemeHTTP is plaintext. The shipped collector is addressed this way.
+	SchemeHTTP = "http"
+
+	// SchemeHTTPS is encrypted.
+	SchemeHTTPS = "https"
+
+	// SchemeGRPC is plaintext gRPC without the http prefix, which is the spelling
+	// a self-hoster writes when the collector is on the same host.
+	SchemeGRPC = "grpc"
+)
+
+// Scheme returns the scheme an endpoint was written with, and "" when it was
+// written without one.
+//
+// A missing scheme is plaintext, and that is not a default this package invented:
+// it is what "the address, with no encryption mentioned" has to mean to anybody
+// who wrote it. An operator who types no scheme is saying the address, and
+// silently upgrading them to TLS is the same class of defect as silently
+// downgrading them.
+func Scheme(endpoint string) string {
+	scheme, rest, found := strings.Cut(endpoint, SchemeSeparator)
+	if !found || rest == "" {
+		return ""
+	}
+	switch strings.ToLower(scheme) {
+	case SchemeHTTP, SchemeHTTPS, SchemeGRPC:
+		return strings.ToLower(scheme)
+	}
+	return ""
+}
+
+// Secure reports whether an endpoint's scheme wants the bytes encrypted.
+//
+// Only https does. http, grpc, unix and a bare host:port are all plaintext.
+//
+// Case-folded, because a URL scheme is case-insensitive and somebody typing
+// HTTPS:// means what they mean by https://. Getting this the other way round is
+// the silent failure in both directions: TLS at a plaintext collector exports
+// nothing, and plaintext at a TLS collector exports nothing, and neither reports.
+func Secure(endpoint string) bool {
+	return Scheme(endpoint) == SchemeHTTPS
+}
+
+// PlaintextScheme reports whether an endpoint's scheme says the bytes are NOT
+// encrypted, and is the half of the question Secure cannot answer: a bare
+// host:port has no scheme at all, and Secure("collector:4317") is false for a
+// reason that has nothing to do with TLS.
+//
+// A caller wiring an exporter needs the answer as a decision, not as a negation:
+// "append the plaintext option unless this says https" and "append the TLS option
+// because this says https" are different code, and only one of them is right for
+// an endpoint with no scheme.
+func PlaintextScheme(endpoint string) bool {
+	switch Scheme(endpoint) {
+	case SchemeHTTP, SchemeGRPC:
+		return true
+	}
+	// No scheme, no encryption mentioned: plaintext.
+	return Scheme(endpoint) == ""
+}
+
 // The switches, and what turning each of them off means. The global one is the
 // OpenTelemetry specification's own kill switch, and it is what the no-op path
 // is implemented with rather than a cafaye reimplementation of "disabled": six
@@ -109,6 +192,43 @@ const (
 // is honoured as a fallback so the service also works with generic OTel tooling.
 // That precedence is written down rather than left to be discovered, because a
 // contract with an undocumented precedence order is a bug report.
+//
+// THE PRECEDENCE COVERS THE WHOLE ENDPOINT, SCHEME INCLUDED, and that is not a
+// restatement of the sentence above. It is measured, and the two halves are
+// decided by different code in every OTel SDK this fleet uses.
+//
+// courier's worker measured the cafaye name losing to the standard one and put it
+// in courier's test/courier/otel_export_test.exs. caf measured the same thing on
+// this repository's own emitter — internal/emitter/precedence_test.go — and found
+// it was half true there as well: the ADDRESS followed this precedence, and the
+// SCHEME did not.
+//
+// The reason is the order an OTel exporter builds its configuration in: built-in
+// defaults, then its own read of OTEL_EXPORTER_OTLP_ENDPOINT from the process
+// environment, then the caller's options. A caller that passes the address
+// explicitly wins the address, because its option is applied last. A caller that
+// passes nothing about the scheme loses it, because nothing overrode what the
+// environment said. So with both set —
+//
+//	CAF_OTEL_ENDPOINT=https://collector.example:4317
+//	OTEL_EXPORTER_OTLP_ENDPOINT=http://collector.example:4317
+//
+// — the standard variable lost the address and won the scheme, and the service
+// sent plaintext to an endpoint this function had resolved as https. MEASURED on
+// the wire: the first bytes of the connection were 50 52 49 20 2a, the HTTP/2
+// client preface, rather than 16 03 01, a TLS record.
+//
+// Which is why Scheme and Secure are in this file rather than left to each caller
+// to re-derive. The endpoint string carries the scheme, and an SDK re-reads its own
+// idea of the scheme out of the environment rather than off the string it was
+// given. A caller that resolves the endpoint and then passes only the host part
+// has thrown away the half of the answer that decides whether the bytes are
+// encrypted.
+//
+// So: resolve the endpoint once with Endpoint(), take the TLS decision from
+// Secure(endpoint), and hand the exporter BOTH. Do not let the SDK's environment
+// read decide either one — that read is what makes the standard variable able to
+// win a precedence it is documented to lose.
 func Endpoint() string {
 	if endpoint := os.Getenv(EndpointVariable); endpoint != "" {
 		return endpoint
