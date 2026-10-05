@@ -162,6 +162,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      ALPHA_OTEL_ENDPOINT: http://otel-collector:4317
       DATABASE_URL: postgres://hello:hello@postgres:5432/hello
       GREETING: hello from alpha
       REDIS_URL: redis://redis:6379/0
@@ -191,6 +192,7 @@ services:
       - "8080:8080"
     environment:
       DATABASE_URL: postgres://hello:hello@postgres:5432/hello
+      HELLO_OTEL_ENDPOINT: http://otel-collector:4317
       REDIS_URL: redis://redis:6379/0
     depends_on:
       alpha:
@@ -288,6 +290,34 @@ A cycle is caught here rather than left to the runtime, where it arrives as a
 container that never starts and a wall of "depends on itself" lines. Two
 services agreeing on a *container* port is not a conflict — every service has
 its own address on the stack network — so only published host ports are checked.
+
+### Where the telemetry endpoint comes from
+
+Every cafaye service in the rendered document carries
+`<SERVICE>_OTEL_ENDPOINT`, pointed at the collector core's endpoint contract
+documents as the default. That variable is the fleet's whole endpoint contract —
+core's `otel-endpoint.schema.json` calls it "the ONLY contract" — and a variable
+only exists if something writes it. The service that would write it is a binary
+that reads it, so `caf dev` writes it.
+
+A catalog entry's own value outranks that default, which is the self-hoster
+escape hatch core describes: one service pointed at their own backend, the rest
+left on the collector.
+
+```
+"pantry": {
+  "name": "pantry",
+  "image": "ghcr.io/cafaye/pantry:0.4.1",
+  "environment": {"PANTRY_OTEL_ENDPOINT": "https://otlp.example.com:4318"}
+}
+```
+
+Two things it deliberately does **not** do. There is no `depends_on:
+otel-collector` — the collector is not in `internal/dev`'s infrastructure table,
+because it needs kit's `otel-collector.yml`, which this repository does not own,
+and an edge to a container nothing starts is a stack that never comes up. And
+local infrastructure is handed no endpoint: postgres and redis are third-party
+images with no cafaye identity and a variable they do not read.
 
 ### The service catalog
 
@@ -1132,6 +1162,25 @@ second definition of "disabled".
 
 Two properties are load-bearing and both are measured, not asserted:
 
+- **The precedence covers the SCHEME, and that took a measurement to find.**
+  `CAF_OTEL_ENDPOINT` is documented as winning over the standard
+  `OTEL_EXPORTER_OTLP_ENDPOINT`, and courier's worker measured the standard one
+  winning instead. Measured here it was half true: the ADDRESS followed the
+  precedence, because `newGRPCExporter` passes it explicitly and a caller's
+  options are applied after the SDK's own environment read — but the SCHEME did
+  not, because the exporter appended a scheme option only when it wanted
+  plaintext and so left an `https` endpoint to whatever the standard variable had
+  said. With `CAF_OTEL_ENDPOINT=https://…` beside
+  `OTEL_EXPORTER_OTLP_ENDPOINT=http://…`, the first bytes on the connection were
+  `50 52 49 20 2a 20 48 54 54 50 2f 32 2e` — the HTTP/2 client preface. The
+  standard variable lost the address and won the scheme, and the converse
+  direction was already correct, which is what kept it invisible: an asymmetry,
+  not a rule. The exporter now states the scheme in both directions, and
+  `internal/emitter/precedence_test.go` measures all five cases over the wire on
+  two loopback sockets, reading the first bytes of the connection. It sets the
+  variables with `t.Setenv` rather than an injected lookup because the SDK reads
+  `os.Getenv` itself — which is exactly why the first version of that test passed
+  against the broken exporter.
 - **Unset is free.** With a switch off, `Install` returns before it constructs an
   exporter, so nothing dials and nothing allocates. `caf version` on the disabled
   path: **84ns**, against **200ms** on the exporting path with an unresolvable
