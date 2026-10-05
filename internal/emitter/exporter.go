@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -30,11 +31,47 @@ import (
 // `timeoutMs` for precisely this — "a telemetry export that can block a request
 // is a latency bug in production caused by an observability tool" — and a CLI
 // has no request to block, only a person's patience.
-func newGRPCExporter(ctx context.Context, endpoint string) (sdktrace.SpanExporter, error) {
-	return otlptracegrpc.New(ctx,
+func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrace.SpanExporter, error) {
+	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(endpoint),
 		otlptracegrpc.WithTimeout(exportTimeout),
-	)
+	}
+	// TLS or not, decided by the SCHEME the endpoint was written with.
+	//
+	// MEASURED, and this was a real bug rather than a missing feature. The
+	// gRPC exporter defaults to TLS, and core's shipped default is
+	// `http://otel-collector:4317` — plaintext gRPC on the collector's 4317.
+	// Without this, `caf` opened NO connection at all: `lsof` against a real
+	// OTLP receiver listening on the configured port showed the listener and
+	// nothing else, on every command, forever. The exporter's TLS handshake
+	// could not complete against a plaintext collector, the failure was dropped
+	// by the error handler installed for noOp.warnings, and the observable
+	// result was a caf that exported nothing and said nothing about it.
+	//
+	// So the scheme is not decoration on core's default — it is the only thing
+	// that says whether the bytes are encrypted, and a reader who strips it
+	// before handing it over loses it. `hostPort` therefore does not strip it
+	// destructively: `schemeOf` reads the scheme and `hostPort` removes it,
+	// and the two are called at the same site so they cannot disagree.
+	if !secure {
+		opts = append(opts, otlptracegrpc.WithInsecure())
+	}
+	return otlptracegrpc.New(ctx, opts...)
+}
+
+// secure reports whether an endpoint wants TLS.
+//
+// Only `https` does. `http`, `grpc` and a bare host:port are plaintext, and the
+// bare form has to be plaintext because it is what a self-hoster writes when the
+// collector is on the same host with no scheme in front of it — and an operator
+// who writes no scheme is saying "the address", not " the encryption".
+//
+// Case-folded, because a URL scheme is case-insensitive and a person typing
+// `HTTPS://` means exactly what they mean by `https://`. Getting that wrong in the
+// other direction is the silent failure: TLS on to a plaintext collector exports
+// nothing and reports nothing.
+func secure(endpoint string) bool {
+	return strings.HasPrefix(strings.ToLower(endpoint), "https://")
 }
 
 // exportTimeout bounds one OTLP export.

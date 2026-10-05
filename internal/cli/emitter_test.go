@@ -187,7 +187,7 @@ func TestTheExporterBuildFailureIsReportedOnceAndSaysTheCommandIsUnaffected(t *t
 			}
 			return ""
 		},
-		NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) {
+		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) {
 			return nil, errors.New("dial tcp 172.20.0.3:4317: connection refused")
 		},
 	})

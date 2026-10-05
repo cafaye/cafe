@@ -20,7 +20,7 @@ func TestTheFlushIsBoundedAndTheNoOpIsFree(t *testing.T) {
 	// No-op: no exporter, so nothing to flush.
 	noOp, err := Install(context.Background(), Options{
 		Lookup: func(string) string { return "true" },
-		NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) {
+		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) {
 			t.Error("the exporter factory was reached on the no-op path")
 			return nil, nil
 		},
@@ -47,7 +47,7 @@ func TestTheFlushIsBoundedAndTheNoOpIsFree(t *testing.T) {
 	// the budget is that the terminal is not held while a collector is absent.
 	session, err := Install(context.Background(), Options{
 		Lookup: func(name string) string { return "127.0.0.1:1" },
-		NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) {
+		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) {
 			return newCapturing(), nil
 		},
 	})

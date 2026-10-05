@@ -48,13 +48,12 @@ const shutdownTimeout = 200 * time.Millisecond
 // direct call so the no-op test can prove that the disabled path never reaches
 // it — see doc.go.
 //
-// One real implementation exists, and it is otlptracegrpc because the shipped
-// collector speaks gRPC on 4317, which is the `default` in core's endpoint
-// contract. The endpoint may carry `http://` because core's own generated file
-// uses that prefix for a gRPC address, and the gRPC exporter needs the scheme
-// stripped: it takes a host:port, and handing it a URL is the mistake that
-// produces a dial error naming a path.
-type exporterFactory func(ctx context.Context, endpoint string) (sdktrace.SpanExporter, error)
+// `secure` is passed separately from the endpoint rather than left inside it,
+// and that split exists because of a measured bug: the gRPC exporter defaults to
+// TLS, core's shipped default endpoint is plaintext, and a caller that stripped
+// the scheme before calling here destroyed the only evidence that said which
+// encryption was wanted. See the note on newGRPCExporter.
+type exporterFactory func(ctx context.Context, endpoint string, secure bool) (sdktrace.SpanExporter, error)
 
 // Options is what one installation needs to know. Everything arrives here
 // rather than from package state, which is the rule every package in this tree
@@ -143,7 +142,8 @@ func Install(ctx context.Context, opts Options) (Session, error) {
 	if newExporter == nil {
 		newExporter = newGRPCExporter
 	}
-	exporter, err := newExporter(ctx, hostPort(EndpointFor(lookup)))
+	endpoint := EndpointFor(lookup)
+	exporter, err := newExporter(ctx, hostPort(endpoint), secure(endpoint))
 	if err != nil {
 		// A telemetry backend that will not accept an exporter is not a reason
 		// for a command the user asked for to fail. core's endpoint contract

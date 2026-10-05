@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -16,6 +17,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
+	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 
 	"github.com/cafaye/caf/internal/telemetry"
 )
@@ -49,7 +51,7 @@ func recordingInstall(t *testing.T, env map[string]string) (Session, *capturing,
 		Environment: "test",
 		TenantID:    "acme",
 		Lookup:      func(name string) string { return env[name] },
-		NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) { return exp, nil },
+		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) { return exp, nil },
 	})
 	return session, exp, err
 }
@@ -144,7 +146,7 @@ func TestTheNoOpPathNeverBuildsAnExporter(t *testing.T) {
 			var built int
 			session, err := Install(context.Background(), Options{
 				Lookup: func(name string) string { return row.env[name] },
-				NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) {
+				NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) {
 					built++
 					return newCapturing(), nil
 				},
@@ -186,7 +188,7 @@ func TestTheNoOpPathNeverBuildsAnExporter(t *testing.T) {
 func TestTheNoOpSessionIsSafeToUseWithoutTheSDK(t *testing.T) {
 	session, err := Install(context.Background(), Options{
 		Lookup: func(string) string { return "true" }, // OTEL_SDK_DISABLED
-		NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) {
+		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) {
 			t.Error("the exporter factory was reached on the no-op path")
 			return nil, nil
 		},
@@ -215,7 +217,7 @@ func TestAnExporterThatWillNotBuildDoesNotFailTheCommand(t *testing.T) {
 			}
 			return ""
 		},
-		NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) {
+		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) {
 			return nil, errors.New("dial tcp 172.20.0.3:4317: connection refused")
 		},
 	})
@@ -431,7 +433,7 @@ func TestAnUnknownVersionOrEnvironmentIsAbsentRatherThanGuessed(t *testing.T) {
 	}
 	session, err = Install(context.Background(), Options{
 		Lookup:      func(string) string { return "" },
-		NewExporter: func(context.Context, string) (sdktrace.SpanExporter, error) { return exp, nil },
+		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) { return exp, nil },
 	})
 	if err != nil {
 		t.Fatalf("Install: %v", err)
@@ -925,7 +927,7 @@ func TestInstallHandsTheExporterASchemeFreeEndpoint(t *testing.T) {
 			}
 			return ""
 		},
-		NewExporter: func(_ context.Context, endpoint string) (sdktrace.SpanExporter, error) {
+		NewExporter: func(_ context.Context, endpoint string, _ bool) (sdktrace.SpanExporter, error) {
 			got = endpoint
 			return newCapturing(), nil
 		},
@@ -1052,4 +1054,303 @@ func spanNames(spans tracetest.SpanStubs) []string {
 		out = append(out, span.Name)
 	}
 	return out
+}
+
+// The encryption decision, which is decided by the SCHEME and was the cause of a
+// measured bug.
+//
+// `otlptracegrpc` defaults to TLS. core's shipped default endpoint is
+// `http://otel-collector:4317` — plaintext gRPC on the collector's 4317. With
+// TLS on, caf opened NO CONNECTION AT ALL: `lsof` against a real OTLP receiver
+// listening on the configured port showed the listener and nothing else, on
+// every command, and the exporter's handshake failure was dropped by the error
+// handler installed for `noOp.warnings`. The observable result was a caf that
+// exported nothing, said nothing, and cost every command its flush budget.
+//
+// So the rule is pinned here for all four spellings a person can write.
+func TestOnlyHTTPSMeansTLS(t *testing.T) {
+	for _, row := range []struct {
+		endpoint string
+		want     bool
+	}{
+		// core's own default, and the row that was broken.
+		{endpoint: "http://otel-collector:4317", want: false},
+		{endpoint: "grpc://otel-collector:4317", want: false},
+		{endpoint: "otel-collector:4317", want: false},
+		{endpoint: "127.0.0.1:4317", want: false},
+		{endpoint: "https://collector.example:4317", want: true},
+		// Case matters for a scheme and not for a hostname, so an upper-case
+		// HTTPS is still a scheme a person typed — and treating it as plaintext
+		// would be the silent failure this test exists to prevent. It is
+		// therefore folded, which is what URL parsing does and what a person
+		// means.
+		{endpoint: "HTTPS://collector.example:4317", want: true},
+	} {
+		t.Run(row.endpoint, func(t *testing.T) {
+			if got := secure(row.endpoint); got != row.want {
+				t.Errorf("secure(%q) = %v, want %v", row.endpoint, got, row.want)
+			}
+		})
+	}
+}
+
+// And the two facts are read from the same string at the same site, so a caller
+// cannot end up stripping the scheme and losing the encryption it named — which
+// is how the bug happened.
+func TestTheSchemeIsStrippedAndTheEncryptionIsKept(t *testing.T) {
+	var gotEndpoint string
+	var gotSecure bool
+	endpoint := "https://collector.example:4317"
+
+	_, err := Install(context.Background(), Options{
+		Lookup: func(name string) string {
+			if name == telemetry.EndpointVariable {
+				return endpoint
+			}
+			return ""
+		},
+		NewExporter: func(_ context.Context, hostport string, secure bool) (sdktrace.SpanExporter, error) {
+			gotEndpoint, gotSecure = hostport, secure
+			return newCapturing(), nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if gotEndpoint != "collector.example:4317" {
+		t.Errorf("the exporter got %q, want the scheme-free host:port", gotEndpoint)
+	}
+	if !gotSecure {
+		t.Error("the exporter got secure=false for an https endpoint; the scheme named the " +
+			"encryption and stripping it must not lose that")
+	}
+}
+
+// The wire, not just the object. A span that reaches a real OTLP/gRPC receiver
+// in another process with the name, kind, resource and attributes core
+// specifies — measured, not asserted against an in-memory exporter.
+//
+// It is the row that caught the TLS bug, and it exists because the in-process
+// tests all pass with the exporter misconfigured: they INJECT one, so
+// everything below `Install` — the endpoint, the scheme, the transport — is
+// untested by every other test in this package.
+//
+// The collector is `collector_test.go`'s, a real gRPC server that decodes what it
+// receives. The first version of this test used a hand-rolled socket, and it
+// cheerfully reported a TLS ClientHello as a delivered span.
+func TestTheSpanReachesARealOTLPReceiverOverTheWire(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short mode: this test binds a loopback port and speaks gRPC")
+	}
+
+	server := startCollector(t)
+	// The REAL exporter, not recordingInstall's. Injecting one is what every
+	// other test in this file does and it is exactly why this test exists: an
+	// injected exporter is a span that never touches a socket, so it passes with
+	// the transport misconfigured.
+	session, err := Install(context.Background(), Options{
+		Lookup: func(name string) string {
+			if name == telemetry.EndpointVariable {
+				return server.endpoint()
+			}
+			return ""
+		},
+	})
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if !session.Enabled() {
+		t.Fatalf("telemetry is off with an endpoint set: %q", session.NoOpReason())
+	}
+
+	_, end := session.StartInvocation(context.Background(), []string{"contract", "lint"})
+	if err := end(OutcomeSuccess); err != nil {
+		t.Fatalf("end: %v", err)
+	}
+	if err := session.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+
+	received := spans(server.next(t, 5*time.Second))
+	if len(received) == 0 {
+		t.Fatal("the collector received a request with no spans in it")
+	}
+	span := received[0]
+
+	if span.span.GetName() != "caf.contract.lint" {
+		t.Errorf("span name on the wire = %q, want %q", span.span.GetName(), "caf.contract.lint")
+	}
+	if !telemetry.SpanNamePattern.MatchString(span.span.GetName()) {
+		t.Errorf("span name %q is refused by core's grammar", span.span.GetName())
+	}
+	if span.span.GetKind() != tracepb.Span_SPAN_KIND_INTERNAL {
+		t.Errorf("span kind on the wire = %v, want INTERNAL", span.span.GetKind())
+	}
+	if got := span.span.GetParentSpanId(); got != nil && len(got) != 0 {
+		t.Errorf("the span on the wire has parent %x, want a root span", got)
+	}
+
+	// Identity survived the wire, on the resource.
+	if name, ok := span.resourceAttribute("service.name"); !ok || name != telemetry.ServiceName {
+		t.Errorf("service.name on the wire = %q (present=%v), want %q; the resource carried %v",
+			name, ok, telemetry.ServiceName, span.resourceAttributeNames())
+	}
+	if namespace, ok := span.resourceAttribute("service.namespace"); !ok || namespace != telemetry.Namespace {
+		t.Errorf("service.namespace on the wire = %q (present=%v), want %q",
+			namespace, ok, telemetry.Namespace)
+	}
+	if _, ok := span.attribute("service.name"); ok {
+		t.Error("the span carries service.name on the wire; identity belongs on the resource " +
+			"and core's traces.schema.json forbids restating it as a span field")
+	}
+}
+
+// A failure on the wire, carrying the class — because the class is the whole
+// reason the traces schema makes status and error.type a biconditional, and a
+// class that does not survive serialisation is a class no dashboard can group on.
+func TestAFailureReachesTheWireWithItsClass(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short mode: this test binds a loopback port and speaks gRPC")
+	}
+
+	server := startCollector(t)
+	session, err := wireInstall(server)
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	_, end := session.StartInvocation(context.Background(), []string{"nonsense"})
+	if err := end(OutcomeUsage); err != nil {
+		t.Fatalf("end: %v", err)
+	}
+	if err := session.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+
+	received := spans(server.next(t, 5*time.Second))
+	if len(received) == 0 {
+		t.Fatal("the collector received a request with no spans in it")
+	}
+	span := received[0]
+
+	if span.span.GetStatus().GetCode() != tracepb.Status_STATUS_CODE_ERROR {
+		t.Errorf("status on the wire = %v, want ERROR — the field of record for whether the "+
+			"span failed", span.span.GetStatus().GetCode())
+	}
+	class, ok := span.attribute("error.type")
+	if !ok {
+		t.Fatalf("no error.type on the wire; the attributes carried were %v", span.attributeNames())
+	}
+	if class != "invalid_request" {
+		t.Errorf("error.type on the wire = %q, want invalid_request", class)
+	}
+	if !telemetry.IsErrorType(class) {
+		t.Errorf("error.type %q is not in core's closed vocabulary %v", class, telemetry.ErrorTypes())
+	}
+	if mirror, ok := span.attribute("otel.status_code"); !ok || mirror != "ERROR" {
+		t.Errorf("otel.status_code on the wire = %q (present=%v), want ERROR", mirror, ok)
+	}
+	// `error.message` is absent from core's vocabulary on purpose, and its
+	// presence on the wire would be the leak that absence prevents.
+	if msg, ok := span.attribute("error.message"); ok {
+		t.Errorf("error.message on the wire = %q; core's traces.schema.json excludes it because "+
+			"a provider's rejection quoting content back is a prompt by another route", msg)
+	}
+}
+
+// A malformed traceparent still exports, measured over the wire. A caf child
+// process started by something that set TRACEPARENT to garbage must still emit,
+// because a request — or here a command — is not an error because its trace header
+// was garbage (W3C §4.2).
+func TestAMalformedTraceparentStillExportsOverTheWire(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short mode: this test binds a loopback port and speaks gRPC")
+	}
+
+	server := startCollector(t)
+	session, err := wireInstall(server)
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	ctx := otel.GetTextMapPropagator().Extract(context.Background(),
+		propagation.HeaderCarrier(http.Header{"Traceparent": {"not-a-traceparent"}}))
+
+	_, end := session.StartInvocation(ctx, []string{"doctor"})
+	if err := end(OutcomeSuccess); err != nil {
+		t.Fatalf("a malformed traceparent failed the invocation: %v", err)
+	}
+	if err := session.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+
+	received := spans(server.next(t, 5*time.Second))
+	if len(received) == 0 {
+		t.Fatal("a malformed traceparent stopped the span being exported")
+	}
+	if len(received[0].span.GetTraceId()) != 16 {
+		t.Errorf("the exported trace id is %d bytes, want 16 — a new trace, and a valid one",
+			len(received[0].span.GetTraceId()))
+	}
+	zeroed := true
+	for _, b := range received[0].span.GetTraceId() {
+		if b != 0 {
+			zeroed = false
+		}
+	}
+	if zeroed {
+		t.Error("the exported trace id is all zeros, which is the id core's grammar forbids")
+	}
+}
+
+// An inbound traceparent continues a trace ACROSS PROCESSES, which is the whole
+// reason propagation exists, and it can only be shown with two processes.
+//
+// caf starts no child process, so the second process here is this test's own: it
+// reads the span a first, parented invocation exported and checks the trace id
+// matches the one it put in the header. That is the same assertion a fleet makes
+// when gateway's trace and identity's trace meet in one view.
+func TestAnInboundTraceparentIsContinuedAcrossProcessesOnTheWire(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short mode: this test binds a loopback port and speaks gRPC")
+	}
+
+	server := startCollector(t)
+	session, err := wireInstall(server)
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	// A header as a calling process would send it.
+	header := http.Header{"Traceparent": {"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"}}
+	ctx := otel.GetTextMapPropagator().Extract(context.Background(), propagation.HeaderCarrier(header))
+
+	_, end := session.StartInvocation(ctx, []string{"doctor"})
+	if err := end(OutcomeSuccess); err != nil {
+		t.Fatalf("end: %v", err)
+	}
+	if err := session.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+
+	received := spans(server.next(t, 5*time.Second))
+	if len(received) == 0 {
+		t.Fatal("the collector received a request with no spans in it")
+	}
+	span := received[0]
+
+	want, parseErr := traceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	if parseErr != nil {
+		t.Fatalf("the test's own trace id is unparseable: %v", parseErr)
+	}
+	if got := span.span.GetTraceId(); string(got) != string(want[:]) {
+		t.Errorf("trace id on the wire = %x, want the inbound %x — an inbound trace has to be "+
+			"continued, or one request reads as two unrelated traces in a trace view", got, want)
+	}
+	// The caller's span id is carried as this hop's parent.
+	if got := span.span.GetParentSpanId(); got == nil || len(got) != 8 {
+		t.Errorf("parent span id on the wire = %x, want the caller's 8-byte id", got)
+	} else if wantParent := []byte{0x00, 0xf0, 0x67, 0xaa, 0x0b, 0xa9, 0x02, 0xb7}; string(got) != string(wantParent) {
+		t.Errorf("parent span id on the wire = %x, want the caller's %x", got, wantParent)
+	}
 }

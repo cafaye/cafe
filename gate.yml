@@ -378,7 +378,15 @@ gate:
       # `internal/cli` wiring rows add. Raised in the same commit that added
       # them, which is the rule this whole format exists to enforce: the floor
       # moved because tests were added, not because a number was edited.
-      minimum: 753
+      #
+      # 759, plus the six wire tests that bind a loopback port and speak real
+      # OTLP/gRPC to a real in-process collector. They are in the floor for the
+      # same reason the emitter package is in the packages floor: they are the
+      # only tests in this tree that reach the transport, and MEASURED, they are
+      # the only ones that went red when the exporter was dialling with TLS at a
+      # plaintext collector. Every other test injects an exporter and passes with
+      # the transport wrong.
+      minimum: 759
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.
