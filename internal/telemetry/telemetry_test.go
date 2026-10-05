@@ -282,33 +282,121 @@ func clearSwitches(t *testing.T) {
 	}
 }
 
-// The endpoint variable, and the precedence between the cafaye name and the
-// standard OTel spelling. Written down rather than left to be discovered, because
-// a contract with an undocumented precedence order is a bug report.
+// The endpoint variable, the precedence between the cafaye name and the standard
+// OTel spelling, and the scheme on whichever one won.
+//
+// WHY THIS IS FOUR CASES AND NOT THREE. The first three are what any
+// implementation passes by accident: only-standard, only-service and both-agree
+// all say "the variable that is set is the variable that is used". Only
+// both-conflict can tell a resolution WITH a precedence from one without, which
+// is why it is here and why it conflicts on the SCHEME as well as the address.
+//
+// The scheme is a separate column because it is decided by different code from
+// the address in every OTel SDK: the address by whatever the caller passes, and
+// the scheme by whatever the SDK's own environment read produced. A table with
+// only an address column is green against a setup that exports in the clear —
+// measured, in courier and in this repository's own emitter, where the address
+// half of the precedence held and the scheme half did not.
+//
+// And WHY t.Setenv WITH AN EMPTY VALUE rather than skipping the call: the generated
+// Endpoint() reads os.Getenv directly, so a row that set only the variable it
+// cares about would be decided by whatever the machine running it had. An unset
+// variable reads as unset to Endpoint() and to the SDK, so setting it to "" is
+// how a row says "not set".
 func TestEndpointPrefersTheCafayeName(t *testing.T) {
 	for _, row := range []struct {
 		name, cafaye, standard, want string
+		wantScheme                   string
 	}{
-		{name: "nothing set is the shipped collector", want: DefaultEndpoint},
+		{name: "only the standard variable, and it is what is used", standard: "https://generic:4318",
+			want: "https://generic:4318", wantScheme: SchemeHTTPS},
+		{name: "only the cafaye variable, and it is what is used", cafaye: "https://otel.example:4318",
+			want: "https://otel.example:4318", wantScheme: SchemeHTTPS},
 		{
-			name:     "the cafaye variable wins",
-			cafaye:   "http://otel.example:4317",
-			standard: "http://ignored:4317",
-			want:     "http://otel.example:4317",
+			name: "both set and agreeing on one address",
+			// Deliberately the same value in both columns rather than one column
+			// being empty: agreement is the case a precedence is most likely to
+			// break, because a resolution that treats "both set" as a conflict
+			// would fail here while passing every other row.
+			cafaye: "http://agreed:4317", standard: "http://agreed:4317",
+			want: "http://agreed:4317", wantScheme: SchemeHTTP,
 		},
 		{
-			name:     "the standard spelling is honoured when the cafaye one is unset",
-			standard: "http://generic:4317",
-			want:     "http://generic:4317",
+			// THE ROW THAT CAN FAIL. Differing in BOTH halves, because either one
+			// alone is satisfied by a resolution that only prefers the address.
+			name: "both set and conflicting: the cafaye name wins, address and scheme",
+			// https on the cafaye side and http on the standard side, so a
+			// resolution that let the environment decide the scheme is caught here
+			// and not only in the address.
+			cafaye: "https://cafaye.example:4318", standard: "http://generic.example:4318",
+			want: "https://cafaye.example:4318", wantScheme: SchemeHTTPS,
 		},
+		{name: "nothing set is the shipped collector", want: DefaultEndpoint, wantScheme: SchemeHTTP},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			t.Setenv(EndpointVariable, row.cafaye)
 			t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", row.standard)
-			if got := Endpoint(); got != row.want {
+
+			got := Endpoint()
+			if got != row.want {
 				t.Errorf("Endpoint() = %q, want %q", got, row.want)
 			}
+			// The scheme is not derived from `got` for the expectation: the row
+			// states it, so a Scheme() that returned "" for everything would fail
+			// here rather than agreeing with a wrong `want`.
+			if scheme := Scheme(got); scheme != row.wantScheme {
+				t.Errorf("Scheme(%q) = %q, want %q", got, scheme, row.wantScheme)
+			}
+			if Secure(got) != (row.wantScheme == SchemeHTTPS) {
+				t.Errorf("Secure(%q) = %t, want %t", got, Secure(got), row.wantScheme == SchemeHTTPS)
+			}
+			if PlaintextScheme(got) != (row.wantScheme == SchemeHTTP) {
+				t.Errorf("PlaintextScheme(%q) = %t, want %t", got, PlaintextScheme(got),
+					row.wantScheme == SchemeHTTP)
+			}
 		})
+	}
+}
+
+// A bare host:port is plaintext, and the assertion is separate because it is a
+// case Secure() cannot answer: there is no scheme to read. An operator who writes
+// no scheme is saying "the address", and a caller that reads the absence as
+// "encrypted" configures TLS at a collector that does not speak it.
+func TestAnEndpointWithNoSchemeIsPlaintext(t *testing.T) {
+	for _, endpoint := range []string{
+		"otel-collector:4317",
+		"127.0.0.1:4317",
+		"collector.example",
+	} {
+		if got := Scheme(endpoint); got != "" {
+			t.Errorf("Scheme(%q) = %q, want \"\": an endpoint with no scheme has none to report", endpoint, got)
+		}
+		if Secure(endpoint) {
+			t.Errorf("Secure(%q) = true. No scheme mentioned is not https mentioned", endpoint)
+		}
+		if !PlaintextScheme(endpoint) {
+			t.Errorf("PlaintextScheme(%q) = false. An operator who writes no scheme is saying the "+
+				"address, and quietly upgrading them to TLS is the same defect as downgrading them", endpoint)
+		}
+	}
+}
+
+// The shipped collector is addressed http on the gRPC port, and that is not a
+// typo. It is the fleet's default value and it is PLAINTEXT, so a caller that
+// assumes otherwise configures TLS at a collector that does not speak it — a
+// connection that is attempted, fails, and is silent by core's own noOp.warnings
+// rule.
+func TestTheShippedCollectorIsPlaintext(t *testing.T) {
+	if Secure(DefaultEndpoint) {
+		t.Errorf("Secure(%q) = true. The shipped collector's 4317 speaks plaintext gRPC, and the "+
+			"default value saying https would send every developer with no configuration to a "+
+			"collector that cannot answer", DefaultEndpoint)
+	}
+	if !PlaintextScheme(DefaultEndpoint) {
+		t.Errorf("PlaintextScheme(%q) = false", DefaultEndpoint)
+	}
+	if Scheme(DefaultEndpoint) != SchemeHTTP {
+		t.Errorf("Scheme(%q) = %q, want %q", DefaultEndpoint, Scheme(DefaultEndpoint), SchemeHTTP)
 	}
 }
 

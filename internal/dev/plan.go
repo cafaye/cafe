@@ -547,6 +547,14 @@ func (r *resolver) wire() {
 		// it from — a declared name when the catalog entry gave one, and the
 		// conventional name when it did not.
 		env := Environment{}
+		// The telemetry endpoint is a stack default too, and it is deliberately
+		// NOT inside the `usesInfra` block below. `-no-infra` names postgres and
+		// redis; widening it to cover the collector would make a flag a developer
+		// reaches for during a database outage silently turn telemetry off, which
+		// is the one moment the spans would have been wanted. See telemetryEnv.
+		if svc.Origin != OriginInfra {
+			env = env.With(telemetryEnv(name))
+		}
 		if usesInfra && svc.Origin != OriginInfra {
 			for _, dep := range infraNames() {
 				if _, found := r.services[dep]; !found {

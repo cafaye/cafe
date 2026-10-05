@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/cafaye/caf/internal/contract"
 )
 
 // ErrBadCatalog is a registry document caf cannot believe: malformed JSON, a
@@ -752,6 +754,79 @@ func connectionEnv(svc Service, kind, project string) (Environment, bool) {
 		variable = declared
 	}
 	return Environment{{Name: variable, Value: connection.Address(project)}}, true
+}
+
+// telemetryEnv is the variable one service is handed the OTLP endpoint in, and
+// the address it is handed.
+//
+// WHY IT IS HERE AND NOT ONLY IN THE SERVICE'S OWN REPOSITORY. core's
+// `otel-endpoint.schema.json` calls `<SERVICE>_OTEL_ENDPOINT` "the ONLY
+// contract" — a service-specific variable is what lets a self-hoster point one
+// service at their own backend and leave the rest on the collector. But a
+// variable only exists if something writes it, and the service that would write
+// it is a binary that reads it. pantry's `HANDOFF-otel-01.md` is the finding
+// that made this land: pantry holds no `docker-compose.yml` by design (its
+// `.gitignore` says in terms that it "is the registry rather than a service"),
+// so the compose half of the fleet convention is only closeable in the generator
+// that renders the stack.
+//
+// So `caf dev` writes it, for every cafaye service on the stack, and the
+// collector address is core's documented default — the same address
+// `internal/gen` emits as `DefaultEndpoint`, read from the same
+// `contract.Endpoint.Default` rather than written down a third time.
+//
+// What this does NOT do is add `depends_on: otel-collector`. The collector is
+// not in the `infra` table: it needs a config file this repository does not own
+// (kit's `templates/compose/otel-collector.yml`), and a dependency edge to a
+// container nothing starts is a stack that never comes up. The endpoint variable
+// naming an address nothing serves is the documented, supported state — it is
+// what core's schema means by `required: false`.
+func telemetryEnv(service string) Environment {
+	return Environment{{
+		Name:  endpointVariable(service),
+		Value: collectorAddress(),
+	}}
+}
+
+// endpointVariable derives `<SERVICE>_OTEL_ENDPOINT` from a service name.
+//
+// It is the SAME transformation `internal/gen`'s `endpointVariable` performs,
+// dash dropped and the rest upper-cased, and it has to be: core's endpoint
+// variable pattern is `^[A-Z][A-Z0-9]*_OTEL_ENDPOINT$` and admits no dash, so
+// `my-service` derives `MYSERVICE_OTEL_ENDPOINT`. Two derivations that disagreed
+// would leave a kebab-case service handed a variable its own generated code does
+// not read — the same class of defect the drift gate in `internal/gen` had once,
+// when it measured courier against courier because both sides were fixtures.
+//
+// A name core's pattern would refuse is written through rather than skipped. It
+// is unreachable through `caf dev` (the manifest schema constrains `name` the
+// same way `caf gen` says it does), and a service with an unspellable endpoint
+// variable is better off rendering one that `caf contract lint` will reject than
+// rendering a stack with no telemetry at all.
+func endpointVariable(service string) string {
+	return strings.ToUpper(strings.ReplaceAll(service, "-", "")) + "_OTEL_ENDPOINT"
+}
+
+// collectorAddress is the OTLP endpoint core's endpoint contract documents as
+// the shipped collector's, which is the default value of the variable above.
+//
+// It is read out of the vendored contract rather than written down here. The
+// address appears in `internal/contract`'s `defaultCollector` and in
+// `internal/gen`'s emitted `DefaultEndpoint`, and a third literal is a third
+// thing to change when the fleet's collector moves.
+func collectorAddress() string {
+	spec, err := contract.Telemetry()
+	if err != nil {
+		// Unreachable in practice: the spec is vendored, compiled once and pinned
+		// by `internal/contract`'s own tests. And it cannot be reported from here
+		// — `Plan` returns no error from `wire`, and inventing a propagation path
+		// for a constant would be a wider change than the defect. The empty string
+		// is the honest degradation: a variable set to nothing reads as unset, so
+		// the service falls back to its own default rather than being pointed at
+		// an address that is not there.
+		return ""
+	}
+	return spec.Endpoint.Default
 }
 
 // healthcheckFor returns the readiness check for a named piece of
