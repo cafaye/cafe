@@ -26,9 +26,14 @@ type deployDeps struct {
 }
 
 func (d deployDeps) withDefaults() deployDeps {
-	if d.runner == nil {
-		d.runner = deploy.NewKamalRunner()
-	}
+	// The runner is deliberately NOT defaulted here. The router passes the
+	// zero value, and a default filled in at this point would be a Kamal
+	// runner — which runner() would then prefer over the engine the
+	// --engine flag selected, because it can no longer tell a test's
+	// injected runner from a default it filled in itself. So the runner
+	// comes from runner(), which resolves the engine, and a test's
+	// injection is the only thing that reaches runner() through this
+	// field.
 	if d.confirm == nil {
 		d.confirm = confirmOnStdin
 	}
