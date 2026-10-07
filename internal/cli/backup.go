@@ -52,6 +52,9 @@ type backupOptions struct {
 	dryRun      bool
 	yes         bool
 	timeout     time.Duration
+	// engine selects the backup engine: backup.EngineKamal (the default, the
+	// engine the fleet runs) or backup.EngineCNPG (the launch substrate's).
+	engine string
 }
 
 // tableList is a repeatable flag.

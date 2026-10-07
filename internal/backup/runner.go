@@ -5,6 +5,30 @@ import (
 	"io"
 )
 
+// The two engines, and the whole set. `caf backup --engine` selects one, and
+// the default is Kamal because the fleet runs Kamal today — DEPLOYMENT.md:
+// "Kamal and kit/templates/kamal retire at parity, not before."
+const (
+	// EngineKamal is the Kamal engine: kamal-backup, the restic repository, the
+	// accessory. It is the default, and its behaviour is byte-identical to what
+	// it was before the CNPG engine existed.
+	EngineKamal = "kamal"
+	// EngineCNPG is the CNPG engine: kubectl cnpg, the Backup object, the
+	// declarative recovery Cluster. It is the launch substrate's engine, where
+	// there is no Kamal.
+	EngineCNPG = "cnpg"
+)
+
+// RunnerFor returns the runner for an engine name. An unknown name answers the
+// Kamal runner, because the default has to be the engine the fleet runs and a
+// typo in --engine is not a reason to run a drill against the wrong substrate.
+func RunnerFor(engine string) Runner {
+	if engine == EngineCNPG {
+		return NewCNPGRunner()
+	}
+	return NewKamalRunner()
+}
+
 // Runner is the backup engine for one service: it owns which commands run, in
 // what order, and what each is for.
 //

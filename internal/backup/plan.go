@@ -3,6 +3,7 @@ package backup
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -88,7 +89,7 @@ type Step struct {
 	// Retryable marks the step that waits for a resource to become free, and it is
 	// the ONLY such step, so the two are named in one place rather than kept in
 	// step by convention: the runner re-asks a Retryable step until it is satisfied
-	// (Settle) and re-runs a step that LOST a RACE WITH IT after re-asking (Snapshot).
+	// (Settle) and re-runs a step that LOST A RACE WITH IT after re-asking (Snapshot).
 	//
 	// The second half is not a retry-until-green. It is conditioned on the observed
 	// cause: a snapshot that fails while no lock is held is the gem's own error and is
@@ -96,6 +97,23 @@ type Step struct {
 	// than being retried until the budget and then reported as a lock. See
 	// runRetryable's comment.
 	Retryable bool
+	// Files are the files to write before the command runs, as path and content.
+	//
+	// A step that applies a rendered document — the CNPG restore applies a recovery
+	// Cluster manifest — carries the document it applies, so the runner writes it
+	// and the command reads it: the plan stays pure, and the file is a fact about
+	// the step rather than a second copy the caller has to keep in step with it.
+	// The Kamal plan's steps carry none, and a dry run writes none, because a dry
+	// run executes nothing.
+	Files []File
+}
+
+// File is one file a step writes before its command runs.
+type File struct {
+	// Path is the absolute path to write.
+	Path string
+	// Content is what to write.
+	Content string
 }
 
 // The step names. They are constants rather than literals because the report and
@@ -137,6 +155,11 @@ const (
 // in Kubernetes, and a drill that reads either one before it is ready is a
 // drill that proves nothing.
 const (
+	// Backup creates the Backup object the drill restores from. It is the CNPG
+	// shape of the Kamal plan's Snapshot: one real dump, taken now, because a
+	// drill that restores a snapshot somebody else took earlier has proved
+	// something — but not that a snapshot can be taken now.
+	Backup = "backup"
 	// WaitBackup polls the Backup resource's phase until it is completed.
 	WaitBackup = "wait-backup"
 	// Restore applies the scratch Cluster manifest, which is the restore: the
@@ -169,6 +192,22 @@ type Plan struct {
 	Tables []string
 	// Timeout is the budget each command gets.
 	Timeout time.Duration
+	// Engine names the backup engine that built this plan: "kamal" or "cnpg".
+	// The caller branches on it for the report and for the parts of the cycle
+	// that are not steps — the header, the dry run's prose and the two
+	// after-the-fact reports — because the two engines share the orchestration
+	// but neither the commands nor the sentences about them.
+	Engine string
+	// RecoveryManifest is the rendered recovery Cluster manifest the Restore step
+	// applies, and it is the CNPG shape of the restore: a declarative Cluster
+	// whose spec.bootstrap.recovery.backup.name points at the Backup. Empty for
+	// the Kamal engine, which restores through the gem rather than a document.
+	RecoveryManifest string
+	// RecoveryPath is where the recovery manifest is written before the Restore
+	// step applies it. It lives in the project's config directory, beside the
+	// two files the Kamal contract is made of, so a rendered artifact is never
+	// far from the configuration it was rendered from.
+	RecoveryPath string
 	// Steps are ordered, and the caller finds them by name.
 	Steps []Step
 }
@@ -257,6 +296,7 @@ func PlanFor(cover Cover, backupDoc Config, o Options) (Plan, error) {
 		Scratch:   scratch,
 		Tables:    append([]string{}, o.Tables...),
 		Timeout:   timeout,
+		Engine:    "kamal",
 		Steps: []Step{
 			{
 				Name: Preflight,
@@ -314,6 +354,187 @@ func PlanFor(cover Cover, backupDoc Config, o Options) (Plan, error) {
 			},
 		},
 	}, nil
+}
+
+// PlanForCNPG builds the ordered command sequence for one CNPG backup
+// invocation, the way PlanFor builds the Kamal one.
+//
+// # The order is the CNPG engine's argument about what a backup is
+//
+// Take a real backup of the cluster, wait for it, render a recovery Cluster
+// (the restore), wait for it, assert the tables, drop the scratch cluster. The
+// two waits are the CNPG shape of the Kamal plan's Boot and Settle: a backup
+// and a restore are both asynchronous in Kubernetes, and a drill that reads
+// either one before it is ready is a drill that proves nothing.
+//
+// # Why there is no Resolve and no contract check
+//
+// The Kamal plan resolves config/deploy.yml and checks the two-file contract
+// before anything is booted. The CNPG engine has no Kamal to resolve and no
+// pair of files to disagree: the cluster is a fact about the Kubernetes
+// namespace, not a rendered document. So the CNPG plan has no Resolve step,
+// and the caller skips the contract check when the plan has none — see run.go.
+//
+// # Why the restore is a rendered Cluster and not a verb
+//
+// `kubectl cnpg` has no `restore` subcommand. Restore in CloudNativePG is
+// declarative: a Cluster whose spec.bootstrap.recovery.backup.name points at an
+// existing Backup. So the Restore step applies a rendered manifest, and the
+// manifest is computed here — pure, like every other fact about the plan — so a
+// dry run prints the exact document a real run would apply.
+//
+// # Why the waits are blocking `kubectl wait` commands and not caller-side polls
+//
+// The Kamal plan's Settle is a caller-side poll because the restic lock
+// observation is a read-only command whose OUTPUT the caller parses. The CNPG
+// waits are different: the success condition is a phase value inside the
+// resource, and `kubectl wait --for=jsonpath=…` is the Kubernetes-native way to
+// block on it. Keeping the wait inside the command means the caller runs every
+// CNPG step once and the phase vocabulary stays in kubectl, where it belongs.
+func PlanForCNPG(cover Cover, o Options) (Plan, error) {
+	scratch := o.Scratch
+	if scratch == "" {
+		scratch = cover.Service + "_drill"
+	}
+	if err := plainIdentifier("scratch cluster", scratch); err != nil {
+		return Plan{}, err
+	}
+	if len(o.Tables) == 0 {
+		return Plan{}, fmt.Errorf("%w: no --table, so a restore would have nothing to assert.\n"+
+			"  A restore whose only proof is that a command exited zero passes on an empty database, and an\n"+
+			"  empty database is the shape a broken restore produces. Name at least one table that must hold rows", ErrUsage)
+	}
+	for _, table := range o.Tables {
+		if err := plainIdentifier("table", table); err != nil {
+			return Plan{}, err
+		}
+	}
+
+	timeout := o.Timeout
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+
+	// The cluster is the service being backed up: CloudNativePG names a cluster
+	// after the PostgreSQL instance it manages, and caf's service name is the
+	// name the operator already types. The backup and scratch names are derived
+	// from it deterministically, so a dry run prints the same names a real run
+	// would use — a plan that guessed at a backup name would be a plan whose
+	// restore could not find its snapshot.
+	cluster := cover.Service
+	backupName := cluster + "-drill"
+	recoveryPath := filepath.Join(cover.Dir, "config", "cnpg-recovery-"+scratch+".yaml")
+
+	return Plan{
+		Service:   cover.Service,
+		Env:       o.Env,
+		Dir:       cover.Dir,
+		Config:    cover.Config,
+		Overlay:   cover.Overlay,
+		Scratch:   scratch,
+		Tables:    append([]string{}, o.Tables...),
+		Timeout:   timeout,
+		Engine:    "cnpg",
+		RecoveryManifest: renderRecoveryManifest(scratch, backupName),
+		RecoveryPath:     recoveryPath,
+		Steps: []Step{
+			{
+				Name: Preflight,
+				// `kubectl cnpg version`, the plugin's own version probe. It is
+				// the CNPG shape of `kamal version`: it fails if the plugin is
+				// not installed, and it prints the version the report names.
+				Argv: []string{"kubectl", "cnpg", "version"},
+				Why:  "kubectl cnpg is the backup engine; this prints its version and fails if it is not installed",
+				On:   Always,
+			},
+			{
+				Name: Backup,
+				Argv: []string{"kubectl", "cnpg", "backup", cluster},
+				Why:  "takes one real backup of the " + cluster + " cluster now, creating a Backup resource the drill will restore from",
+				On:   Always,
+			},
+			{
+				Name: WaitBackup,
+				// `kubectl wait` on the Backup's phase, which is the
+				// Kubernetes-native way to block on an asynchronous resource.
+				// The phase vocabulary stays in kubectl rather than in this
+				// package, because a second copy of it is a second thing to be
+				// wrong about when CloudNativePG changes.
+				Argv: []string{"kubectl", "wait", "--for=jsonpath={.status.phase}=completed",
+					"backup/" + backupName, "--timeout", timeout.String()},
+				Why: "waits for the " + backupName + " backup to complete, because a backup is asynchronous in Kubernetes and a drill that restores it before it is finished proves nothing",
+				On:  Always,
+			},
+			{
+				Name: Restore,
+				Argv: []string{"kubectl", "apply", "-f", recoveryPath},
+				Why:  "applies the rendered recovery Cluster, which bootstraps " + scratch + " from the " + backupName + " backup — the restore, declaratively",
+				On:   Always,
+			},
+			{
+				Name: WaitReady,
+				Argv: []string{"kubectl", "wait", "--for=jsonpath={.status.phase}=running",
+					"cluster/" + scratch, "--timeout", timeout.String()},
+				Why: "waits for the " + scratch + " cluster to become ready, because a restore is asynchronous and an assertion run against a half-started cluster proves nothing",
+				On:  Always,
+			},
+			{
+				Name: Assert,
+				// The check is one query that divides by zero — raising an error
+				// psql turns into a nonzero exit — if any named table is empty.
+				// The exit status is the verdict, which is the same contract the
+				// Kamal drill has: a count of zero is a failed drill, not a
+				// passing one.
+				Argv: []string{"kubectl", "cnpg", "psql", scratch, "--",
+					"-v", "ON_ERROR_STOP=1", "-c", cnpgCheck(o.Tables)},
+				Why:  "runs the check whose exit status is the drill's verdict: every named table must hold rows in " + scratch + " after the restore",
+				On:   Always,
+			},
+			{
+				Name: Drop,
+				Argv: []string{"kubectl", "delete", "cluster", scratch},
+				Why:  "deletes the " + scratch + " cluster on every path, including a failed drill, so nothing is left to restore into by accident",
+				On:   Always,
+			},
+		},
+	}, nil
+}
+
+// renderRecoveryManifest is the recovery Cluster the Restore step applies.
+//
+// It is the whole of the CNPG restore: a Cluster whose
+// spec.bootstrap.recovery.backup.name points at the Backup the Backup step
+// took. CloudNativePG does the rest — it clones the backup's data into a new
+// cluster and starts it. The manifest is rendered here, pure, so a dry run
+// prints the exact document a real run would apply and the two cannot drift.
+func renderRecoveryManifest(scratch, backupName string) string {
+	return "apiVersion: postgresql.cnpg.io/v1\n" +
+		"kind: Cluster\n" +
+		"metadata:\n" +
+		"  name: " + scratch + "\n" +
+		"spec:\n" +
+		"  bootstrap:\n" +
+		"    recovery:\n" +
+		"      backup:\n" +
+		"        name: " + backupName + "\n" +
+		"  instances: 1\n"
+}
+
+// cnpgCheck is the Assert step's query: one statement that exits nonzero if any
+// named table is empty.
+//
+// It is a single query rather than a shell loop because the CNPG engine runs
+// it through `kubectl cnpg psql`, which hands one command to psql inside the
+// scratch cluster's pod. A division by zero raises an error psql reports as a
+// nonzero exit under ON_ERROR_STOP, which is the verdict — the same contract
+// the Kamal drill's check has, where a count of zero is a failed drill.
+func cnpgCheck(tables []string) string {
+	conditions := make([]string, len(tables))
+	for i, table := range tables {
+		conditions[i] = "(SELECT count(*) FROM " + table + ") = 0"
+	}
+	return "SELECT CASE WHEN " + strings.Join(conditions, " OR ") +
+		" THEN 1/0 ELSE 1 END;"
 }
 
 // execInto is `kamal accessory exec` against the accessory, with everything after
