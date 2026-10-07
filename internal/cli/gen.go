@@ -229,8 +229,6 @@ func newGenChartCommand() *Command {
 			"  chart/templates/ingress.yaml      the Ingress: how the service is reached,\n" +
 			"                                      off by default — gated on values.yaml\n" +
 			"  chart/templates/service.yaml      the Service in front of it\n" +
-			"  chart/templates/application.yaml  the ArgoCD Application: the\n" +
-			"                                      pull-only loop\n" +
 			"  chart/README.md                    the loop, the push step, the\n" +
 			"                                      secrets, the readiness contract\n" +
 			"\n" +

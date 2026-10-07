@@ -6,6 +6,23 @@ All notable changes to caf are recorded here. The format follows
 
 ## [Unreleased]
 
+### Removed
+
+- **`caf gen chart` no longer emits `chart/templates/application.yaml`.** The
+  chart now writes six files, not seven. The ArgoCD `Application` belongs to
+  the substrate: kit owns one static `Application` per service — OCI-sourced
+  (`oci://ghcr.io/cafaye/charts`), applied by `install.sh` — and a service
+  repository commits none. The decision and its reason are recorded in
+  `moon/DEPLOYMENT.md`, "Who owns the Application": closed-source charts ride
+  a pull-based system, so the source of truth for what runs is the OCI
+  artifact with one read-only pull secret, not a git path the cluster would
+  need read access to. A generated `Application` would have been a second one
+  of the same name in the same namespace with a different source, and the
+  later `kubectl apply` wins — a deploy whose target depends on apply order
+  is not a deploy. The `targetRevision` value in values.yaml fed only that
+  Application's source and went with it; the substrate's own Application
+  pins the chart version itself.
+
 ### Added
 
 - **`caf lock <path>` — one file that pins the tree's specs, its vendored

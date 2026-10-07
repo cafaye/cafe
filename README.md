@@ -83,7 +83,7 @@ a run in which they passed.
 | `caf deploy <service>` | deploy a service or app to the platform | **works** |
 | `caf backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
 | `caf gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
-| `caf gen chart` | write the Helm chart a service is deployed from — Deployment, Service, Argo Application, `/readyz` probe, secrets by reference | **works** |
+| `caf gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
 | `caf lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |
 | `caf lock --verify <path>` | recompute every pin and name every file that no longer matches | **works** |
 | `caf contract lint <path>` | validate `cafaye.yml` against the core schema, and the OpenAPI document it names | **works** |
@@ -1117,8 +1117,13 @@ package.
 `{path, content}` comes out, and nothing in between touches a file. `caf gen
 telemetry` writes them; `caf gen chart` writes the Helm chart the service is
 deployed from — Chart.yaml, values.yaml, and a templates/ directory carrying
-the Deployment, the Service and the ArgoCD Application that is the pull-only
-loop. The chart's contract is the fleet's: the readiness probe is `/readyz`
+the Deployment, the Service and the Ingress. The ArgoCD Application that
+deploys the chart is the substrate's, not the chart's: one static Application
+per service, OCI-sourced, applied by install.sh, and a service repository
+commits none (moon/DEPLOYMENT.md, "Who owns the Application") — a generated
+one would be a second Application of the same name in the same namespace,
+and the later `kubectl apply` wins. The chart's contract is the fleet's: the
+readiness probe is `/readyz`
 (baked into the template, not a value — a readiness path that can be edited is
 one that can be pointed at `/up`), secrets come by reference (a named Secret,
 never an inlined value), the image tag is a value and is never `latest`, and
@@ -1333,8 +1338,9 @@ Phase 0 (v0, now):
 - [ ] `caf dev` — tilt, and a TUI (see [AGENTS.md](AGENTS.md); both are a later packet)
 - [x] `caf gen telemetry` — the OpenTelemetry setup, its suite, and the endpoint
   declaration, every value read out of core's vendored telemetry schemas
-- [x] `caf gen chart` — the Helm chart: Deployment, Service, Argo Application,
-  `/readyz` probe, secrets by reference, rendered and dry-run applied
+- [x] `caf gen chart` — the Helm chart: Deployment, Service, `/readyz` probe,
+  secrets by reference, rendered and dry-run applied (the Argo Application is
+  the substrate's)
 - [ ] `caf gen` — typed SDK clients from an API document (a manifest field does
   not record one yet, so there is nothing to generate them from)
 - [ ] `caf contract fetch` — pull a contract from a registry
