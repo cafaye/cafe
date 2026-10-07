@@ -264,13 +264,13 @@ func TestGenAsAVerbGroup(t *testing.T) {
 			name:     "bare gen answers",
 			args:     []string{"gen"},
 			wantCode: exitSuccess,
-			wantOut:  []string{"caf gen", "Targets:", "gen telemetry", "-force"},
+			wantOut:  []string{"caf gen", "Targets:", "gen chart", "gen telemetry", "-force"},
 		},
 		{
 			name:     "help gen answers",
 			args:     []string{"help", "gen"},
 			wantCode: exitSuccess,
-			wantOut:  []string{"Targets:", "gen telemetry"},
+			wantOut:  []string{"Targets:", "gen chart", "gen telemetry"},
 		},
 		{
 			name:     "an unknown target is a usage mistake",
@@ -282,7 +282,7 @@ func TestGenAsAVerbGroup(t *testing.T) {
 			name:     "an unknown target names the ones that exist",
 			args:     []string{"gen", "sdk"},
 			wantCode: exitUsage,
-			wantErr:  "caf gen <telemetry>",
+			wantErr:  "caf gen <chart|telemetry>",
 		},
 		{
 			name:     "a positional argument to a flag-only verb is a usage mistake",
@@ -359,6 +359,165 @@ func TestRefusalsFromTheGeneratorSurviveToTheTerminal(t *testing.T) {
 				t.Error("a refused run wrote something")
 			}
 		})
+	}
+}
+
+// chartProject is genProject with the one field `caf gen chart` needs and
+// `gen telemetry` does not care about: an HTTP surface. Without `exposes.api`
+// the chart target refuses — there is nothing to put behind a Service and a
+// /readyz probe — so the happy path and the refusal are two different fixtures.
+const chartProject = `name: courier
+description: Transactional email and push delivery.
+language: go
+core: ^0.2.0
+
+exposes:
+  api: openapi/openapi.yaml
+  events:
+    - courier.email.queued
+
+repository:
+  url: git@github.com:cafaye/courier.git
+  defaultBranch: master
+  visibility: public
+
+owner:
+  team: courier
+  contact: courier@cafaye.com
+`
+
+// The happy path: six files, written, each one printed in full.
+//
+// The content assertions live in internal/gen/chart_test.go, which can see the
+// bytes; this test is the command's own contract — the files land where the
+// chart's layout says they do, and the report shows them.
+func TestGenChartWritesItsFilesAndPrintsThemInFull(t *testing.T) {
+	inProject(t, chartProject)
+
+	code, stdout, stderr := runCLI(t, testVersion, "gen", "chart")
+
+	if code != exitSuccess {
+		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
+	}
+
+	for _, path := range []string{
+		"chart/Chart.yaml",
+		"chart/values.yaml",
+		"chart/templates/deployment.yaml",
+		"chart/templates/service.yaml",
+		"chart/templates/application.yaml",
+		"chart/README.md",
+	} {
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("%s was not written: %v", path, err)
+			continue
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("read %s: %v", path, err)
+			continue
+		}
+		if !strings.Contains(stdout, "===== "+path+" =====") {
+			t.Errorf("%s is not announced in the report", path)
+		}
+		if !strings.Contains(stdout, strings.TrimRight(string(body), "\n")) {
+			t.Errorf("%s was not printed in full", path)
+		}
+	}
+}
+
+// The chart's content contract, asserted through the command: the readiness
+// path is /readyz, the secret is a name and not a value, and the tag is not
+// `latest`. A chart that failed any of these would render into a deploy that
+// could never go green — the exact defect this target exists to prevent.
+func TestGenChartWritesTheSubstanceNotJustTheFiles(t *testing.T) {
+	inProject(t, chartProject)
+
+	code, _, stderr := runCLI(t, testVersion, "gen", "chart")
+	if code != exitSuccess {
+		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
+	}
+
+	deployment := readChartFile(t, "chart/templates/deployment.yaml")
+	values := readChartFile(t, "chart/values.yaml")
+
+	if !strings.Contains(deployment, "path: /readyz") {
+		t.Errorf("the Deployment's readiness probe is not /readyz:\n%s", deployment)
+	}
+	if !strings.Contains(deployment, "secretRef:") {
+		t.Errorf("the Deployment does not read its environment from a named Secret:\n%s", deployment)
+	}
+	for _, line := range strings.Split(values, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "tag:") && strings.Contains(trimmed, "latest") {
+			t.Errorf("values.yaml's image tag is `latest`:\n%s", line)
+		}
+	}
+}
+
+// readChartFile reads one generated chart file from the current directory,
+// which inProject has already pointed at a scratch directory.
+func readChartFile(t *testing.T, path string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.FromSlash(path))
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return string(body)
+}
+
+// -env is how a service's environment reaches the chart, because the manifest
+// carries no env and caf will not guess it. A pair with no `=` is a usage
+// mistake — exit 2, not a generation failure — and the two have different
+// remedies.
+func TestGenChartTakesEnvFlagsAndRefusesABadOne(t *testing.T) {
+	inProject(t, chartProject)
+
+	code, _, stderr := runCLI(t, testVersion, "gen", "chart",
+		"-env", "DATABASE_URL=postgres://localhost", "-env", "API_KEY=secret")
+	if code != exitSuccess {
+		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
+	}
+	values := readChartFile(t, "chart/values.yaml")
+	for _, want := range []string{"DATABASE_URL", "API_KEY", "postgres://localhost", "secret"} {
+		if !strings.Contains(values, want) {
+			t.Errorf("values.yaml does not carry %q:\n%s", want, values)
+		}
+	}
+
+	inProject(t, chartProject)
+	code, _, stderr = runCLI(t, testVersion, "gen", "chart", "-env", "NO_EQUALS_SIGN")
+	if code != exitUsage {
+		t.Errorf("exit code = %d, want %d. A malformed -env pair is a usage mistake, not a "+
+			"generation failure.", code, exitUsage)
+	}
+	if !strings.Contains(stderr, "NAME=VALUE") {
+		t.Errorf("the error does not say what -env wants:\n%s", stderr)
+	}
+}
+
+// A manifest with no HTTP surface is refused with the sentence intact: caf is
+// a binary, not a service, and its own tree is in this state — which is also
+// why `caf lock` skips the chart target rather than failing on it.
+func TestGenChartRefusesAManifestWithNoHTTPSurface(t *testing.T) {
+	inProject(t, genProject)
+
+	code, stdout, stderr := runCLI(t, testVersion, "gen", "chart")
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d. A project caf cannot generate for is the command ran and "+
+			"failed, not a usage mistake.", code, exitFailure)
+	}
+	if stdout != "" {
+		t.Errorf("a refusal must not print files it did not write, got:\n%s", stdout)
+	}
+	for _, want := range []string{"caf gen chart", "exposes"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr does not contain %q:\n%s", want, stderr)
+		}
+	}
+	if _, err := os.Stat("chart"); !os.IsNotExist(err) {
+		t.Error("a refused run wrote something")
 	}
 }
 

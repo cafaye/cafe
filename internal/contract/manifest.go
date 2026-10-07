@@ -178,6 +178,11 @@ func (m Manifest) CoreConstraint() (Constraint, error) {
 // RepositoryURL is the SSH remote the service is developed in.
 func (m Manifest) RepositoryURL() string { return m.fields.Repository.URL }
 
+// DefaultBranch is the git branch the service's repository opens on, which is
+// also the ref the generated chart's Argo Application syncs by default: the
+// pull-only loop starts from the branch a commit lands on.
+func (m Manifest) DefaultBranch() string { return m.fields.Repository.DefaultBranch }
+
 // OwnerTeam is the accountable team, not the author.
 func (m Manifest) OwnerTeam() string { return m.fields.Owner.Team }
 

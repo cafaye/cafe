@@ -170,9 +170,15 @@ func generatedFiles(root string, manifest contract.Manifest) ([]Entry, error) {
 
 	var entries []Entry
 	for _, target := range gen.TargetNames() {
-		out, err := gen.Generate(target, manifest, spec)
+		out, err := gen.Generate(target, manifest, gen.TargetOptions{Spec: spec})
 		if err != nil {
-			if errors.Is(err, gen.ErrUnknownTarget) || errors.Is(err, gen.ErrUnsupportedLanguage) {
+			// A target that has nothing to say about this project is skipped,
+			// and that is three different reasons: the target does not exist,
+			// the project's language is not one it generates for, and the
+			// project declares no surface the target generates against. caf's
+			// own tree is the third case — it is a binary, not a service, so
+			// `caf gen chart` refuses it and there is no chart/ to pin.
+			if errors.Is(err, gen.ErrUnknownTarget) || errors.Is(err, gen.ErrUnsupportedLanguage) || errors.Is(err, gen.ErrNoHTTPSurface) {
 				continue
 			}
 			return nil, fmt.Errorf("caf gen %s: %w", target, err)

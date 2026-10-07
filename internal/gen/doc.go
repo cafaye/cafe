@@ -81,6 +81,17 @@ var ErrUnknownTarget = errors.New("unknown target")
 // file written into a service whose toolchain cannot build it.
 var ErrUnsupportedLanguage = errors.New("unsupported language")
 
+// ErrNoHTTPSurface is a manifest that declares no HTTP surface, and so has
+// nothing for a deploy artifact to deploy: no container port to probe, no
+// Service to point at it. It is distinct from ErrUnsupportedLanguage because
+// the remedy is different — one is "this repository is not the kind of thing
+// this target generates for" and the other is "add `exposes.api` to the
+// manifest, or this target is not the one you want".
+//
+// caf's own tree is in this state: caf is a binary, not a service, and its
+// manifest says so by omitting `exposes` entirely.
+var ErrNoHTTPSurface = errors.New("no HTTP surface")
+
 // File is one generated file: where it goes relative to the output root, and
 // what is in it.
 //
@@ -140,6 +151,11 @@ var targets = []struct {
 	languages []string
 }{
 	{
+		name:      "chart",
+		summary:   "write the Helm chart a service is deployed from",
+		languages: []string{"go", "ruby", "elixir", "python", "typescript", "rust"},
+	},
+	{
 		name:      "telemetry",
 		summary:   "write the OpenTelemetry setup a service needs to honour core's telemetry contract",
 		languages: []string{"go"},
@@ -156,17 +172,34 @@ func TargetNames() []string {
 	return names
 }
 
+// TargetOptions is what a target needs beyond the manifest.
+//
+// One struct rather than a second parameter list because the two targets need
+// different things and neither needs the other's: `telemetry` reads the
+// vendored core contract, `chart` reads the service's environment as
+// NAME=VALUE pairs from repeated -env flags. A target ignores the field it
+// does not use, and a caller with none of either passes the zero value —
+// which is what `caf gen chart` does when no -env flag was given.
+type TargetOptions struct {
+	// Spec is the vendored core telemetry contract. Only `telemetry` reads
+	// it; a caller that already holds one passes it rather than paying for a
+	// second read, and a caller with none calls `contract.Telemetry()`.
+	Spec contract.TelemetrySpec
+	// Env is the service's environment, as NAME=VALUE pairs. Only `chart`
+	// reads it, and only because the manifest carries no env — a service's
+	// configuration is its own, so it arrives as flags rather than as a
+	// guess.
+	Env map[string]string
+}
+
 // Generate produces the files for one target, or an error naming what was
 // wrong with the request.
-//
-// It takes the spec rather than reading it, because the generator is a pure
-// function and a caller that already holds a spec — `caf gen telemetry` — has
-// no reason to pay for a second read. A caller with none should call
-// `contract.Telemetry()`.
-func Generate(target string, manifest contract.Manifest, spec contract.TelemetrySpec) (Output, error) {
+func Generate(target string, manifest contract.Manifest, opts TargetOptions) (Output, error) {
 	switch target {
+	case "chart":
+		return chart(manifest, opts.Env)
 	case "telemetry":
-		return telemetry(manifest, spec)
+		return telemetry(manifest, opts.Spec)
 	default:
 		return Output{}, fmt.Errorf("%w: caf gen %s (run \"caf gen\" for the target list)", ErrUnknownTarget, target)
 	}
@@ -180,15 +213,23 @@ func Generate(target string, manifest contract.Manifest, spec contract.Telemetry
 // question of whose job this is, and answering it with a file path rather than
 // with "unsupported" is the difference between a refusal a person can act on
 // and a wall they route around.
-func refuses(target string, manifest contract.Manifest) (Output, error) {
+//
+// note is the target's own sentence about what the project would need instead
+// — where the right template lives, or what the project is missing. It is a
+// parameter because the two targets refuse for different reasons: telemetry's
+// remedy is kit's per-language templates, chart's is the manifest's own
+// `exposes.api`.
+func refuses(target string, manifest contract.Manifest, note string) (Output, error) {
 	language := manifest.Language()
 	supported := supportedLanguages(target)
 	if slicesContains(supported, language) {
 		return Output{}, fmt.Errorf("caf gen %s: %w: %s", target, ErrUnsupportedLanguage, language)
 	}
-	return Output{}, fmt.Errorf("caf gen %s: %w: this manifest is written in %s. caf generates %s for %s only; "+
-		"the other languages' OpenTelemetry templates are in kit at templates/otel/, and emitting a second copy "+
-		"of them here is how two generators of one file start disagreeing",
+	if note != "" {
+		return Output{}, fmt.Errorf("caf gen %s: %w: this manifest is written in %s. caf generates %s for %s only; %s",
+			target, ErrUnsupportedLanguage, language, target, strings.Join(supported, ", "), note)
+	}
+	return Output{}, fmt.Errorf("caf gen %s: %w: this manifest is written in %s. caf generates %s for %s only",
 		target, ErrUnsupportedLanguage, language, target, strings.Join(supported, ", "))
 }
 

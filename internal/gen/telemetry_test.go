@@ -81,7 +81,7 @@ func mustSpec(t *testing.T) contract.TelemetrySpec {
 func generate(t *testing.T, document string) Output {
 	t.Helper()
 
-	out, err := Generate("telemetry", loadManifest(t, document), mustSpec(t))
+	out, err := Generate("telemetry", loadManifest(t, document), TargetOptions{Spec: mustSpec(t)})
 	if err != nil {
 		t.Fatalf("caf gen telemetry: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestGenerateRefusesWhatItCannotDoAndSaysWhy(t *testing.T) {
 		},
 	} {
 		t.Run(row.name, func(t *testing.T) {
-			_, err := Generate(row.target, loadManifest(t, row.document), spec)
+			_, err := Generate(row.target, loadManifest(t, row.document), TargetOptions{Spec: spec})
 			if err == nil {
 				t.Fatalf("caf gen %s accepted it and would have written files", row.target)
 			}
