@@ -829,12 +829,16 @@ func (r *rehearsal) engine() Runner { return &recordingEngine{rig: r, inner: &li
 // construction, so building the rehearsal is safe on a machine with no kamal.
 type liveEngine struct{}
 
-func (e *liveEngine) Run(ctx context.Context, dir string, argv []string, stdout, stderr io.Writer) error {
+func (e *liveEngine) Plan(cover Cover, cfg Config, opts Options) (Plan, error) {
+	return PlanFor(cover, cfg, opts)
+}
+
+func (e *liveEngine) Run(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error {
 	binary, err := exec.LookPath("kamal")
 	if err != nil {
 		binary = "kamal"
 	}
-	cmd := exec.CommandContext(ctx, binary, argv...)
+	cmd := exec.CommandContext(ctx, binary, step.Args()...)
 	cmd.Dir = dir
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -846,16 +850,20 @@ type recordingEngine struct {
 	inner Runner
 }
 
+func (e *recordingEngine) Plan(cover Cover, cfg Config, opts Options) (Plan, error) {
+	return e.inner.Plan(cover, cfg, opts)
+}
+
 // Run tees into BOTH the writer the package handed in and the transcript, and the
 // second is not optional. The package captures the preflight's stdout to read
 // kamal's version out of it, so a wrapper that replaced the writer with its own
 // would leave the version unreadable and every case would fail for the wrong
 // reason — which is exactly what the first version of this file did.
-func (e *recordingEngine) Run(ctx context.Context, dir string, argv []string, stdout, stderr io.Writer) error {
+func (e *recordingEngine) Run(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error {
 	e.rig.stepsMu.Lock()
-	e.rig.stepsSeen = append(e.rig.stepsSeen, stepOf(argv))
+	e.rig.stepsSeen = append(e.rig.stepsSeen, step.Name)
 	e.rig.stepsMu.Unlock()
-	return e.inner.Run(ctx, dir, argv, io.MultiWriter(stdout, e.rig.writer(nil)), stderr)
+	return e.inner.Run(ctx, dir, step, io.MultiWriter(stdout, e.rig.writer(nil)), stderr)
 }
 
 func (r *rehearsal) steps(t *testing.T) []string {

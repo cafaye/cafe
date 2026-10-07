@@ -9,23 +9,22 @@ import (
 	"time"
 
 	"github.com/cafaye/caf/internal/backup"
-	"github.com/cafaye/caf/internal/deploy"
 )
 
-// backupDeps is what `caf backup` needs from the world: a way to run Kamal.
+// backupDeps is what `caf backup` needs from the world: the backup engine.
 //
 // It is a parameter rather than a package-level variable for the same reason
 // `deployDeps`, `devDeps` and `reclaimDeps` are: a test can hand the command a
-// runner that records argv and answers with whatever the case planted, which is
-// the only reason a refusal, a dry run, a failed drill and a successful cycle
-// are testable in this repository without a container runtime.
+// runner that records what it ran and answers with whatever the case planted,
+// which is the only reason a refusal, a dry run, a failed drill and a
+// successful cycle are testable in this repository without a container
+// runtime.
 //
-// The runner is internal/deploy's, which is why this file imports both packages
-// and internal/backup imports neither. deploy.KamalRunner is the only
-// implementation of backup.Runner and the only place caf knows the name "kamal",
-// and a second copy of it would be a second thing to keep in step with kamal's
-// own behaviour — including the "kamal is not installed" sentence, which both
-// commands must say the same way.
+// The runner is internal/backup's own engine, which is why this file imports
+// both packages and internal/backup imports neither. The engine owns the plan
+// (which commands run, in what order); the command owns everything either side
+// of it. backup's KamalRunner delegates process execution to internal/deploy's
+// KamalRunner, which stays the only place caf knows how to run kamal.
 type backupDeps struct {
 	runner backup.Runner
 	// confirm asks the operator. It is a seam because a prompt read from os.Stdin
@@ -36,13 +35,30 @@ type backupDeps struct {
 }
 
 func (b backupDeps) withDefaults() backupDeps {
-	if b.runner == nil {
-		b.runner = deploy.NewKamalRunner()
-	}
 	if b.confirm == nil {
 		b.confirm = confirmBackupOnStdin
 	}
 	return b
+}
+
+// runner returns the engine's runner. A test injects a runner to record what
+// would run; the wiring selects by the --engine flag, and an unknown engine is
+// a usage error rather than a silent default — a typo is not a reason to run a
+// drill against the wrong substrate.
+//
+// The engine is validated even when a runner is injected: the injection is a
+// test seam and must not bypass the flag's validation, or a typo in --engine
+// would silently run the default engine under a test's fake — which is the one
+// outcome the validation exists to prevent.
+func (r backupRun) runner() (backup.Runner, error) {
+	resolved, err := backup.RunnerFor(r.opts.engine)
+	if err != nil {
+		return nil, err
+	}
+	if r.deps.runner != nil {
+		return r.deps.runner, nil
+	}
+	return resolved, nil
 }
 
 // backupOptions is the parsed flag state for `caf backup`.
@@ -53,6 +69,9 @@ type backupOptions struct {
 	dryRun      bool
 	yes         bool
 	timeout     time.Duration
+	// engine selects the backup engine: backup.EngineKamal (the default, the
+	// engine the fleet runs) or backup.EngineCNPG (the launch substrate's).
+	engine string
 }
 
 // tableList is a repeatable flag.
@@ -120,6 +139,12 @@ to drill into a production-looking name is NOT duplicated here: it is kamal-back
 operator form it is cafaye/kit's templates/kamal/drill.sh's. caf hands the gem a name and
 reports what the gem said.
 
+THE ENGINE. --engine selects the backup engine: kamal (the default, the engine the fleet
+runs, driven by kamal-backup and a restic repository) or cnpg (the launch substrate's, where
+there is no Kamal — driven by kubectl cnpg, a CloudNativePG Backup object and a declarative
+recovery Cluster). The CNPG engine reads no kamal-backup.yml and checks no two-file contract:
+the cluster is a fact about the Kubernetes namespace, and its dry run executes nothing.
+
 ONE PATH. caf backup <service> --table <name> --yes, from the project directory. --dry-run
 runs the two read-only steps, checks the contract against what kamal resolved, prints every
 command and changes nothing — and it refuses exactly what the real run refuses, because a dry
@@ -141,6 +166,7 @@ func newBackupCommand(deps backupDeps) *Command {
 			fs.BoolVar(&opts.dryRun, "dry-run", false, "print every command that would run; changes nothing")
 			fs.BoolVar(&opts.yes, "yes", false, "back up without asking; required where nobody can answer the prompt")
 			fs.DurationVar(&opts.timeout, "timeout", backup.DefaultTimeout, "budget for each command, so a hung pull or dump is a failure rather than a hang")
+			fs.StringVar(&opts.engine, "engine", "", "backup engine: kamal (the default, the engine the fleet runs) or cnpg (the launch substrate's, where there is no Kamal)")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -167,13 +193,17 @@ type backupRun struct {
 
 func (r backupRun) run() error {
 	r.deps = r.deps.withDefaults()
+	runner, err := r.runner()
+	if err != nil {
+		return fmt.Errorf("%w: %w", errUsage, err)
+	}
 
 	// The dry run happens before the prompt, and that order is the point: a
 	// refusal or a plan that says "this is wrong" is more useful than a question
 	// about whether to go ahead and do it. Somebody who typed `caf backup` to see
 	// what it would do gets the answer, not a prompt.
 	if r.opts.dryRun {
-		return r.runCycle(true)
+		return r.runCycle(runner, true)
 	}
 
 	ok, err := r.ask()
@@ -184,12 +214,13 @@ func (r backupRun) run() error {
 		fmt.Fprint(r.out(), "caf backup: nothing was taken. Run it with --yes when you mean it.\n")
 		return errReported
 	}
-	return r.runCycle(false)
+	return r.runCycle(runner, false)
 }
 
-func (r backupRun) runCycle(dryRun bool) error {
-	err := backup.Run(ctxOrBackground(r.env), r.deps.runner, backup.Request{
+func (r backupRun) runCycle(runner backup.Runner, dryRun bool) error {
+	err := backup.Run(ctxOrBackground(r.env), runner, backup.Request{
 		Service: r.service,
+		Engine:  r.opts.engine,
 		Env:     r.opts.environment,
 		Scratch: r.opts.scratch,
 		Tables:  r.opts.tables,
@@ -239,13 +270,19 @@ func (r backupRun) ask() (bool, error) {
 	if scratch == "" {
 		scratch = r.service + "_drill"
 	}
+	tables := strings.Join(r.opts.tables, ", ")
+	if r.opts.engine == backup.EngineCNPG {
+		return r.deps.confirm(fmt.Sprintf(
+			"caf backup: back the %s cluster up, restore it into the %s cluster, and drop it? asserting %s [y/N] ",
+			r.service, scratch, tables))
+	}
 	where := "config/deploy.yml"
 	if r.opts.environment != "" {
 		where = "config/deploy." + r.opts.environment + ".yml over config/deploy.yml"
 	}
 	return r.deps.confirm(fmt.Sprintf(
 		"caf backup: back %s up from %s, restore it into %s, and drop it? asserting %s [y/N] ",
-		r.service, where, scratch, strings.Join(r.opts.tables, ", ")))
+		r.service, where, scratch, tables))
 }
 
 func (r backupRun) out() io.Writer    { return outOrDiscard(r.env) }

@@ -446,7 +446,26 @@ gate:
       # watched going red on the re-added emission before this number was
       # written, which is the same discipline every other number in this file
       # was produced under.
-      minimum: 795
+      #
+      # 794, which is 793 plus the one top-level test the backup engine seam
+      # added: `TestTheCallerExecutesTheRunnersPlanAndNeverBuildsArgvOfItsOwn`.
+      # It hands the caller a plan one of whose steps is a command no Kamal plan
+      # contains — `kubectl cnpg version` — and watches the caller run it, in a
+      # real cycle and in a dry run. 802 declared, 8 skips, so 794 run. It is
+      # the first test in this tree to assert on a seam rather than on a
+      # command's own behaviour, and it moved this floor by itself: the seam is
+      # the packet, and a seam with no test pinning it is a seam the next
+      # refactor quietly moves. `expectedSkips` stays at 8 — it is not env-gated.
+      # 817, which is 794 plus the twenty-three top-level tests the CNPG backup
+      # engine added: the plan's order and argv tables, the recovery manifest the
+      # restore carries, the refusals that survive and the one that is gone, the
+      # cycle over a project with no Kamal config, the dry run that executes
+      # nothing, the failure and success reports, the engine selection in the
+      # command layer, and the runner's own selection table. 825 declared, 8 skips,
+      # so 817 run. `expectedSkips` stays at 8 — none of the new tests is
+      # env-gated; the CNPG engine's proofs are the plan and the dry run, and
+      # neither needs a cluster.
+      minimum: 819
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.
@@ -540,7 +559,14 @@ gate:
       # per state of the knob rather than three asserts, which is the same argument
       # as every table in this file: a state a test cannot be driven into is a
       # state nobody has proved anything about.
-      minimum: 969
+      # RE-MEASURED AT 984 on the merged tree, and set one lower for the reason
+      # above. The CNPG backup engine added the subtests its tables need: the
+      # argv table is seven rows, the refusal table is three, the check table is
+      # two, and the engine-selection and unknown-engine tables are the rest.
+      # The suite floor above cannot tell a new test from a new `t.Run` inside an
+      # existing one; this floor can, and it is the reason the CNPG tables are
+      # tables rather than a sequence of asserts.
+      minimum: 983
     #
     # THE ONE WITH NO FLOOR, and the schema sanctions that: a `minimum` is
     # omitted "for a proof that reports nothing countable (a step that must

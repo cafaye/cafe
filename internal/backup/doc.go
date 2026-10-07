@@ -144,4 +144,16 @@
 // one becomes two remote commands: the first ran and the second was a command
 // nobody wrote. caf therefore refuses to build a check that contains a newline,
 // and the refusal is in PlanFor rather than in a comment.
+//
+// # Two engines, one seam
+//
+// Everything above is the Kamal engine's story, and it is the default because
+// the fleet runs Kamal today. The launch substrate has no Kamal, so there is a
+// second engine: `kubectl cnpg`, where the backup is a CloudNativePG Backup
+// object and the restore is a declarative recovery Cluster rather than a verb.
+// The two share this package's orchestration — preflight, the plan, the drop
+// on both paths, the report — and neither the commands nor the sentences about
+// them, so each engine owns its own plan (PlanFor and PlanForCNPG, both pure)
+// and its own cycle. `caf backup --engine` selects one; see runner.go for why
+// the plan belongs to the engine and not to the caller.
 package backup

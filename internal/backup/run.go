@@ -48,6 +48,12 @@ type Request struct {
 	DryRun bool
 	// Timeout bounds each command. Zero means DefaultTimeout.
 	Timeout time.Duration
+	// Engine is the backup engine the caller selected with --engine: EngineKamal
+	// (the default) or EngineCNPG. It decides which parts of the cycle are
+	// Kamal's and which are the engine's — the configuration read, the contract
+	// check and the reports — because the CNPG substrate has no Kamal config to
+	// read and no two-file contract to check.
+	Engine string
 }
 
 // Run performs one backup cycle, or resolves one, and reports what it did.
@@ -68,6 +74,15 @@ type Request struct {
 // strings, because both are several sentences about a mechanism and an operator
 // who sees only the first line of either does not know what to do about it.
 func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) error {
+	// The engine is the runner's, and the branch is on the engine the caller
+	// selected: the CNPG substrate has no Kamal config to read and no two-file
+	// contract to check, so the parts of the cycle that are Kamal's are
+	// skipped rather than faked. The Kamal path below is byte-identical to what
+	// it was before the second engine existed — its tests are the proof.
+	if req.Engine == EngineCNPG {
+		return runCNPGCycle(ctx, r, req, stdout, stderr)
+	}
+
 	dir := req.Dir
 	if dir == "" {
 		dir = "."
@@ -86,7 +101,10 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 		return fmt.Errorf("%w: %s", ErrRefused, relativeTo(cover.Dir, filepath.Join(cover.Dir, "config", backupConfigName)))
 	}
 
-	plan, err := PlanFor(cover, backupDoc, Options{
+	// The plan is the engine's, not the caller's: the caller asks the runner
+	// which commands run and in what order, and executes the answer. See
+	// runner.go for why a caller that builds argv is a second engine.
+	plan, err := r.Plan(cover, backupDoc, Options{
 		Env:     req.Env,
 		Scratch: req.Scratch,
 		Tables:  req.Tables,
@@ -148,6 +166,9 @@ func preflight(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (stri
 	}
 	version := strings.TrimSpace(out.String())
 	if version == "" {
+		if plan.Engine == EngineCNPG {
+			return "", fmt.Errorf("kubectl cnpg printed no version; run `kubectl cnpg version` yourself to see what happened")
+		}
 		return "", fmt.Errorf("kamal printed no version; run `kamal version` yourself to see what happened")
 	}
 	return version, nil
@@ -280,7 +301,7 @@ func drop(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer) {
 func run(ctx context.Context, r Runner, plan Plan, step Step, stdout, stderr io.Writer) error {
 	bounded, cancel := context.WithTimeout(ctx, plan.Timeout)
 	defer cancel()
-	err := r.Run(bounded, plan.Dir, step.Args(), stdout, stderr)
+	err := r.Run(bounded, plan.Dir, step, stdout, stderr)
 	if err != nil && errors.Is(bounded.Err(), context.DeadlineExceeded) {
 		return fmt.Errorf("%w (caf stopped waiting after %s; raise it with -timeout if the step is genuinely slower)",
 			err, plan.Timeout)
@@ -323,7 +344,7 @@ func waitForFreeRepository(ctx context.Context, r Runner, plan Plan, step Step, 
 	asked := 0
 	for {
 		var out strings.Builder
-		err := r.Run(ctx, plan.Dir, step.Args(), io.MultiWriter(&out, stdout), stderr)
+		err := r.Run(ctx, plan.Dir, step, io.MultiWriter(&out, stdout), stderr)
 		switch {
 		case hasResticLock(out.String()):
 			// Still held. Fall through to the budget and the retry.
@@ -391,7 +412,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 		// goroutine, so one strings.Builder behind both would be a data race in the
 		// one place that is already the hardest to reproduce.
 		var out, errOut strings.Builder
-		err := r.Run(ctx, plan.Dir, step.Args(), io.MultiWriter(&out, stdout), io.MultiWriter(&errOut, stderr))
+		err := r.Run(ctx, plan.Dir, step, io.MultiWriter(&out, stdout), io.MultiWriter(&errOut, stderr))
 		if err == nil {
 			if attempt > 1 {
 				fmt.Fprintf(stdout, "  taken on attempt %d, once the accessory's own cycle had released the repository\n", attempt)
@@ -440,7 +461,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 // runRetryable's decision is a function of an observation rather than of a guess.
 func repositoryLocked(ctx context.Context, r Runner, plan Plan, settle Step, stdout, stderr io.Writer) (bool, error) {
 	var out strings.Builder
-	if err := r.Run(ctx, plan.Dir, settle.Args(), io.MultiWriter(&out, stdout), stderr); err != nil {
+	if err := r.Run(ctx, plan.Dir, settle, io.MultiWriter(&out, stdout), stderr); err != nil {
 		return false, err
 	}
 	return hasResticLock(out.String()), nil

@@ -2,34 +2,79 @@ package backup
 
 import (
 	"context"
+	"fmt"
 	"io"
 )
 
-// Runner is the one thing `caf backup` needs from the world: a way to run a
-// Kamal command and get back what it printed.
+// The two engines, and the whole set. `caf backup --engine` selects one, and
+// the default is Kamal because the fleet runs Kamal today — DEPLOYMENT.md:
+// "Kamal and kit/templates/kamal retire at parity, not before."
+const (
+	// EngineKamal is the Kamal engine: kamal-backup, the restic repository, the
+	// accessory. It is the default, and its behaviour is byte-identical to what
+	// it was before the CNPG engine existed.
+	EngineKamal = "kamal"
+	// EngineCNPG is the CNPG engine: kubectl cnpg, the Backup object, the
+	// declarative recovery Cluster. It is the launch substrate's engine, where
+	// there is no Kamal.
+	EngineCNPG = "cnpg"
+)
+
+// RunnerFor returns the runner for an engine name. The empty name is the
+// default, which is Kamal because the fleet runs Kamal today — DEPLOYMENT.md:
+// "Kamal and kit/templates/kamal retire at parity, not before."
 //
-// It is an interface for the same reason `internal/deploy`'s is one and
-// `internal/dev`'s Runtime is: Kamal is the deploy engine, and a fake that
-// records argv is a dozen lines, so the whole of `caf backup` — preflight,
-// resolve, the contract refusal, the dry run, the boot, the snapshot, the drill
-// and the cleanup after a failed drill — is testable with no container runtime,
-// no restic repository, no SSH connection and no secrets anywhere in sight.
+// An unknown name is an error and not a default: a typo in --engine is the
+// operator invoking caf wrongly, and the wrong answer to it is a drill run
+// against the wrong substrate — which is the one outcome a backup command
+// must never produce by accident. The error wraps ErrUsage so the caller
+// exits 2, the same as any other bad flag.
+func RunnerFor(engine string) (Runner, error) {
+	switch engine {
+	case "", EngineKamal:
+		return NewKamalRunner(), nil
+	case EngineCNPG:
+		return NewCNPGRunner(), nil
+	default:
+		return nil, fmt.Errorf("%w: --engine must be %q (the default) or %q, not %q",
+			ErrUsage, EngineKamal, EngineCNPG, engine)
+	}
+}
+
+// Runner is the backup engine for one service: it owns which commands run, in
+// what order, and what each is for.
 //
-// The interface is declared HERE and satisfied by internal/deploy's
-// KamalRunner, which internal/cli wires in. The two packages do not import each
-// other, and that is deliberate: a package that imports another to reach an
-// interface has an import edge where none is needed, and internal/deploy makes
-// a different set of claims about a different command.
+// # Why the plan is the engine's and not the caller's
 //
-// caf does not reimplement kamal-backup. The dump, the restic repository, the
-// retention policy, the restore and the production-name refusal are all the gem's,
-// and a Go implementation of them would be a second backup engine that can
-// disagree with the first about what a backup is. caf's job is the part either
-// side of that: refuse a service whose two configuration files disagree, and
-// say afterwards whether the rows came back.
+// The caller builds argv today, and that is the defect this seam removes. A
+// `kubectl cnpg` runner handed `["kamal", "backup", …]` is nonsense, and a
+// runner that reinterprets Kamal argv is a second engine that can disagree with
+// the first about what a backup is — the disagreement would be found in a
+// restore nobody rehearsed. So the engine owns the plan: the caller asks for it,
+// prints it for a dry run, and executes it step by step, but never builds argv
+// itself.
+//
+// # What the caller keeps
+//
+// The parts either side of the engine, which internal/deploy/doc.go says are
+// caf's job: preflight, the refusal, the dry run, the confirmation and the
+// after-the-fact report.
+//
+// The interface is declared HERE and satisfied by the engines in this package
+// (kamal.go's KamalRunner today), wired in internal/cli. This package imports
+// neither deploy nor cli, and that is deliberate: a package that imports another
+// to reach an interface has an import edge where none is needed, and the two
+// commands make different claims about different engines.
 type Runner interface {
-	// Run executes one Kamal subcommand in dir — the arguments after the binary,
-	// which the Runner owns — with the process's output attached to the two
-	// writers so a person watching a terminal sees the cycle happen.
-	Run(ctx context.Context, dir string, argv []string, stdout, stderr io.Writer) error
+	// Plan returns the engine's plan for one service: which commands run, in
+	// what order, and what each is for.
+	//
+	// It is pure: it reads no file, opens no socket and runs no command, which
+	// is what lets a test assert the exact argv of a dry run with no container
+	// runtime, no restic repository and no cluster anywhere in sight.
+	Plan(cover Cover, cfg Config, opts Options) (Plan, error)
+	// Run executes one step of the plan in dir, with the process's output
+	// attached to the two writers so a person watching a terminal sees the
+	// cycle happen.
+	Run(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error
 }
