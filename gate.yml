@@ -424,7 +424,17 @@ gate:
       # env-gated, so no new test arrived as a new tier. The subtest floor below
       # is what notices the other half — the refusal table is two rows inside one
       # test, and the suite floor above cannot tell that from a single new test.
-      minimum: 793
+      #
+      # 794, which is 793 plus the one top-level test the backup engine seam
+      # added: `TestTheCallerExecutesTheRunnersPlanAndNeverBuildsArgvOfItsOwn`.
+      # It hands the caller a plan one of whose steps is a command no Kamal plan
+      # contains — `kubectl cnpg version` — and watches the caller run it, in a
+      # real cycle and in a dry run. 802 declared, 8 skips, so 794 run. It is
+      # the first test in this tree to assert on a seam rather than on a
+      # command's own behaviour, and it moved this floor by itself: the seam is
+      # the packet, and a seam with no test pinning it is a seam the next
+      # refactor quietly moves. `expectedSkips` stays at 8 — it is not env-gated.
+      minimum: 794
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.

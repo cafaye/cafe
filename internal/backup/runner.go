@@ -5,31 +5,40 @@ import (
 	"io"
 )
 
-// Runner is the one thing `caf backup` needs from the world: a way to run a
-// Kamal command and get back what it printed.
+// Runner is the backup engine for one service: it owns which commands run, in
+// what order, and what each is for.
 //
-// It is an interface for the same reason `internal/deploy`'s is one and
-// `internal/dev`'s Runtime is: Kamal is the deploy engine, and a fake that
-// records argv is a dozen lines, so the whole of `caf backup` — preflight,
-// resolve, the contract refusal, the dry run, the boot, the snapshot, the drill
-// and the cleanup after a failed drill — is testable with no container runtime,
-// no restic repository, no SSH connection and no secrets anywhere in sight.
+// # Why the plan is the engine's and not the caller's
 //
-// The interface is declared HERE and satisfied by internal/deploy's
-// KamalRunner, which internal/cli wires in. The two packages do not import each
-// other, and that is deliberate: a package that imports another to reach an
-// interface has an import edge where none is needed, and internal/deploy makes
-// a different set of claims about a different command.
+// The caller builds argv today, and that is the defect this seam removes. A
+// `kubectl cnpg` runner handed `["kamal", "backup", …]` is nonsense, and a
+// runner that reinterprets Kamal argv is a second engine that can disagree with
+// the first about what a backup is — the disagreement would be found in a
+// restore nobody rehearsed. So the engine owns the plan: the caller asks for it,
+// prints it for a dry run, and executes it step by step, but never builds argv
+// itself.
 //
-// caf does not reimplement kamal-backup. The dump, the restic repository, the
-// retention policy, the restore and the production-name refusal are all the gem's,
-// and a Go implementation of them would be a second backup engine that can
-// disagree with the first about what a backup is. caf's job is the part either
-// side of that: refuse a service whose two configuration files disagree, and
-// say afterwards whether the rows came back.
+// # What the caller keeps
+//
+// The parts either side of the engine, which internal/deploy/doc.go says are
+// caf's job: preflight, the refusal, the dry run, the confirmation and the
+// after-the-fact report.
+//
+// The interface is declared HERE and satisfied by the engines in this package
+// (kamal.go's KamalRunner today), wired in internal/cli. This package imports
+// neither deploy nor cli, and that is deliberate: a package that imports another
+// to reach an interface has an import edge where none is needed, and the two
+// commands make different claims about different engines.
 type Runner interface {
-	// Run executes one Kamal subcommand in dir — the arguments after the binary,
-	// which the Runner owns — with the process's output attached to the two
-	// writers so a person watching a terminal sees the cycle happen.
-	Run(ctx context.Context, dir string, argv []string, stdout, stderr io.Writer) error
+	// Plan returns the engine's plan for one service: which commands run, in
+	// what order, and what each is for.
+	//
+	// It is pure: it reads no file, opens no socket and runs no command, which
+	// is what lets a test assert the exact argv of a dry run with no container
+	// runtime, no restic repository and no cluster anywhere in sight.
+	Plan(cover Cover, cfg Config, opts Options) (Plan, error)
+	// Run executes one step of the plan in dir, with the process's output
+	// attached to the two writers so a person watching a terminal sees the
+	// cycle happen.
+	Run(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error
 }

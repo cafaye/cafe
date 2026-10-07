@@ -86,7 +86,10 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 		return fmt.Errorf("%w: %s", ErrRefused, relativeTo(cover.Dir, filepath.Join(cover.Dir, "config", backupConfigName)))
 	}
 
-	plan, err := PlanFor(cover, backupDoc, Options{
+	// The plan is the engine's, not the caller's: the caller asks the runner
+	// which commands run and in what order, and executes the answer. See
+	// runner.go for why a caller that builds argv is a second engine.
+	plan, err := r.Plan(cover, backupDoc, Options{
 		Env:     req.Env,
 		Scratch: req.Scratch,
 		Tables:  req.Tables,
@@ -280,7 +283,7 @@ func drop(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer) {
 func run(ctx context.Context, r Runner, plan Plan, step Step, stdout, stderr io.Writer) error {
 	bounded, cancel := context.WithTimeout(ctx, plan.Timeout)
 	defer cancel()
-	err := r.Run(bounded, plan.Dir, step.Args(), stdout, stderr)
+	err := r.Run(bounded, plan.Dir, step, stdout, stderr)
 	if err != nil && errors.Is(bounded.Err(), context.DeadlineExceeded) {
 		return fmt.Errorf("%w (caf stopped waiting after %s; raise it with -timeout if the step is genuinely slower)",
 			err, plan.Timeout)
@@ -323,7 +326,7 @@ func waitForFreeRepository(ctx context.Context, r Runner, plan Plan, step Step, 
 	asked := 0
 	for {
 		var out strings.Builder
-		err := r.Run(ctx, plan.Dir, step.Args(), io.MultiWriter(&out, stdout), stderr)
+		err := r.Run(ctx, plan.Dir, step, io.MultiWriter(&out, stdout), stderr)
 		switch {
 		case hasResticLock(out.String()):
 			// Still held. Fall through to the budget and the retry.
@@ -391,7 +394,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 		// goroutine, so one strings.Builder behind both would be a data race in the
 		// one place that is already the hardest to reproduce.
 		var out, errOut strings.Builder
-		err := r.Run(ctx, plan.Dir, step.Args(), io.MultiWriter(&out, stdout), io.MultiWriter(&errOut, stderr))
+		err := r.Run(ctx, plan.Dir, step, io.MultiWriter(&out, stdout), io.MultiWriter(&errOut, stderr))
 		if err == nil {
 			if attempt > 1 {
 				fmt.Fprintf(stdout, "  taken on attempt %d, once the accessory's own cycle had released the repository\n", attempt)
@@ -440,7 +443,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 // runRetryable's decision is a function of an observation rather than of a guess.
 func repositoryLocked(ctx context.Context, r Runner, plan Plan, settle Step, stdout, stderr io.Writer) (bool, error) {
 	var out strings.Builder
-	if err := r.Run(ctx, plan.Dir, settle.Args(), io.MultiWriter(&out, stdout), stderr); err != nil {
+	if err := r.Run(ctx, plan.Dir, settle, io.MultiWriter(&out, stdout), stderr); err != nil {
 		return false, err
 	}
 	return hasResticLock(out.String()), nil

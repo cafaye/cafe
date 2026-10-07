@@ -9,23 +9,22 @@ import (
 	"time"
 
 	"github.com/cafaye/caf/internal/backup"
-	"github.com/cafaye/caf/internal/deploy"
 )
 
-// backupDeps is what `caf backup` needs from the world: a way to run Kamal.
+// backupDeps is what `caf backup` needs from the world: the backup engine.
 //
 // It is a parameter rather than a package-level variable for the same reason
 // `deployDeps`, `devDeps` and `reclaimDeps` are: a test can hand the command a
-// runner that records argv and answers with whatever the case planted, which is
-// the only reason a refusal, a dry run, a failed drill and a successful cycle
-// are testable in this repository without a container runtime.
+// runner that records what it ran and answers with whatever the case planted,
+// which is the only reason a refusal, a dry run, a failed drill and a
+// successful cycle are testable in this repository without a container
+// runtime.
 //
-// The runner is internal/deploy's, which is why this file imports both packages
-// and internal/backup imports neither. deploy.KamalRunner is the only
-// implementation of backup.Runner and the only place caf knows the name "kamal",
-// and a second copy of it would be a second thing to keep in step with kamal's
-// own behaviour — including the "kamal is not installed" sentence, which both
-// commands must say the same way.
+// The runner is internal/backup's own engine, which is why this file imports
+// both packages and internal/backup imports neither. The engine owns the plan
+// (which commands run, in what order); the command owns everything either side
+// of it. backup's KamalRunner delegates process execution to internal/deploy's
+// KamalRunner, which stays the only place caf knows how to run kamal.
 type backupDeps struct {
 	runner backup.Runner
 	// confirm asks the operator. It is a seam because a prompt read from os.Stdin
@@ -37,7 +36,7 @@ type backupDeps struct {
 
 func (b backupDeps) withDefaults() backupDeps {
 	if b.runner == nil {
-		b.runner = deploy.NewKamalRunner()
+		b.runner = backup.NewKamalRunner()
 	}
 	if b.confirm == nil {
 		b.confirm = confirmBackupOnStdin

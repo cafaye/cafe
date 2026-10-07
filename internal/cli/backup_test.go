@@ -33,42 +33,25 @@ type backupRunner struct {
 	fails map[string]error
 }
 
-func (r *backupRunner) Run(_ context.Context, dir string, argv []string, stdout, _ io.Writer) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.ran = append(r.ran, append([]string{}, argv...))
-	r.dirs = append(r.dirs, dir)
-	if strings.HasPrefix(argv[0], "config") {
-		io.WriteString(stdout, r.out)
-	}
-	if len(argv) > 0 && argv[0] == "version" {
-		io.WriteString(stdout, "2.12.0")
-	}
-	return r.fails[backupStepOf(argv)]
+// Plan is the real Kamal plan: the command layer is not the place to prove what
+// the plan is, and a fake plan here would make every case below a test of the
+// fake.
+func (r *backupRunner) Plan(cover backup.Cover, cfg backup.Config, opts backup.Options) (backup.Plan, error) {
+	return backup.PlanFor(cover, cfg, opts)
 }
 
-// backupStepOf names a call by the plan step it is, which is what the failure
-// cases key on. `accessory exec` runs four different commands under one
-// subcommand, so the subcommand alone is not a step.
-func backupStepOf(argv []string) string {
-	joined := strings.Join(argv, " ")
-	switch {
-	case len(argv) > 0 && argv[0] == "version":
-		return backup.Preflight
-	case len(argv) > 0 && argv[0] == "config":
-		return backup.Resolve
-	case strings.Contains(joined, "boot"):
-		return backup.Boot
-	case strings.Contains(joined, "kamal-backup") && strings.Contains(joined, "drill"):
-		return backup.Drill
-	case strings.Contains(joined, "kamal-backup") && strings.Contains(joined, "backup"):
-		return backup.Snapshot
-	case strings.Contains(joined, "createdb"):
-		return backup.Create
-	case strings.Contains(joined, "dropdb"):
-		return backup.Drop
+func (r *backupRunner) Run(_ context.Context, dir string, step backup.Step, stdout, _ io.Writer) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ran = append(r.ran, step.Args())
+	r.dirs = append(r.dirs, dir)
+	switch step.Name {
+	case backup.Resolve:
+		io.WriteString(stdout, r.out)
+	case backup.Preflight:
+		io.WriteString(stdout, "2.12.0")
 	}
-	return "other"
+	return r.fails[step.Name]
 }
 
 // project writes a project whose two files are identity's real ones, so a case

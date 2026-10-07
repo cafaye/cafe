@@ -127,6 +127,27 @@ const (
 	Drop = "drop"
 )
 
+// The CNPG engine's step names. They are constants for the same reason the
+// Kamal ones are: the report and the tests both name them.
+//
+// The CNPG plan has no Resolve, no Boot and no Settle. There is no Kamal to
+// resolve a config against, no accessory to boot, and no restic repository
+// whose lock the boot took. What replaces them is two WAITS, which are the
+// CNPG shape of the same problem: a backup and a restore are both asynchronous
+// in Kubernetes, and a drill that reads either one before it is ready is a
+// drill that proves nothing.
+const (
+	// WaitBackup polls the Backup resource's phase until it is completed.
+	WaitBackup = "wait-backup"
+	// Restore applies the scratch Cluster manifest, which is the restore: the
+	// operator bootstraps a new cluster from the Backup resource.
+	Restore = "restore"
+	// WaitReady polls the scratch Cluster's phase until it is healthy.
+	WaitReady = "wait-ready"
+	// Assert runs the check whose exit status is the drill's verdict.
+	Assert = "assert"
+)
+
 // Plan is the whole decision, plus the facts the report echoes so that the
 // transcript of a cycle says which project, which environment and which scratch
 // database it was about.
