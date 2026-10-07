@@ -582,6 +582,23 @@ func TestDeployRejectsABadArgumentCount(t *testing.T) {
 	}
 }
 
+// An unknown engine is a usage error and exits 2, not a silent default: a typo
+// in --engine is the operator invoking caf wrongly, and the wrong answer to it
+// is a deploy run against the wrong substrate — which is the one outcome a
+// deploy command must never produce by accident.
+func TestDeployRefusesAnUnknownEngine(t *testing.T) {
+	code, _, stderr := runDeploy(t, newRecordingRunner(), "--engine", "bogus", "identity")
+
+	if code != exitUsage {
+		t.Errorf("exit code = %d, want %d (stderr: %s)", code, exitUsage, stderr)
+	}
+	for _, want := range []string{"kamal", "argo"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr does not name the valid engines %q:\n%s", want, stderr)
+		}
+	}
+}
+
 // The help has to describe the dry run's meaning and name the one path, because
 // that is the sentence that makes both trustworthy.
 func TestDeployHelpNamesTheOnePathAndWhatADryRunDoes(t *testing.T) {
@@ -591,12 +608,12 @@ func TestDeployHelpNamesTheOnePathAndWhatADryRunDoes(t *testing.T) {
 		t.Fatalf("exit code = %d, want %d", code, exitSuccess)
 	}
 	for _, want := range []string{
-		"caf deploy <service> --env <env> --yes", // the one path
+		"caf deploy <service> --engine <engine> --yes", // the one path
 		"dry-run",
-		"changes nothing",   // what a dry run does not do
-		"kamal setup",       // the command it actually runs
-		"kamal-proxy",       // and what serves the traffic
-		"refuses to deploy", // and the one thing it will not do
+		"executes nothing",             // what a dry run does not do
+		"kamal setup",                  // the command kamal actually runs
+		"kamal-proxy",                  // and what serves the traffic
+		"refuses a dirty working tree", // and the one thing it will not do
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("help does not mention %q:\n%s", want, stdout)

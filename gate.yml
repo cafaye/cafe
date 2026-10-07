@@ -141,7 +141,12 @@ gate:
       # tree and prove the verification goes red on a tampered pin, so a
       # `internal/lock` that shipped untested would leave the suite floor moving
       # by nothing at all and this line as the only thing that noticed.
-      minimum: 15
+      # THE MINIMUM WAS LEFT AT 15 WHEN THE COUNT BECAME 16, which is the emitter
+      # packet's own comment above saying so and the number not moving with it. It
+      # passed as a minimum — 16 is not below 15 — but a floor that does not name
+      # the count it measured is a floor that has stopped being read. caf-w76
+      # corrects it to the measured 16.
+      minimum: 16
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
       # 435, measured, and the number is the interesting part of this file.
@@ -465,7 +470,19 @@ gate:
       # so 817 run. `expectedSkips` stays at 8 — none of the new tests is
       # env-gated; the CNPG engine's proofs are the plan and the dry run, and
       # neither needs a cluster.
-      minimum: 819
+      #
+      # caf-w76 added 21, twenty in `internal/deploy/argo_test.go` and one in
+      # `internal/cli/deploy_test.go`, and moved this floor to 840: 848 declared,
+      # 8 skips, so 840 run. `expectedSkips` stays at 8 — none of the new tests
+      # is env-gated; the Argo engine's proofs are the plan, the refusals, the
+      # dry run and the commit against a real local git repository, and none of
+      # them needs a cluster. The twenty are the plan's order and argv tables,
+      # the two files the commit carries, the commit message, the version
+      # derivation, the readChart refusals, the commit against a real
+      # repository, the dirty-tree boundary, the no-remote refusal, the
+      # sync-wait's three outcomes against a fake kubectl, the dry run that
+      # executes nothing, and the engine-selection table.
+      minimum: 840
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.
@@ -566,7 +583,13 @@ gate:
       # The suite floor above cannot tell a new test from a new `t.Run` inside an
       # existing one; this floor can, and it is the reason the CNPG tables are
       # tables rather than a sequence of asserts.
-      minimum: 983
+      #
+      # RE-MEASURED AT 1007 after caf-w76, and set one lower for the reason
+      # above. The Argo engine's tables are the rows: the argv table is four,
+      # the readChart refusal table is five, the dirty-tree table is three, the
+      # version-derivation table is four, and the engine-selection table is
+      # four — twenty rows, which is what this floor moved by.
+      minimum: 1006
     #
     # THE ONE WITH NO FLOOR, and the schema sanctions that: a `minimum` is
     # omitted "for a proof that reports nothing countable (a step that must

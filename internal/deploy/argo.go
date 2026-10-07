@@ -118,8 +118,8 @@ func readChart(dir string) (chartFacts, error) {
 		return chartFacts{}, fmt.Errorf("caf deploy: read chart/values.yaml: %w", err)
 	}
 	if values.Image.Repository == "" || values.Image.Tag == "" {
-		return chartFacts{}, fmt.Errorf("caf deploy: chart/values.yaml has no image.repository and image.tag, so there is\n"+
-			"  no image reference to bump. The generator writes both; a hand-edited values.yaml\n"+
+		return chartFacts{}, fmt.Errorf("caf deploy: chart/values.yaml has no image.repository and image.tag, so there is\n" +
+			"  no image reference to bump. The generator writes both; a hand-edited values.yaml\n" +
 			"  that dropped them is a chart nobody can release. Run `caf gen chart` to rewrite it")
 	}
 
@@ -130,8 +130,8 @@ func readChart(dir string) (chartFacts, error) {
 		return chartFacts{}, fmt.Errorf("caf deploy: read Chart.yaml: %w", err)
 	}
 	if chart.Version == "" {
-		return chartFacts{}, fmt.Errorf("caf deploy: Chart.yaml has no version, so there is no chart version to bump.\n"+
-			"  The chart version is the OCI tag — DEPLOYMENT.md — so without it there is\n"+
+		return chartFacts{}, fmt.Errorf("caf deploy: Chart.yaml has no version, so there is no chart version to bump.\n" +
+			"  The chart version is the OCI tag — DEPLOYMENT.md — so without it there is\n" +
 			"  no version for the publish workflow to push")
 	}
 
@@ -166,7 +166,11 @@ func (r *ArgoRunner) Run(ctx context.Context, dir string, step Step, stdout, std
 	case Push:
 		return r.push(ctx, dir, step, stdout, stderr)
 	default:
-		return r.run(ctx, dir, step.Args(), stdout, stderr)
+		// The full argv, binary included: r.run executes argv[0], the way the
+		// Kamal engine's run executes k.Binary over step.Args(). The two shapes
+		// are not interchangeable — step.Args() is the Kamal engine's argument
+		// list, and handing it to r.run would execute "version" as a program.
+		return r.run(ctx, dir, step.Argv, stdout, stderr)
 	}
 }
 
@@ -191,7 +195,7 @@ func (r *ArgoRunner) commit(ctx context.Context, dir string, step Step, stdout, 
 			fmt.Fprintf(stdout, "  would mix the values bump with edits nobody meant for this release.\n")
 			fmt.Fprintf(stdout, "  Commit or stash what is there, then deploy again — a release commit\n")
 			fmt.Fprintf(stdout, "  must be exactly the bump from %s to the new version.\n", step.Files[0].Path)
-			return fmt.Errorf("%s: the working tree is dirty at %s", ErrRefused, path)
+			return fmt.Errorf("%w: the working tree is dirty at %s", ErrRefused, path)
 		}
 	}
 
@@ -213,7 +217,7 @@ func (r *ArgoRunner) commit(ctx context.Context, dir string, step Step, stdout, 
 		return fmt.Errorf("caf deploy: stage the release: %w", err)
 	}
 
-	if err := r.run(ctx, dir, step.Args(), stdout, stderr); err != nil {
+	if err := r.run(ctx, dir, step.Argv, stdout, stderr); err != nil {
 		return fmt.Errorf("caf deploy: commit the release: %w", err)
 	}
 	return nil
@@ -234,9 +238,9 @@ func (r *ArgoRunner) push(ctx context.Context, dir string, step Step, stdout, st
 		fmt.Fprintf(stdout, "  The publish workflow pushes the new OCI tag and Argo syncs it, and both need\n")
 		fmt.Fprintf(stdout, "  the commit on a remote. Add the remote the service repository is published\n")
 		fmt.Fprintf(stdout, "  from, then deploy again — caf pushes; it does not hand the commit to an operator.\n")
-		return fmt.Errorf("%s: no git remote to push to", ErrRefused)
+		return fmt.Errorf("%w: no git remote to push to", ErrRefused)
 	}
-	return r.run(ctx, dir, step.Args(), stdout, stderr)
+	return r.run(ctx, dir, step.Argv, stdout, stderr)
 }
 
 // dirtyPaths returns the paths git reports as changed, relative to the
