@@ -41,6 +41,12 @@ type Request struct {
 	Version string
 	// DryRun resolves and prints, and changes nothing.
 	DryRun bool
+	// Engine is the deploy engine the caller selected with --engine: EngineKamal
+	// (the default) or EngineArgo. It decides which parts of the deploy are
+	// Kamal's and which are the engine's — the configuration read, the exposure
+	// check and the reports — because the Argo substrate has no Kamal config to
+	// read and no accessory port to expose.
+	Engine string
 }
 
 // Run performs one deploy, or resolves one, and reports what it did.
@@ -62,6 +68,15 @@ type Request struct {
 // A failure report is a plan step rather than a branch here, which is what lets
 // a dry run print it.
 func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) error {
+	// The engine is the runner's, and the branch is on the engine the caller
+	// selected: the Argo substrate has no Kamal config to read and no accessory
+	// port to expose, so the parts of the deploy that are Kamal's are skipped
+	// rather than faked. The Kamal path below is byte-identical to what it was
+	// before the second engine existed — its tests are the proof.
+	if req.Engine == EngineArgo {
+		return runArgoDeploy(ctx, r, req, stdout, stderr)
+	}
+
 	dir := req.Dir
 	if dir == "" {
 		dir = "."
@@ -71,7 +86,10 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 	if err != nil {
 		return err
 	}
-	plan := PlanFor(dep, Options{Env: req.Env, Version: req.Version})
+	plan, err := r.Plan(dep, Options{Env: req.Env, Version: req.Version})
+	if err != nil {
+		return err
+	}
 
 	version, err := preflight(ctx, r, plan, stderr)
 	if err != nil {
@@ -113,7 +131,7 @@ func preflight(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (stri
 		return "", fmt.Errorf("caf deploy: the plan has no %q step, so nothing was checked and nothing was deployed", Preflight)
 	}
 	var out strings.Builder
-	if err := r.Run(ctx, plan.Dir, step.Args(), &out, stderr); err != nil {
+	if err := r.Run(ctx, plan.Dir, step, &out, stderr); err != nil {
 		// ErrKamalMissing is a sentinel so this case is tellable apart from a
 		// deploy that ran and failed: the first is fixed by installing a gem, the
 		// second by reading a log.
@@ -140,7 +158,7 @@ func resolve(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string
 		return "", fmt.Errorf("caf deploy: the plan has no %q step, so nothing was resolved and nothing was deployed", Resolve)
 	}
 	var out strings.Builder
-	if err := r.Run(ctx, plan.Dir, step.Args(), &out, stderr); err != nil {
+	if err := r.Run(ctx, plan.Dir, step, &out, stderr); err != nil {
 		// The cause is deliberately NOT guessed. config/deploy.yml is an ERB
 		// template and kamal names the version from the repository, so there are
 		// at least two reasons this fails — an unset KIT_* variable, and a
@@ -210,7 +228,7 @@ func deploy(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer) 
 	}
 	fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 
-	if err := r.Run(ctx, plan.Dir, step.Args(), stdout, stderr); err != nil {
+	if err := r.Run(ctx, plan.Dir, step, stdout, stderr); err != nil {
 		return failureReport(ctx, r, plan, stdout, stderr, err)
 	}
 
@@ -239,7 +257,7 @@ func failureReport(ctx context.Context, r Runner, plan Plan, stdout, stderr io.W
 
 	if state := plan.Step(State); state.Argv != nil {
 		fmt.Fprintf(stdout, "\nwhat is running now (%s):\n", state.Command())
-		if err := r.Run(ctx, plan.Dir, state.Args(), stdout, stderr); err != nil {
+		if err := r.Run(ctx, plan.Dir, state, stdout, stderr); err != nil {
 			fmt.Fprintf(stdout, "could not read it: %v\n", err)
 			fmt.Fprintf(stdout, "read it yourself with: %s\n", state.Command())
 		}

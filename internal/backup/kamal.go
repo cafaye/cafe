@@ -26,7 +26,14 @@ func (k *KamalRunner) Plan(cover Cover, cfg Config, opts Options) (Plan, error) 
 	return PlanFor(cover, cfg, opts)
 }
 
-// Run executes one step of the plan in dir.
+// Run executes one step of the plan in dir. The delegate's Run takes the step
+// itself, because the deploy engine owns the plan — the backup engine owns the
+// cycle, and the two share the Kamal runner without either building argv.
+//
+// The two packages' Step types are different (the backup one carries a
+// Retryable the deploy one has no use for), so the conversion is a struct
+// literal rather than a cast: the argv is the same value, and that is the part
+// the delegate runs.
 func (k *KamalRunner) Run(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error {
-	return k.delegate.Run(ctx, dir, step.Args(), stdout, stderr)
+	return k.delegate.Run(ctx, dir, deploy.Step{Argv: step.Argv}, stdout, stderr)
 }

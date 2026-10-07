@@ -45,12 +45,19 @@ func newFakeRunner() *fakeRunner {
 	}
 }
 
+// Plan is the Kamal plan, built by the pure function the production code uses.
+// The fake is a Kamal engine, so its plan is the Kamal plan.
+func (f *fakeRunner) Plan(dep Deployment, opts Options) (Plan, error) {
+	return PlanFor(dep, opts), nil
+}
+
 // Run answers by subcommand and, for `config`, by printing the planted resolved
 // document into the writer it was handed — so the production code's capture is
 // exercised rather than bypassed.
-func (f *fakeRunner) Run(_ context.Context, dir string, argv []string, stdout, _ io.Writer) error {
+func (f *fakeRunner) Run(_ context.Context, dir string, step Step, stdout, _ io.Writer) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	argv := step.Args()
 	f.ran = append(f.ran, append([]string{}, argv...))
 	f.dirs = append(f.dirs, dir)
 

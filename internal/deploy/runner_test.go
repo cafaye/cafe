@@ -23,7 +23,7 @@ func TestAMissingKamalSaysHowToInstallIt(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	runner := &KamalRunner{Binary: "kamal"}
 
-	err := runner.Run(context.Background(), "", []string{"version"}, io.Discard, io.Discard)
+	err := runner.Run(context.Background(), "", Step{Argv: []string{"kamal", "version"}}, io.Discard, io.Discard)
 
 	if !errors.Is(err, ErrKamalMissing) {
 		t.Fatalf("err = %v, want it to wrap ErrKamalMissing", err)
@@ -45,7 +45,7 @@ func TestAMissingKamalSaysHowToInstallIt(t *testing.T) {
 func TestABinaryThatFailsForAnotherReasonIsNotAMissingKamal(t *testing.T) {
 	runner := &KamalRunner{Binary: "/nonexistent/kamal-that-cannot-run"}
 
-	err := runner.Run(context.Background(), "", []string{"version"}, io.Discard, io.Discard)
+	err := runner.Run(context.Background(), "", Step{Argv: []string{"kamal", "version"}}, io.Discard, io.Discard)
 
 	if errors.Is(err, ErrKamalMissing) {
 		t.Errorf("a binary that is not on PATH was reported as an uninstalled kamal:\n%v", err)
@@ -61,7 +61,7 @@ func TestABinaryThatFailsForAnotherReasonIsNotAMissingKamal(t *testing.T) {
 func TestAKamalThatExitsNonZeroIsNotAMissingKamal(t *testing.T) {
 	runner := &KamalRunner{Binary: "/nonexistent/kamal-that-cannot-run"}
 
-	err := runner.Run(context.Background(), "", []string{"version"}, io.Discard, io.Discard)
+	err := runner.Run(context.Background(), "", Step{Argv: []string{"kamal", "version"}}, io.Discard, io.Discard)
 
 	if err == nil {
 		t.Fatal("got no error from a binary that cannot be run")
@@ -110,7 +110,7 @@ func TestRunUsesTheDirectoryItWasGiven(t *testing.T) {
 
 	project := t.TempDir()
 	var out strings.Builder
-	if err := runner.Run(context.Background(), project, []string{"config"}, &out, io.Discard); err != nil {
+	if err := runner.Run(context.Background(), project, Step{Argv: []string{"kamal", "config"}}, &out, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
@@ -128,7 +128,7 @@ func TestRunWiresBothStreamsToTheCommand(t *testing.T) {
 	runner := &KamalRunner{Binary: script}
 
 	var out, errOut strings.Builder
-	if err := runner.Run(context.Background(), "", []string{"deploy"}, &out, &errOut); err != nil {
+	if err := runner.Run(context.Background(), "", Step{Argv: []string{"kamal", "deploy"}}, &out, &errOut); err != nil {
 		t.Fatal(err)
 	}
 
@@ -150,7 +150,7 @@ func TestRunStopsWhenTheContextIsCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := runner.Run(ctx, "", []string{"setup"}, io.Discard, io.Discard)
+	err := runner.Run(ctx, "", Step{Argv: []string{"kamal", "setup"}}, io.Discard, io.Discard)
 
 	if err == nil {
 		t.Fatal("got no error for a cancelled deploy")

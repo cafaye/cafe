@@ -101,9 +101,16 @@ func newRecordingRunner() *recordingRunner {
 	return &recordingRunner{out: deployResolvedConfig, errs: map[string]error{}}
 }
 
-func (r *recordingRunner) Run(_ context.Context, dir string, argv []string, stdout, _ io.Writer) error {
+// Plan is the Kamal plan, built by the pure function the production code uses.
+// The recording runner is a Kamal engine, so its plan is the Kamal plan.
+func (r *recordingRunner) Plan(dep deploy.Deployment, opts deploy.Options) (deploy.Plan, error) {
+	return deploy.PlanFor(dep, opts), nil
+}
+
+func (r *recordingRunner) Run(_ context.Context, dir string, step deploy.Step, stdout, _ io.Writer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	argv := step.Args()
 	r.ran = append(r.ran, append([]string{}, argv...))
 
 	// The Runner is handed the arguments without the binary, because it owns
