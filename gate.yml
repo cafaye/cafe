@@ -408,12 +408,23 @@ gate:
       #   * `internal/telemetry/telemetry_test.go`, two new tests in the regenerated
       #     suite — the no-scheme case and the shipped-collector-is-plaintext case.
       #
-      # 779 declared, 8 skips, so 771 run. `expectedSkips` stays at 8 for the same
-      # reason every packet since caf-29 gives: none of the six is env-gated, so no
-      # new test arrived as a new tier. The subtest floor below is what notices the
-      # other half — the precedence table is five rows inside one test, and the
-      # suite floor above cannot tell that from a single new test.
-      minimum: 771
+      # 793, which is 771 plus the twenty-two top-level tests `caf gen chart` added,
+      # and the split is the same argument as caf-otlreg-01's: eighteen of them
+      # are in `internal/gen/chart_test.go`, the generator's own suite, and four
+      # are in `internal/cli/gen_test.go`, the command's. The generator's tests
+      # assert the chart's CONTENT — the readiness path, the secret-by-reference
+      # rule, the never-`latest` tag — rather than the existence of its files,
+      # because a test that passed against an empty templates/ directory is not a
+      # test. The command's tests assert the verb's own contract: the files land
+      # where the chart's layout says, the -env flags reach values.yaml, and a
+      # manifest with no HTTP surface is refused with its sentence intact.
+      #
+      # 801 declared, 8 skips, so 793 run. `expectedSkips` stays at 8 for the same
+      # reason every packet since caf-29 gives: none of the twenty-two is
+      # env-gated, so no new test arrived as a new tier. The subtest floor below
+      # is what notices the other half — the refusal table is two rows inside one
+      # test, and the suite floor above cannot tell that from a single new test.
+      minimum: 793
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.
@@ -492,7 +503,15 @@ gate:
       # are in `internal/cli`'s lock tests. It is the same case this floor exists
       # for: the table IS the specification of a bug's shape, so it is written as
       # rows, and the floor is what notices if they stop running.
-      minimum: 875
+      #
+      # RE-MEASURED AT 967 on the merged tree, and set one lower for the reason
+      # above. The packets between caf-lock-01 and this one moved the suite floor
+      # and not this one, which is legal — a floor is a decrease-detector and a
+      # run reporting more than it passes — but a floor that stays still while
+      # the suite grows stops noticing anything, so it is re-measured here. The
+      # two rows `caf gen chart` added are inside `internal/gen/chart_test.go`'s
+      # refusal table, one row per refusal a valid manifest can reach.
+      minimum: 966
     #
     # THE ONE WITH NO FLOOR, and the schema sanctions that: a `minimum` is
     # omitted "for a proof that reports nothing countable (a step that must

@@ -688,7 +688,8 @@ more: each verb is a `Command` of its own, named with its full invocation so
 its messages read as the words the user typed, and the parent dispatches to it
 from `Run` instead of registering it in `Commands()`. Its row in
 `stub_test.go` moves from `stubCommands` to `workingCommands` — the parent, not the
-verbs — which is why `gen` is in that list and `gen telemetry` is not.
+verbs — which is why `gen` is in that list and `gen telemetry` and
+`gen chart` are not.
 
 A subcommand that generates code has one more obligation: **its output has to be
 compiled by this gate.** Write it into the tree, run it on this repository's own
