@@ -22,12 +22,12 @@ import (
 // expects. A generated artifact whose layout the tool that consumes it does
 // not recognise is a generator bug no test would catch.
 const (
-	chartYAMLPath        = "chart/Chart.yaml"
-	chartValuesPath      = "chart/values.yaml"
-	chartDeploymentPath  = "chart/templates/deployment.yaml"
-	chartServicePath     = "chart/templates/service.yaml"
-	chartIngressPath     = "chart/templates/ingress.yaml"
-	chartReadmePath      = "chart/README.md"
+	chartYAMLPath       = "chart/Chart.yaml"
+	chartValuesPath     = "chart/values.yaml"
+	chartDeploymentPath = "chart/templates/deployment.yaml"
+	chartServicePath    = "chart/templates/service.yaml"
+	chartIngressPath    = "chart/templates/ingress.yaml"
+	chartReadmePath     = "chart/README.md"
 )
 
 // chartVersion is the chart's own version and the default image tag.
