@@ -386,7 +386,7 @@ owner:
   contact: courier@cafaye.com
 `
 
-// The happy path: seven files, written, each one printed in full.
+// The happy path: six files, written, each one printed in full.
 //
 // The content assertions live in internal/gen/chart_test.go, which can see the
 // bytes; this test is the command's own contract — the files land where the
@@ -406,7 +406,6 @@ func TestGenChartWritesItsFilesAndPrintsThemInFull(t *testing.T) {
 		"chart/templates/deployment.yaml",
 		"chart/templates/ingress.yaml",
 		"chart/templates/service.yaml",
-		"chart/templates/application.yaml",
 		"chart/README.md",
 	} {
 		if _, err := os.Stat(path); err != nil {

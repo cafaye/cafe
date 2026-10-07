@@ -84,7 +84,7 @@ func findChartFile(t *testing.T, out Output, path string) File {
 	return File{}
 }
 
-// The seven files, every time. A generator that emits an eighth is not refused
+// The six files, every time. A generator that emits a seventh is not refused
 // here — that is a review decision — but a generator that emits a DIFFERENT SET
 // between two runs over one manifest is, and so is one whose order drifts.
 func TestTheChartFileSetIsStableAndSorted(t *testing.T) {
@@ -94,7 +94,6 @@ func TestTheChartFileSetIsStableAndSorted(t *testing.T) {
 	want := []string{
 		"chart/Chart.yaml",
 		"chart/README.md",
-		"chart/templates/application.yaml",
 		"chart/templates/deployment.yaml",
 		"chart/templates/ingress.yaml",
 		"chart/templates/service.yaml",
@@ -278,30 +277,6 @@ func TestResourcesAreSet(t *testing.T) {
 	}
 }
 
-// The Argo Application syncs the repository the manifest declares, at the
-// branch the manifest declares: the pull-only loop starts from the branch a
-// commit lands on, and a chart that synced the wrong repository would be a
-// chart that deploys somebody else's service.
-func TestTheApplicationSyncsTheManifestsRepository(t *testing.T) {
-	out := generateChart(t, chartManifest, nil)
-	application := string(findChartFile(t, out, chartApplicationPath).Content)
-
-	for _, want := range []string{
-		"repoURL: git@github.com:cafaye/courier.git",
-		"targetRevision: {{ .Values.targetRevision }}",
-		"kind: Application",
-	} {
-		if !strings.Contains(application, want) {
-			t.Errorf("the Application does not carry %q:\n%s", want, application)
-		}
-	}
-
-	values := string(findChartFile(t, out, chartValuesPath).Content)
-	if !strings.Contains(values, "targetRevision: master") {
-		t.Errorf("values.yaml's targetRevision is not the manifest's defaultBranch:\n%s", values)
-	}
-}
-
 // The container port is the language's, read from the same table `caf dev`
 // uses — the two cannot disagree, because a chart whose port is a guess is a
 // chart whose Service points at nothing.
@@ -319,7 +294,7 @@ func TestTheContainerPortComesFromTheLanguageTable(t *testing.T) {
 }
 
 // The service's name reaches every file the chart is made of: the chart name,
-// the Deployment, the Service, the Application, the secret names. A chart that
+// the Deployment, the Service, the secret names. A chart that
 // named its resources after anything but the service it deploys is a chart
 // somebody has to go and look up.
 func TestTheServiceNameReachesEveryFile(t *testing.T) {
@@ -532,8 +507,8 @@ func TestEveryPathIsUnderChart(t *testing.T) {
 
 // The drift gate's counterpart: the chart target's paths are read out of the
 // generator rather than written down beside it, so a path the generator gains
-// is a path the lock pins. This test is the assertion that stays true when a
-// seventh file lands.
+// is a path the lock pins. This test is the assertion that stays true when
+// the file set changes — it names no paths.
 func TestTheChartTargetIsDiscoveredNotListed(t *testing.T) {
 	names := TargetNames()
 	found := false

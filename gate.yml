@@ -432,6 +432,20 @@ gate:
       # default — the off is the load-bearing word) and the in-process render
       # proof's own test, which carries the three cases as subtests and is what
       # the subtest floor below moved for.
+      #
+      # caf-w88 REMOVED the generated Argo Application — the substrate owns it
+      # (moon/DEPLOYMENT.md, "Who owns the Application") — and this floor did
+      # NOT move, which is a measurement and not an oversight. One top-level
+      # test came out (`TestTheApplicationSyncsTheManifestsRepository`, whose
+      # subject no longer exists) and one went in
+      # (`TestTheGeneratorEmitsNoArgoApplication`, the red-first proof that
+      # fails if `chart/templates/application.yaml` comes back), so the
+      # arithmetic is unchanged: 803 declared, 8 skips, 795 run. Neither test
+      # has subtests, so the subtest floor below does not move either —
+      # measured at 970, one lower for the reason above. The removal was
+      # watched going red on the re-added emission before this number was
+      # written, which is the same discipline every other number in this file
+      # was produced under.
       minimum: 795
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
