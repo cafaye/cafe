@@ -27,6 +27,7 @@ const (
 	chartDeploymentPath  = "chart/templates/deployment.yaml"
 	chartServicePath     = "chart/templates/service.yaml"
 	chartApplicationPath = "chart/templates/application.yaml"
+	chartIngressPath     = "chart/templates/ingress.yaml"
 	chartReadmePath      = "chart/README.md"
 )
 
@@ -55,16 +56,24 @@ const readyzPath = "/readyz"
 
 // chart is `caf gen chart`: the pure function.
 //
-// Six files, and the split between them is the substance of the target:
+// Seven files, and the split between them is the substance of the target:
 //
 //   - Chart.yaml and values.yaml, the chart's identity and its deployment-time
 //     half — the facts a person changes per deployment, as opposed to the
 //     facts about the service that only a regeneration changes;
-//   - the Deployment, the Service and the Argo Application, which are the
-//     contract and are not meant to be edited by hand;
+//   - the Deployment, the Service, the Argo Application and the Ingress,
+//     which are the contract and are not meant to be edited by hand;
 //   - the README, because the loop the chart exists for — push, pull, sync —
 //     is three commands and a habit, and a habit nobody wrote down is a habit
 //     the next person has to rediscover.
+//
+// The Ingress is the one contract file that is gated on a value: it is
+// always emitted, and renders only when `ingress.enabled` is true. How a
+// service is reached is a per-deployment fact — which host — and which
+// services are exposed is a per-deployment decision, so the document lives
+// in the chart behind the knob rather than in the substrate. Off by default:
+// the substrate's first sync happens before any operator has set a host, and
+// a chart that suddenly routes traffic is a defect.
 //
 // What is derived from the manifest, and what is not:
 //
@@ -104,6 +113,7 @@ func chart(manifest contract.Manifest, env map[string]string) (Output, error) {
 		{Path: chartDeploymentPath, Content: renderDeployment(manifest, port)},
 		{Path: chartServicePath, Content: renderService(manifest)},
 		{Path: chartApplicationPath, Content: renderApplication(manifest)},
+		{Path: chartIngressPath, Content: renderIngress(manifest)},
 		{Path: chartReadmePath, Content: renderChartReadme(manifest)},
 	}
 
@@ -220,6 +230,34 @@ func renderChartValues(manifest contract.Manifest, env map[string]string) []byte
 	w.text("service:\n")
 	w.text("  type: ClusterIP\n")
 	w.text("  port: 80\n")
+	w.text("\n")
+
+	w.text("# How the service is reached from outside the cluster: an Ingress,\n")
+	w.text("# gated on `ingress.enabled`, which is FALSE by default.\n")
+	w.text("#\n")
+	w.text("# A chart that suddenly routes traffic is a defect: the substrate's\n")
+	w.text("# first sync happens before any operator has set a host, and an\n")
+	w.text("# Ingress with no host is a silent misroute — the class of defect\n")
+	w.text("# kit's /up healthcheck was. The services the fleet exposes (gateway,\n")
+	w.text("# parlor) turn the knob on in their values commit; identity and\n")
+	w.text("# courier stay internal.\n")
+	w.text("#\n")
+	w.text("# The edge is Traefik, k3s's default ingress controller, with\n")
+	w.text("# cert-manager in front of it (DEPLOYMENT.md:28 — \"Ingress + TLS |\n")
+	w.text("# Traefik (k3s default) + cert-manager | declarative, no edge\n")
+	w.text("# box\"). The ClusterIssuer is created ONCE PER CLUSTER by the\n")
+	w.text("# substrate (a follow-up, not this packet); this block only NAMES\n")
+	w.text("# it — the same \"names the secret and never contains a credential\"\n")
+	w.text("# discipline the imagePullSecrets block uses. Empty means no TLS: a\n")
+	w.text("# secret nothing writes.\n")
+	w.text("ingress:\n")
+	w.text("  enabled: false\n")
+	w.text("  className: traefik\n")
+	w.text("  host: \"\"\n")
+	w.text("  clusterIssuer: \"\"\n")
+	w.text("  tls: true\n")
+	w.text("  path: /\n")
+	w.text("  pathType: Prefix\n")
 	w.text("\n")
 
 	w.text("# The service's environment, as NAME: value pairs.\n")
@@ -403,6 +441,85 @@ func renderService(manifest contract.Manifest) []byte {
 	return w.bytes()
 }
 
+// renderIngress writes the Ingress: how the service is reached.
+//
+// The whole document is inside `{{- if .Values.ingress.enabled }}`, so with
+// the knob off — the default — `helm template` emits no Ingress at all.
+//
+// The guard is helm's `fail`, and the asymmetry it creates is the point: an
+// unconfigured chart RENDERS (the substrate's first sync happens before any
+// operator has set a host), but an enabled chart with no host does NOT — an
+// Ingress with no host is a silent misroute, which is the class of defect
+// kit's /up healthcheck was.
+//
+// The backend port is `.Values.service.port`, the Service's own port, so the
+// Ingress and the Service cannot disagree about it. The cluster-issuer
+// annotation is emitted only when the name is non-empty, because an empty
+// annotation is an annotation cert-manager reads as a request it cannot
+// serve; the tls block only when tls is true AND the issuer is set, because
+// TLS without an issuer is a secret nothing writes. The issuer itself is
+// never created here — it is cluster-scoped, created once per cluster by
+// the substrate, and the chart only names it.
+func renderIngress(manifest contract.Manifest) []byte {
+	name := manifest.ServiceName()
+
+	var w writer
+
+	w.text("# Code generated by `caf gen chart`. DO NOT EDIT.\n")
+	w.text("#\n")
+	w.text("# The Ingress: how the service is reached from outside the cluster.\n")
+	w.text("# Off by default and gated on `ingress.enabled` in values.yaml — see\n")
+	w.text("# that file for why it is off, and for the issuer the chart names\n")
+	w.text("# and never creates.\n")
+	w.text("{{- if .Values.ingress.enabled }}\n")
+	w.text("{{- if not .Values.ingress.host }}\n")
+	w.text("{{- fail \"caf gen chart: ingress.enabled is true and ingress.host is empty — an Ingress with no " +
+		"host is a silent misroute; set ingress.host in values.yaml\" }}\n")
+	w.text("{{- end }}\n")
+	w.text("apiVersion: networking.k8s.io/v1\n")
+	w.text("kind: Ingress\n")
+	w.text("metadata:\n")
+	w.text("  name: ")
+	w.at("%s", name)
+	w.text("\n  labels:\n")
+	w.text("    app.kubernetes.io/name: ")
+	w.at("%s", name)
+	w.text("\n    app.kubernetes.io/instance: ")
+	w.at("%s", name)
+	w.text("\n    app.kubernetes.io/managed-by: caf\n")
+	w.text("  {{- if .Values.ingress.clusterIssuer }}\n")
+	w.text("  annotations:\n")
+	w.text("    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}\n")
+	w.text("  {{- end }}\n")
+	w.text("\n")
+	w.text("spec:\n")
+	w.text("  ingressClassName: {{ .Values.ingress.className }}\n")
+	w.text("  {{- if and .Values.ingress.tls .Values.ingress.clusterIssuer }}\n")
+	w.text("  tls:\n")
+	w.text("    - hosts:\n")
+	w.text("        - {{ .Values.ingress.host }}\n")
+	w.text("      secretName: ")
+	w.at("%s", name)
+	w.text("-tls\n")
+	w.text("  {{- end }}\n")
+	w.text("  rules:\n")
+	w.text("    - host: {{ .Values.ingress.host }}\n")
+	w.text("      http:\n")
+	w.text("        paths:\n")
+	w.text("          - path: {{ .Values.ingress.path }}\n")
+	w.text("            pathType: {{ .Values.ingress.pathType }}\n")
+	w.text("            backend:\n")
+	w.text("              service:\n")
+	w.text("                name: ")
+	w.at("%s", name)
+	w.text("\n")
+	w.text("                port:\n")
+	w.text("                  number: {{ .Values.service.port }}\n")
+	w.text("{{- end }}\n")
+
+	return w.bytes()
+}
+
 // renderApplication writes the ArgoCD Application: the pull-only loop.
 func renderApplication(manifest contract.Manifest) []byte {
 	name := manifest.ServiceName()
@@ -497,6 +614,24 @@ func renderChartReadme(manifest contract.Manifest) []byte {
 	w.text("\n")
 	w.text("Rotate a value by replacing the secret and restarting the pods — not\n")
 	w.text("by editing a generated file.\n")
+	w.text("\n")
+	w.text("## Reaching the service\n")
+	w.text("\n")
+	w.text("The chart installs no Ingress until a values commit says so:\n")
+	w.text("`ingress.enabled` is `false`, and with it false `helm template` emits\n")
+	w.text("no Ingress at all — a chart that suddenly routes traffic is a\n")
+	w.text("defect. The services the fleet exposes (gateway, parlor) turn it\n")
+	w.text("on in their values commit:\n")
+	w.text("\n")
+	w.text("    ingress:\n")
+	w.text("      enabled: true\n")
+	w.text("      host: gateway.example.com\n")
+	w.text("\n")
+	w.text("`className` is traefik, k3s's default (DEPLOYMENT.md:28). Set\n")
+	w.text("`clusterIssuer` to a cert-manager ClusterIssuer — created once per\n")
+	w.text("cluster by the substrate, not by the chart — and `tls: true` writes\n")
+	w.text("the `spec.tls` block and cert-manager provisions the certificate.\n")
+	w.text("Without an issuer there is no TLS: a secret nothing writes.\n")
 	w.text("\n")
 	w.text("## Readiness\n")
 	w.text("\n")

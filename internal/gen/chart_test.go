@@ -683,8 +683,8 @@ func TestTheIngressRendersFromValues(t *testing.T) {
 			t.Errorf("metadata.name = %q, want the service's name", doc.Metadata.Name)
 		}
 		for key, want := range map[string]string{
-			"app.kubernetes.io/name":         "courier",
-			"app.kubernetes.io/instance":     "courier",
+			"app.kubernetes.io/name":       "courier",
+			"app.kubernetes.io/instance":   "courier",
 			"app.kubernetes.io/managed-by": "caf",
 		} {
 			if got := doc.Metadata.Labels[key]; got != want {
@@ -742,9 +742,18 @@ func TestTheIngressRendersFromValues(t *testing.T) {
 		if err != nil {
 			t.Fatalf("the disabled render failed: %v", err)
 		}
-		if strings.TrimSpace(rendered) != "" {
-			t.Errorf("ingress.enabled is false and the render emitted a document — a chart that\n"+
-				"suddenly routes traffic is a defect:\n%s", rendered)
+
+		// "Nothing" means no Ingress DOCUMENT. The header comment is static
+		// text outside the gate and is always emitted; what the gate emits
+		// is nothing, so every non-empty line left is a comment and there is
+		// no document to unmarshal.
+		for _, line := range strings.Split(rendered, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+				t.Errorf("ingress.enabled is false and the render emitted more than the header comment —\n"+
+					"a chart that suddenly routes traffic is a defect:\n%s", rendered)
+				break
+			}
 		}
 	})
 
