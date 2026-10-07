@@ -48,6 +48,12 @@ type Request struct {
 	DryRun bool
 	// Timeout bounds each command. Zero means DefaultTimeout.
 	Timeout time.Duration
+	// Engine is the backup engine the caller selected with --engine: EngineKamal
+	// (the default) or EngineCNPG. It decides which parts of the cycle are
+	// Kamal's and which are the engine's — the configuration read, the contract
+	// check and the reports — because the CNPG substrate has no Kamal config to
+	// read and no two-file contract to check.
+	Engine string
 }
 
 // Run performs one backup cycle, or resolves one, and reports what it did.
@@ -68,6 +74,15 @@ type Request struct {
 // strings, because both are several sentences about a mechanism and an operator
 // who sees only the first line of either does not know what to do about it.
 func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) error {
+	// The engine is the runner's, and the branch is on the engine the caller
+	// selected: the CNPG substrate has no Kamal config to read and no two-file
+	// contract to check, so the parts of the cycle that are Kamal's are
+	// skipped rather than faked. The Kamal path below is byte-identical to what
+	// it was before the second engine existed — its tests are the proof.
+	if req.Engine == EngineCNPG {
+		return runCNPGCycle(ctx, r, req, stdout, stderr)
+	}
+
 	dir := req.Dir
 	if dir == "" {
 		dir = "."
@@ -151,6 +166,9 @@ func preflight(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (stri
 	}
 	version := strings.TrimSpace(out.String())
 	if version == "" {
+		if plan.Engine == EngineCNPG {
+			return "", fmt.Errorf("kubectl cnpg printed no version; run `kubectl cnpg version` yourself to see what happened")
+		}
 		return "", fmt.Errorf("kamal printed no version; run `kamal version` yourself to see what happened")
 	}
 	return version, nil

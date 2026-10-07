@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"fmt"
 	"io"
 )
 
@@ -19,14 +20,25 @@ const (
 	EngineCNPG = "cnpg"
 )
 
-// RunnerFor returns the runner for an engine name. An unknown name answers the
-// Kamal runner, because the default has to be the engine the fleet runs and a
-// typo in --engine is not a reason to run a drill against the wrong substrate.
-func RunnerFor(engine string) Runner {
-	if engine == EngineCNPG {
-		return NewCNPGRunner()
+// RunnerFor returns the runner for an engine name. The empty name is the
+// default, which is Kamal because the fleet runs Kamal today — DEPLOYMENT.md:
+// "Kamal and kit/templates/kamal retire at parity, not before."
+//
+// An unknown name is an error and not a default: a typo in --engine is the
+// operator invoking caf wrongly, and the wrong answer to it is a drill run
+// against the wrong substrate — which is the one outcome a backup command
+// must never produce by accident. The error wraps ErrUsage so the caller
+// exits 2, the same as any other bad flag.
+func RunnerFor(engine string) (Runner, error) {
+	switch engine {
+	case "", EngineKamal:
+		return NewKamalRunner(), nil
+	case EngineCNPG:
+		return NewCNPGRunner(), nil
+	default:
+		return nil, fmt.Errorf("%w: --engine must be %q (the default) or %q, not %q",
+			ErrUsage, EngineKamal, EngineCNPG, engine)
 	}
-	return NewKamalRunner()
 }
 
 // Runner is the backup engine for one service: it owns which commands run, in

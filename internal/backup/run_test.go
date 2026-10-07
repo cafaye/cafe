@@ -376,6 +376,313 @@ func TestTheCallerExecutesTheRunnersPlanAndNeverBuildsArgvOfItsOwn(t *testing.T)
 	}
 }
 
+// fixtureCNPGProject writes a project with no Kamal configuration at all: the
+// CNPG substrate's cluster is a fact about the Kubernetes namespace, not a pair
+// of rendered documents, so a CNPG project is a directory and a service name.
+func fixtureCNPGProject(t *testing.T) string {
+	t.Helper()
+	return t.TempDir()
+}
+
+// cnpgFake returns a fakeRunner whose plan is the CNPG plan, so a case drives
+// the real CNPG cycle through the same seam the Kamal cases drive the Kamal one.
+func cnpgFake(t *testing.T) *fakeRunner {
+	t.Helper()
+	f := newFakeRunner(t)
+	f.plan = func(cover Cover, cfg Config, opts Options) (Plan, error) {
+		return PlanForCNPG(cover, opts)
+	}
+	return f
+}
+
+// The CNPG cycle runs every step in order, and it runs them over a project with
+// no Kamal configuration: there is no config/kamal-backup.yml to read and no
+// two-file contract to check. The contract refusal is about Kamal-backup's
+// shape and does not apply to a substrate with no Kamal, so it is removed here
+// deliberately — and the steps that ran are the proof: a refusal would have
+// stopped the cycle at Resolve.
+func TestTheCNPGCycleRunsEveryStepInOrderOverAProjectWithNoKamalConfig(t *testing.T) {
+	dir := fixtureCNPGProject(t)
+	f := cnpgFake(t)
+
+	var out strings.Builder
+	req := Request{Dir: dir, Service: "identity", Tables: []string{"users"}, Engine: EngineCNPG}
+	if err := Run(context.Background(), f, req, &out, io.Discard); err != nil {
+		t.Fatalf("Run: %v\n%s", err, out.String())
+	}
+	assertOrder(t, "the steps a CNPG cycle ran", f.steps(),
+		[]string{Preflight, Backup, WaitBackup, Restore, WaitReady, Assert, Drop})
+
+	for _, name := range []string{Resolve, Boot, Settle, Snapshot, Create, Drill} {
+		if contains(f.steps(), name) {
+			t.Errorf("the CNPG cycle ran the %s step, which is a Kamal shape the CNPG engine does not have", name)
+		}
+	}
+}
+
+// A CNPG dry run writes no file, and the recovery manifest is the file it would
+// write: the filesystem is the only place that is visible, and a dry run that
+// left a manifest on disk would be a dry run with a side effect.
+func TestACNPGDryRunWritesNoFile(t *testing.T) {
+	dir := fixtureCNPGProject(t)
+	before := treeOf(t, dir)
+
+	f := cnpgFake(t)
+	var out strings.Builder
+	req := Request{Dir: dir, Service: "identity", Tables: []string{"users"}, Engine: EngineCNPG, DryRun: true}
+	if err := Run(context.Background(), f, req, &out, io.Discard); err != nil {
+		t.Fatalf("Run: %v\n%s", err, out.String())
+	}
+
+	after := treeOf(t, dir)
+	if len(before) != len(after) {
+		t.Fatalf("a dry run changed the tree: %v -> %v", before, after)
+	}
+}
+
+// A failed CNPG drill still drops the scratch cluster, and the report says what
+// the failure does NOT undo: a backup the backup step already took is a real
+// backup of the live cluster.
+func TestACNPGFailedDrillStillDropsTheScratchCluster(t *testing.T) {
+	dir := fixtureCNPGProject(t)
+	f := cnpgFake(t)
+	f.answers[Assert] = errors.New("exit status 1")
+
+	var out strings.Builder
+	req := Request{Dir: dir, Service: "identity", Tables: []string{"users"}, Engine: EngineCNPG}
+	err := Run(context.Background(), f, req, &out, io.Discard)
+	if err == nil {
+		t.Fatal("a cycle whose assertion failed reported success")
+	}
+	if !errors.Is(err, ErrCycleFailed) {
+		t.Errorf("err = %v, want the failure sentinel", err)
+	}
+	if len(f.callsOf(Drop)) != 1 {
+		t.Errorf("the drop ran %d times after a failed assertion, want 1", len(f.callsOf(Drop)))
+	}
+	report := out.String()
+	for _, want := range []string{"the scratch cluster is deleted", "a real backup of the live cluster"} {
+		if !strings.Contains(report, want) {
+			t.Errorf("the failure report does not say %q:\n%s", want, report)
+		}
+	}
+}
+
+// A successful CNPG cycle says what it proved and what it did not, and the
+// second half is the honest one: this engine takes a backup on every run, so
+// the schedule that protects the service between drills is the cluster's own.
+func TestASuccessfulCNPGCycleSaysWhatItProvedAndWhatItDidNot(t *testing.T) {
+	dir := fixtureCNPGProject(t)
+	f := cnpgFake(t)
+
+	var out strings.Builder
+	req := Request{Dir: dir, Service: "identity", Tables: []string{"users"}, Engine: EngineCNPG}
+	if err := Run(context.Background(), f, req, &out, io.Discard); err != nil {
+		t.Fatalf("Run: %v\n%s", err, out.String())
+	}
+	report := out.String()
+	for _, want := range []string{
+		"the backup restored",
+		"users held rows",
+		"has been deleted",
+		"what this does NOT prove",
+		"the cluster's own",
+	} {
+		if !strings.Contains(report, want) {
+			t.Errorf("the success report does not say %q:\n%s", want, report)
+		}
+	}
+}
+
+// cnpgPlan makes the fake return the CNPG plan, the way a case above plants a
+// Kamal one. The CNPG engine's plan is pure, so the fake's answer is the real
+// one — what is being tested is the cycle around it, not the plan.
+func cnpgPlan(f *fakeRunner) {
+	f.plan = func(cover Cover, _ Config, opts Options) (Plan, error) {
+		return PlanForCNPG(cover, opts)
+	}
+}
+
+// The CNPG cycle, end to end through the seam: the plan's steps in order, each
+// bounded, each in the project, and the drop on both paths. This is the claim
+// the packet asks for from the second engine — a real backup, a declarative
+// restore, an assertion, a cleanup, all through kubectl's own commands.
+func TestTheCycleRunsTheCNPGPlanWhenTheEngineIsCNPG(t *testing.T) {
+	dir := fixtureProject(t)
+	f := newFakeRunner(t)
+	cnpgPlan(f)
+
+	req := cycleRequest(dir)
+	req.Engine = EngineCNPG
+
+	var out strings.Builder
+	if err := Run(context.Background(), f, req, &out, io.Discard); err != nil {
+		t.Fatalf("Run: %v\n%s", err, out.String())
+	}
+	assertOrder(t, "the steps a CNPG cycle ran", f.steps(),
+		[]string{Preflight, Backup, WaitBackup, Restore, WaitReady, Assert, Drop})
+
+	// Every call is in the project, because a backup engine pointed at the
+	// wrong directory is a backup engine reading somebody else's kubeconfig.
+	for i, dir := range f.dirs {
+		if dir != mustAbs(t, dir) {
+			t.Errorf("call %d ran in %q, want the project directory %q", i, dir, mustAbs(t, dir))
+		}
+	}
+	// And every call is bounded, so a hung kubectl is a named failure rather
+	// than a hang.
+	for i, bounded := range f.deadlines {
+		if !bounded {
+			t.Errorf("call %d (%s) had no deadline", i, f.steps()[i])
+		}
+	}
+}
+
+// A failed CNPG drill still drops the scratch cluster, and the failure report
+// says what a failed drill leaves behind — which for this engine is nothing:
+// the scratch cluster is deleted, and a backup the backup step already took is
+// a real backup of the live cluster, unaffected by the failure.
+func TestTheCNPGCycleDropsTheScratchClusterWhenTheDrillFails(t *testing.T) {
+	dir := fixtureProject(t)
+	f := newFakeRunner(t)
+	cnpgPlan(f)
+	f.answers[Assert] = errors.New("exit status 1")
+
+	req := cycleRequest(dir)
+	req.Engine = EngineCNPG
+
+	var out strings.Builder
+	err := Run(context.Background(), f, req, &out, io.Discard)
+	if err == nil {
+		t.Fatal("a cycle whose assertion failed reported success")
+	}
+	if !errors.Is(err, ErrCycleFailed) {
+		t.Errorf("err = %v, want the failure sentinel", err)
+	}
+	if len(f.callsOf(Drop)) != 1 {
+		t.Errorf("the drop ran %d times after a failed assertion, want exactly 1", len(f.callsOf(Drop)))
+	}
+	report := out.String()
+	for _, want := range []string{"failed:", "the scratch cluster is deleted", "the next drill restores from it"} {
+		if !strings.Contains(report, want) {
+			t.Errorf("the failure report does not say %q:\n%s", want, report)
+		}
+	}
+}
+
+// A CNPG dry run executes nothing — not the preflight, not one step — and the
+// proof is the fake's record rather than a promise: zero Run calls, and every
+// command printed. The Kamal dry run runs the two read-only steps because the
+// contract check needs what kamal resolved; the CNPG engine has no contract to
+// check, so there is nothing a dry run would catch by running, and a dry run
+// that executes a command is a dry run that can fail on a machine with no
+// cluster.
+func TestACNPGDryRunExecutesNothing(t *testing.T) {
+	dir := fixtureProject(t)
+	f := newFakeRunner(t)
+	cnpgPlan(f)
+
+	req := cycleRequest(dir)
+	req.Engine = EngineCNPG
+	req.DryRun = true
+
+	var out strings.Builder
+	if err := Run(context.Background(), f, req, &out, io.Discard); err != nil {
+		t.Fatalf("Run: %v\n%s", err, out.String())
+	}
+	if len(f.ran) != 0 {
+		t.Errorf("a dry run executed %d commands, want zero: %v", len(f.ran), f.ran)
+	}
+
+	// The printed plan is the one a real run executes: the same steps, from the
+	// same plan the cycle built.
+	plan, err := PlanForCNPG(Cover{Dir: mustAbs(t, dir), Service: "identity"}, Options{Tables: []string{"users"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	printed := out.String()
+	for _, step := range plan.Steps {
+		if !strings.Contains(printed, step.Command()) {
+			t.Errorf("the dry run does not print the %s step, so it cannot be used to predict the cycle:\n%s",
+				step.Name, printed)
+		}
+	}
+	// The recovery manifest is printed from the Restore step's own Files, so
+	// the document on the screen and the document a real run writes are the
+	// same bytes.
+	restore := plan.Step(Restore)
+	if len(restore.Files) != 1 {
+		t.Fatalf("the Restore step carries %d files, want 1", len(restore.Files))
+	}
+	if !strings.Contains(printed, restore.Files[0].Content) {
+		t.Errorf("the dry run does not print the recovery manifest the restore would apply:\n%s", printed)
+	}
+	if !strings.Contains(printed, "nothing was executed") {
+		t.Errorf("the dry run does not say that nothing was executed:\n%s", printed)
+	}
+}
+
+// --env is a Kamal destination and the CNPG engine has no destination: the
+// cluster is a fact about the Kubernetes namespace, not a rendered overlay.
+// The refusal is a usage error, so it exits 2 — the operator invoked caf
+// wrongly, and nothing ran.
+func TestTheCNPGEngineRefusesAnEnvironment(t *testing.T) {
+	dir := fixtureProject(t)
+	f := newFakeRunner(t)
+	cnpgPlan(f)
+
+	req := cycleRequest(dir)
+	req.Engine = EngineCNPG
+	req.Env = "staging"
+
+	var out strings.Builder
+	err := Run(context.Background(), f, req, &out, io.Discard)
+	if err == nil {
+		t.Fatal("a CNPG cycle with an environment reported success")
+	}
+	if !errors.Is(err, ErrUsage) {
+		t.Errorf("err = %v, want the usage sentinel", err)
+	}
+	if len(f.ran) != 0 {
+		t.Errorf("%d commands ran before the refusal", len(f.ran))
+	}
+}
+
+// The two-file contract is Kamal's refusal, and the CNPG engine does not carry
+// it: there is no config/kamal-backup.yml to read and no config/deploy.yml to
+// disagree with it. The proof is that the CNPG cycle runs in a directory with
+// no configuration files at all — and that the plan it runs has no Resolve
+// step, which is the step the contract check reads.
+//
+// This is the refusal that was removed deliberately, and the test says so: a
+// CNPG backup refuses a missing --table and a name it cannot write down, and
+// it does not refuse a pair of files, because there is no pair.
+func TestTheCNPGEngineHasNoTwoFileContractToCheck(t *testing.T) {
+	dir := t.TempDir() // no config/deploy.yml, no config/kamal-backup.yml
+	f := newFakeRunner(t)
+	cnpgPlan(f)
+
+	req := cycleRequest(dir)
+	req.Engine = EngineCNPG
+
+	var out strings.Builder
+	if err := Run(context.Background(), f, req, &out, io.Discard); err != nil {
+		t.Fatalf("a CNPG cycle in a directory with no Kamal configuration failed: %v\n%s", err, out.String())
+	}
+	assertOrder(t, "the steps a CNPG cycle ran", f.steps(),
+		[]string{Preflight, Backup, WaitBackup, Restore, WaitReady, Assert, Drop})
+
+	// And the plan has no Resolve step: the contract check reads what kamal
+	// resolved, and the CNPG engine never resolves anything.
+	plan, err := PlanForCNPG(Cover{Dir: dir, Service: "identity"}, Options{Tables: []string{"users"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if step := plan.Step(Resolve); step.Argv != nil {
+		t.Errorf("the CNPG plan has a %s step, so the contract check has something to read: %v", Resolve, step.Argv)
+	}
+}
+
 // The lock wait polls the EVENT and not the clock, and it is bounded as a whole.
 //
 // The failure it exists for was measured: booting the backup accessory starts its

@@ -31,12 +31,19 @@ type backupRunner struct {
 	dirs  []string
 	out   string
 	fails map[string]error
+	// plan, when set, is what Plan returns instead of the real Kamal plan. The
+	// engine-selection cases need the CNPG plan, and a fake plan here would
+	// make them tests of the fake.
+	plan func(backup.Cover, backup.Config, backup.Options) (backup.Plan, error)
 }
 
-// Plan is the real Kamal plan: the command layer is not the place to prove what
-// the plan is, and a fake plan here would make every case below a test of the
-// fake.
+// Plan is the real Kamal plan unless a case planted another one: the command
+// layer is not the place to prove what the plan is, and a fake plan here would
+// make every case below a test of the fake.
 func (r *backupRunner) Plan(cover backup.Cover, cfg backup.Config, opts backup.Options) (backup.Plan, error) {
+	if r.plan != nil {
+		return r.plan(cover, cfg, opts)
+	}
 	return backup.PlanFor(cover, cfg, opts)
 }
 
@@ -210,6 +217,46 @@ func TestADryRunNeverAsks(t *testing.T) {
 	}
 }
 
+// The --engine flag selects the CNPG engine, and the selection is the whole
+// claim: the dry run prints the kubectl cnpg commands and executes nothing, on
+// a machine with no cluster and no kubectl anywhere in sight. No runner is
+// injected, so the real wiring — RunnerFor — is what the flag drives.
+func TestTheEngineFlagSelectsTheCNPGEngine(t *testing.T) {
+	dir := project(t)
+	c := newBackupCommand(backupDeps{})
+	t.Chdir(dir)
+	var out bytes.Buffer
+	err := c.Execute(&Env{Stdout: &out, Stderr: &out},
+		[]string{"--engine", "cnpg", "--table", "users", "--dry-run", "identity"})
+	if err != nil {
+		t.Fatalf("a CNPG dry run failed: %v\n%s", err, out.String())
+	}
+	for _, want := range []string{
+		"kubectl cnpg version",
+		"kubectl cnpg backup identity",
+		"kubectl apply -f",
+		"kubectl delete cluster identity_drill",
+		"apiVersion: postgresql.cnpg.io/v1",
+		"nothing was executed",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("the dry run does not print %q:\n%s", want, out.String())
+		}
+	}
+}
+
+// An unknown engine is a usage error with exit 2, not a silent default: a typo
+// in --engine is the operator invoking caf wrongly, and the wrong answer to it
+// is a drill run against the wrong substrate.
+func TestAnUnknownEngineIsAUsageError(t *testing.T) {
+	dir := project(t)
+	// No injected runner, so the real RunnerFor is what validates the flag.
+	_, _, err := runBackup(t, dir, backupDeps{}, "--engine", "cnpq", "--table", "users", "identity")
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("err = %v, want errUsage (exit 2)", err)
+	}
+}
+
 // Without --yes it asks once, and the prompt says what it is about — the service,
 // the scratch database and the tables, because a prompt that does not is a prompt
 // people approve without reading and the thing being approved creates a database
@@ -355,6 +402,58 @@ func TestAnEmptyTableValueIsAUsageError(t *testing.T) {
 	_, _, err := runBackup(t, dir, backupDeps{runner: runner}, "--table", "  ", "identity")
 	if !errors.Is(err, errUsage) {
 		t.Fatalf("err = %v, want errUsage", err)
+	}
+}
+
+// --engine cnpg selects the CNPG engine: the dry run prints the kubectl cnpg
+// commands and executes nothing, because a CNPG dry run runs no command at all
+// — there is no contract to check and no preflight a dry run would catch by
+// running. The fake's plan is the real CNPG plan, so what is printed is the
+// plan a real run would execute.
+func TestACNPGDryRunThroughTheCommandExecutesNothing(t *testing.T) {
+	dir := project(t)
+	runner := &backupRunner{
+		plan: func(cover backup.Cover, _ backup.Config, opts backup.Options) (backup.Plan, error) {
+			return backup.PlanForCNPG(cover, opts)
+		},
+	}
+
+	stdout, _, err := runBackup(t, dir, backupDeps{runner: runner},
+		"--engine", "cnpg", "--table", "users", "--dry-run", "identity")
+	if err != nil {
+		t.Fatalf("a dry run failed: %v\n%s", err, stdout)
+	}
+	if len(runner.ran) != 0 {
+		t.Errorf("a CNPG dry run executed %d commands, want zero: %v", len(runner.ran), runner.ran)
+	}
+	for _, want := range []string{
+		"kubectl cnpg version",
+		"kubectl cnpg backup identity",
+		"kubectl wait --for=jsonpath={.status.phase}=completed backup/identity-drill",
+		"kubectl apply -f",
+		"kubectl cnpg psql identity_drill",
+		"kubectl delete cluster identity_drill",
+		"nothing was executed",
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("the dry run does not print %q:\n%s", want, stdout)
+		}
+	}
+}
+
+// An unknown --engine is a usage error and not a default: a typo is not a
+// reason to run a drill against the wrong substrate, and the wrong answer to
+// it is the one outcome a backup command must never produce by accident.
+func TestAnUnknownEngineIsAUsageErrorAndRunsNothing(t *testing.T) {
+	dir := project(t)
+	runner := &backupRunner{out: fixtureResolved(t)}
+
+	_, _, err := runBackup(t, dir, backupDeps{runner: runner}, "--engine", "bogus", "--table", "users", "identity")
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("err = %v, want errUsage (exit 2)", err)
+	}
+	if len(runner.ran) != 0 {
+		t.Errorf("%d commands ran before the usage error", len(runner.ran))
 	}
 }
 

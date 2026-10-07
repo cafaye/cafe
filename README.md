@@ -674,6 +674,38 @@ file's header before running it on a machine that is not yours**: it starts an S
 daemon, publishes a port, boots two containers against the host's Docker socket, and
 creates and drops a database.
 
+### `--engine cnpg` — the launch substrate's engine
+
+The fleet runs Kamal today, so `kamal` is the default. The launch substrate has no
+Kamal, so there is a second engine, selected by `--engine`:
+
+```sh
+caf backup <service> --engine cnpg --table <table> [--scratch <cluster>] --yes
+```
+
+`kubectl cnpg` is the tool, and the engine owns its argv. The backup is a CloudNativePG
+`Backup` object (`kubectl cnpg backup <service>`), and the restore is **declarative**:
+`kubectl cnpg` has no `restore` subcommand, so the restore renders a recovery `Cluster`
+whose `spec.bootstrap.recovery.backup.name` points at the `Backup`, and applies it with
+`kubectl apply`. The drill waits with blocking `kubectl wait` commands on the resource
+phases, asserts with `kubectl cnpg psql` (one query that divides by zero if any named
+table is empty), and drops the scratch cluster on every path.
+
+The CNPG engine reads no `config/kamal-backup.yml` and checks no two-file contract —
+the cluster is a fact about the Kubernetes namespace, not a pair of rendered documents.
+So the two-file contract refusal is **gone** on this engine, deliberately: there is no
+pair of files to disagree. The refusals that survive are the ones about the drill rather
+than about Kamal: a restore with no `--table` to assert, and a scratch cluster name that
+is not a plain identifier. `--env` is refused, because it is a Kamal destination and the
+CNPG engine has no destination.
+
+`--dry-run --engine cnpg` prints every `kubectl cnpg` command it would run, the recovery
+manifest the restore would apply, and executes nothing — not even the preflight. That is
+the proof this machine can produce, and it needs no cluster.
+
+Kamal and `kit/templates/kamal` retire at parity, not before — the Kamal path is the
+default and is unchanged.
+
 ## `caf doctor`
 
 `caf doctor` answers three questions. The first is unchanged; the second is why

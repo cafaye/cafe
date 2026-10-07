@@ -193,21 +193,12 @@ type Plan struct {
 	// Timeout is the budget each command gets.
 	Timeout time.Duration
 	// Engine names the backup engine that built this plan: "kamal" or "cnpg".
-	// The caller branches on it for the report and for the parts of the cycle
-	// that are not steps — the header, the dry run's prose and the two
-	// after-the-fact reports — because the two engines share the orchestration
-	// but neither the commands nor the sentences about them.
+	// The two engines share the orchestration but neither the commands nor the
+	// sentences about them, so every part of the cycle that is not a step —
+	// the header, the dry run's prose, the two after-the-fact reports — is
+	// written twice, once per engine, and this is how a reader (and a test)
+	// tells which one a plan belongs to.
 	Engine string
-	// RecoveryManifest is the rendered recovery Cluster manifest the Restore step
-	// applies, and it is the CNPG shape of the restore: a declarative Cluster
-	// whose spec.bootstrap.recovery.backup.name points at the Backup. Empty for
-	// the Kamal engine, which restores through the gem rather than a document.
-	RecoveryManifest string
-	// RecoveryPath is where the recovery manifest is written before the Restore
-	// step applies it. It lives in the project's config directory, beside the
-	// two files the Kamal contract is made of, so a rendered artifact is never
-	// far from the configuration it was rendered from.
-	RecoveryPath string
 	// Steps are ordered, and the caller finds them by name.
 	Steps []Step
 }
@@ -426,17 +417,15 @@ func PlanForCNPG(cover Cover, o Options) (Plan, error) {
 	recoveryPath := filepath.Join(cover.Dir, "config", "cnpg-recovery-"+scratch+".yaml")
 
 	return Plan{
-		Service:   cover.Service,
-		Env:       o.Env,
-		Dir:       cover.Dir,
-		Config:    cover.Config,
-		Overlay:   cover.Overlay,
-		Scratch:   scratch,
-		Tables:    append([]string{}, o.Tables...),
-		Timeout:   timeout,
-		Engine:    "cnpg",
-		RecoveryManifest: renderRecoveryManifest(scratch, backupName),
-		RecoveryPath:     recoveryPath,
+		Service: cover.Service,
+		Env:     o.Env,
+		Dir:     cover.Dir,
+		Config:  cover.Config,
+		Overlay: cover.Overlay,
+		Scratch: scratch,
+		Tables:  append([]string{}, o.Tables...),
+		Timeout: timeout,
+		Engine:  "cnpg",
 		Steps: []Step{
 			{
 				Name: Preflight,
@@ -469,7 +458,16 @@ func PlanForCNPG(cover Cover, o Options) (Plan, error) {
 				Name: Restore,
 				Argv: []string{"kubectl", "apply", "-f", recoveryPath},
 				Why:  "applies the rendered recovery Cluster, which bootstraps " + scratch + " from the " + backupName + " backup — the restore, declaratively",
-				On:   Always,
+				// The manifest is a fact about the step, carried on it rather than
+				// stashed on the runner: the runner is handed a Step, not a Plan,
+				// and a file the step writes is part of what the step is. A dry run
+				// prints it from here too, so the printed document and the applied
+				// one are the same bytes.
+				Files: []File{{
+					Path:    recoveryPath,
+					Content: renderRecoveryManifest(scratch, backupName),
+				}},
+				On: Always,
 			},
 			{
 				Name: WaitReady,
@@ -487,8 +485,8 @@ func PlanForCNPG(cover Cover, o Options) (Plan, error) {
 				// passing one.
 				Argv: []string{"kubectl", "cnpg", "psql", scratch, "--",
 					"-v", "ON_ERROR_STOP=1", "-c", cnpgCheck(o.Tables)},
-				Why:  "runs the check whose exit status is the drill's verdict: every named table must hold rows in " + scratch + " after the restore",
-				On:   Always,
+				Why: "runs the check whose exit status is the drill's verdict: every named table must hold rows in " + scratch + " after the restore",
+				On:  Always,
 			},
 			{
 				Name: Drop,
