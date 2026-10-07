@@ -63,10 +63,12 @@ func telemetry(manifest contract.Manifest, spec contract.TelemetrySpec) (Output,
 		// A `spec`-language repository holds specifications and runs nothing, so
 		// there is no process to export from and no resource to attach. Emitting
 		// a setup into it would be emitting code nobody compiles.
-		return refuses("telemetry", manifest)
+		return refuses("telemetry", manifest, "a specification repository runs nothing, so there is no process to export from")
 	}
 	if !slicesContains(supportedLanguages("telemetry"), language) {
-		return refuses("telemetry", manifest)
+		return refuses("telemetry", manifest,
+			"the other languages' OpenTelemetry templates are in kit at templates/otel/, and emitting a second "+
+				"copy of them here is how two generators of one file start disagreeing")
 	}
 
 	variable, err := endpointVariable(manifest.ServiceName(), spec)

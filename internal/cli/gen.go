@@ -179,7 +179,7 @@ func runGenTelemetry(opts *genOptions, env *Env) error {
 		return fmt.Errorf("caf gen telemetry: read the vendored telemetry contract: %w", err)
 	}
 
-	out, err := gen.Generate("telemetry", project.Manifest, spec)
+	out, err := gen.Generate("telemetry", project.Manifest, gen.TargetOptions{Spec: spec})
 	if err != nil {
 		// A refusal from the generator is already a sentence aimed at the person
 		// who typed the command, so it is passed through rather than rewrapped
