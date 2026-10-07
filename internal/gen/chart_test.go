@@ -1,12 +1,15 @@
 package gen
 
 import (
+	"bytes"
 	"errors"
 	"strconv"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/cafaye/caf/internal/dev"
+	"github.com/goccy/go-yaml"
 )
 
 // Tests for `caf gen chart`.
@@ -18,10 +21,13 @@ import (
 // the substrate depends on — the readiness path, the secret-by-reference
 // rule, the never-`latest` tag — and asserts the bytes that carry it.
 //
-// The render proof itself is not here: `helm template` and
-// `kubectl apply --dry-run=client` need binaries no test may start, and the
-// packet's report carries their output. What is here is everything that can be
-// asserted about the chart's content without leaving the process.
+// The render proof is in-process rather than absent, and that is a change of
+// means rather than a weakening. The template is Go's text/template and the
+// values are YAML, so `TestTheIngressRendersFromValues` executes the
+// generated ingress.yaml against the chart's own values.yaml and unmarshals
+// the result — no binary, on every gate. What it cannot prove is that helm
+// agrees: `helm template` and `helm lint` stay in the packet's report, and
+// the in-process render is the half that runs everywhere.
 
 // chartManifest is a minimal cafaye.yml with an HTTP surface, which is the
 // kind of project `caf gen chart` generates for.
@@ -78,7 +84,7 @@ func findChartFile(t *testing.T, out Output, path string) File {
 	return File{}
 }
 
-// The six files, every time. A generator that emits a seventh is not refused
+// The seven files, every time. A generator that emits an eighth is not refused
 // here — that is a review decision — but a generator that emits a DIFFERENT SET
 // between two runs over one manifest is, and so is one whose order drifts.
 func TestTheChartFileSetIsStableAndSorted(t *testing.T) {
@@ -90,6 +96,7 @@ func TestTheChartFileSetIsStableAndSorted(t *testing.T) {
 		"chart/README.md",
 		"chart/templates/application.yaml",
 		"chart/templates/deployment.yaml",
+		"chart/templates/ingress.yaml",
 		"chart/templates/service.yaml",
 		"chart/values.yaml",
 	}
@@ -502,4 +509,261 @@ func TestTheChartTargetIsDiscoveredNotListed(t *testing.T) {
 		t.Errorf("TargetNames() = %v, want chart among them — a target nobody can discover is a "+
 			"target nobody runs, and a generated file nothing pins is a file that rots", names)
 	}
+}
+
+// The ingress block is present, commented, and OFF by default.
+//
+// Off is the load-bearing word. The substrate's first sync happens before any
+// operator has set a host, and a chart that suddenly routes traffic is a
+// defect — so the default is a chart that renders an Ingress document of
+// nothing, and the services the fleet exposes (gateway, parlor) turn the
+// knob in their values commit.
+//
+// The comment is asserted too, and not as decoration: a knob nobody can
+// discover is a knob the next person has to rediscover, which is the rule
+// the chart's own README exists for, applied to values.yaml. The two facts
+// the comment has to carry are the citation (DEPLOYMENT.md:28 — the edge is
+// Traefik and cert-manager because that document says so) and the division
+// of labour: the ClusterIssuer is cluster-scoped, created once per cluster
+// by the substrate, and the chart only NAMES it.
+func TestTheIngressValuesBlockIsOffByDefault(t *testing.T) {
+	out := generateChart(t, chartManifest, nil)
+	values := string(findChartFile(t, out, chartValuesPath).Content)
+
+	for _, want := range []string{
+		"ingress:",
+		"enabled: false",
+		"className: traefik",
+		`host: ""`,
+		`clusterIssuer: ""`,
+		"tls: true",
+		"path: /",
+		"pathType: Prefix",
+	} {
+		if !strings.Contains(values, want) {
+			t.Errorf("values.yaml does not carry %q:\n%s", want, values)
+		}
+	}
+
+	for _, want := range []string{
+		"DEPLOYMENT.md:28",
+		"created ONCE PER CLUSTER",
+		"only NAMES",
+	} {
+		if !strings.Contains(values, want) {
+			t.Errorf("values.yaml's ingress comment does not carry %q — the citation and the\n"+
+				"division of labour are the two facts a reader needs:\n%s", want, values)
+		}
+	}
+}
+
+// ingressDocument is the shape the render proof asserts on: the fields the
+// fleet's edge and the substrate's rollout depend on.
+type ingressDocument struct {
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name        string            `yaml:"name"`
+		Labels      map[string]string `yaml:"labels"`
+		Annotations map[string]string `yaml:"annotations"`
+	} `yaml:"metadata"`
+	Spec struct {
+		IngressClassName string `yaml:"ingressClassName"`
+		TLS              []struct {
+			Hosts      []string `yaml:"hosts"`
+			SecretName string   `yaml:"secretName"`
+		} `yaml:"tls"`
+		Rules []struct {
+			Host string `yaml:"host"`
+			HTTP struct {
+				Paths []struct {
+					Path     string `yaml:"path"`
+					PathType string `yaml:"pathType"`
+					Backend  struct {
+						Service struct {
+							Name string `yaml:"name"`
+							Port struct {
+								Number int `yaml:"number"`
+							} `yaml:"port"`
+						} `yaml:"service"`
+					} `yaml:"backend"`
+				} `yaml:"paths"`
+			} `yaml:"http"`
+		} `yaml:"rules"`
+	} `yaml:"spec"`
+}
+
+// chartValues parses the chart's own values.yaml, so a render proof starts
+// from the defaults the generator wrote rather than from a second copy of
+// them written in the test: the values block and the template are proved to
+// agree, and flipping a default in the generator moves the test.
+func chartValues(t *testing.T, out Output) map[string]any {
+	t.Helper()
+
+	values := map[string]any{}
+	if err := yaml.Unmarshal(findChartFile(t, out, chartValuesPath).Content, &values); err != nil {
+		t.Fatalf("the generated values.yaml does not parse: %v", err)
+	}
+	return values
+}
+
+// renderIngressTemplate executes the generated ingress.yaml as a Go
+// text/template against one values set, the way `helm template` would.
+//
+// The one helm-specific function, `fail`, is registered here with the
+// behaviour helm gives it: it stops the render and its message becomes the
+// error `Execute` returns, which is what the no-host guard relies on. Every
+// other function the template uses (`if`, `not`, `and`) is Go's own.
+func renderIngressTemplate(t *testing.T, body string, values map[string]any) (string, error) {
+	t.Helper()
+
+	tmpl, err := template.New("ingress.yaml").Funcs(template.FuncMap{
+		"fail": func(message string) (string, error) { return "", errors.New(message) },
+	}).Parse(body)
+	if err != nil {
+		t.Fatalf("the generated ingress.yaml does not parse as a template: %v", err)
+	}
+
+	var out bytes.Buffer
+	err = tmpl.Execute(&out, map[string]any{"Values": values})
+	return out.String(), err
+}
+
+// The Ingress renders from values, in-process: the three cases the knob has,
+// each asserted on the rendered document rather than on the template's bytes.
+//
+// The header above used to say the render proof was deliberately absent
+// because `helm template` needs a binary no test may start. That reason is
+// real — but it is not the whole of the proof. The template is Go's
+// text/template and the values are YAML, so the RENDER executes here against
+// the chart's own values.yaml, and the result is unmarshalled and asserted
+// field by field. Helm's own output is in the packet's report; this is the
+// half that runs on every gate, and it is a behaviour test of the
+// generator's contract rather than a byte-grep:
+//
+//   - enabled renders the Ingress — the class, the host, the backend service
+//     and port, the cluster-issuer annotation, the tls block;
+//   - disabled renders NOTHING — the whole document is inside the gate, so
+//     an unconfigured chart emits no Ingress at all;
+//   - enabled with no host FAILS the render — an Ingress with no host is a
+//     silent misroute, the class of defect kit's /up healthcheck was.
+func TestTheIngressRendersFromValues(t *testing.T) {
+	out := generateChart(t, chartManifest, nil)
+	body := string(findChartFile(t, out, chartIngressPath).Content)
+
+	t.Run("enabled renders the Ingress", func(t *testing.T) {
+		values := chartValues(t, out)
+		values["ingress"] = map[string]any{
+			"enabled":       true,
+			"className":     "traefik",
+			"host":          "courier.example.com",
+			"clusterIssuer": "letsencrypt-prod",
+			"tls":           true,
+			"path":          "/",
+			"pathType":      "Prefix",
+		}
+
+		rendered, err := renderIngressTemplate(t, body, values)
+		if err != nil {
+			t.Fatalf("the enabled render failed: %v", err)
+		}
+
+		var doc ingressDocument
+		if err := yaml.Unmarshal([]byte(rendered), &doc); err != nil {
+			t.Fatalf("the enabled render is not a YAML document: %v\n%s", err, rendered)
+		}
+
+		if doc.APIVersion != "networking.k8s.io/v1" {
+			t.Errorf("apiVersion = %q, want networking.k8s.io/v1", doc.APIVersion)
+		}
+		if doc.Kind != "Ingress" {
+			t.Errorf("kind = %q, want Ingress", doc.Kind)
+		}
+		if doc.Metadata.Name != "courier" {
+			t.Errorf("metadata.name = %q, want the service's name", doc.Metadata.Name)
+		}
+		for key, want := range map[string]string{
+			"app.kubernetes.io/name":         "courier",
+			"app.kubernetes.io/instance":     "courier",
+			"app.kubernetes.io/managed-by": "caf",
+		} {
+			if got := doc.Metadata.Labels[key]; got != want {
+				t.Errorf("label %s = %q, want %q — the Ingress and the Service must carry the same labels",
+					key, got, want)
+			}
+		}
+		if doc.Spec.IngressClassName != "traefik" {
+			t.Errorf("ingressClassName = %q, want traefik — k3s's default, per DEPLOYMENT.md:28",
+				doc.Spec.IngressClassName)
+		}
+		if got := doc.Metadata.Annotations["cert-manager.io/cluster-issuer"]; got != "letsencrypt-prod" {
+			t.Errorf("the cluster-issuer annotation = %q, want letsencrypt-prod — the chart names the\n"+
+				"issuer and cert-manager serves it", got)
+		}
+		if len(doc.Spec.TLS) != 1 {
+			t.Fatalf("spec.tls has %d entries, want 1 — TLS without an issuer is a secret nothing writes",
+				len(doc.Spec.TLS))
+		}
+		if doc.Spec.TLS[0].SecretName != "courier-tls" {
+			t.Errorf("tls.secretName = %q, want courier-tls", doc.Spec.TLS[0].SecretName)
+		}
+		if len(doc.Spec.TLS[0].Hosts) != 1 || doc.Spec.TLS[0].Hosts[0] != "courier.example.com" {
+			t.Errorf("tls.hosts = %v, want [courier.example.com] — the tls host and the rule host are one fact",
+				doc.Spec.TLS[0].Hosts)
+		}
+		if len(doc.Spec.Rules) != 1 {
+			t.Fatalf("spec.rules has %d entries, want 1", len(doc.Spec.Rules))
+		}
+		rule := doc.Spec.Rules[0]
+		if rule.Host != "courier.example.com" {
+			t.Errorf("rule host = %q, want courier.example.com", rule.Host)
+		}
+		if len(rule.HTTP.Paths) != 1 {
+			t.Fatalf("the rule has %d paths, want 1", len(rule.HTTP.Paths))
+		}
+		path := rule.HTTP.Paths[0]
+		if path.Path != "/" || path.PathType != "Prefix" {
+			t.Errorf("path = %s (%s), want / (Prefix)", path.Path, path.PathType)
+		}
+		if path.Backend.Service.Name != "courier" {
+			t.Errorf("backend service = %q, want the Service's name", path.Backend.Service.Name)
+		}
+		if path.Backend.Service.Port.Number != 80 {
+			t.Errorf("backend port = %d, want 80 — the Service's own port, so the Ingress and the\n"+
+				"Service cannot disagree", path.Backend.Service.Port.Number)
+		}
+	})
+
+	t.Run("disabled renders nothing", func(t *testing.T) {
+		// The chart's own values.yaml, unmodified: enabled is false there.
+		values := chartValues(t, out)
+
+		rendered, err := renderIngressTemplate(t, body, values)
+		if err != nil {
+			t.Fatalf("the disabled render failed: %v", err)
+		}
+		if strings.TrimSpace(rendered) != "" {
+			t.Errorf("ingress.enabled is false and the render emitted a document — a chart that\n"+
+				"suddenly routes traffic is a defect:\n%s", rendered)
+		}
+	})
+
+	t.Run("enabled without a host fails the render", func(t *testing.T) {
+		values := chartValues(t, out)
+		values["ingress"] = map[string]any{
+			"enabled":       true,
+			"className":     "traefik",
+			"host":          "",
+			"clusterIssuer": "",
+			"tls":           true,
+			"path":          "/",
+			"pathType":      "Prefix",
+		}
+
+		_, err := renderIngressTemplate(t, body, values)
+		if err == nil {
+			t.Error("the render succeeded with ingress.enabled true and ingress.host empty — an Ingress\n" +
+				"with no host is a silent misroute, which is the class of defect kit's /up healthcheck was")
+		}
+	})
 }
