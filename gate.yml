@@ -424,7 +424,15 @@ gate:
       # env-gated, so no new test arrived as a new tier. The subtest floor below
       # is what notices the other half — the refusal table is two rows inside one
       # test, and the suite floor above cannot tell that from a single new test.
-      minimum: 793
+      #
+      # caf-w81 added 2, both in `internal/gen/chart_test.go`, and moved this floor
+      # to 795: 803 declared, 8 skips, so 795 run. Neither is env-gated, so
+      # `expectedSkips` stays at 8 — same reason as caf-30's seven and caf-33's
+      # two. They are the ingress values block's test (present, commented, OFF by
+      # default — the off is the load-bearing word) and the in-process render
+      # proof's own test, which carries the three cases as subtests and is what
+      # the subtest floor below moved for.
+      minimum: 795
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.
@@ -511,7 +519,14 @@ gate:
       # the suite grows stops noticing anything, so it is re-measured here. The
       # two rows `caf gen chart` added are inside `internal/gen/chart_test.go`'s
       # refusal table, one row per refusal a valid manifest can reach.
-      minimum: 966
+      #
+      # RE-MEASURED AT 970 after caf-w81, and set one lower for the same reason.
+      # The three rows are the render proof's three cases — enabled renders the
+      # Ingress, disabled renders nothing, enabled-without-a-host fails — one row
+      # per state of the knob rather than three asserts, which is the same argument
+      # as every table in this file: a state a test cannot be driven into is a
+      # state nobody has proved anything about.
+      minimum: 969
     #
     # THE ONE WITH NO FLOOR, and the schema sanctions that: a `minimum` is
     # omitted "for a proof that reports nothing countable (a step that must

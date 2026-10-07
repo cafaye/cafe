@@ -226,7 +226,7 @@ func newGenChartCommand() *Command {
 			"                                      the tag, the resources, the env\n" +
 			"  chart/templates/deployment.yaml   the Deployment: image, port, env,\n" +
 			"                                      readiness probe, resources\n" +
-			"  chart/templates/ingress.yaml          the Ingress: how the service is reached,\n" +
+			"  chart/templates/ingress.yaml      the Ingress: how the service is reached,\n" +
 			"                                      off by default — gated on values.yaml\n" +
 			"  chart/templates/service.yaml      the Service in front of it\n" +
 			"  chart/templates/application.yaml  the ArgoCD Application: the\n" +
