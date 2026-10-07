@@ -118,6 +118,43 @@ func TestTheChartFileSetIsStableAndSorted(t *testing.T) {
 	}
 }
 
+// The generator emits no ArgoCD Application, and that is a decision rather
+// than an omission: the substrate owns the Application — one static one per
+// service, OCI-sourced, applied by install.sh — and a service repository
+// commits none. A generated Application would be a SECOND one of the same
+// name in the same namespace with a different source, and the later
+// `kubectl apply` wins: a deploy whose target depends on apply order is
+// not a deploy. The decision is recorded in moon/DEPLOYMENT.md, "Who owns
+// the Application".
+//
+// The assertion is over the real output rather than a hand-written list:
+// a list that agreed with a broken generator would pass against one. The
+// path check fails if the file comes back under its own name; the content
+// check fails if it comes back under any other; the values check fails if
+// the targetRevision the Application consumed comes back with it.
+func TestTheGeneratorEmitsNoArgoApplication(t *testing.T) {
+	out := generateChart(t, chartManifest, nil)
+
+	for _, file := range out.Files {
+		if file.Path == "chart/templates/application.yaml" {
+			t.Errorf("caf gen chart emitted %s — the substrate owns the Application "+
+				"(moon/DEPLOYMENT.md, \"Who owns the Application\"): one static per service, "+
+				"OCI-sourced, applied by install.sh. A generated one is a second Application "+
+				"of the same name in the same namespace, and the later apply wins", file.Path)
+		}
+		if strings.Contains(string(file.Content), "kind: Application") {
+			t.Errorf("%s is an ArgoCD Application document — the generator emits none:\n%s",
+				file.Path, file.Content)
+		}
+	}
+
+	values := string(findChartFile(t, out, chartValuesPath).Content)
+	if strings.Contains(values, "targetRevision") {
+		t.Errorf("values.yaml carries a targetRevision — the ref was the Application's, and the\n"+
+			"Application is the substrate's:\n%s", values)
+	}
+}
+
 // The readiness probe is /readyz, and that is the fleet's contract: every
 // cafaye service serves it and the substrate's rollout waits on it.
 //
