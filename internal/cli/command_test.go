@@ -23,6 +23,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 		"mcp",
 		"new",
 		"reclaim",
+		"update",
 		"version",
 	}
 

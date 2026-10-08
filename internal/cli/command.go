@@ -78,6 +78,7 @@ func Commands() []*Command {
 		newMCPCommand(),
 		newNewCommand(),
 		newReclaimCommand(reclaimDeps{}),
+		newUpdateCommand(),
 		newVersionCommand(),
 	}
 }
