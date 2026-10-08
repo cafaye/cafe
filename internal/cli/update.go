@@ -466,7 +466,7 @@ func mergeUpdate(workRoot, manifest string, file updateFile, raw []byte, branch 
 	}
 	fmt.Fprintf(env.Stdout, "merging %s from %s (%s) into %s\n", selected.tip, selected.remote.Name, selected.remote.URL, branch)
 	if _, err := updateGit(workRoot, "merge", "--no-ff", "--no-edit", selected.tip); err != nil {
-		return reportConflict(workRoot, manifest, selected)
+		return reportConflict(workRoot, manifest, selected, err)
 	}
 	merged, err := os.ReadFile(manifest)
 	if err != nil {
@@ -494,8 +494,13 @@ func mergeUpdate(workRoot, manifest string, file updateFile, raw []byte, branch 
 
 // reportConflict leaves the merge in progress and the pin where it was. The
 // worktree git left behind IS the recovery path — abort it or finish it — so
-// this reports the state rather than cleaning it up, and touches nothing.
-func reportConflict(workRoot, manifest string, selected updateSource) error {
+// this reports the state rather than cleaning it up, and touches nothing. A
+// merge that failed before it started (no MERGE_HEAD) is reported as exactly
+// that, because "a merge is in progress" would then be a lie.
+func reportConflict(workRoot, manifest string, selected updateSource, mergeErr error) error {
+	if !gitOK(workRoot, "rev-parse", "--verify", "MERGE_HEAD") {
+		return fmt.Errorf("caf update: the merge of %s from %s failed before it started: %w. the tree is unchanged and the pin is still what it was", shortSHA(selected.tip), selected.remote.Name, mergeErr)
+	}
 	unmerged, _ := updateGit(workRoot, "diff", "--name-only", "--diff-filter=U")
 	files := strings.Fields(unmerged)
 	head, _ := updateGit(workRoot, "rev-parse", "--short", "HEAD")

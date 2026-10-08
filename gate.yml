@@ -482,7 +482,19 @@ gate:
       # repository, the dirty-tree boundary, the no-remote refusal, the
       # sync-wait's three outcomes against a fake kubectl, the dry run that
       # executes nothing, and the engine-selection table.
-      minimum: 840
+      #
+      # caf-m166 added 12, all in `internal/cli/update_test.go`, and moved this
+      # floor to 852: 860 declared, 8 skips, so 852 run. `expectedSkips` stays
+      # at 8 — none of the new tests is env-gated; the template merge's proofs
+      # are real three-way merges in temporary git repositories, and none of
+      # them needs the network. The twelve are the pin validation table, the
+      # default-branch and dirty-tree refusals, the preview that changes
+      # nothing, the merge that preserves downstream edits and advances the pin
+      # in the merge commit, the conflict that leaves MERGE_HEAD and the old
+      # pin, the skipped local source, the diverged-source refusal, the
+      # non-descendant refusal, the up-to-date no-op, the arity guard, and the
+      # no-template-file preconditions.
+      minimum: 852
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.

@@ -690,12 +690,17 @@ expect_red 'a gate that no longer states how much of the live tier ran, so a ski
 # is skipped in favour of the real one. The tool list is the one this
 # repository's gate and its tests actually reach for; it was arrived at by
 # running the gate with a short list and reading which tool it then missed
-# (`touch`, from internal/cli's env test).
+# (`touch`, from internal/cli's env test). `git` and `dirname` are on it for the
+# same reason: caf-w76's Argo engine commits against a real local repository
+# (and its fake kubectl counts invocations through `dirname`), and caf-m166's
+# template update merges in one, so suites fail without them — which is a
+# missing tool, not a missing container runtime, and the case below is about
+# the runtime.
 b="$(fresh_copy live-mode-refuses)"
 shim="$b/.shim"
 mkdir -p "$shim"
 missing=""
-for tool in go grep cat mktemp rm sed awk touch sh env sleep head tail cut sort uniq ls mkdir chmod cp date; do
+for tool in go git grep cat dirname mktemp rm sed awk touch sh env sleep head tail cut sort uniq ls mkdir chmod cp date; do
   found="$(command -v "$tool" 2>/dev/null || true)"
   if [ -z "$found" ]; then missing="$missing $tool"; else ln -sf "$found" "$shim/$tool"; fi
 done

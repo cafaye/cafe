@@ -94,6 +94,7 @@ a run in which they passed.
 | `caf doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
 | `caf reclaim` | reclaim what a caf session left behind, containers before volumes | **works** |
 | `caf env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
+| `caf update [path]` | merge the template's updates into this checkout and advance the template pin | **works** |
 
 `flags only` means the flags parse, the argument count is checked, and the
 command returns a `not implemented in v0` error with exit code 1. `caf help
@@ -885,6 +886,36 @@ left completely alone and counted, so that "released nothing" is not read as
 "found nothing".
 
 Flags: `-yes`, `-ledger <dir>`, `-generation <n>`.
+
+## `caf update`
+
+```
+caf update [path]           # merge the template branch into this checkout, move the pin
+caf update --check [path]   # preview only: the source, the tip, what it carries
+```
+
+`caf update` reads `template.yml` — the file that records which template
+this checkout was seeded from, which branch it tracks, the full-sha `commit`
+pin it has taken work up to, and the ordered candidate `remotes` — and merges
+the tracked branch into this checkout with a real three-way `git merge
+--no-ff`. Both histories stay reviewable; conflicts are reported with the
+files and left in progress rather than resolved by a global rule. There is no
+`-X ours`/`-X theirs` anywhere in it, nothing is pushed, and no PR is opened.
+
+The guards, in the order they fire: the pin must be a full 40-character sha
+(a branch name or short sha is refused); the checkout must be on a branch
+that is not `master` or `main`; the recorded pin must already be an ancestor
+of `HEAD`; a relative local candidate with no checkout behind it is skipped
+while any other unreadable source is an error; candidates whose tips disagree
+without one containing the other are refused rather than chosen between; and
+the selected tip must descend from the pin. The pin moves — rewritten
+in place so every comment in `template.yml` survives, in the same commit as
+the merge — only after the merge commits. A conflict leaves `MERGE_HEAD` and
+the old pin with the recovery spelled out (`git merge --abort`, or resolve,
+commit, and move the pin by hand). `--check` fetches the candidates and
+reports, changing no tracked file and no branch. The `added`/`diverged`/
+`removed` lists are hints for the reader about where collisions will be; git
+decides the merge.
 
 ## `caf env up`
 
