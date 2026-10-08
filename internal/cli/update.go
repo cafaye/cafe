@@ -50,7 +50,8 @@ updates" does by hand:
   caf update --check [path]  preview only: the source, the tip and what it
                              carries. Changes no tracked file and no branch.
 
-Safety, in order: never on master or main, never with a dirty worktree,
+Safety, in order: no merge on master or main (--check may still preview),
+never with a dirty worktree,
 never with -X ours/-X theirs and never by overwriting the tree — a real
 three-way merge, so both histories stay reviewable. A relative local
 candidate that is absent is skipped; an absolute local one and a hosted
@@ -300,7 +301,10 @@ func runUpdate(opts *updateOptions, dir string, env *Env) error {
 	if err != nil || branch == "" {
 		return fmt.Errorf("caf update: this checkout is not on a branch: `git switch -c template/update-<date>` first, then re-run")
 	}
-	if branch == "master" || branch == "main" {
+	// A preview changes no tracked file and no branch — the fetch
+	// selectUpdateSource does touches remote-tracking refs only — so it is
+	// allowed where a merge is refused.
+	if (branch == "master" || branch == "main") && !opts.check {
 		return fmt.Errorf("caf update: refusing to merge a template update on %s: updates land on a branch, the way \"Pulling template updates\" says — `git switch -c template/update-<date>` first. --check may still preview", branch)
 	}
 	pin := file.Template.Commit

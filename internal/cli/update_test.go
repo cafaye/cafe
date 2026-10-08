@@ -232,6 +232,55 @@ func TestUpdateRefusesTheDefaultBranch(t *testing.T) {
 	}
 }
 
+// TestUpdateCheckIsAllowedOnTheDefaultBranch holds the preview exception to
+// the branch guard: --check runs on master and main, reports the selected
+// source and its tip, and moves nothing — HEAD, the branch, the manifest
+// bytes and the worktree status are all unchanged.
+func TestUpdateCheckIsAllowedOnTheDefaultBranch(t *testing.T) {
+	for _, branch := range []string{"master", "main"} {
+		t.Run("on "+branch, func(t *testing.T) {
+			f := seedUpdateFixture(t)
+			runUpdateGit(t, f.downstream, "checkout", "-B", branch)
+			beforeHEAD := headOf(t, f.downstream)
+			beforeManifest, err := os.ReadFile(f.manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			beforeTree := runUpdateGit(t, f.downstream, "status", "--porcelain")
+
+			code, stdout, stderr := runUpdateIn(t, f.downstream, "--check")
+
+			if code != exitSuccess {
+				t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+			}
+			for _, want := range []string{"tmpl-up", f.tip, "re-run without --check"} {
+				if !strings.Contains(stdout, want) {
+					t.Errorf("preview missing %q:\n%s", want, stdout)
+				}
+			}
+			if got := headOf(t, f.downstream); got != beforeHEAD {
+				t.Error("a preview moved HEAD")
+			}
+			if got := runUpdateGit(t, f.downstream, "branch", "--show-current"); got != branch {
+				t.Errorf("a preview moved the branch to %s", got)
+			}
+			afterManifest, err := os.ReadFile(f.manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(afterManifest) != string(beforeManifest) {
+				t.Error("a preview rewrote template.yml")
+			}
+			if got := runUpdateGit(t, f.downstream, "status", "--porcelain"); got != beforeTree {
+				t.Errorf("a preview changed the worktree:\n%s", got)
+			}
+			if got := pinOf(t, f.manifest); got != f.pin {
+				t.Errorf("a preview moved the pin to %s", got)
+			}
+		})
+	}
+}
+
 // TestUpdateRefusesADirtyWorktree holds the clean-tree guard: a mutation
 // refuses a dirty checkout and leaves HEAD alone, while --check still
 // previews over the same dirt without touching it.
