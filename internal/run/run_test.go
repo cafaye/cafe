@@ -2,6 +2,7 @@ package run
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -375,9 +376,72 @@ func TestACrashMidStepIsPickedUpAtTheFirstIncompleteStep(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// two drivers, one winner
-// ---------------------------------------------------------------------------
+// TestDriversRacingForOneClaimProduceOneWinner is the lease's concurrency
+// proof. A sequential table can only show that a second claim after a first
+// is refused; this shows it under a real race — N drivers claiming at the
+// same instant through the same store, where the winner is decided by the
+// store lock and not by the order the test happened to run them in.
+//
+// The assertion is on the COUNT of winners and on the losers' error, because
+// an outcome assertion alone would pass against a store that let two drivers
+// through and then failed one of them later.
+func TestDriversRacingForOneClaimProduceOneWinner(t *testing.T) {
+	store, _ := openStore(t)
+	const id = "box-11111111-2222-3333-4444-555555555555"
+	if _, err := store.Create(id, []string{"substrate", "data"}, 0); err != nil {
+		t.Fatalf("create the run: %v", err)
+	}
+
+	const drivers = 8
+	type outcome struct {
+		holder string
+		err    error
+	}
+	results := make(chan outcome, drivers)
+	start := make(chan struct{})
+	for i := 0; i < drivers; i++ {
+		holder := fmt.Sprintf("driver-%d", i)
+		go func() {
+			<-start
+			_, _, err := store.Claim(id, holder, testLease)
+			results <- outcome{holder: holder, err: err}
+		}()
+	}
+	close(start) // every driver claims at the same instant
+
+	winners := 0
+	for i := 0; i < drivers; i++ {
+		out := <-results
+		if out.err == nil {
+			winners++
+			continue
+		}
+		if !errors.Is(out.err, ErrHeld) {
+			t.Errorf("%s lost the race with %v, want ErrHeld", out.holder, out.err)
+		}
+	}
+	if winners != 1 {
+		t.Errorf("%d of %d drivers hold the run; a lease is one lock with one winner", winners, drivers)
+	}
+	holder, held, err := store.HolderOf(id)
+	if err != nil || !held {
+		t.Fatalf("the run is held after the race: held=%v err=%v", held, err)
+	}
+	if holder.Epoch != 1 {
+		t.Errorf("the winner holds epoch 1, got %d", holder.Epoch)
+	}
+	// And the run is drivable by exactly the winner: no step was begun twice
+	// by eight racing drivers.
+	run, err := store.Get(id)
+	if err != nil {
+		t.Fatalf("read the run: %v", err)
+	}
+	for _, step := range run.Steps {
+		if step.State != StepPending {
+			t.Errorf("step %s moved to %s during the race", step.Key, step.State)
+		}
+	}
+}
 
 // TestTwoDriversOneWinner is the lease. The rows are the three states a
 // second claimant can arrive in: the lease is live (refused, by name), the
