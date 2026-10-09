@@ -46,17 +46,22 @@ const principalTTL = 5 * time.Minute
 
 // identityAuthority verifies a bearer by asking identity who it is.
 //
-// The bearer goes to `GET /v1/agents/key` as the caller's own credential — the
-// same call `caf agent token show` makes — so the scopes in the answer are
-// identity's, not this file's. A token that is not accepted comes back as a
-// non-2xx and becomes a refusal, which `internal/mcp` turns into the 401 naming
+// The bearer goes to `GET /v1/agents/tokens` as the caller's own credential —
+// the authenticated read on the agent's own surface, and the mounted route a
+// live token resolves against — so the acceptance is identity's, not this
+// file's. A token that is not accepted comes back as a non-2xx and becomes a
+// refusal, which `internal/mcp` turns into the 401 naming
 // `caf agent token create`.
 //
-// One gap, stated rather than hidden: the answer carries the key's metadata and
-// its scopes, and the principal's subject is the username of the saved session
-// on this machine. Identity's introspection returns the principal's own
-// reference and W1-P2 owns surfacing it; until it does, the subject is the
-// session's username.
+// THE SCOPES, STATED HONESTLY. Identity's agent tokens carry no scope
+// vocabulary yet — "the agent-token scope vocabulary arrives with the routes it
+// will gate", identity's own comment at the mint — so there is no scope set to
+// read off the answer. What this file grants a bearer identity accepts is the
+// default scope caf's own table says a claimed agent is granted: read. The
+// write scopes (deploy.propose, deploy.apply) are granted by the claim screen,
+// which does not exist yet; until it does, a verified agent token reads and
+// cannot write, which is the fail-closed direction. The principal's subject is
+// the username of the saved session on this machine.
 type identityAuthority struct {
 	// dir is the config directory this authority resolves the session from.
 	// Recorded at construction so the keyring lookup cannot disagree with the
@@ -103,8 +108,7 @@ func (a *identityAuthority) Authenticate(ctx context.Context, token string) (*mc
 	// operator's credential for any caller's, which is the whole thing this
 	// packet exists to stop.
 	endpoint := agent.DefaultDial()(session.BaseURL, token)
-	info, err := endpoint.Key(ctx)
-	if err != nil {
+	if _, err := endpoint.Tokens(ctx); err != nil {
 		return nil, fmt.Errorf("identity did not accept this token: %w", err)
 	}
 	now := a.now
@@ -113,7 +117,7 @@ func (a *identityAuthority) Authenticate(ctx context.Context, token string) (*mc
 	}
 	return &mcp.Principal{
 		Subject: session.AgentUsername,
-		Scopes:  append([]string(nil), info.Scopes...),
+		Scopes:  []string{mcp.ScopeRead},
 		Expires: now().Add(principalTTL),
 	}, nil
 }
