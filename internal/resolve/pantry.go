@@ -14,11 +14,27 @@ import (
 // half of the catalog — what a service is, free and paid alike — and it
 // deliberately carries no repository coordinates. Those are tier 2's, and the
 // line between them is the whole of the tiered catalog's design.
+//
+// The shape is pantry's wire shape, and pantry publishes exactly FOUR
+// advertising facts: name, description, language and `repository.visibility`.
+// `visibility` is NESTED under `repository`, and it is the field that lets a
+// caller tell a public service from a private one before it asks for
+// coordinates it may not get — it stays on tier 1 because whether a repository
+// is public is itself an advertising fact. A client that spelled it as a
+// top-level `visibility` would be reading a key pantry never sends, which is
+// the hole a hand-written struct gives you when the document is the contract.
 type Service struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Language    string `json:"language,omitempty"`
-	Visibility  string `json:"visibility,omitempty"`
+	Name        string     `json:"name"`
+	Description string     `json:"description,omitempty"`
+	Language    string     `json:"language,omitempty"`
+	Repository  PublicRepo `json:"repository"`
+}
+
+// PublicRepo is what tier 1 says about a service's repository — one field and
+// not three. `url` and `defaultBranch` are the coordinates, they are tier 2's,
+// and they are not in this object for anyone else.
+type PublicRepo struct {
+	Visibility string `json:"visibility,omitempty"`
 }
 
 // PantryError is one non-2xx answer from pantry. It carries the problem's own

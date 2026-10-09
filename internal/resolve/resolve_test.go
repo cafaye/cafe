@@ -73,7 +73,7 @@ func deps(names ...string) []contract.Dependency {
 // a product, so the entitlement check is not asked.
 func TestFreeServiceResolvesThroughTier1AndTier2(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "gateway", Visibility: "public"},
+		service: &Service{Name: "gateway", Repository: PublicRepo{Visibility: "public"}},
 		coords:  &Coordinates{Name: "gateway", Repository: Repository{URL: "git@github.com:cafaye/gateway.git", DefaultBranch: "master"}},
 	}
 	cond := &fakeConductor{}
@@ -109,7 +109,7 @@ func TestFreeServiceResolvesThroughTier1AndTier2(t *testing.T) {
 // the proof the chain closed.
 func TestPaidServiceResolvesThroughAllThreeTiers(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity", Visibility: "private"},
+		service: &Service{Name: "identity", Repository: PublicRepo{Visibility: "private"}},
 		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:cafaye/identity.git", DefaultBranch: "master"}},
 	}
 	cond := &fakeConductor{grant: &FetchGrant{

@@ -115,7 +115,12 @@ func (c HTTPConductor) mint(ctx context.Context, accountID, artifact, versionRan
 		return "", err
 	}
 	if res.StatusCode != http.StatusCreated {
-		return "", errorFrom(res.StatusCode, raw, "caf artifact fetch")
+		// "the entitlement check" is the `where`: a 404 here is about a caller
+		// who is not a member of the account, not about a capability.
+		if res.StatusCode == http.StatusNotFound {
+			return "", &ConductorError{Status: res.StatusCode, Code: "not_found", Message: notFoundHint()}
+		}
+		return "", errorFrom(res.StatusCode, raw, "the entitlement check")
 	}
 	var payload struct {
 		Capability struct {
@@ -201,7 +206,17 @@ func (c HTTPConductor) do(ctx context.Context, token, method, path string, body 
 // The code is read out of the body because conductor names its refusals there,
 // and the two 403s — entitlement_required and version_not_granted — are
 // distinguished by the code and nothing else.
-func errorFrom(status int, raw []byte, op string) error {
+//
+// `where` says WHICH of the two tier-3 calls was refused, and it is the one
+// fact the two share no other way. The mint asks "may this account hold this
+// product"; the redemption asks "is this capability live, and is it mine". Both
+// answer 404 for a reason the reader must act on differently — a 404 from the
+// mint is a 404 about a caller acting alone, which the sentence names; a 404
+// from the redemption is about a capability that has already been spent. The
+// two refusals otherwise produce an identical sentence, and a sentence that
+// cannot say which of two calls failed sends the reader to a log that cannot
+// either.
+func errorFrom(status int, raw []byte, where string) error {
 	var payload struct {
 		Error struct {
 			Code    string `json:"code"`
@@ -217,5 +232,23 @@ func errorFrom(status int, raw []byte, op string) error {
 	if message == "" {
 		message = firstLine(raw)
 	}
+	if where != "" {
+		message = where + ": " + message
+	}
 	return &ConductorError{Status: status, Code: code, Message: message}
+}
+
+// notFoundHint is what conductor's 404 does NOT say, and it has to be said
+// somewhere because the 404 is one answer to two questions.
+//
+// Conductor looks a capability up by token and an account by id, and it answers
+// the same 404 for "unknown" and "not yours" — a capability for account A is
+// not a capability for account B, and saying which would be an oracle for
+// whether a guessed id is real. That is right on conductor's side and wrong on
+// this one: a 404 about a fetch is almost always an agent acting alone, and the
+// remedy is a call the reader can actually make.
+func notFoundHint() string {
+	return "the entitlement check was refused. An agent acting alone is not a " +
+		"member of the account: a human must claim the agent, and the account " +
+		"that holds the entitlement must be named with --account"
 }

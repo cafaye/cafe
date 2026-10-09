@@ -20,7 +20,7 @@ func TestHTTPPantryTier1ServesTheListingEntry(t *testing.T) {
 			t.Errorf("tier 1 is anonymous but a bearer was presented")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go","visibility":"private"}`))
+		_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go","repository":{"visibility":"private"},"owner":{"team":"identity"}}`))
 	}))
 	defer srv.Close()
 
@@ -32,8 +32,8 @@ func TestHTTPPantryTier1ServesTheListingEntry(t *testing.T) {
 	if svc.Name != "identity" {
 		t.Errorf("name = %q", svc.Name)
 	}
-	if svc.Visibility != "private" {
-		t.Errorf("visibility = %q", svc.Visibility)
+	if svc.Repository.Visibility != "private" {
+		t.Errorf("visibility = %q, want it under `repository` where pantry sends it", svc.Repository.Visibility)
 	}
 }
 

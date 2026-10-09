@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -122,7 +124,7 @@ func runResolveCLI(t *testing.T, deps resolveDeps, args ...string) (code int, st
 func TestResolveAllResolvedIsOneJSONDocument(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "gateway", Visibility: "public"},
+		service: &resolve.Service{Name: "gateway", Repository: resolve.PublicRepo{Visibility: "public"}},
 		coords:  &resolve.Coordinates{Name: "gateway", Repository: resolve.Repository{URL: "git@github.com:cafaye/gateway.git"}},
 	}
 	cond := &fakeResolveConductor{grant: &resolve.FetchGrant{
@@ -539,6 +541,105 @@ owner:
 	}
 	if cond.calls != 0 {
 		t.Errorf("conductor calls = %d, want 0 (the account is not an id)", cond.calls)
+	}
+}
+
+// The two flags that name the origins, proven end to end against the REAL
+// HTTP clients rather than injected fakes. This is the test that would have
+// caught the first version, where withDefaults() built the clients out of the
+// URL and the flag overrides ran afterwards — so the flags were honoured
+// nowhere and the command dialled the environment's origin while looking
+// configurable. No injected fake can see that: a fake is the client, and
+// there is nobody to ask which URL it was given.
+func TestResolveFlagsNameTheOriginsEndToEnd(t *testing.T) {
+	const account = "11111111-1111-4111-8111-111111111111"
+	pantryHits := 0
+	pantry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pantryHits++
+		switch r.URL.Path {
+		case "/v1/services/identity":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go"}`))
+		case "/v1/services/identity/coordinates":
+			if got := r.Header.Get("Authorization"); got != "Bearer "+resolveCallerToken {
+				t.Errorf("tier 2 bearer = %q, want the caller's token", got)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"name":"identity","repository":{"url":"git@github.com:cafaye/identity.git","defaultBranch":"master"}}`))
+		default:
+			t.Errorf("pantry saw an unexpected path %q", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer pantry.Close()
+	conductorHits := 0
+	conductor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conductorHits++
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/accounts/" + account + "/artifact_fetches":
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"capability":{"token":"cap_abc","purpose":"artifact.fetch","account_id":"` + account + `","artifact":"identity","artifact_version_range":"^0.1.0","expires_at":"2026-10-09T16:00:00Z"}}`))
+		case "/v1/capabilities/redeem":
+			_, _ = w.Write([]byte(`{"capability":{"purpose":"artifact.fetch","account_id":"` + account + `","artifact":"identity","artifact_version_range":"^0.1.0","expires_at":"2026-10-09T16:00:00Z"}}`))
+		default:
+			t.Errorf("conductor saw an unexpected path %q", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer conductor.Close()
+
+	// Nil pantry and nil conductor, so withDefaults() builds the real clients
+	// out of the URLs the flags name.
+	dir := t.TempDir()
+	ring := newAgentTestRing()
+	cfg := agent.Config{
+		AgentSessions:      map[string]agent.Session{"noel": {Name: "noel", TokenRef: "noel"}},
+		ActiveAgentSession: "noel",
+	}
+	if err := cfg.Save(dir); err != nil {
+		t.Fatalf("save the session: %v", err)
+	}
+	if err := ring.Set(agent.KeyringService, "noel", resolveCallerToken); err != nil {
+		t.Fatalf("put the token in the ring: %v", err)
+	}
+	deps := resolveDeps{dir: dir, ring: ring}
+
+	project := resolveTestProject(t, `name: app
+description: An application.
+language: go
+core: ^0.2.0
+dependencies:
+  - name: identity
+    version: ^0.1.0
+repository:
+  url: git@github.com:cafaye/app.git
+  defaultBranch: master
+  visibility: public
+owner:
+  team: app
+  contact: app@cafaye.com
+`)
+	code, stdout, stderr := runResolveCLI(t, deps,
+		"--pantry", pantry.URL, "--conductor", conductor.URL, "--account", account, project)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+	}
+	if pantryHits != 2 {
+		t.Errorf("pantry answered %d requests, want 2 (tiers 1 and 2)", pantryHits)
+	}
+	if conductorHits != 2 {
+		t.Errorf("conductor answered %d requests, want 2 (the mint and the redemption)", conductorHits)
+	}
+	if !strings.Contains(stdout, "artifact.fetch") {
+		t.Errorf("the document carries no fetch grant:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "cap_abc") {
+		t.Errorf("the capability token reached stdout, and a spent token is not a deliverable:\n%s", stdout)
+	}
+	if strings.Contains(stderr, "cap_abc") {
+		t.Errorf("the capability token reached stderr:\n%s", stderr)
 	}
 }
 
