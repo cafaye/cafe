@@ -70,15 +70,41 @@
 // its place and fails every later call. Diagnostics go to stderr, which is
 // where a host collects a server's logs.
 //
-// # HTTP, and only on loopback
+// # HTTP, and who may call it
 //
-// `caf mcp -transport http` serves the streamable HTTP handler from the SDK,
-// bound to a loopback address and refusing anything else. The refusal is the
-// point: this server exposes `caf_dev_up` and `caf_dev_down`, which start and
-// stop containers on the machine it runs on, so a listener reachable from the
-// network would be an unauthenticated remote shell over the developer's Docker
-// daemon. Authentication is a later packet, and until there is one the flag is
-// documented as loopback-only rather than dressed up as production HTTP.
+// `caf mcp -transport http` serves the streamable HTTP handler from the SDK.
+// The listener is bound to loopback by default, and that default is the same
+// refusal it always was: this server exposes `caf_dev_up` and `caf_dev_down`,
+// which start and stop containers on the machine it runs on, so a listener
+// reachable from the network *without authentication* would be an
+// unauthenticated remote shell over the developer's Docker daemon.
+//
+// The pair of that sentence is now true, and it is the difference this packet
+// makes. With an Authority configured the server refuses a caller that
+// presents no bearer, and a server may then bind a routable address — which is
+// the only way a remote caller can exist at all. So the refusal is not "no
+// remote HTTP"; it is "no remote HTTP that is not authenticated".
+//
+// TWO MECHANISMS, and they are not the same one. The transport authenticates:
+// over HTTP every request carries a bearer, and an absent or unknown one is a
+// 401 whose body names `caf agent token create` — the agent that needs the tool
+// already has that command, so a refusal that ended an interaction was the
+// thing to avoid. The tools are then gated on the caller's scopes, per call,
+// before the handler runs: a read-only agent reads health, logs, rollout state
+// and status, and is refused propose and apply with a message naming the scope
+// and the command that mints a token carrying it.
+//
+// Invariant 2 is enforced here rather than trusted. A Principal with no
+// expiration is refused, twice — once by this package and once by the SDK's own
+// expiry check, which `AllowMissingExpiration` is deliberately not passed to.
+// A credential handed to an agent that never lapses is the one thing that
+// invariant forbids, and a verifier that returned one would be minting it.
+//
+// The standing principal, read for stdio, is the one place this package names a
+// caller without the transport naming it: a `caf mcp` child process an agent
+// host spawns speaks as the machine's own agent session. It is never consulted
+// when a request carries its own token info, because an authenticated remote
+// caller must be exactly who the transport says and nobody else.
 //
 // One difference between the transports is worth knowing before a client meets
 // it. On stdio an unknown method comes back as a JSON-RPC `-32601` frame. Over
