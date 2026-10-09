@@ -373,3 +373,35 @@ func writeCloser(w io.Writer) io.WriteCloser {
 	}
 	return nopWriteCloser{w}
 }
+
+// SetAuthority installs the Authority the HTTP transport's bearers are checked
+// against. It is a setter rather than an Options field at construction because
+// `internal/cli` builds its server as one table and attaches the auth per
+// transport, and the two halves are genuinely different questions: the table is
+// what is served, the auth is who may be served it.
+//
+// Nil is accepted and means "no authority", which fails closed — see
+// `Server.checkScope`.
+func (s *Server) SetAuthority(a Authority) {
+	if a == nil {
+		return
+	}
+	s.authority = a
+	s.skew = defaultClockSkew
+}
+
+// SetStanding installs the principal a process speaks as when the transport
+// does not name one, which is the stdio case. Nil is accepted and means the
+// scoped tools refuse.
+func (s *Server) SetStanding(p *Principal) {
+	if p == nil {
+		return
+	}
+	s.standing = p
+}
+
+// defaultClockSkew is the drift tolerated between this machine's clock and
+// identity's. Two seconds, because a revoked token refused within two seconds
+// of its actual lapse is the failure a skew is for, and a larger one would
+// extend a credential past the moment it stopped being good.
+const defaultClockSkew = 2 * time.Second

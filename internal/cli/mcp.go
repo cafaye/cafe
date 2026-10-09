@@ -23,6 +23,9 @@ type mcpOptions struct {
 	transport string
 	addr      string
 	registry  string
+	// agent names the saved agent session whose token the remote transport
+	// authenticates. Empty is the active session.
+	agent string
 }
 
 func newMCPCommand() *Command {
@@ -47,6 +50,22 @@ func newMCPCommand() *Command {
 			"  caf_dev_up     bring the local stack up\n" +
 			"  caf_dev_down   take the local stack down\n" +
 			"\n" +
+			"Six more answer about a BOX rather than this machine, and they are\n" +
+			"gated on the scopes of the agent whose token authenticated the call:\n" +
+			"\n" +
+			"  caf_health     whether a box is up, and which services it is running\n" +
+			"  caf_logs       the events a box has recorded\n" +
+			"  caf_rollout    what is proposed, what is applied, what is next\n" +
+			"  caf_status     a box's install table, and where it has reached\n" +
+			"  caf_propose    put a release in front of a human to approve\n" +
+			"  caf_apply      apply a release a human has already approved\n" +
+			"\n" +
+			"The first four need the read scope, which is what a claimed agent is\n" +
+			"granted by default. caf_propose needs the propose scope and caf_apply\n" +
+			"needs the apply scope, and a caller without them is refused with the\n" +
+			"command that mints a token carrying them. On stdio this process speaks\n" +
+			"as this machine's own agent session.\n" +
+			"\n" +
 			"-registry is the service catalog the tools resolve dependencies through,\n" +
 			"the same one `caf dev -registry` takes; pantry serves the official one.\n" +
 			"Without it a project that declares dependencies is reported as unresolvable,\n" +
@@ -54,17 +73,22 @@ func newMCPCommand() *Command {
 			"\n" +
 			"On stdio, stdout is the protocol: this command writes nothing else to it,\n" +
 			"and its diagnostics go to stderr. On http it serves the streamable HTTP\n" +
-			"transport on a loopback address only, because two of the tools start and\n" +
-			"stop containers and a listener reachable from the network would be an\n" +
-			"unauthenticated remote shell over your container runtime. The address is\n" +
-			"printed to stderr once it is listening.\n" +
+			"transport, and every request must carry a bearer token that identity\n" +
+			"accepts — an unauthenticated remote caller is refused, because two of the\n" +
+			"tools start and stop containers and four of them answer about a box that\n" +
+			"is running something. A listener on a routable address needs an agent\n" +
+			"session to authenticate callers; without one the address must be loopback,\n" +
+			"and an unauthenticated listener on every interface would be a remote shell\n" +
+			"over your container runtime. The address is printed to stderr once it is\n" +
+			"listening.\n" +
 			"\n" +
 			"Exits 0 when the client closes the connection, which is how an agent host\n" +
 			"ends a session.",
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.transport, "transport", string(mcp.Stdio), "transport to serve on: stdio or http")
-			fs.StringVar(&opts.addr, "addr", "127.0.0.1:0", "host:port for -transport http; loopback only, 0 picks a free port")
+			fs.StringVar(&opts.addr, "addr", "127.0.0.1:0", "host:port for -transport http; loopback only without an agent session to authenticate callers, 0 picks a free port")
 			fs.StringVar(&opts.registry, "registry", "", "path to a service catalog; pantry serves the official one")
+			fs.StringVar(&opts.agent, "agent", "", "saved agent session whose token the remote transport authenticates; default is the active one")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -103,7 +127,12 @@ func checkLoopbackAddr(addr string) error {
 // runMCP builds the server and serves it until the client goes away or the
 // process is interrupted.
 func runMCP(transport mcp.Transport, opts *mcpOptions, env *Env) error {
-	server := newMCPServer(env, opts.registry)
+	server := newMCPServer(env, opts)
+	// The auth substrate is attached per transport: the same identity
+	// authority backs both, and the difference is whether the credential comes
+	// from the request (HTTP) or from this machine's own agent session
+	// (stdio). See attachAuth.
+	attachAuth(server, env, opts, transport)
 
 	switch transport {
 	case mcp.Stdio:
@@ -126,14 +155,26 @@ func runMCP(transport mcp.Transport, opts *mcpOptions, env *Env) error {
 // newMCPServer builds the served table. It is a function rather than a literal
 // so each tool is declared once, next to the handler that answers it, and the
 // description an agent reads sits on the same screen as the code it describes.
-func newMCPServer(env *Env, registry string) *mcp.Server {
-	tools := &mcpTools{env: env, registry: registry, devDeps: defaultDevDeps()}
+//
+// The table is the SAME on both transports — the six local tools for the
+// machine, then the six remote ones about a box. What differs between the
+// transports is how a caller proves who it is, and that is `Options.Standing`
+// versus `Options.Authority`: on stdio the process speaks as the machine's own
+// agent session, and over HTTP every request carries a bearer that identity
+// answers. A remote caller therefore cannot be a caller with the standing
+// principal's scopes, which is the inversion asserted in
+// `TestAnIncomingPrincipalNeverInheritsTheStandingPrincipalsScopes`.
+func newMCPServer(env *Env, opts *mcpOptions) *mcp.Server {
+	tools := &mcpTools{env: env, registry: opts.registry, devDeps: defaultDevDeps()}
 
 	// Every logger goes to stderr. Nothing here may write to stdout, because on
 	// the stdio transport stdout is the protocol stream and a stray line in it
 	// is a corrupt stream rather than untidy output.
 	logger := slog.New(slog.NewTextHandler(env.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	server := mcp.New(mcp.Options{Version: env.Version.Semver, Logger: logger})
+	server := mcp.New(mcp.Options{
+		Version: env.Version.Semver,
+		Logger:  logger,
+	})
 
 	mcp.Add(server, tools.doctor())
 	mcp.Add(server, tools.manifest())
@@ -141,6 +182,7 @@ func newMCPServer(env *Env, registry string) *mcp.Server {
 	mcp.Add(server, tools.devPlan())
 	mcp.Add(server, tools.devUp())
 	mcp.Add(server, tools.devDown())
+	mcp.AddRemote(server, newMCPBoxWorld())
 	return server
 }
 

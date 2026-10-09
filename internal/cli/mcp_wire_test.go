@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -514,13 +515,31 @@ func servedProject(t *testing.T) string {
 // sorting belongs to the SDK and a wire test cannot pretend otherwise. Every
 // one of them is a read over work caf already does; the set is pinned so that a
 // tool cannot be added or dropped without a test saying so.
+//
+// Twelve since W5-P3: the six local ones unchanged and in their places, then
+// the six remote ones about a box. The local half's presence and the LANES
+// it occupies are the assertion that the remote packet did not quietly reorder
+// or displace the surface a person already depends on.
 var servedTools = []string{
+	// Sorted, because the protocol sorts by name and a wire test cannot pretend
+	// otherwise. The two blocks below are the two halves of the table, and the
+	// local half still leads: W5-P3 added the remote six without reordering or
+	// displacing the surface a person already depends on.
+	//
+	// the local surface: this machine and this project. Unscoped.
 	"caf_dev_down",
 	"caf_dev_plan",
 	"caf_dev_up",
 	"caf_doctor",
 	"caf_manifest",
 	"caf_registry",
+	// the remote surface: a box, gated on the caller's scopes.
+	"caf_apply",
+	"caf_health",
+	"caf_logs",
+	"caf_propose",
+	"caf_rollout",
+	"caf_status",
 }
 
 // TestTheServerSpeaksMcpOverStdio is the packet's headline: a real client, a
@@ -535,11 +554,16 @@ func TestTheServerSpeaksMcpOverStdio(t *testing.T) {
 	for _, tool := range tools.Tools {
 		names = append(names, tool.Name)
 	}
-	if len(tools.Tools) != len(servedTools) {
-		t.Fatalf("tools/list returned %d tools %v, want %d %v", len(tools.Tools), names, len(servedTools), servedTools)
+	// The wire sorts by name; the table above is written in the order a reader
+	// expects. Comparing the two sorted is the assertion, and it is sorted here
+	// rather than in the literal so the file still reads as the two halves.
+	want := append([]string(nil), servedTools...)
+	sort.Strings(want)
+	if len(tools.Tools) != len(want) {
+		t.Fatalf("tools/list returned %d tools %v, want %d %v", len(tools.Tools), names, len(want), want)
 	}
 	for i, tool := range tools.Tools {
-		if tool.Name != servedTools[i] {
+		if tool.Name != want[i] {
 			t.Errorf("tool %d is %q, want %q; the order is part of the answer, so a tool moved is a diff worth reading", i, tool.Name, servedTools[i])
 		}
 		if len(tool.InputSchema) == 0 {

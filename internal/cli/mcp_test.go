@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cafaye/caf/internal/dev"
+	"github.com/cafaye/caf/internal/mcp"
 )
 
 // The wire-level tests in mcp_wire_test.go drive a real process and prove the
@@ -723,11 +724,18 @@ func TestTheRegistryToolAppendsRatherThanReplacesItsNote(t *testing.T) {
 // written as a label both fail.
 func TestEveryToolNameIsOneCafWouldShip(t *testing.T) {
 	env := newTestEnv()
-	server := newMCPServer(env, "")
+	server := newMCPServer(env, &mcpOptions{registry: ""})
 
+	// The six local tools, unchanged, plus the six remote ones W5-P3 added.
+	// Both halves are asserted because both halves are the promise: the local
+	// surface a person depends on over stdio, and the remote reads and writes
+	// a scope-gated agent reaches over HTTP. A packet that added the second and
+	// broke the first would fail below.
 	want := map[string]bool{
 		"caf_doctor": true, "caf_manifest": true, "caf_registry": true,
 		"caf_dev_plan": true, "caf_dev_up": true, "caf_dev_down": true,
+		"caf_health": true, "caf_logs": true, "caf_rollout": true,
+		"caf_status": true, "caf_propose": true, "caf_apply": true,
 	}
 	got := server.Names()
 	if len(got) != len(want) {
@@ -735,13 +743,40 @@ func TestEveryToolNameIsOneCafWouldShip(t *testing.T) {
 	}
 	for _, name := range got {
 		if !want[name] {
-			t.Errorf("%q is served but is not one of the six this packet decided on; every tool added needs a reason in the report", name)
+			t.Errorf("%q is served but is not one caf would ship; every tool added needs a reason in the report", name)
 		}
 	}
 	for name := range want {
 		if !containsString(got, name) {
 			t.Errorf("%q is missing from the served table %v", name, got)
 		}
+	}
+}
+
+// Every remote tool is gated, and every local one is not. This is the boundary
+// between the two halves of the table asserted over the real served table
+// rather than over a literal: a tool that migrated from local to remote, or a
+// local tool that quietly acquired a scope, would fail here.
+func TestTheRemoteHalfIsGatedAndTheLocalHalfIsNot(t *testing.T) {
+	env := newTestEnv()
+	server := newMCPServer(env, &mcpOptions{registry: ""})
+
+	gated, ungated := 0, 0
+	for _, name := range server.Names() {
+		if scope, ok := mcp.RequiredScope[name]; ok {
+			if scope == "" {
+				t.Errorf("%q is in the scope table with no scope, so it is gated on nothing", name)
+			}
+			gated++
+			continue
+		}
+		ungated++
+	}
+	if gated != 6 {
+		t.Errorf("%d tools are gated, want the six remote ones", gated)
+	}
+	if ungated != 6 {
+		t.Errorf("%d tools are ungated, want the six local ones", ungated)
 	}
 }
 
