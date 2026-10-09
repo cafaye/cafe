@@ -77,8 +77,8 @@ a run in which they passed.
 
 | Command | What it does | v0 |
 |---|---|---|
-| `caf init` | create a `cafaye.yml` manifest for the current project | flags only |
-| `caf new <name>` | scaffold a new cafaye service or app | flags only |
+| `caf init` | write the `cafaye.yml` manifest for an existing project, validated against core's schema | **works** |
+| `caf new <name>` | scaffold a new cafaye service or app from the template catalog | **works** |
 | `caf dev [project]` | run the local development stack | **works** |
 | `caf deploy <service>` | deploy a service or app to the platform | **works** |
 | `caf backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
@@ -96,9 +96,8 @@ a run in which they passed.
 | `caf env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
 | `caf update [path]` | merge the template's updates into this checkout and advance the template pin | **works** |
 
-`flags only` means the flags parse, the argument count is checked, and the
-command returns a `not implemented in v0` error with exit code 1. `caf help
-<command>` prints the flags a command will honor.
+Every command in the table above works; there are no stubs left in v0.
+`caf help <command>` prints the flags a command will honor.
 
 Global flags: `-h`/`--help`, `-v`/`--version`. `caf help <command>` is the same
 as `<command> --help`.
@@ -1395,8 +1394,8 @@ Phase 0 (v0, now):
 - [x] `caf contract lint`, `caf contract resolve`
 - [x] `cafaye.yml` manifest draft (the schema is owned by
       [cafaye/core](https://github.com/cafaye/core))
-- [ ] `caf init` — write the manifest from the core schema
-- [ ] `caf new` — scaffold from the template catalog
+- [x] `caf init` — write the manifest from the core schema
+- [x] `caf new` — scaffold from the template catalog
 - [x] `caf dev` — the local stack: compose from the manifest, health-gated, idempotent
 - [ ] `caf dev` — tilt, and a TUI (see [AGENTS.md](AGENTS.md); both are a later packet)
 - [x] `caf gen telemetry` — the OpenTelemetry setup, its suite, and the endpoint

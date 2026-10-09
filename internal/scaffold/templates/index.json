@@ -1,0 +1,8 @@
+{
+  "templates": [
+    {
+      "name": "app",
+      "summary": "a cafaye app: the manifest, a Go service on :8080, and the image caf dev builds"
+    }
+  ]
+}
