@@ -96,9 +96,8 @@ a run in which they passed.
 | `caf env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
 | `caf update [path]` | merge the template's updates into this checkout and advance the template pin | **works** |
 
-`flags only` means the flags parse, the argument count is checked, and the
-command returns a `not implemented in v0` error with exit code 1. `caf help
-<command>` prints the flags a command will honor.
+Every command in the table above works; there are no stubs left in v0.
+`caf help <command>` prints the flags a command will honor.
 
 Global flags: `-h`/`--help`, `-v`/`--version`. `caf help <command>` is the same
 as `<command> --help`.
