@@ -31,6 +31,7 @@ internal/ledger/    the reclamation ledger: what caf created, so cleanup is not 
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/provider/  caf provider: the client half of boundary 6 — the envelope sealed to the box's public key, the conductor seam
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
+internal/resolve/   caf resolve: the tiered catalog's consumer — a manifest's dependencies through tiers 1/2/3, and the named failures
 internal/ryuk/      the reaper lease client, for testcontainers' Ryuk
 internal/ci/        no code; the tests that keep .github/workflows/ci.yml and bin/prime honest
 bin/prime           the gate: go mod download && go build ./... && go test -v ./... , then say what ran
@@ -311,8 +312,57 @@ might not work. `tls_test.go` is the second half: a real loopback TLS
 listener that requires the box's client certificate, proving the channel is
 mTLS rather than described as it.
 
+`internal/resolve` is `caf resolve`, split by the same rule, and it is the
+consumer of W4's two upstream packets — the thing that makes a manifest's
+`dependencies` mean something:
+
+- `doc.go` — what the package is, the three tiers, the one invariant (the
+  caller's credential is presented, never stored), and the two things it
+  deliberately does not do.
+- `resolve.go` — the pure resolver. `Resolve` is a function of the
+  manifest, the token and two seam values, which is why every failure
+  below is a field in a report rather than an error return: a project with
+  one unentitled OPTIONAL dependency resolves, and an error would destroy
+  that fact.
+- `pantry.go` — tier 1 and tier 2. `HTTPPantry` is the real client; the
+  `Pantry` interface is the seam a test drives without a network.
+- `conductor.go` — tier 3, the entitlement check → mint → redeem, in one
+  call. The capability token crosses from the mint to the redemption and
+  is dropped on the floor; the deliverable is the fetch GRANT, which is
+  the capability's scope and not a secret.
+
+**A failure is named with the server's own code, never paraphrased.**
+`ConductorError` and `PantryError` carry the code and detail the service
+sent, and the resolver surfaces both verbatim: `403 entitlement_required`
+with the product and where to start one, `403 version_not_granted` with
+the granted range and the requested one. The tests assert the product
+name and the URL are in the message, and that both ranges are — a
+paraphrase that said "not entitled" would be a sentence that sends a
+reader to a log that says nothing useful, which is the `403
+agent_unclaimed` habit applied to a second service.
+
+**The tiers are walked in order, and the order is the semantics.** A name
+that does not exist has no coordinates and no entitlement to check, so a
+tier-1 failure ends the walk; a caller with no credential cannot read
+coordinates, so a tier-2 failure ends it before tier 3. A free service
+never reaches tier 3 — conductor's check would refuse it with a 422, and
+the client that asked anyway would be spending a round trip on a question
+the server already answered at boot. That last fact is why the resolver
+carries `Products` (conductor's paid vocabulary) rather than asking: there
+is no "what are the products" operation, and the drift risk is named in
+the constant's comment — the safe direction, because the alternative is a
+product that never resolves.
+
+**`required: false` degrades, and the decision is the command's, not the
+resolver's.** The resolver reports every failure WITH its dependency's
+`Required` flag and never consults it; `caf resolve` is what turns that
+flag into a warning on stderr and an exit 0, versus a BLOCKED line and an
+exit 1. Conductor never sees `required` — it is caf's side of the
+contract, and a server that had an opinion about it would have two.
+
 the standard library cannot do the job. `internal/box`, `internal/ledger`,
-`internal/ports`, `internal/reclaim`, `internal/ryuk`, `internal/lock` and
+`internal/ports`, `internal/reclaim`, `internal/ryuk`,
+`internal/lock` and
 `internal/run` have none, and that is a constraint rather than an accident: the
 reclamation path is the one that has to keep working when nothing else does, and a
 dependency graph on the path that cleans up after a failure is a graph that can
@@ -329,7 +379,16 @@ one place a tarball gets checked. `internal/scaffold` is stdlib plus
 the deliberate answer rather than an accident of the import: the manifest a
 template renders is validated by the same compiled schema `caf contract lint`
 runs, and the generator cannot be allowed a second, weaker copy of the check its
-output has to pass. `internal/box` is stdlib only, and it holds to it for the
+output has to pass. `internal/resolve` is the same trade for the same reason: it
+imports `internal/contract` for the ONE type it must not have an opinion about —
+`contract.Dependency`, the decoded form of a manifest's `dependencies` entry —
+because a resolver that re-declared "a dependency is a name, a version and a
+required flag" would eventually disagree with the parser about whether an absent
+`version` is empty or absent, and that argument is the tier-3 question itself.
+Its own two clients are stdlib only: the tier-1/tier-2 path to pantry and the
+mint-and-redeem path to conductor are `net/http` and `encoding/json`, so the
+resolution path carries no dependency the pantry client cannot be rebuilt from a
+release tarball with. `internal/box` is stdlib only, and it holds to it for the
 same reason: the keyring seam and the conductor client sit on the path that
 reclaims after a failed enrollment.
 
