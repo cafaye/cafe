@@ -86,25 +86,15 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # Measured with `go list ./...` on this tree. The security packages are
-      # pinned by name and by existence: `internal/emitter` (nothing leaves a
-      # process unredacted), `internal/box` (the private key is never printed;
-      # the capability is never spent twice), `internal/boxd` (invariant 4 —
-      # the route table refuses what a Secret-shaped answer would leak) and
-      # `internal/agent` (the CLI's agent identity: the keyring seam and the
-      # endpoint client). A package whose whole job is a security invariant
-      # shipping with no tests would move nothing except this line.
-      minimum: 18
+      # Measured with `go list ./...`; the security packages pinned by name and
+      # existence: emitter, box, boxd, agent, provider.
+      minimum: 19
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # The merged floor for the agents-first CLI wave: scaffold, platform
-      # template, box lifecycle, boxd, and w1p4's agent commands.
-      # `expectedSkips` unmoved at 8.
-      minimum: 940
+      minimum: 954
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # Measured one lower, same rule as always.
-      minimum: 1100
+      minimum: 1115
 
     - id: live-tier
       match: '^caf: live tier: [0-9]+ of 7 executed'
