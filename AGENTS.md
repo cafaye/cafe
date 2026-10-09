@@ -361,7 +361,7 @@ exit 1. Conductor never sees `required` — it is caf's side of the
 contract, and a server that had an opinion about it would have two.
 
 the standard library cannot do the job. `internal/box`, `internal/ledger`,
-`internal/ports`, `internal/reclaim`, `internal/ryuk`, `internal/resolve`,
+`internal/ports`, `internal/reclaim`, `internal/ryuk`,
 `internal/lock` and
 `internal/run` have none, and that is a constraint rather than an accident: the
 reclamation path is the one that has to keep working when nothing else does, and a
@@ -379,7 +379,16 @@ one place a tarball gets checked. `internal/scaffold` is stdlib plus
 the deliberate answer rather than an accident of the import: the manifest a
 template renders is validated by the same compiled schema `caf contract lint`
 runs, and the generator cannot be allowed a second, weaker copy of the check its
-output has to pass. `internal/box` is stdlib only, and it holds to it for the
+output has to pass. `internal/resolve` is the same trade for the same reason: it
+imports `internal/contract` for the ONE type it must not have an opinion about —
+`contract.Dependency`, the decoded form of a manifest's `dependencies` entry —
+because a resolver that re-declared "a dependency is a name, a version and a
+required flag" would eventually disagree with the parser about whether an absent
+`version` is empty or absent, and that argument is the tier-3 question itself.
+Its own two clients are stdlib only: the tier-1/tier-2 path to pantry and the
+mint-and-redeem path to conductor are `net/http` and `encoding/json`, so the
+resolution path carries no dependency the pantry client cannot be rebuilt from a
+release tarball with. `internal/box` is stdlib only, and it holds to it for the
 same reason: the keyring seam and the conductor client sit on the path that
 reclaims after a failed enrollment.
 

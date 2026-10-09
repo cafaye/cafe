@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Service is tier 1's answer: one service's listing entry. It is the advertised
@@ -48,6 +49,13 @@ type PantryError struct {
 	Code string
 	// Detail is the problem's `detail`, specific to this occurrence.
 	Detail string
+	// TraceID is the problem's `trace_id`, which is also the `X-Trace-Id`
+	// response header pantry sends on EVERY answer. It is carried because it
+	// is the one field that makes this failure greppable against pantry's own
+	// log — the difference between "a named failure" and "a named failure
+	// somebody can act on". Dropping it is the failure the code-and-detail
+	// decoding already avoided, one field further on.
+	TraceID string
 }
 
 func (e *PantryError) Error() string {
@@ -145,6 +153,12 @@ func (c HTTPPantry) get(ctx context.Context, token *string, path string, out any
 // because pantry names its refusals in the body (`code: not_found`) and two
 // different refusals can share a status.
 //
+// The trace id is read out of the body too, and it is dropped from the ERROR
+// STRING rather than carried in it: an error string with a trace id in it is a
+// string that gets pasted into a ticket where the id is the only part nobody
+// wanted. It is on the field, where a caller that wants it asks for it, and
+// the field is what a log line is built from.
+//
 // An unreadable or non-problem body is still a PantryError, with the status
 // and the first line of the body: a proxy in front of pantry that answers
 // HTML is a fact the caller is entitled to, and dropping it would report a
@@ -153,6 +167,7 @@ func problemError(status int, raw []byte) error {
 	var problem struct {
 		Code   string `json:"code"`
 		Detail string `json:"detail"`
+		TraceID string `json:"trace_id"`
 	}
 	_ = json.Unmarshal(raw, &problem)
 	if problem.Code == "" {
@@ -161,11 +176,14 @@ func problemError(status int, raw []byte) error {
 	if problem.Detail == "" {
 		problem.Detail = firstLine(raw)
 	}
-	return &PantryError{Status: status, Code: problem.Code, Detail: problem.Detail}
+	return &PantryError{Status: status, Code: problem.Code, Detail: problem.Detail, TraceID: problem.TraceID}
 }
 
 // firstLine bounds a body so a wall of HTML from a proxy is not pasted into a
-// terminal.
+// terminal. The bound cuts on a rune boundary rather than a byte boundary,
+// because a detail carrying a non-ASCII character — a service description, an
+// em dash — would otherwise be truncated in the middle of its UTF-8 encoding
+// and produce invalid bytes on a stderr line.
 func firstLine(raw []byte) string {
 	s := strings.TrimSpace(string(raw))
 	if i := strings.IndexByte(s, '\n'); i >= 0 {
@@ -173,7 +191,12 @@ func firstLine(raw []byte) string {
 	}
 	const max = 240
 	if len(s) > max {
-		return s[:max] + "..."
+		cut := s[:max]
+		for len(cut) > 0 && !utf8.ValidString(cut) {
+			// Walk back to the last rune boundary at or before the bound.
+			cut = cut[:len(cut)-1]
+		}
+		return cut + "..."
 	}
 	return s
 }

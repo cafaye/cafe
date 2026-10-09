@@ -68,6 +68,12 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 	if pe.Detail != "no official cafaye service is registered under that name" {
 		t.Errorf("detail = %q, want the sentence pantry sends (and it must not echo the name)", pe.Detail)
 	}
+	// The trace id is the field pantry's own support starts from, and dropping
+	// it would be the failure the code-and-detail decoding already avoided,
+	// one field further on.
+	if pe.TraceID != "0af7651916cd43dd8448eb211c80319c" {
+		t.Errorf("trace_id = %q, want the problem's own", pe.TraceID)
+	}
 }
 
 // Tier 2 presents the caller's caf token as the bearer and decodes the

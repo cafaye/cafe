@@ -52,8 +52,12 @@ type Coordinates struct {
 type Repository struct {
 	// URL is the SSH remote.
 	URL string `json:"url"`
-	// DefaultBranch is the repository's default branch. core pins it to
-	// `master`, so it is a fact rather than a choice.
+	// DefaultBranch is the repository's default branch, and it is ABSENT from
+	// pantry's answer when a service's manifest does not declare one: core's
+	// schema makes it optional and pins the value to `master` only when it is
+	// written, and pantry serves what is there. A caller that assumed
+	// "master" on an empty field would be a caller inventing a fact, so it is
+	// empty and the caller decides what an empty branch means.
 	DefaultBranch string `json:"defaultBranch"`
 }
 

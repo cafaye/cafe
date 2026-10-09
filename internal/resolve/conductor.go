@@ -152,7 +152,9 @@ func (c HTTPConductor) redeem(ctx context.Context, capToken, accountID string) (
 		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, errorFrom(res.StatusCode, raw, "caf artifact fetch")
+		// "the redemption" is the `where`: a 404 here is about a capability
+		// that is gone, not about a caller who is not a member.
+		return nil, errorFrom(res.StatusCode, raw, "the redemption")
 	}
 	var payload struct {
 		Capability struct {

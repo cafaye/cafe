@@ -10,13 +10,14 @@
 //	Tier 3  the artifact	conductor POST …/artifact_fetches → redeem	entitlement
 //
 // Tier 1 says the service exists and what it is (name, description, language,
-// visibility) — advertising, free and paid alike (D5). Tier 2 says where its
-// code lives (repository coordinates), to any caller presenting a live caf
-// token. Tier 3 says whether the caller may fetch the artifact at all: the
-// entitlement check mints a single-use, minutes-lived artifact.fetch
-// capability bound to exactly (account, artifact, version-range), and the
-// redemption is the fetch grant. A free service never reaches tier 3 — it is
-// not a product, and conductor's check refuses it with 422.
+// `repository.visibility`) — advertising, free and paid alike (D5). Tier 2
+// says where its code lives (repository coordinates), to any caller
+// presenting a live caf token. Tier 3 says whether the caller may fetch the
+// artifact at all: the entitlement check mints a single-use, minutes-lived
+// artifact.fetch capability bound to exactly (account, artifact,
+// version-range), and the redemption is the fetch grant. A free service never
+// reaches tier 3 — it is not a product, and conductor's check refuses it with
+// 422.
 //
 // THE ONE INVARIANT, stated once because everything else here is downstream of
 // it: **the caller's credential is presented, never stored.** The resolver

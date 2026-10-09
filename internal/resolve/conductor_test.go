@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -124,6 +125,72 @@ func TestHTTPConductorNotFoundIsNamed(t *testing.T) {
 	}
 }
 
+// The 404 conductor answers for an agent acting alone is one answer to two
+// questions — "unknown account" and "you are not a member of it" — and
+// conductor deliberately does not say which. Caf says the actionable half
+// instead, because a bare 404 about a fetch is nearly always a caller acting
+// alone and the remedy is a call the reader can make.
+func TestHTTPConductorMintNotFoundCarriesTheRemedy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"code":"not_found","message":"not found"}}`))
+	}))
+	defer srv.Close()
+
+	c := HTTPConductor{BaseURL: srv.URL}
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	if err == nil {
+		t.Fatalf("a 404 resolved without an error")
+	}
+	ce, ok := err.(*ConductorError)
+	if !ok {
+		t.Fatalf("error = %T, want *ConductorError", err)
+	}
+	if ce.Code != "not_found" {
+		t.Errorf("code = %q, want not_found", ce.Code)
+	}
+	if !strings.Contains(ce.Message, "member of the account") {
+		t.Errorf("message = %q, want it to say what a non-member must do", ce.Message)
+	}
+	if !strings.Contains(ce.Message, "--account") {
+		t.Errorf("message = %q, want it to name the flag", ce.Message)
+	}
+}
+
+// A mint refusal and a redemption refusal are told apart, because they need
+// different actions: one is about the caller, the other is about a capability
+// that has already been spent. The `where` clause is what separates them.
+func TestHTTPConductorNamesWhichTier3CallWasRefused(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/accounts/11111111-1111-4111-8111-111111111111/artifact_fetches" {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":{"code":"entitlement_required","message":"product ` + "`identity`" + ` needs an entitlement"}}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"code":"not_found","message":"not found"}}`))
+	}))
+	defer srv.Close()
+
+	c := HTTPConductor{BaseURL: srv.URL}
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	if err == nil {
+		t.Fatalf("the mint was refused without an error")
+	}
+	ce, ok := err.(*ConductorError)
+	if !ok {
+		t.Fatalf("error = %T, want *ConductorError", err)
+	}
+	if !strings.Contains(ce.Message, "the entitlement check") {
+		t.Errorf("message = %q, want it to name the call that refused", ce.Message)
+	}
+	if strings.Contains(ce.Message, "the redemption") {
+		t.Errorf("a mint refusal was named as a redemption:\n%q", ce.Message)
+	}
+}
+
 // A redemption refusal — the capability already spent — is named, so a
 // double-redeem is a sentence rather than a silent error.
 func TestHTTPConductorRedeemConflictIsNamed(t *testing.T) {
@@ -150,6 +217,9 @@ func TestHTTPConductorRedeemConflictIsNamed(t *testing.T) {
 	}
 	if ce.Code != "capability_redeemed" {
 		t.Errorf("code = %q, want capability_redeemed", ce.Code)
+	}
+	if !strings.Contains(ce.Message, "the redemption") {
+		t.Errorf("message = %q, want it to name the call that refused", ce.Message)
 	}
 }
 
