@@ -83,7 +83,10 @@ a run in which they passed.
 | `caf deploy <service>` | deploy a service or app to the platform | **works** |
 | `caf backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
 | `caf box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
-| `caf box status --json` | which box this is, which phase it is at, and what is next | **works** |
+| `caf agent register --name "Noel"` | ask identity for an unclaimed agent, store its token in the OS keyring, print the claim URL on stderr | **works** |
+| `caf agent login` / `whoami` | make one saved agent session active, and ask identity who this machine is | **works** |
+| `caf agent token show/create/rotate` | the token's metadata, a fresh token, and a replacement — never the value | **works** |
+| `caf agent token revoke --yes` | destroy the token and remove it from the keyring; refused without `--yes` | **works** || `caf box status --json` | which box this is, which phase it is at, and what is next | **works** |
 | `caf box plan --json` | the install, phase by phase, with this box's position marked | **works** |
 | `caf box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
 | `caf box logs --json` | the box's own log: what happened, when, and to which phase | **works** |

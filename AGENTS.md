@@ -203,6 +203,45 @@ alternative — leaving `gate.yml` out of the lock — would leave the file that
 decides what "green" means here as the one artifact in this repository with no
 pin on it at all.
 
+`internal/agent` is `caf agent`, split by the same rule, and it is the client
+half of the agents-first flow — the thing an agent actually runs. It is the
+mirror of `internal/box` across the subject split in
+moon/AGENTS-FIRST.md: a box is a MACHINE with a keypair that enrols, an agent
+is a PRINCIPAL that registers, becomes claimed by a human, and holds a token:
+
+- `doc.go` — what the package is, its three seams, the output contract, and the
+  one invariant everything else is downstream of.
+- `ring.go` — the `Keyring` seam and the account a token is filed under. Same
+  three calls as `box.Keyring`, same service name, different account prefix: an
+  agent's token can never overwrite a box's key.
+- `config.go` — `config.json`, every saved session, and which one is active.
+  Non-secrets only, for the same reason `box.json` holds none.
+- `endpoint.go` — the six routes identity answers, the `Endpoint` seam and
+  `HTTPEndpoint`, and `StatusError` with its own hint: the 403 an unclaimed
+  agent gets is an instruction, not a status code.
+- `names.go` — the username grammar and the retry that regenerates on a
+  collision, because a generated name is not a name anybody chose.
+- `store.go` — register, login, whoami and the four token verbs, with the
+  ledger's ordering rule applied to a credential.
+
+**The token is never printed, and that is a property of the types rather than
+of a comment.** `RegisterResult` carries the token for exactly as long as it
+takes to move it into the keyring; every document a command prints answers with
+`token_stored` — an existence — and the key's non-secret metadata. `Dial` is a
+function rather than a stored client for the same reason: a Store that held an
+authenticated client would be a Store that held a token for as long as it
+lived, which is invariant 1 verbatim. The test renders every document every
+command produces, across the whole normal flow, and searches both streams for
+three distinct token values — with the control half asserting the agent's
+username IS printed, because a build that redacted everything would pass by
+leaking nothing at all.
+
+**Human prose and the claim URL go to stderr; machine JSON goes to stdout.** An
+agent pipes stdout into a parser; a person reads stderr. There is no `--json`
+flag to toggle between them — a flag that chooses which stream gets the
+document is a flag that guarantees one of the two is wrong in some script — and
+the test asserts stdout is one CLEAN JSON document on every verb.
+
 `internal/box` is `caf box`, split by the same rule and it is the package the
 whole agents-first layer turns on:
 

@@ -34,10 +34,13 @@ type boxDeps struct {
 	url string
 }
 
-// defaultBoxDir is the config directory a box's non-secrets live in. It is
-// resolved here rather than read from a global so the only function that knows
-// about the home directory is the one that resolves a default.
-func defaultBoxDir() (string, error) {
+// defaultConfigDir is the config directory a box's non-secrets and an agent's
+// non-secrets live in. It is resolved here rather than read from a global so
+// the only function that knows about the home directory is the one that
+// resolves a default — and it is ONE function for both subjects, because two
+// of them is how the agent's config ends up in a different directory from the
+// box's.
+func defaultConfigDir() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve the config directory: %w", err)
@@ -53,7 +56,7 @@ const conductorURLEnv = "CAF_CONDUCTOR_URL"
 
 func (d boxDeps) withDefaults() boxDeps {
 	if d.dir == "" {
-		if dir, err := defaultBoxDir(); err == nil {
+		if dir, err := defaultConfigDir(); err == nil {
 			d.dir = dir
 		}
 	}

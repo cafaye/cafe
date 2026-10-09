@@ -86,30 +86,25 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 17, measured with `go list ./...` on this tree, and it is 17 rather than
-      # the `ok` lines `go test` prints because packages with no test files
-      # (`cmd/caf`) print none. The three security packages are in the floor by
-      # name: `internal/emitter` (nothing leaves a process unredacted),
-      # `internal/box` (the private key is never printed; the capability is
-      # never spent twice) and `internal/boxd` (invariant 4 — the route table
-      # refuses what a Secret-shaped answer would leak). A package whose whole
-      # job is a security invariant shipping with no tests would move nothing
-      # except this line, which is why it is pinned by existence as well as by
-      # count.
-      minimum: 17
+      # Measured with `go list ./...` on this tree. The security packages are
+      # pinned by name and by existence: `internal/emitter` (nothing leaves a
+      # process unredacted), `internal/box` (the private key is never printed;
+      # the capability is never spent twice), `internal/boxd` (invariant 4 —
+      # the route table refuses what a Secret-shaped answer would leak) and
+      # `internal/agent` (the CLI's agent identity: the keyring seam and the
+      # endpoint client). A package whose whole job is a security invariant
+      # shipping with no tests would move nothing except this line.
+      minimum: 18
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # The merged floor, measured on the tree carrying the whole agents-first
-      # CLI wave: w6p1's scaffold tests, w6p2's platform template, w2p6's box
-      # lifecycle and w2p7's daemon. `expectedSkips` is unmoved at 8 — none of
-      # them is env-gated.
-      minimum: 917
+      # The merged floor for the agents-first CLI wave: scaffold, platform
+      # template, box lifecycle, boxd, and w1p4's agent commands.
+      # `expectedSkips` unmoved at 8.
+      minimum: 940
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # Measured one lower, same rule: the subtest count is walk-based (the
-      # boxd route table walks every route, the enrollment table one row per
-      # state a caf process can stop in).
-      minimum: 1092
+      # Measured one lower, same rule as always.
+      minimum: 1100
 
     - id: live-tier
       match: '^caf: live tier: [0-9]+ of 7 executed'
