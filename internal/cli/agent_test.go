@@ -36,7 +36,9 @@ var (
 
 // fakeIdentity is the identity endpoint, injected. It answers with what the
 // case planted and records which routes were asked, because "the token verb
-// called rotate and not revoke" is a claim about calls.
+// called rotate and not revoke" is a claim about calls. The planted shapes are
+// identity's own wire shapes, not the plan doc's: the token list is an array,
+// and a token's metadata carries id and dates rather than a prefix and scopes.
 type fakeIdentity struct {
 	register   *agent.RegisterResult
 	registerEr error
@@ -44,16 +46,19 @@ type fakeIdentity struct {
 	home   *agent.Home
 	homeEr error
 
-	key   *agent.KeyInfo
-	keyEr error
+	tokens   []agent.KeyInfo
+	tokensEr error
 
-	create   *agent.NewKey
-	createEr error
+	create     *agent.NewKey
+	createEr   error
+	createName string
 
 	rotate   *agent.NewKey
 	rotateEr error
+	rotateID string
 
 	revokeEr error
+	revokeID string
 
 	// calls is every method name that was invoked, in order.
 	calls []string
@@ -75,32 +80,35 @@ func (f *fakeIdentity) Home(_ context.Context) (*agent.Home, error) {
 	return f.home, nil
 }
 
-func (f *fakeIdentity) Key(_ context.Context) (*agent.KeyInfo, error) {
-	f.calls = append(f.calls, "key")
-	if f.keyEr != nil {
-		return nil, f.keyEr
+func (f *fakeIdentity) Tokens(_ context.Context) ([]agent.KeyInfo, error) {
+	f.calls = append(f.calls, "tokens")
+	if f.tokensEr != nil {
+		return nil, f.tokensEr
 	}
-	return f.key, nil
+	return f.tokens, nil
 }
 
-func (f *fakeIdentity) CreateKey(_ context.Context) (*agent.NewKey, error) {
-	f.calls = append(f.calls, "create")
+func (f *fakeIdentity) CreateToken(_ context.Context, name string) (*agent.NewKey, error) {
+	f.calls = append(f.calls, "create:"+name)
+	f.createName = name
 	if f.createEr != nil {
 		return nil, f.createEr
 	}
 	return f.create, nil
 }
 
-func (f *fakeIdentity) RotateKey(_ context.Context) (*agent.NewKey, error) {
-	f.calls = append(f.calls, "rotate")
+func (f *fakeIdentity) RotateToken(_ context.Context, tokenID string) (*agent.NewKey, error) {
+	f.calls = append(f.calls, "rotate:"+tokenID)
+	f.rotateID = tokenID
 	if f.rotateEr != nil {
 		return nil, f.rotateEr
 	}
 	return f.rotate, nil
 }
 
-func (f *fakeIdentity) RevokeKey(_ context.Context) error {
-	f.calls = append(f.calls, "revoke")
+func (f *fakeIdentity) RevokeToken(_ context.Context, tokenID string) error {
+	f.calls = append(f.calls, "revoke:"+tokenID)
+	f.revokeID = tokenID
 	return f.revokeEr
 }
 
@@ -126,22 +134,21 @@ func agentTestEnv(t *testing.T) (deps agentDeps, id *fakeIdentity, ring *agentTe
 	t.Helper()
 	id = &fakeIdentity{
 		register: &agent.RegisterResult{
-			Agent:    agent.Agent{Username: "noel", Ref: "agent_01HZX", Status: "unclaimed"},
+			Agent:    agent.Agent{ID: "agent_01HZX", Username: "noel", Status: "unclaimed"},
+			KeyID:    "tok_01BOOT",
 			Token:    agentTestToken,
 			ClaimURL: "https://cafaye.test/agents/claim/abcdef0123456789",
 		},
 		home: &agent.Home{
-			"agent":  map[string]any{"username": "noel", "status": "unclaimed"},
+			"agent":  map[string]any{"id": "agent_01HZX", "username": "noel", "status": "unclaimed"},
 			"status": "unclaimed",
 		},
-		key: &agent.KeyInfo{
-			Name:      "cli-issued",
-			Prefix:    "caf_agent_tt",
-			Scopes:    []string{"read install status"},
-			CreatedAt: "2026-10-09T12:00:00Z",
+		tokens: []agent.KeyInfo{
+			{ID: "tok_01BOOT", Name: "bootstrap", ExpiresAt: "2026-11-09T12:00:00Z", CreatedAt: "2026-10-09T12:00:00Z"},
+			{ID: "tok_01CLI", Name: "cli-issued", ExpiresAt: "2026-11-09T12:00:00Z", CreatedAt: "2026-10-09T12:00:00Z"},
 		},
-		create: &agent.NewKey{KeyInfo: agent.KeyInfo{Name: "cli-issued", Prefix: "caf_agent_cc"}, Token: agentCreatedToken},
-		rotate: &agent.NewKey{KeyInfo: agent.KeyInfo{Name: "cli-issued", Prefix: "caf_agent_rr"}, Token: agentRotatedToken},
+		create: &agent.NewKey{KeyInfo: agent.KeyInfo{ID: "tok_01NEW", Name: "cli-issued", ExpiresAt: "2026-11-09T12:00:00Z"}, Token: agentCreatedToken},
+		rotate: &agent.NewKey{KeyInfo: agent.KeyInfo{ID: "tok_01ROT", Name: "cli-issued", ExpiresAt: "2026-11-09T12:00:00Z"}, Token: agentRotatedToken},
 	}
 	ring = newAgentTestRing()
 	deps = agentDeps{dir: t.TempDir(), ring: ring, baseURL: "https://cafaye.test"}
@@ -490,14 +497,19 @@ func TestAgentUnknownVerbListsTheVerbs(t *testing.T) {
 
 // A bad argument count is the user's mistake, so it exits 2 rather than 1 —
 // checked on every verb, because a verb that accepted a stray argument would
-// have to decide what it meant.
+// have to decide what it meant. The token leaves take at most one argument (a
+// name or a token id), so the usage error is two of them; one is a legal
+// argument the verb acts on.
 func TestAgentVerbsRejectBadArgumentCounts(t *testing.T) {
 	deps, _, _ := agentTestEnv(t)
 	for _, args := range [][]string{
 		{"register", "extra"},
 		{"login", "extra"},
 		{"whoami", "extra"},
-		{"token", "show", "extra"},
+		{"token", "show", "extra", "more"},
+		{"token", "create", "extra", "more"},
+		{"token", "rotate", "extra", "more"},
+		{"token", "revoke", "extra", "more"},
 		{"token", "frobnicate"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -506,6 +518,153 @@ func TestAgentVerbsRejectBadArgumentCounts(t *testing.T) {
 				t.Errorf("%v exited %d, want %d", args, code, exitUsage)
 			}
 		})
+	}
+}
+
+// SHOW renders the array identity returns, and a name selects the one live
+// token with that name — the CLI's own contract, decided because identity's
+// mounted route is a list and its one_live_name_per_agent index means a name
+// identifies a live token.
+func TestAgentTokenShowListsAndSelectsOneByName(t *testing.T) {
+	deps, id, _ := agentTestEnv(t)
+	if code, _, _ := runAgentCLI(t, deps, "register", "--name", "Noel"); code != 0 {
+		t.Fatal("register did not seed a session")
+	}
+
+	// Bare show lists every token, revoked included.
+	code, stdout, stderr := runAgentCLI(t, deps, "token", "show")
+	if code != 0 {
+		t.Fatalf("token show exited %d (stderr: %s)", code, stderr)
+	}
+	doc := parseAgentDoc(t, stdout)
+	keys, ok := doc["keys"].([]any)
+	if !ok {
+		t.Fatalf("the document carries no keys array:\n%s", stdout)
+	}
+	if len(keys) != len(id.tokens) {
+		t.Errorf("token show listed %d tokens, want %d", len(keys), len(id.tokens))
+	}
+
+	// A name selects the one live token with that name.
+	code, stdout, stderr = runAgentCLI(t, deps, "token", "show", "cli-issued")
+	if code != 0 {
+		t.Fatalf("token show cli-issued exited %d (stderr: %s)", code, stderr)
+	}
+	doc = parseAgentDoc(t, stdout)
+	keys, ok = doc["keys"].([]any)
+	if !ok {
+		t.Fatalf("the document carries no keys array:\n%s", stdout)
+	}
+	if len(keys) != 1 {
+		t.Errorf("token show cli-issued listed %d tokens, want the 1 live one", len(keys))
+	}
+	if keys[0].(map[string]any)["id"] != "tok_01CLI" {
+		t.Errorf("the selected token is %v, want tok_01CLI", keys[0].(map[string]any)["id"])
+	}
+
+	// A name no live token holds is a failure with the remedy, not an empty
+	// list: an empty list would read as "this agent has no tokens".
+	code, _, stderr = runAgentCLI(t, deps, "token", "show", "nosuch")
+	if code != exitFailure {
+		t.Errorf("exit = %d, want %d", code, exitFailure)
+	}
+	if !strings.Contains(stderr, "caf agent token show") {
+		t.Errorf("the failure does not name the verb:\n%s", stderr)
+	}
+}
+
+// Rotate and revoke carry a token id. Acting on some OTHER token must not
+// disturb the session's own: the keyring holds the bootstrap credential, and
+// overwriting it with a rotated deploy token would strand the session.
+func TestAgentTokenRotateAndRevokeByIdLeaveTheSessionsTokenAlone(t *testing.T) {
+	deps, id, ring := agentTestEnv(t)
+	if code, _, _ := runAgentCLI(t, deps, "register", "--name", "Noel"); code != 0 {
+		t.Fatal("register did not seed a session")
+	}
+
+	code, stdout, stderr := runAgentCLI(t, deps, "token", "rotate", "tok_01CLI")
+	if code != 0 {
+		t.Fatalf("token rotate tok_01CLI exited %d (stderr: %s)", code, stderr)
+	}
+	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentTestToken {
+		t.Errorf("rotating another token overwrote the session's keyring entry: holds %q", got)
+	}
+	if id.rotateID != "tok_01CLI" {
+		t.Errorf("rotate asked for %q, want tok_01CLI", id.rotateID)
+	}
+	if doc := parseAgentDoc(t, stdout); doc["token_stored"] != true {
+		t.Errorf("token_stored = %v, want true (the session's own token is untouched)", doc["token_stored"])
+	}
+
+	code, stdout, stderr = runAgentCLI(t, deps, "token", "revoke", "--yes", "tok_01CLI")
+	if code != 0 {
+		t.Fatalf("token revoke tok_01CLI exited %d (stderr: %s)", code, stderr)
+	}
+	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentTestToken {
+		t.Errorf("revoking another token disturbed the session's keyring entry: holds %q", got)
+	}
+	if id.revokeID != "tok_01CLI" {
+		t.Errorf("revoke asked for %q, want tok_01CLI", id.revokeID)
+	}
+	if doc := parseAgentDoc(t, stdout); doc["token_stored"] != true {
+		t.Errorf("token_stored = %v, want true (the session's own token is untouched)", doc["token_stored"])
+	}
+}
+
+// A bare rotate or revoke acts on the session's own token — the one in the
+// keyring — whose id the config has carried since registration. That is the
+// invariant that makes the no-argument form mean one thing.
+func TestAgentTokenRotateAndRevokeWithNoIdActOnTheSessionsOwnToken(t *testing.T) {
+	deps, id, ring := agentTestEnv(t)
+	if code, _, _ := runAgentCLI(t, deps, "register", "--name", "Noel"); code != 0 {
+		t.Fatal("register did not seed a session")
+	}
+
+	code, _, stderr := runAgentCLI(t, deps, "token", "rotate")
+	if code != 0 {
+		t.Fatalf("token rotate exited %d (stderr: %s)", code, stderr)
+	}
+	if id.rotateID != "tok_01BOOT" {
+		t.Errorf("bare rotate asked for %q, want the session's own tok_01BOOT", id.rotateID)
+	}
+	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentRotatedToken {
+		t.Errorf("the rotated token was not stored: keyring holds %q", got)
+	}
+
+	code, _, stderr = runAgentCLI(t, deps, "token", "revoke", "--yes")
+	if code != 0 {
+		t.Fatalf("token revoke exited %d (stderr: %s)", code, stderr)
+	}
+	if id.revokeID != "tok_01ROT" {
+		t.Errorf("bare revoke asked for %q, want the post-rotation tok_01ROT", id.revokeID)
+	}
+	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != "" {
+		t.Errorf("revoke left a token in the keyring")
+	}
+}
+
+// Create mints a named token: identity requires a name, and the CLI's own
+// default is what a bare create sends.
+func TestAgentTokenCreateSendsItsName(t *testing.T) {
+	deps, id, _ := agentTestEnv(t)
+	if code, _, _ := runAgentCLI(t, deps, "register", "--name", "Noel"); code != 0 {
+		t.Fatal("register did not seed a session")
+	}
+
+	code, _, stderr := runAgentCLI(t, deps, "token", "create")
+	if code != 0 {
+		t.Fatalf("token create exited %d (stderr: %s)", code, stderr)
+	}
+	if id.createName != "cli-issued" {
+		t.Errorf("create asked for a token named %q, want the CLI's default", id.createName)
+	}
+
+	code, _, stderr = runAgentCLI(t, deps, "token", "create", "deploy")
+	if code != 0 {
+		t.Fatalf("token create deploy exited %d (stderr: %s)", code, stderr)
+	}
+	if id.createName != "deploy" {
+		t.Errorf("create asked for a token named %q, want deploy", id.createName)
 	}
 }
 

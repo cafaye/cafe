@@ -8,26 +8,32 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
 
 // THE ROUTES, IN ONE PLACE, AND WHY THEY ARE SPELLED OUT.
 //
-// W1-P2 owns the identity side of this wave and had not landed when this packet
-// was written, so these paths are the shapes moon/AGENTS-FIRST.md documents
-// (`POST /v1/agents`, a claim-link refresh, and the scoped-token
-// create/show/rotate/revoke set) expressed in identity's own `/v1/...`
-// convention. They are one table rather than six string literals because the
-// day W1-P2 lands with different paths, the fix is six lines in one file and a
-// grep for a route literal finds this table and nothing else.
+// These are the routes identity actually mounts, read off identity's master
+// (internal/httpapi/agents.go, registerAgentPublicRoutes) and verified against
+// its own response shapes — NOT the shapes moon/AGENTS-FIRST.md documented
+// before W1-P2 landed, which is how five of the six calls in the previous
+// version of this table came to 404 against a real server. The one exception
+// is the home route: REPAIR-C (identity adding GET /v1/agents/home) has not
+// merged, so that row is the route its brief names, and the client passes its
+// answer through rather than decoding a shape that does not exist yet.
+//
+// They are one table rather than six string literals because the day a route
+// moves, the fix is six lines in one file and a grep for a route literal finds
+// this table and nothing else.
 const (
-	routeRegister  = "POST /v1/agents"
-	routeHome      = "GET /v1/agents/home"
-	routeKey       = "GET /v1/agents/key"
-	routeCreateKey = "POST /v1/agents/key"
-	routeRotateKey = "POST /v1/agents/key/rotate"
-	routeRevokeKey = "POST /v1/agents/key/revoke"
+	routeRegister    = "POST /v1/agents"
+	routeHome        = "GET /v1/agents/home"
+	routeListTokens  = "GET /v1/agents/tokens"
+	routeCreateToken = "POST /v1/agents/tokens"
+	routeRotateToken = "POST /v1/agents/tokens/{tokenID}/rotate"
+	routeRevokeToken = "DELETE /v1/agents/tokens/{tokenID}"
 )
 
 // route is one entry of the table above. It carries its own method and path so
@@ -38,13 +44,21 @@ func (r route) String() string { return string(r) }
 
 func (r route) method() string { return strings.Fields(string(r))[0] }
 
-func (r route) path() string { return strings.Fields(string(r))[1] }
+// path is the route's path with the {tokenID} placeholder filled from id. A
+// route without the placeholder ignores id entirely, so the placeholder can
+// only survive into a URL when a caller sends one to a parameterized route —
+// and the store refuses that case before the call is built.
+func (r route) path(id string) string {
+	return strings.ReplaceAll(strings.Fields(string(r))[1], "{tokenID}", url.PathEscape(id))
+}
 
 // Agent is the principal identity says this session is. Every field is a
-// non-secret.
+// non-secret, and every field is one identity's agentSummary actually carries
+// (id, name, username, status) — the previous version read a `ref` that
+// identity has never had, so it was silently always empty.
 type Agent struct {
+	ID       string `json:"id"`
 	Username string `json:"username"`
-	Ref      string `json:"ref,omitempty"`
 	// Status is the lifecycle word: unclaimed, claimed or disabled.
 	Status string `json:"status"`
 }
@@ -62,21 +76,34 @@ type RegisterInput struct {
 // exists to be moved into the keyring in the same method that received it, and
 // it never reaches a struct that anything marshals.
 type RegisterResult struct {
-	Agent    Agent
-	Token    string
+	Agent Agent
+	// Token is the bootstrap credential, for the length of one call.
+	Token string
+	// KeyID is the bootstrap token's identity id. The keyring holds the token's
+	// value, which identity's token list does not echo, so this id is the only
+	// handle the two share — it is what lets a bare `token rotate` or
+	// `token revoke` find the session's own token.
+	KeyID    string
 	ClaimURL string
 }
 
-// KeyInfo is the non-secret half of an agent token: what it is called, the
-// characters that are safe to show, what it may do and when. There is
-// deliberately no field that could hold the token — `token show` answers with
-// this and nothing else.
+// KeyInfo is the non-secret half of an agent token: its id, what it is called
+// and its dates. The shape is identity's agentTokenResponse, which the mint and
+// rotate answers carry minus the token itself. There is deliberately no field
+// that could hold the token — `token show` answers with this and nothing else.
+//
+// The three pointer fields are identity's "never" states: a token that has
+// never been used has no last_used_at, and a live one has neither revoked_at
+// nor revoke_reason. The pointers let omitempty tell those apart from a present
+// instant, the same reason identity's own type uses them.
 type KeyInfo struct {
-	Name       string   `json:"name,omitempty"`
-	Prefix     string   `json:"prefix,omitempty"`
-	Scopes     []string `json:"scopes,omitempty"`
-	CreatedAt  string   `json:"created_at,omitempty"`
-	LastUsedAt string   `json:"last_used_at,omitempty"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name,omitempty"`
+	ExpiresAt    string  `json:"expires_at,omitempty"`
+	CreatedAt    string  `json:"created_at,omitempty"`
+	LastUsedAt   *string `json:"last_used_at,omitempty"`
+	RevokedAt    *string `json:"revoked_at,omitempty"`
+	RevokeReason *string `json:"revoke_reason,omitempty"`
 }
 
 // NewKey is what create and rotate answer: the metadata, plus the token for the
@@ -88,9 +115,11 @@ type NewKey struct {
 }
 
 // Home is identity's own answer about who a token is. It is passed through
-// rather than decoded into a struct because the shape belongs to identity and
-// W1-P2 owns it — a struct transcribed from a route that has not landed is a
-// struct that will be wrong in a way nothing here could detect.
+// rather than decoded into a struct because the shape belongs to identity:
+// GET /v1/agents/home is REPAIR-C's route and has not landed, and a struct
+// transcribed from a route that does not exist is a struct that will be wrong
+// in a way nothing here could detect. The one fact read out of it is status,
+// which REPAIR-C's brief guarantees the answer carries.
 type Home map[string]any
 
 // Endpoint is the HTTP surface of identity this CLI talks to, and it is an
@@ -106,14 +135,15 @@ type Endpoint interface {
 	Register(ctx context.Context, in RegisterInput) (*RegisterResult, error)
 	// Home answers who this token is, and is what `caf agent whoami` reads.
 	Home(ctx context.Context) (*Home, error)
-	// Key answers the current token's metadata.
-	Key(ctx context.Context) (*KeyInfo, error)
-	// CreateKey mints a fresh token server-side and returns it.
-	CreateKey(ctx context.Context) (*NewKey, error)
-	// RotateKey replaces the current token with a fresh one.
-	RotateKey(ctx context.Context) (*NewKey, error)
-	// RevokeKey destroys the current token.
-	RevokeKey(ctx context.Context) error
+	// Tokens lists the agent's credentials, newest first, revoked included.
+	// It is the mounted shape of the token surface: an array, not one key.
+	Tokens(ctx context.Context) ([]KeyInfo, error)
+	// CreateToken mints a named token server-side and returns it.
+	CreateToken(ctx context.Context, name string) (*NewKey, error)
+	// RotateToken replaces the token id names with a fresh one of the same name.
+	RotateToken(ctx context.Context, tokenID string) (*NewKey, error)
+	// RevokeToken destroys the token id names.
+	RevokeToken(ctx context.Context, tokenID string) error
 }
 
 // Dial opens one endpoint for one base URL and one token. It is a function
@@ -180,20 +210,22 @@ func (e *HTTPEndpoint) Register(ctx context.Context, in RegisterInput) (*Registe
 	if strings.TrimSpace(in.Username) != "" {
 		body["username"] = in.Username
 	}
-	resp, err := e.do(ctx, routeRegister, body, false)
+	resp, err := e.do(ctx, routeRegister, body, false, "")
 	if err != nil {
 		return nil, err
 	}
-	// The response shape is the one the prior art established and W1-P2
-	// documents: an agent, an api_key carrying the token, and a claim carrying
-	// the URL a human opens.
+	// The response shape is identity's registerAgentResponse: an agentSummary
+	// (id, name, username, status), the issued bootstrap token (id, name,
+	// expires_at, token) and the claim link. The nesting is borrowed from the
+	// prior art because a claim screen is written against it already.
 	var payload struct {
 		Agent struct {
+			ID       string `json:"id"`
 			Username string `json:"username"`
-			Ref      string `json:"ref"`
 			Status   string `json:"status"`
 		} `json:"agent"`
 		APIKey struct {
+			ID    string `json:"id"`
 			Token string `json:"token"`
 		} `json:"api_key"`
 		Claim struct {
@@ -204,17 +236,22 @@ func (e *HTTPEndpoint) Register(ctx context.Context, in RegisterInput) (*Registe
 		return nil, fmt.Errorf("caf agent register: the answer was not the document this CLI expects: %w", err)
 	}
 	if strings.TrimSpace(payload.APIKey.Token) == "" {
-		return nil, fmt.Errorf("caf agent register: the answer carried no api_key.token; identity is not answering the documented shape")
+		return nil, fmt.Errorf("caf agent register: the answer carried no api_key.token; identity is not answering the mounted shape")
 	}
 	return &RegisterResult{
-		Agent:    Agent{Username: payload.Agent.Username, Ref: payload.Agent.Ref, Status: payload.Agent.Status},
+		Agent: Agent{
+			ID:       payload.Agent.ID,
+			Username: payload.Agent.Username,
+			Status:   payload.Agent.Status,
+		},
 		Token:    payload.APIKey.Token,
+		KeyID:    payload.APIKey.ID,
 		ClaimURL: payload.Claim.URL,
 	}, nil
 }
 
 func (e *HTTPEndpoint) Home(ctx context.Context) (*Home, error) {
-	resp, err := e.do(ctx, routeHome, nil, true)
+	resp, err := e.do(ctx, routeHome, nil, true, "")
 	if err != nil {
 		return nil, err
 	}
@@ -225,36 +262,41 @@ func (e *HTTPEndpoint) Home(ctx context.Context) (*Home, error) {
 	return &home, nil
 }
 
-func (e *HTTPEndpoint) Key(ctx context.Context) (*KeyInfo, error) {
-	resp, err := e.do(ctx, routeKey, nil, true)
+func (e *HTTPEndpoint) Tokens(ctx context.Context) ([]KeyInfo, error) {
+	resp, err := e.do(ctx, routeListTokens, nil, true, "")
 	if err != nil {
 		return nil, err
 	}
-	var key KeyInfo
-	if err := decode(resp.Body, &key); err != nil {
+	var keys []KeyInfo
+	if err := decode(resp.Body, &keys); err != nil {
 		return nil, fmt.Errorf("caf agent token show: the answer was not the document this CLI expects: %w", err)
 	}
-	return &key, nil
+	return keys, nil
 }
 
-func (e *HTTPEndpoint) CreateKey(ctx context.Context) (*NewKey, error) {
-	resp, err := e.do(ctx, routeCreateKey, map[string]any{"name": "cli-issued"}, true)
+func (e *HTTPEndpoint) CreateToken(ctx context.Context, name string) (*NewKey, error) {
+	resp, err := e.do(ctx, routeCreateToken, map[string]any{"name": name}, true, "")
 	if err != nil {
 		return nil, err
 	}
 	return decodeNewKey("caf agent token create", resp.Body)
 }
 
-func (e *HTTPEndpoint) RotateKey(ctx context.Context) (*NewKey, error) {
-	resp, err := e.do(ctx, routeRotateKey, map[string]any{}, true)
+func (e *HTTPEndpoint) RotateToken(ctx context.Context, tokenID string) (*NewKey, error) {
+	// The body is {} rather than none: identity's rotate handler decodes
+	// unconditionally and answers 400 to an empty body, so the empty object is
+	// the smallest body that means "no expires_in".
+	resp, err := e.do(ctx, routeRotateToken, map[string]any{}, true, tokenID)
 	if err != nil {
 		return nil, err
 	}
 	return decodeNewKey("caf agent token rotate", resp.Body)
 }
 
-func (e *HTTPEndpoint) RevokeKey(ctx context.Context) error {
-	_, err := e.do(ctx, routeRevokeKey, map[string]any{}, true)
+func (e *HTTPEndpoint) RevokeToken(ctx context.Context, tokenID string) error {
+	// No body: identity's revoke reads one only when ContentLength is non-zero,
+	// and this CLI revokes without a reason.
+	_, err := e.do(ctx, routeRevokeToken, nil, true, tokenID)
 	return err
 }
 
@@ -288,7 +330,7 @@ type response struct {
 	Body       []byte
 }
 
-func (e *HTTPEndpoint) do(ctx context.Context, r route, payload any, auth bool) (*response, error) {
+func (e *HTTPEndpoint) do(ctx context.Context, r route, payload any, auth bool, pathID string) (*response, error) {
 	if strings.TrimSpace(e.BaseURL) == "" {
 		return nil, ErrNoBaseURL
 	}
@@ -300,7 +342,7 @@ func (e *HTTPEndpoint) do(ctx context.Context, r route, payload any, auth bool) 
 		}
 		body = bytes.NewReader(raw)
 	}
-	req, err := http.NewRequestWithContext(ctx, r.method(), strings.TrimRight(e.BaseURL, "/")+r.path(), body)
+	req, err := http.NewRequestWithContext(ctx, r.method(), strings.TrimRight(e.BaseURL, "/")+r.path(pathID), body)
 	if err != nil {
 		return nil, fmt.Errorf("build the request: %w", err)
 	}
@@ -413,13 +455,13 @@ func verbFor(r route) string {
 		return "register"
 	case routeHome:
 		return "whoami"
-	case routeKey:
+	case routeListTokens:
 		return "token show"
-	case routeCreateKey:
+	case routeCreateToken:
 		return "token create"
-	case routeRotateKey:
+	case routeRotateToken:
 		return "token rotate"
-	case routeRevokeKey:
+	case routeRevokeToken:
 		return "token revoke"
 	}
 	return r.String()

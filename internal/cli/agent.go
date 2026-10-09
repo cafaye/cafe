@@ -367,15 +367,20 @@ func (o *agentTokenOptions) declare(fs *flag.FlagSet) {
 	fs.BoolVar(&o.yes, "yes", false, "confirm revoke without a prompt; revoke is refused without it")
 }
 
-const agentTokenLongHelp = "Four verbs over one credential. SHOW reads the token's metadata off\n" +
-	"identity — its name, the characters that are safe to display, its scopes and its\n" +
-	"dates. CREATE mints a fresh token and stores it. ROTATE replaces the current one,\n" +
-	"which invalidates it. REVOKE destroys it and needs --yes.\n" +
+const agentTokenLongHelp = "Four verbs over the tokens identity issued for this agent. SHOW lists them —\n" +
+	"newest first, revoked included — or shows the one LIVE token with a name, because\n" +
+	"identity's one_live_name_per_agent index means a name identifies a live token.\n" +
+	"CREATE mints a fresh named token and stores it. ROTATE replaces one, which\n" +
+	"invalidates it. REVOKE destroys one and needs --yes.\n" +
 	"\n" +
-	"NONE OF THEM PRINTS THE TOKEN. They answer with the key's metadata and with\n" +
-	"whether a token is stored, and the value goes to the OS keyring and nowhere else.\n" +
-	"That is invariant 1 in moon/AGENTS-FIRST.md: an agent's transcript is a log, so\n" +
-	"nothing long-lived ever enters one."
+	"EVERY VERB CAN NAME ITS TOKEN: show and create take a name, rotate and revoke\n" +
+	"take the token's id, which " + "`caf agent token show`" + " prints. With no argument, rotate and revoke act\n" +
+	"on the session's own token — the one in the keyring.\n" +
+	"\n" +
+	"NONE OF THEM PRINTS A TOKEN'S VALUE. They answer with the keys' metadata and\n" +
+	"with whether a token is stored, and the value goes to the OS keyring and\n" +
+	"nowhere else. That is invariant 1 in moon/AGENTS-FIRST.md: an agent's\n" +
+	"transcript is a log, so nothing long-lived ever enters one."
 
 func newAgentTokenCommand(deps agentDeps) *Command {
 	verbs := agentTokenVerbs(deps)
@@ -401,27 +406,32 @@ func newAgentTokenCommand(deps agentDeps) *Command {
 	return c
 }
 
-// tokenVerb is one store method, so the three verbs that differ only in which
-// call they make are one function.
-type tokenVerb func(ctx context.Context, agentUsername, baseURL string) (*agent.TokenDoc, error)
+// tokenVerb is one store method behind the token leaves: the two session
+// selectors plus the verb's own argument — a token name for show and create, a
+// token id for rotate and revoke. An empty argument is the verb's own default:
+// the whole list for show, the CLI's default name for create, the session's own
+// token for rotate and revoke.
+type tokenVerb func(ctx context.Context, agentUsername, baseURL, arg string) (*agent.TokenDoc, error)
 
-// newAgentTokenLeaf builds one of the three non-destructive verbs. It is one
-// constructor because they are one command with one shape, and their names are
-// passed in so each command's help and its usage errors read as the words the
-// person typed.
+// newAgentTokenLeaf builds one of the token leaves that take at most one
+// positional argument: show, create and rotate. It is one constructor because
+// they are one command with one shape, and their names are passed in so each
+// command's help and its usage errors read as the words the person typed.
+// Revoke is separate because it is the only verb that destroys a credential.
 func newAgentTokenLeaf(name, summary string, verb tokenVerb) *Command {
 	opts := &agentTokenOptions{}
 	c := &Command{
 		Name:    name,
 		Summary: summary,
-		Usage:   "caf " + name + " [--agent <username>] [--base-url <url>]",
+		Usage:   "caf " + name + " [--agent <username>] [--base-url <url>] [<name-or-token-id>]",
 		Flags:   func(fs *flag.FlagSet) { opts.declare(fs) },
 	}
 	c.Run = func(args []string, env *Env) error {
-		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
+		arg, err := optionalTokenArg(c.Name, c.Usage, args)
+		if err != nil {
 			return err
 		}
-		res, err := verb(env.Context, opts.agent, opts.baseURL)
+		res, err := verb(env.Context, opts.agent, opts.baseURL, arg)
 		if err != nil {
 			return agentError(env, err)
 		}
@@ -431,16 +441,29 @@ func newAgentTokenLeaf(name, summary string, verb tokenVerb) *Command {
 	return c
 }
 
+// optionalTokenArg is the at-most-one positional argument the token leaves
+// take. Two arguments is a usage error: the second would be a second name or
+// id, and a verb that silently picked one would be a verb that guessed.
+func optionalTokenArg(name, usage string, args []string) (string, error) {
+	if len(args) > 1 {
+		return "", fmt.Errorf("%w: caf %s wants at most 1 argument, got %d (usage: %s)", errUsage, name, len(args), usage)
+	}
+	if len(args) == 0 {
+		return "", nil
+	}
+	return strings.TrimSpace(args[0]), nil
+}
+
 func newAgentTokenShowCommand(deps agentDeps) *Command {
-	return newAgentTokenLeaf("agent token show", "show the current token's metadata; the token itself is never printed", deps.store().TokenShow)
+	return newAgentTokenLeaf("agent token show", "list this agent's tokens, or show one live token by name; the values are never printed", deps.store().TokenShow)
 }
 
 func newAgentTokenCreateCommand(deps agentDeps) *Command {
-	return newAgentTokenLeaf("agent token create", "mint a fresh token on identity and store it in the OS keyring", deps.store().TokenCreate)
+	return newAgentTokenLeaf("agent token create", "mint a fresh named token on identity and store it in the OS keyring", deps.store().TokenCreate)
 }
 
 func newAgentTokenRotateCommand(deps agentDeps) *Command {
-	return newAgentTokenLeaf("agent token rotate", "replace the current token; the old one stops working", deps.store().TokenRotate)
+	return newAgentTokenLeaf("agent token rotate", "replace a token with a fresh one; the session's own when no id is given", deps.store().TokenRotate)
 }
 
 // newAgentTokenRevokeCommand is separate from the other three for one reason: it
@@ -452,18 +475,19 @@ func newAgentTokenRevokeCommand(deps agentDeps) *Command {
 	opts := &agentTokenOptions{}
 	c := &Command{
 		Name:    "agent token revoke",
-		Summary: "destroy the current token and remove it from the OS keyring",
-		Usage:   "caf agent token revoke --yes [--agent <username>] [--base-url <url>]",
+		Summary: "destroy a token and remove it from the OS keyring; the session's own when no id is given",
+		Usage:   "caf agent token revoke --yes [--agent <username>] [--base-url <url>] [<token-id>]",
 		Flags:   func(fs *flag.FlagSet) { opts.declare(fs) },
 	}
 	c.Run = func(args []string, env *Env) error {
-		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
+		tokenID, err := optionalTokenArg(c.Name, c.Usage, args)
+		if err != nil {
 			return err
 		}
 		if !opts.yes {
 			return fmt.Errorf("%w: caf agent token revoke refuses to destroy a token without --yes; it cannot be undone from here (usage: %s)", errUsage, c.Usage)
 		}
-		res, err := deps.store().TokenRevoke(env.Context, opts.agent, opts.baseURL)
+		res, err := deps.store().TokenRevoke(env.Context, opts.agent, opts.baseURL, tokenID)
 		if err != nil {
 			return agentError(env, err)
 		}

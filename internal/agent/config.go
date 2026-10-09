@@ -24,8 +24,18 @@ type Session struct {
 	Name string `json:"name"`
 	// AgentUsername is the username identity assigned.
 	AgentUsername string `json:"agent_username"`
-	// AgentRef is identity's own reference for this principal.
-	AgentRef string `json:"agent_ref,omitempty"`
+	// AgentID is identity's own stable identifier for this principal. The
+	// previous version cached a `ref` identity has never carried, so the field
+	// was silently always empty and then vanished.
+	AgentID string `json:"agent_id,omitempty"`
+	// AgentKeyID is the identity id of the token currently in the keyring for
+	// this session: the bootstrap token's id at registration, updated whenever
+	// a verb mints a replacement, cleared when the session's token is revoked.
+	// The keyring holds the token's VALUE, which identity's token list does not
+	// echo, so this id is the only handle the two share — it is what lets a
+	// bare `caf agent token rotate` or `token revoke` find the session's own
+	// token without listing and guessing.
+	AgentKeyID string `json:"agent_key_id,omitempty"`
 	// BaseURL is the identity origin this session talks to.
 	BaseURL string `json:"base_url"`
 	// TokenRef is the keyring account the token is filed under.

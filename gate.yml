@@ -92,12 +92,12 @@ gate:
       minimum: 23
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 1040, measured: 1048 declared on the merged tree, 8 expected skips.
-      minimum: 1040
+      # 1051, measured: 1059 declared on the merged tree, 8 expected skips.
+      minimum: 1051
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # 1135, measured.
-      minimum: 1135
+      # 1157, measured.
+      minimum: 1157
 
     - id: live-tier
       match: '^caf: live tier: [0-9]+ of 7 executed'

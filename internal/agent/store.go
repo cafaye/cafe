@@ -144,7 +144,8 @@ func (s *Store) Register(ctx context.Context, opts RegisterOptions) (*Registrati
 	cfg.AgentSessions[session] = Session{
 		Name:          session,
 		AgentUsername: username,
-		AgentRef:      result.Agent.Ref,
+		AgentID:       result.Agent.ID,
+		AgentKeyID:    result.KeyID,
 		BaseURL:       opts.BaseURL,
 		TokenRef:      ringAccount(session),
 		Status:        result.Agent.Status,
@@ -234,7 +235,7 @@ func (s *Store) Login(agentUsername, baseURL string) (*LoginResult, error) {
 	return &LoginResult{
 		Action:        "logged-in",
 		Session:       sess.Name,
-		Agent:         Agent{Username: sess.AgentUsername, Ref: sess.AgentRef, Status: sess.Status},
+		Agent:         Agent{Username: sess.AgentUsername, ID: sess.AgentID, Status: sess.Status},
 		BaseURL:       sess.BaseURL,
 		TokenStored:   true,
 		ActiveSession: sess.Name,
@@ -275,7 +276,7 @@ func (s *Store) WhoAmI(ctx context.Context, agentUsername, baseURL string) (*Who
 	if err != nil {
 		return nil, err
 	}
-	agent := Agent{Username: sess.AgentUsername, Ref: sess.AgentRef, Status: sess.Status}
+	agent := Agent{Username: sess.AgentUsername, ID: sess.AgentID, Status: sess.Status}
 	// The remote answer wins on status: a local "unclaimed" cache that has gone
 	// stale is worse than no cache, and this is the one call where the server's
 	// own word is free.
@@ -295,102 +296,177 @@ func (s *Store) WhoAmI(ctx context.Context, agentUsername, baseURL string) (*Who
 
 // --- the token verbs ------------------------------------------------------
 
-// TokenDoc is what every token verb prints. It carries the key's metadata and
+// TokenDoc is what every token verb prints. It carries the keys' metadata and
 // the fact that a token is stored, and it carries no token: the four verbs each
 // handle a credential and each of them answers with this same document shape.
 type TokenDoc struct {
-	Action      string   `json:"action"`
-	Session     string   `json:"session"`
-	Agent       Agent    `json:"agent"`
-	BaseURL     string   `json:"base_url"`
-	Key         *KeyInfo `json:"key,omitempty"`
-	TokenStored bool     `json:"token_stored"`
-	Message     string   `json:"message"`
+	Action  string `json:"action"`
+	Session string `json:"session"`
+	Agent   Agent  `json:"agent"`
+	BaseURL string `json:"base_url"`
+	// Keys is the token metadata the verb produced or selected: the list for
+	// show, one entry for create and rotate. It never carries a token's value.
+	Keys        []KeyInfo `json:"keys,omitempty"`
+	TokenStored bool      `json:"token_stored"`
+	Message     string    `json:"message"`
 }
 
-// TokenShow reads the current token's metadata off identity.
-func (s *Store) TokenShow(ctx context.Context, agentUsername, baseURL string) (*TokenDoc, error) {
+// defaultTokenName is the name `token create` mints when the caller did not
+// choose one. Identity requires a name; this is the CLI's own.
+const defaultTokenName = "cli-issued"
+
+// TokenShow reads the agent's tokens off identity. With no name it lists them
+// all — the array identity returns, newest first, revoked included. With a
+// name it selects the one LIVE token with that name: identity's
+// one_live_name_per_agent partial index means a name identifies a live token,
+// so the selection is unambiguous and a revoked lookalike is never picked.
+func (s *Store) TokenShow(ctx context.Context, agentUsername, baseURL, name string) (*TokenDoc, error) {
 	sess, token, err := s.sessionToken(agentUsername, baseURL)
 	if err != nil {
 		return nil, err
 	}
-	key, err := s.endpoint(sess.BaseURL, token).Key(ctx)
+	keys, err := s.endpoint(sess.BaseURL, token).Tokens(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if name != "" {
+		selected := []KeyInfo{}
+		for _, k := range keys {
+			if k.Name == name && k.RevokedAt == nil {
+				selected = append(selected, k)
+				break
+			}
+		}
+		if len(selected) == 0 {
+			return nil, fmt.Errorf("caf agent token show: no live token named %q for session %s; `caf agent token show` lists them", name, sess.Name)
+		}
+		keys = selected
 	}
 	return &TokenDoc{
 		Action: "shown", Session: sess.Name, Agent: agentOf(sess), BaseURL: sess.BaseURL,
-		Key: key, TokenStored: true,
-		Message: "the token for session " + sess.Name + " is in the keyring; its value is not printed",
+		Keys: keys, TokenStored: true,
+		Message: "the tokens for session " + sess.Name + " are listed; their values are not printed",
 	}, nil
 }
 
-// TokenCreate mints a fresh token and stores it, replacing whatever the ring
-// held for this session.
-func (s *Store) TokenCreate(ctx context.Context, agentUsername, baseURL string) (*TokenDoc, error) {
+// TokenCreate mints a fresh named token and stores it, replacing whatever the
+// ring held for this session. An empty name is the CLI's own default.
+func (s *Store) TokenCreate(ctx context.Context, agentUsername, baseURL, name string) (*TokenDoc, error) {
 	sess, token, err := s.sessionToken(agentUsername, baseURL)
 	if err != nil {
 		return nil, err
 	}
-	fresh, err := s.endpoint(sess.BaseURL, token).CreateKey(ctx)
+	if strings.TrimSpace(name) == "" {
+		name = defaultTokenName
+	}
+	fresh, err := s.endpoint(sess.BaseURL, token).CreateToken(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.Ring.Set(KeyringService, ringAccount(sess.Name), fresh.Token); err != nil {
 		return nil, fmt.Errorf("caf agent token create: the new token was minted but could not be stored: %w", err)
 	}
+	// The session's token is now the fresh one: the keyring holds it, so the
+	// id that names it moves with it.
+	if err := s.saveSessionKeyID(sess, fresh.ID); err != nil {
+		return nil, err
+	}
 	return &TokenDoc{
 		Action: "created", Session: sess.Name, Agent: agentOf(sess), BaseURL: sess.BaseURL,
-		Key: &fresh.KeyInfo, TokenStored: true,
+		Keys: []KeyInfo{fresh.KeyInfo}, TokenStored: true,
 		Message: "a new token was minted and stored in the keyring; the previous one is now the one to forget",
 	}, nil
 }
 
-// TokenRotate replaces the token and stores the new one. Identity invalidates
-// the old one, so the store write is the second half of one operation: a rotate
-// whose new token could not be stored leaves the session unusable, and the
-// error says so plainly rather than reporting success.
-func (s *Store) TokenRotate(ctx context.Context, agentUsername, baseURL string) (*TokenDoc, error) {
+// TokenRotate replaces one token with a fresh one of the same name. With no id
+// it rotates the session's own token — the one in the keyring — and stores the
+// replacement, because identity has invalidated the old one and a session whose
+// new token was not stored is a session that cannot authenticate. With an id it
+// rotates that token; the keyring follows only when the id is the session's
+// own, so rotating some other token never overwrites the credential this
+// session authenticates with.
+func (s *Store) TokenRotate(ctx context.Context, agentUsername, baseURL, tokenID string) (*TokenDoc, error) {
 	sess, token, err := s.sessionToken(agentUsername, baseURL)
 	if err != nil {
 		return nil, err
 	}
-	fresh, err := s.endpoint(sess.BaseURL, token).RotateKey(ctx)
+	if strings.TrimSpace(tokenID) == "" {
+		tokenID = sess.AgentKeyID
+	}
+	if strings.TrimSpace(tokenID) == "" {
+		return nil, fmt.Errorf("caf agent token rotate: pass a token id (`caf agent token show` lists them)")
+	}
+	fresh, err := s.endpoint(sess.BaseURL, token).RotateToken(ctx, tokenID)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Ring.Set(KeyringService, ringAccount(sess.Name), fresh.Token); err != nil {
-		return nil, fmt.Errorf("caf agent token rotate: the new token was minted but could not be stored: %w", err)
+	message := "the token was rotated; the old one no longer works"
+	if tokenID == sess.AgentKeyID {
+		if err := s.Ring.Set(KeyringService, ringAccount(sess.Name), fresh.Token); err != nil {
+			return nil, fmt.Errorf("caf agent token rotate: the new token was minted but could not be stored: %w", err)
+		}
+		if err := s.saveSessionKeyID(sess, fresh.ID); err != nil {
+			return nil, err
+		}
+		message = "the token was rotated and the new one is in the keyring; the old one no longer works"
 	}
 	return &TokenDoc{
 		Action: "rotated", Session: sess.Name, Agent: agentOf(sess), BaseURL: sess.BaseURL,
-		Key: &fresh.KeyInfo, TokenStored: true,
-		Message: "the token was rotated and the new one is in the keyring; the old one no longer works",
+		Keys: []KeyInfo{fresh.KeyInfo}, TokenStored: true,
+		Message: message,
 	}, nil
 }
 
-// TokenRevoke destroys the token and then removes it from the ring.
-//
-// The ring entry is deleted only after identity has confirmed the revocation,
-// and a revocation that is confirmed but whose local delete failed is reported
-// as a failure: the credential is dead server-side either way, and the only
-// thing at stake locally is a stale secret nobody can use.
-func (s *Store) TokenRevoke(ctx context.Context, agentUsername, baseURL string) (*TokenDoc, error) {
+// TokenRevoke destroys one token. With no id it revokes the session's own and
+// removes it from the keyring — the credential is dead server-side, and a
+// keyring entry for a dead credential is a stale secret. With an id it revokes
+// that token; the keyring is touched only when the id is the session's own.
+func (s *Store) TokenRevoke(ctx context.Context, agentUsername, baseURL, tokenID string) (*TokenDoc, error) {
 	sess, token, err := s.sessionToken(agentUsername, baseURL)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.endpoint(sess.BaseURL, token).RevokeKey(ctx); err != nil {
+	if strings.TrimSpace(tokenID) == "" {
+		tokenID = sess.AgentKeyID
+	}
+	if strings.TrimSpace(tokenID) == "" {
+		return nil, fmt.Errorf("caf agent token revoke: pass a token id (`caf agent token show` lists them)")
+	}
+	if err := s.endpoint(sess.BaseURL, token).RevokeToken(ctx, tokenID); err != nil {
 		return nil, err
 	}
-	if err := s.Ring.Delete(KeyringService, ringAccount(sess.Name)); err != nil {
-		return nil, fmt.Errorf("caf agent token revoke: the token was revoked on identity but is still in the keyring: %w", err)
+	stored := true
+	message := "the token was revoked on identity; it no longer authenticates"
+	if tokenID == sess.AgentKeyID {
+		if err := s.Ring.Delete(KeyringService, ringAccount(sess.Name)); err != nil {
+			return nil, fmt.Errorf("caf agent token revoke: the token was revoked on identity but is still in the keyring: %w", err)
+		}
+		if err := s.saveSessionKeyID(sess, ""); err != nil {
+			return nil, err
+		}
+		stored = false
+		message = "the token was revoked and removed from the keyring; this session can no longer authenticate"
 	}
 	return &TokenDoc{
 		Action: "revoked", Session: sess.Name, Agent: agentOf(sess), BaseURL: sess.BaseURL,
-		TokenStored: false,
-		Message:     "the token was revoked and removed from the keyring; this session can no longer authenticate",
+		TokenStored: stored,
+		Message:     message,
 	}, nil
+}
+
+// saveSessionKeyID records the id of the token the keyring now holds for one
+// session. The config is a cache of remote facts, and this is the one that lets
+// a later bare rotate or revoke find the session's own token: the keyring holds
+// the token's value, which identity's list does not echo.
+func (s *Store) saveSessionKeyID(sess Session, keyID string) error {
+	cfg, err := LoadConfig(s.Dir)
+	if err != nil {
+		return err
+	}
+	updated := cfg.AgentSessions[sess.Name]
+	updated.AgentKeyID = keyID
+	cfg.AgentSessions[sess.Name] = updated
+	return cfg.Save(s.Dir)
 }
 
 // --- the two shared steps -------------------------------------------------
@@ -435,5 +511,5 @@ func (s *Store) token(sess Session) (string, error) {
 }
 
 func agentOf(sess Session) Agent {
-	return Agent{Username: sess.AgentUsername, Ref: sess.AgentRef, Status: sess.Status}
+	return Agent{Username: sess.AgentUsername, ID: sess.AgentID, Status: sess.Status}
 }
