@@ -19,6 +19,7 @@ internal/contract/  the core contract: manifests, the vendored schemas, versions
 internal/backup/    caf backup: the cross-file contract, the plan, the cycle
 internal/dev/       the local stack: the planner, the renderer, two seams
 internal/gen/       caf gen: the pure generator, and the drift gate that keeps it honest
+internal/scaffold/  caf new and caf init: the template catalog, the render, the write
 internal/lock/      caf lock: the pin over specs, vendored schemas and generated output, and its verifier
 internal/telemetry/ GENERATED, and compiled: caf's own copy of `caf gen telemetry`'s output
 internal/mcp/       the MCP server: transports, the served table, the SDK seam

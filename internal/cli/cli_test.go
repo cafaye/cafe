@@ -99,10 +99,10 @@ func TestRunDispatch(t *testing.T) {
 			wantErr:  []string{"flag provided but not defined: -nope"},
 		},
 		{
-			name:     "a stub reports that it is not implemented",
-			args:     []string{"init"},
+			name:     "an unknown template names the catalog",
+			args:     []string{"new", "--template", "nope", "acme"},
 			wantCode: 1,
-			wantErr:  []string{"caf init: not implemented in v0"},
+			wantErr:  []string{"unknown template", "app"},
 		},
 		{
 			name:     "too few arguments is a usage error",
@@ -120,7 +120,7 @@ func TestRunDispatch(t *testing.T) {
 			name:     "flags before arguments are parsed",
 			args:     []string{"new", "--template", "api", "accounts"},
 			wantCode: 1,
-			wantErr:  []string{"caf new: not implemented in v0"},
+			wantErr:  []string{"unknown template", "app"},
 		},
 		{
 			name:     "arguments before flags stay positional",
@@ -163,10 +163,11 @@ func TestRunExitCodes(t *testing.T) {
 		{name: "unknown command is a usage error", args: []string{"nope"}, want: 2},
 		{name: "unknown flag is a usage error", args: []string{"deploy", "--nope"}, want: 2},
 		{name: "bad arity is a usage error", args: []string{"gen", "a", "b"}, want: 2},
-		// `init` rather than a command that wants an argument: this row is about
-		// a stub that ran correctly and failed, and a wrong argument count is a
-		// usage error, which the rows above already cover.
-		{name: "a stub failure is a plain error", args: []string{"init"}, want: 1},
+		// `new` with an unknown template rather than a command that wants an
+		// argument: this row is about a command that ran correctly and failed,
+		// and a wrong argument count is a usage error, which the rows above
+		// already cover.
+		{name: "a command failure is a plain error", args: []string{"new", "--template", "nope", "acme"}, want: 1},
 	}
 
 	for _, tt := range tests {
@@ -208,7 +209,7 @@ func TestRunWithNoStreams(t *testing.T) {
 		// either verdict, so the assertion is that it did not panic and that
 		// the code is one of the two a report can produce.
 		{name: "doctor prints nowhere and does not panic", args: []string{"doctor"}, want: exitFailure},
-		{name: "a stub reports nowhere and fails", args: []string{"init"}, want: exitFailure},
+		{name: "a failure reports nowhere and fails", args: []string{"new", "--template", "nope", "acme"}, want: exitFailure},
 		{name: "a usage error reports nowhere and exits 2", args: []string{"nope"}, want: exitUsage},
 	}
 

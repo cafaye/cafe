@@ -1,0 +1,43 @@
+# {{ .Name }}
+
+A cafaye app, scaffolded by `caf new --template app`. It runs on `caf dev`,
+ships from a Helm chart `caf gen chart` writes, and is held to the cafaye
+contract by `caf contract lint`.
+
+## The loop
+
+```sh
+caf dev              # build the image and run the stack locally
+caf gen chart        # the Helm chart this app deploys from
+caf contract lint .  # the manifest, checked against core's schema
+```
+
+## What is in the box
+
+| Path | What it is |
+| --- | --- |
+| `cafaye.yml` | the app's identity: name, language, contract version, owner, repository |
+| `main.go` | a real service on `:8080`, answering `/healthz` and `/readyz` |
+| `go.mod` | the Go module |
+| `docker/Dockerfile` | the image `caf dev` builds, in the place it looks for one |
+
+The app listens on 8080 because that is the port cafaye knows a Go service
+listens on — it is read out of the manifest's `language`, not configured
+anywhere, so the manifest and the container cannot disagree.
+
+## The two rules that matter most
+
+**The manifest is identity, not configuration.** Core's schema is
+`additionalProperties: false`: a field core has not declared is an error, and
+`caf contract lint` reports it. A credential belongs in the deployment's
+secret store, referenced by name — never in a file that is committed. When
+this app starts publishing events or serving an API, declare them in
+`exposes`: every event type opens with the publisher's own name, and
+`caf contract lint` enforces that too.
+
+**The app is the editable surface.** The customer's repository is the source
+of truth; the platform's surface is its contracts and configuration. An agent
+that patches vendored platform service source creates a fork that has to be
+supported through every update. Extend this app through the contract
+(`cafaye.yml`, the OpenAPI document, the event types), not by editing the
+platform underneath it.
