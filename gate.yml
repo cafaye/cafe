@@ -146,7 +146,16 @@ gate:
       # passed as a minimum — 16 is not below 15 — but a floor that does not name
       # the count it measured is a floor that has stopped being read. caf-w76
       # corrects it to the measured 16.
-      minimum: 16
+      #
+      # 17, which is 16 plus `internal/box` — the box lifecycle, its keyring
+      # seam, its conductor seam and its enrollment journal. It is in the
+      # packages floor for the same argument as `internal/emitter`: a package
+      # whose whole job is a security invariant (the private key is never
+      # printed; the capability is never spent twice) would leave both
+      # test-count floors moving by the number of its tests and this one by a
+      # package, and a `box` that shipped with no tests at all is exactly the
+      # packet this repository's rules refuse.
+      minimum: 17
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
       # 435, measured, and the number is the interesting part of this file.
@@ -501,7 +510,30 @@ gate:
       # over the existing temp-git fixture and needs no network. It is the
       # preview the master/main guard used to refuse, and
       # `TestUpdateRefusesTheDefaultBranch` still holds the merge refusal.
-      minimum: 853
+      #
+      # w2p6 added 19, seventeen in the new `internal/box` and two in
+      # `internal/cli/box_test.go`, and moved this floor to 872: 880 declared,
+      # 8 skips, so 872 run. `expectedSkips` stays at 8 — none of the nineteen
+      # is env-gated; the box's proofs are a counting conductor, an in-memory
+      # keyring and a temp directory, and none of them needs a network, a
+      # keychain or a subprocess. That is the argument `internal/dev` makes
+      # about its own seams, and it is why the whole packet is table-driven.
+      #
+      # The nineteen are worth naming, because they are not nineteen variants
+      # of one test. The enrollment table has one row per state a caf process
+      # can stop in — nothing yet, a journal at `prepared`, a journal at
+      # `redeemed`, and an already-stored identity — and each row asserts the
+      # NUMBER of redemptions performed rather than the outcome. A retry that
+      # redeemed twice would pass an outcome assertion, because conductor's
+      # single-use refuses the second one anyway; only the count distinguishes
+      # idempotence from luck. The command-level test drives the sequence twice
+      # through the parent's dispatcher against two stores sharing one
+      # directory, which is the only shape in which "a retry converges" means
+      # anything. And `TestNoBoxCommandEverPrintsThePrivateKey` runs every verb
+      # and searches BOTH streams for the key's bytes, with the control half
+      # asserting that the PUBLIC key IS printed — a build that redacted
+      # everything would pass it by leaking nothing at all.
+      minimum: 872
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.
@@ -608,7 +640,16 @@ gate:
       # the readChart refusal table is five, the dirty-tree table is three, the
       # version-derivation table is four, and the engine-selection table is
       # four — twenty rows, which is what this floor moved by.
-      minimum: 1006
+      #
+      # RE-MEASURED AT 1059 after w2p6, and set one lower for the same reason.
+      # The fifty-three rows are the box's tables: the enrollment's four stages
+      # (one row per state a caf process can stop in, each asserting the
+      # redemptions performed), the three refusal shapes a conductor can answer,
+      # the lifecycle rows on an unenrolled box, the usage table, and the
+      # subtest per verb inside the never-print-the-key test — one row per
+      # command, because a leak that reached one verb and not its five siblings
+      # is the case that test exists for and a single assertion could not see.
+      minimum: 1058
     #
     # THE ONE WITH NO FLOOR, and the schema sanctions that: a `minimum` is
     # omitted "for a proof that reports nothing countable (a step that must

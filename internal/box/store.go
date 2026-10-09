@@ -32,7 +32,27 @@ const (
 // under. The box does not know its box_id until conductor says so, so there is
 // no better name to use before then; afterwards the key moves to
 // `box/<box_id>` and this entry is deleted.
-const journalPending = "box/enrollment-pending"
+const journalPending = KeyringAccountPending
+
+// The names outside this package has to use, exported because a caller that
+// has to look at an interrupted enrollment — a status report, a recovery — needs
+// the same name the store used. A second spelling of any of them is how a key
+// ends up written under one account and read under another.
+const (
+	// KeyringAccountPending is the account a not-yet-enrolled keypair is filed
+	// under, before conductor has said which box it belongs to.
+	KeyringAccountPending = "box/enrollment-pending"
+	// KeyringService is the keyring's service name.
+	KeyringService = "caf"
+	// IdentityFileName is the file the box's non-secrets live in.
+	IdentityFileName = identityFile
+	// JournalFileName is the file an in-progress enrollment lives in.
+	JournalFileName = journalFile
+	// JournalPrepared is the journal state a retry replays from.
+	JournalPrepared = journalPrepared
+	// JournalRedeemed is the journal state a retry FINISHES from.
+	JournalRedeemed = journalRedeemed
+)
 
 // The three things Enroll can conclude. They are strings because they go into
 // a document a machine reads, and because the difference between "enrolled"

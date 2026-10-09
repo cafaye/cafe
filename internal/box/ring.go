@@ -34,14 +34,16 @@ type Keyring interface {
 
 // The keyring's naming, in one place because a second spelling of it is how a
 // key ends up written under one name and read under another.
-const (
-	ringService = "caf"
-	// ringAccount is the account the box's private key is filed under, and the
-	// box ID is appended to it so that two boxes enrolled on one machine — a
-	// developer with a spare box, a CI runner with two — do not overwrite each
-	// other's identity.
-	ringAccountPrefix = "box/"
-)
+// ringService is the keyring service name this package files everything
+// under. It is the same string as the exported KeyringService, and keeping the
+// two in sync by having only one of them is the point.
+const ringService = KeyringService
+
+// ringAccountPrefix is the account a box's private key is filed under, and the
+// box ID is appended to it so that two boxes enrolled on one machine — a
+// developer with a spare box, a CI runner with two — do not overwrite each
+// other's identity.
+const ringAccountPrefix = "box/"
 
 // ringAccount is the keyring account name for one box's private key.
 func ringAccount(boxID string) string { return ringAccountPrefix + boxID }
