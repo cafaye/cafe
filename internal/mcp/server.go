@@ -57,6 +57,22 @@ type Options struct {
 	// because a server with nowhere to log must still run. Nothing here writes
 	// to the server's stdout: on the stdio transport that is the wire.
 	Logger *slog.Logger
+	// Authority verifies a remote caller's bearer token and turns it into a
+	// Principal. Nil means the HTTP transport refuses every scoped tool: a
+	// server with no authority is not a server whose scopes are unenforced, it
+	// is one whose scoped tools answer nothing. W1-P4's agent token is what it
+	// verifies; the real implementation forwards the bearer to identity.
+	Authority Authority
+	// Standing is the principal a process serves as when the transport does not
+	// name one. It exists for stdio — a `caf mcp` child process spawned by an
+	// agent host, whose caller is the machine's own session. It is deliberately
+	// NOT consulted when a request carries its own token info, so an
+	// authenticated remote caller can never inherit the standing principal's
+	// scopes. See principalFor.
+	Standing *Principal
+	// ClockSkew tolerates a small drift between this machine's clock and
+	// identity's when deciding a token has expired. Zero tolerates none.
+	ClockSkew time.Duration
 }
 
 func (o Options) logger() *slog.Logger {
@@ -81,6 +97,13 @@ type Server struct {
 	// on the wire; this keeps the order caf chose, which is the order a reader
 	// of the source expects.
 	names []string
+	// authority, standing and skew are the auth substrate: who a caller is,
+	// which scopes answer which tool, and how much clock drift gets tolerated.
+	// They are fields rather than per-call arguments because a tool's gate is a
+	// property of the server serving it, not of the caller asking for it.
+	authority Authority
+	standing  *Principal
+	skew      time.Duration
 }
 
 // New builds a server with no tools. Tools are added with Add, because a
@@ -92,7 +115,10 @@ func New(opts Options) *Server {
 			Name:    ServerName,
 			Version: opts.Version,
 		}, &sdk.ServerOptions{Logger: opts.logger()}),
-		log: opts.logger(),
+		log:       opts.logger(),
+		authority: opts.Authority,
+		standing:  opts.Standing,
+		skew:      opts.ClockSkew,
 	}
 }
 
@@ -169,7 +195,23 @@ func Add[In, Out any](s *Server, tool Tool[In, Out]) {
 			OpenWorldHint: boolPtr(false),
 		},
 	}
-	sdk.AddTool(s.impl, sdkTool, func(ctx context.Context, _ *sdk.CallToolRequest, in In) (result *sdk.CallToolResult, out Out, err error) {
+	sdk.AddTool(s.impl, sdkTool, func(ctx context.Context, req *sdk.CallToolRequest, in In) (result *sdk.CallToolResult, out Out, err error) {
+		// The scope gate runs BEFORE the handler, because a handler that has
+		// already run is a handler whose effect cannot be taken back by a
+		// refusal. It is the enforcement invariant 4 asks for: on the server,
+		// in one place, not in the prompt the agent reads.
+		if gateErr := s.checkScope(tool.Name, req); gateErr != nil {
+			var zero Out
+			if caller := principalFor(req, s.standing); caller != nil {
+				s.log.Warn("a caf mcp tool call was refused", "tool", tool.Name, "principal", caller.UserID, "error", gateErr)
+			} else {
+				s.log.Warn("a caf mcp tool call was refused", "tool", tool.Name, "error", gateErr)
+			}
+			// The zero value and not a partially built answer: a refusal is a
+			// thing that did not happen, and a caller reading a half-populated
+			// result would act on it.
+			return nil, zero, gateErr
+		}
 		// A panic in one tool must not take the server down with it. The
 		// deferred recover is what turns that into the second return value, so
 		// the agent gets a tool error, reads it, and carries on — where a
@@ -226,14 +268,20 @@ func (s *Server) ServeStdio(ctx context.Context, in io.Reader, out io.Writer) er
 // client configuration makes that acceptable. `ready` is how a caller learns
 // the port when it asked for an ephemeral one, because printing it and having
 // a test parse the output is a race with the log stream.
+//
+// WHEN AN AUTHORITY IS CONFIGURED, EVERY REQUEST IS AUTHENTICATED — and that
+// is the packet which makes a non-loopback listener thinkable at all. A server
+// started with one on a routable address still refuses a caller that presents
+// no bearer, and refuses every scoped tool for a token that does not carry the
+// scope, and both refusals name the command that ends them.
 func (s *Server) ServeHTTP(ctx context.Context, addr string, ready func(addr string)) error {
 	if addr == "" {
 		addr = "127.0.0.1:0"
 	}
 	if host, _, err := net.SplitHostPort(addr); err != nil {
 		return fmt.Errorf("caf mcp: -port needs a host:port address, got %q: %w", addr, err)
-	} else if !isLoopback(host) {
-		return fmt.Errorf("caf mcp: %s is not a loopback address; this server runs containers, so it only listens on 127.0.0.1 or ::1", addr)
+	} else if !isLoopback(host) && s.authority == nil {
+		return fmt.Errorf("caf mcp: %s is not a loopback address; this server runs containers, so it only listens on 127.0.0.1 or ::1 unless an authority authenticates remote callers", addr)
 	}
 
 	listener, err := net.Listen("tcp", addr)
@@ -242,7 +290,8 @@ func (s *Server) ServeHTTP(ctx context.Context, addr string, ready func(addr str
 	}
 	defer listener.Close()
 
-	handler := sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return s.impl }, nil)
+	handler := authenticate(s.authority,
+		sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return s.impl }, nil), s.skew)
 	server := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	if ready != nil {
 		ready(listener.Addr().String())
@@ -279,7 +328,7 @@ func CheckLoopbackAddr(addr string) error {
 		return fmt.Errorf("%s is not a host:port address: %w", addr, err)
 	}
 	if !isLoopback(host) {
-		return fmt.Errorf("%s is not a loopback address; this server starts and stops containers, so it only listens on 127.0.0.1 or ::1 (port %s is fine)", addr, port)
+		return fmt.Errorf("%s is not a loopback address; this server starts and stops containers, so it only listens on 127.0.0.1 or ::1 (port %s is fine); a routable address needs an authority that authenticates remote callers", addr, port)
 	}
 	return nil
 }
