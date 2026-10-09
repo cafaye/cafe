@@ -3,6 +3,10 @@
     {
       "name": "app",
       "summary": "a cafaye app: the manifest, a Go service on :8080, and the image caf dev builds"
+    },
+    {
+      "name": "platform",
+      "summary": "a cafaye platform app: identity, gateway, courier, and parlor composed into a starting product"
     }
   ]
 }

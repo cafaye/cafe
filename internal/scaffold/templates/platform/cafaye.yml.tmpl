@@ -1,0 +1,54 @@
+# cafaye.yml — {{ .Name }}: a cafaye platform app scaffolded by `caf new --template platform`.
+#
+# This file is the app's IDENTITY and never its configuration. Core's schema is
+# `additionalProperties: false`, so a credential written here is a lint failure
+# rather than a secret committed to a repository — service environment arrives
+# per deployment, by reference. Owner and repository are the two facts caf
+# cannot know; edit them.
+#
+# This template composes the launch four — identity, gateway, courier, parlor —
+# into a starting product. `caf dev` resolves each through the service registry
+# (pantry serves the official one) and starts them alongside this app.
+#
+# Checked against core's manifest schema and the conventions with:
+#
+#   caf contract lint .
+name: {{ .Name }}
+description: "A cafaye platform app composing identity, gateway, courier, and parlor into a starting product."
+
+language: go
+
+# The core contract version this app is written against. `caf contract
+# resolve 0.2.0` answers whether a given version is inside this range.
+core: {{ .CoreConstraint }}
+
+# The launch four — the platform services this app is built on. Each is
+# resolved through the service registry at `caf dev` time; pantry serves the
+# official catalog. All four are required: the app is a starting product, not
+# a degraded one.
+#
+# `version` is deliberately absent from each: no cafaye service has tagged a
+# release yet, and inventing a contract version would be a guess rather than a
+# fact. The core constraint above is the one version this app declares.
+dependencies:
+  - name: identity
+    required: true
+  - name: gateway
+    required: true
+  - name: courier
+    required: true
+  - name: parlor
+    required: true
+
+# `exposes` is deliberately absent: a scaffolded app publishes nothing yet.
+# When this app serves an API or publishes events, declare them here — every
+# event type opens with the publisher's own name — and `caf contract lint`
+# will hold this manifest to it.
+repository:
+  url: {{ .RepositoryURL }}
+  defaultBranch: master
+  visibility: private
+
+owner:
+  # The team accountable for this app, not its author.
+  team: {{ .OwnerTeam }}

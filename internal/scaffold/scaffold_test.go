@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/caf/internal/dev"
 )
 
 // The catalog resolves every entry it indexes. An index that names a template
@@ -333,6 +334,144 @@ func TestAnInvalidManifestIsRefusedBeforeAnythingIsWritten(t *testing.T) {
 	}
 }
 
+// The platform template composes the launch four: identity, gateway, courier,
+// and parlor are all declared as required dependencies. This is the packet's
+// whole claim — a scaffolded project that runs the platform — tested by
+// reading the rendered manifest's dependencies rather than by trusting the
+// template's prose.
+func TestThePlatformTemplateComposesTheLaunchFour(t *testing.T) {
+	manifest, err := renderedManifest(t, "acme", "platform")
+	if err != nil {
+		t.Fatalf("renderedManifest: %v", err)
+	}
+
+	parsed, finding := contract.CheckData(manifestPath, manifest)
+	if !finding.OK() {
+		t.Fatalf("the platform manifest does not validate:\n%s", finding)
+	}
+
+	deps := parsed.Dependencies()
+	want := map[string]bool{"identity": true, "gateway": true, "courier": true, "parlor": true}
+	if len(deps) != len(want) {
+		t.Fatalf("the platform manifest declares %d dependencies, want %d: %v", len(deps), len(want), deps)
+	}
+	for _, dep := range deps {
+		if !want[dep.Name] {
+			t.Errorf("dependency %q is not one of the launch four", dep.Name)
+		}
+		if !dep.Required {
+			t.Errorf("dependency %q is not required; the platform app is a starting product, not a degraded one", dep.Name)
+		}
+	}
+}
+
+// The platform app's `caf dev` story: the manifest composes the four services
+// into a runnable stack. This is the extent the story is testable headlessly —
+// the compose document renders, the services are present, and the wiring
+// (depends_on, connection environment) is correct. What it cannot prove is
+// that the containers actually start: the registry entries below are fixtures
+// with the four services' real shapes (language, port) and placeholder images,
+// and a live `caf dev` needs the real catalog from pantry and a container
+// runtime.
+func TestThePlatformTemplatePlansAStackWithTheLaunchFour(t *testing.T) {
+	manifest, err := renderedManifest(t, "acme", "platform")
+	if err != nil {
+		t.Fatalf("renderedManifest: %v", err)
+	}
+
+	parsed, finding := contract.CheckData(manifestPath, manifest)
+	if !finding.OK() {
+		t.Fatalf("the platform manifest does not validate:\n%s", finding)
+	}
+
+	// A registry with the launch four, shaped the way the real catalog's
+	// entries are: image, port, language, and the connections each service
+	// needs. The images are placeholders — the real catalog pins the actual
+	// tags — but the wiring is what this test is about.
+	reg := dev.Catalog{
+		"identity": {
+			Name:  "identity",
+			Image: "ghcr.io/cafaye/identity:latest",
+			Port:  8080,
+		},
+		"gateway": {
+			Name:  "gateway",
+			Image: "ghcr.io/cafaye/gateway:latest",
+			Port:  8080,
+		},
+		"courier": {
+			Name:  "courier",
+			Image: "ghcr.io/cafaye/courier:latest",
+			Port:  4000,
+		},
+		"parlor": {
+			Name:  "parlor",
+			Image: "ghcr.io/cafaye/parlor:latest",
+			Port:  3000,
+		},
+	}
+
+	// The platform template includes a Dockerfile, so the app builds from the
+	// working tree. We are testing the plan in memory rather than writing the
+	// scaffolded files to disk, so the Build is passed directly — the same
+	// shape `caf dev` resolves when it finds docker/Dockerfile in the project.
+	stack, err := dev.Plan(parsed, reg, dev.Options{
+		Build: &dev.Build{Context: ".", Dockerfile: "docker/Dockerfile"},
+	})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+
+	// The stack has the app plus the four plus the two pieces of local
+	// infrastructure (postgres and redis) that caf adds to every runnable
+	// service.
+	want := []string{"acme", "courier", "gateway", "identity", "parlor", "postgres", "redis"}
+	if len(stack.Services) != len(want) {
+		t.Fatalf("the stack has %d services, want %d: %v", len(stack.Services), len(want), stack.Names())
+	}
+	for _, name := range want {
+		if !hasService(stack, name) {
+			t.Errorf("the stack has no service %q; have %v", name, stack.Names())
+		}
+	}
+
+	// The app depends on all four platform services.
+	acme := mustService(t, stack, "acme")
+	deps := serviceDeps(acme)
+	for _, name := range []string{"identity", "gateway", "courier", "parlor"} {
+		if _, found := deps[name]; !found {
+			t.Errorf("the app does not depend on %q; dependencies: %v", name, deps)
+		}
+	}
+
+	// The app is handed the local infrastructure's addresses.
+	env := serviceEnv(acme)
+	for _, variable := range []string{"DATABASE_URL", "REDIS_URL"} {
+		if _, found := env[variable]; !found {
+			t.Errorf("the app is not handed %s; environment: %v", variable, env)
+		}
+	}
+
+	// Every service in the stack is wired to the infrastructure it needs.
+	for _, name := range []string{"identity", "gateway", "courier", "parlor"} {
+		svc := mustService(t, stack, name)
+		svcEnv := serviceEnv(svc)
+		if _, found := svcEnv["DATABASE_URL"]; !found {
+			t.Errorf("%s is not handed DATABASE_URL; environment: %v", name, svcEnv)
+		}
+	}
+
+	// The compose document renders — the artifact a developer reads.
+	if stack.Compose == "" {
+		t.Error("the stack's compose document is empty")
+	}
+	for _, name := range want {
+		if !strings.Contains(stack.Compose, name+":") {
+			t.Errorf("the compose document has no service %q", name)
+		}
+	}
+}
+
 // helpers
 
 func hasFile(paths []string, want string) bool {
@@ -342,6 +481,47 @@ func hasFile(paths []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// hasService reports whether a stack has a named service, so an assertion
+// reads as the fact it is about rather than as a missing-map-key zero value.
+func hasService(stack dev.Stack, name string) bool {
+	for _, svc := range stack.Services {
+		if svc.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// mustService finds one service in a plan, failing the test when it is absent.
+func mustService(t *testing.T, stack dev.Stack, name string) dev.Service {
+	t.Helper()
+	for _, svc := range stack.Services {
+		if svc.Name == name {
+			return svc
+		}
+	}
+	t.Fatalf("no service %q in the plan; have %v", name, stack.Names())
+	return dev.Service{}
+}
+
+// serviceDeps is a service's dependency edges as a name → condition map.
+func serviceDeps(svc dev.Service) map[string]string {
+	deps := make(map[string]string, len(svc.DependsOn))
+	for _, d := range svc.DependsOn {
+		deps[d.Name] = d.Condition
+	}
+	return deps
+}
+
+// serviceEnv is a service's environment as a name → value map.
+func serviceEnv(svc dev.Service) map[string]string {
+	env := make(map[string]string, len(svc.Environment))
+	for _, e := range svc.Environment {
+		env[e.Name] = e.Value
+	}
+	return env
 }
 
 func pathsOf(files []File) []string {
