@@ -37,7 +37,7 @@ type providerDeps struct {
 
 func (d providerDeps) withDefaults() providerDeps {
 	if d.dir == "" {
-		if dir, err := defaultBoxDir(); err == nil {
+		if dir, err := defaultConfigDir(); err == nil {
 			d.dir = dir
 		}
 	}
