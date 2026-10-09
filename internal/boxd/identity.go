@@ -96,10 +96,9 @@ const (
 )
 
 // Outcome is what goes back to conductor for every capability: which one, what
-// the daemon decided, and why in a sentence. It is the ack, and its answer
-// field is deliberately absent — an outcome reports status, never data,
-// because the channel's whole purpose is that credentials travel into the box
-// and status travels back out.
+// the daemon decided, and why in a sentence. It is the classification and
+// never the data — the answer travels beside it inside an Ack, and it is
+// guarded by the same walk every route's output goes through.
 type Outcome struct {
 	CapabilityID string `json:"capability_id"`
 	Route        string `json:"route"`
@@ -107,6 +106,21 @@ type Outcome struct {
 	// Message is the human sentence: the refusal's reason, or the route's own
 	// error. It is never the parameters and never the answer.
 	Message string `json:"message,omitempty"`
+}
+
+// Ack is one capability's full report to conductor: the decision about it,
+// and the answer the route produced.
+//
+// The answer is carried because a capability is a request — `stack.status`
+// exists to be answered, and a daemon that dropped the answer would make the
+// route pointless. It is guarded rather than trusted: every route's answer
+// type is walked by the load-bearing test before this package ships, so what
+// travels in an Ack is status-shaped by construction — names, phases,
+// booleans — and a Secret-shaped answer is a red suite rather than a field
+// somebody forgot to redact.
+type Ack struct {
+	Outcome Outcome
+	Answer  any
 }
 
 // ---------------------------------------------------------------------------
@@ -157,10 +171,11 @@ type Conductor interface {
 	// The daemon holds the connection open; a box that polls is a box whose
 	// failure mode is a slow capability rather than an open port.
 	Next(ctx context.Context) (Capability, error)
-	// Ack reports one outcome. The daemon acks every capability, including
-	// the ones it refused — a refusal conductor did not hear about is a
-	// capability conductor will re-send until its TTL burns down.
-	Ack(ctx context.Context, out Outcome) error
+	// Ack reports one capability's outcome and answer. The daemon acks every
+	// capability, including the ones it refused — a refusal conductor did not
+	// hear about is a capability conductor will re-send until its TTL burns
+	// down.
+	Ack(ctx context.Context, ack Ack) error
 	// Close ends the connection.
 	Close() error
 }

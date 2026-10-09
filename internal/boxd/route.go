@@ -130,7 +130,7 @@ func Redeem(ctx context.Context, table Table, w World, cap Capability) (any, Out
 	}
 	if w.Identity().BoxID != cap.BoxID {
 		return nil, refuse(cap, WrongBox,
-			fmt.Sprintf("capability is bound to box %q and this box is %q", cap.BoxID, w.Identity().BoxID)),
+				fmt.Sprintf("capability is bound to box %q and this box is %q", cap.BoxID, w.Identity().BoxID)),
 			nil
 	}
 	if !cap.alive(time.Now()) {
@@ -230,9 +230,9 @@ func providerConnectRoute() Route {
 		Envelope json.RawMessage `json:"envelope"`
 	}
 	type result struct {
-		Provider string `json:"provider"`
-		Installed bool  `json:"installed"`
-		Detail   string `json:"detail,omitempty"`
+		Provider  string `json:"provider"`
+		Installed bool   `json:"installed"`
+		Detail    string `json:"detail,omitempty"`
 	}
 	h := Handler[params, result](func(ctx context.Context, w World, in params) (result, error) {
 		if in.Provider == "" {
