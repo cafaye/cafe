@@ -80,6 +80,27 @@ contract needs so that `init`, `gen` and `deploy` do not each grow their own:
   rather than what somebody transcribed. Both are the same argument — a pinned
   copy beats a fetch — applied in opposite directions.
 
+`internal/scaffold` is `caf new` and `caf init`, split the same way, and it is
+the packet that made both commands real:
+
+- `doc.go` — what the package is, and the three rules the catalog holds:
+  the templates are embedded, a scaffold is rendered into memory and refused
+  before anything is written, and the manifest is validated by the same code
+  `caf contract lint` runs.
+- `catalog.go` — the index and the walk over a template's directory. The tree
+  is the single source of truth for what a template contains; an index that
+  listed the files would be a second copy that could disagree with it.
+- `render.go` — the name rules (a mirror of core's serviceName `$defs`, kept
+  honest by a test that renders a table of names through both), the template
+  execution, and the validation gate.
+- `write.go` — the one write, and the refusal that names what is in the way.
+- `scaffold.go` — `New` and `Init`, the two entry points.
+
+The templates scaffold a customer's app: a real service, the image `caf dev`
+builds, and a manifest with no `exposes` — a scaffolded app publishes nothing
+yet. What they do not scaffold is a patch to a platform service's source; the
+agent's editable surface is the customer's repository.
+
 `internal/gen` is `caf gen`, split by what it is for, and it holds one rule that
 the rest of this file leans on:
 
@@ -444,7 +465,11 @@ moment. `internal/lock` holds to it for a second reason: the failure it exists t
 catch is two processes disagreeing about a vendored schema or a generated client,
 and a verifier that cannot be rebuilt from a release tarball with nothing but a
 standard library is a verifier nobody can run in the one place a tarball gets
-checked.
+checked. `internal/scaffold` is stdlib plus `internal/contract` and brings that
+package's two libraries with it, which is the deliberate answer rather than an
+accident of the import: the manifest a template renders is validated by the same
+compiled schema `caf contract lint` runs, and the generator cannot be allowed a
+second, weaker copy of the check its output has to pass.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and
