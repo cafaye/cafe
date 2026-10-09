@@ -90,6 +90,7 @@ a run in which they passed.
 | `caf contract breaking <a> <b>` | compare two OpenAPI revisions, reporting which tier each change breaks | **works** |
 | `caf contract resolve <c> <v>` | resolve a core version constraint | **works** |
 | `caf mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
+| `caf boxd` | run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities (invariant 4) | **works** |
 | `caf version` | print the caf version | **works** |
 | `caf doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
 | `caf reclaim` | reclaim what a caf session left behind, containers before volumes | **works** |
@@ -1141,6 +1142,7 @@ internal/gen/       caf gen: the pure generator, and the drift gate over it
 internal/telemetry/ GENERATED: caf's own copy of `caf gen telemetry`'s output
 internal/emitter/    the OTel wiring: one root span per invocation, and the no-op
 internal/mcp/       the MCP server: transports, the served table, the seam
+internal/boxd/      the box daemon: the whitelisted route table, the outbound mTLS channel
 internal/ledger/    the reclamation ledger: what caf created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
@@ -1384,6 +1386,53 @@ the official Go SDK. MCP's wire format has moved several times and a hand-rolled
 JSON-RPC framing layer is a month of work and a permanent maintenance burden.
 Above that wrapper nothing imports the SDK, so every tool stays an ordinary Go
 function with an ordinary Go signature.
+
+## `caf boxd`
+
+`caf boxd` is the root daemon that runs on the customer's box, in the same
+binary. It is the only thing on the box that can act on a conductor
+capability: it dials **out** to conductor over mTLS, waits for capabilities,
+and redeems them. **It opens no listener.** There is no `-listen` flag — an
+undeclared flag is a usage error — and no inbound path exists in the package.
+The only connection a box has is the one it makes.
+
+This is AGENTS-FIRST invariant 4 as engineering: *the enforcement lives on
+the box, not in the agent's instructions.* An agent steering a deployment can
+ask the box for what the box can do; it cannot ask the box to run a command or
+read a credential, because neither route exists to be asked for.
+
+| Route | What it does | Mutates? |
+|---|---|---|
+| `box.status` | the box's enrolled identity, the daemon's version, where its conductor is | no |
+| `stack.status` | the substrate's phase, and the phase the install plan reached | no |
+| `stack.apply` | apply one phase of the recorded install plan, idempotently | yes |
+| `provider.connect` | install a provider credential sealed to this box as a Kubernetes Secret | yes |
+
+### The route table is the security boundary
+
+A capability names a route and carries its parameters. The daemon looks the
+route up in a table compiled into the binary and dispatches — or refuses by
+name. There is no fallback, no prefix match and no wildcard, and nothing that
+arrives over the wire can add a route.
+
+The second half is what a handler can touch. Every route's second parameter is
+a `World` interface with one method per capability the box has: no method runs
+a process, and no method returns a `Secret`. A route that would need either
+cannot be written, because the interface it is handed has no way to ask.
+
+`internal/boxd`'s load-bearing test renders every route in the table through a
+recording world and walks each answer's type graph. A Secret-shaped value
+reachable from **any** route's answer is a red suite naming the route and the
+path. The guard has a negative control that has been watched going red: a route
+carrying a `Credential`, a `Secret` behind a pointer, a map of `PrivateKey` and
+a `BearerToken` is caught by the same walk. A test nobody has seen fire is not
+on offer. And the daemon's private key is loaded per connection and dropped
+with it — a daemon whose core dump is a keyring would defeat the point.
+
+`caf boxd -once` redeems at most one capability and returns, which is one
+round trip under an operator's eye rather than a signal they cannot see. The
+daemon needs the enrolled identity `caf box enroll` writes; without it, it says
+so and names that command.
 
 ## Roadmap
 

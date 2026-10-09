@@ -146,7 +146,15 @@ gate:
       # passed as a minimum — 16 is not below 15 — but a floor that does not name
       # the count it measured is a floor that has stopped being read. caf-w76
       # corrects it to the measured 16.
-      minimum: 16
+      #
+      # 17, which is 16 plus `internal/boxd` — `caf boxd`, the box daemon. This
+      # is the floor that answers the packet's first claim: the daemon is a new
+      # package whose whole job is invariant 4, and a package that shipped with
+      # no tests would move nothing except this line. The two floors below move
+      # for its route table and its mTLS channel; this one moves because the
+      # package exists, which is the only floor that cannot be satisfied by a
+      # subset of what landed.
+      minimum: 17
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
       # 435, measured, and the number is the interesting part of this file.
@@ -508,7 +516,17 @@ gate:
       # 871: 879 declared, 8 skips, so 871 run. `expectedSkips` is unmoved:
       # nothing new skips; the seven live tests and the re-exec'd child are
       # still the whole tier, named at the constant.
-      minimum: 873
+      #
+      # w2p7 added 25 — 17 in `internal/boxd` and 8 in `internal/cli` — and
+      # moved this floor to 898: 906 declared, 8 skips, so 898 run.
+      # `expectedSkips` is unmoved for the same reason every packet restates:
+      # none of the new tests is env-gated, and the guard that matters most
+      # here (`TestEveryRouteRefusesToAnswerWithASecret`) is a table with one
+      # row per route, so it walks every route in the table on every run.
+      # The mTLS proof is the other 17: it binds a loopback TLS listener
+      # inside the test process, which is a socket but not a container, so
+      # bin/prime on a bare runner still runs it.
+      minimum: 898
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 537, measured, and it is a different detector from the one above.
@@ -615,7 +633,18 @@ gate:
       # the readChart refusal table is five, the dirty-tree table is three, the
       # version-derivation table is four, and the engine-selection table is
       # four — twenty rows, which is what this floor moved by.
-      minimum: 1006
+      #
+      # w2p7 moved it to 1060 on a measurement of 1061, same one-lower rule.
+      # The new rows are `internal/boxd`'s: the route table is rendered one row
+      # per route by `TestEveryRouteRefusesToAnswerWithASecret`, the refusals
+      # are four rows naming the machine state each produces, the redemption
+      # table is one row per route, the half-configured daemon is four rows
+      # naming the field and what it is for, and the identity file's three
+      # unreadable shapes are three. Twenty-two rows, which is the packet's
+      # argument in its structure: a rule with a case per input is a table
+      # somebody has to check by reading rather than a number somebody has to
+      # trust.
+      minimum: 1060
     #
     # THE ONE WITH NO FLOOR, and the schema sanctions that: a `minimum` is
     # omitted "for a proof that reports nothing countable (a step that must

@@ -12,6 +12,7 @@ import (
 func TestRegistryContainsEveryCommand(t *testing.T) {
 	want := []string{
 		"backup",
+		"boxd",
 		"contract",
 		"deploy",
 		"dev",
