@@ -165,8 +165,8 @@ func (c HTTPPantry) get(ctx context.Context, token *string, path string, out any
 // 502 as "pantry said no".
 func problemError(status int, raw []byte) error {
 	var problem struct {
-		Code   string `json:"code"`
-		Detail string `json:"detail"`
+		Code    string `json:"code"`
+		Detail  string `json:"detail"`
 		TraceID string `json:"trace_id"`
 	}
 	_ = json.Unmarshal(raw, &problem)
