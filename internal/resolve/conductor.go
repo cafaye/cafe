@@ -1,0 +1,221 @@
+package resolve
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+// ConductorError is one non-2xx answer from conductor. Like PantryError, it
+// carries the server's own code and message, because conductor's refusals are
+// named and actionable (`entitlement_required`, `version_not_granted`) and a
+// client that paraphrased them would be a client whose failures cannot be
+// grepped against the server's log.
+type ConductorError struct {
+	// Status is the HTTP status.
+	Status int
+	// Code is the error's `code`: entitlement_required, version_not_granted,
+	// not_found, unauthenticated, unprocessable, unavailable,
+	// capability_expired, capability_redeemed, capability_wrong_account.
+	Code string
+	// Message is the error's `message`.
+	Message string
+}
+
+func (e *ConductorError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("conductor answered %d %s: %s", e.Status, e.Code, e.Message)
+	}
+	return fmt.Sprintf("conductor answered %d %s", e.Status, e.Code)
+}
+
+// HTTPConductor is the real Conductor: the entitlement check, the mint of the
+// artifact.fetch capability, and its redemption — the whole of tier 3 in one
+// call, because the resolver's tier-3 question is one question and the
+// capability is not a thing to hold, it is a thing to spend.
+type HTTPConductor struct {
+	// BaseURL is conductor's origin. Empty is refused rather than defaulted.
+	BaseURL string
+	// Client is the HTTP client. Nil means one with a timeout.
+	Client *http.Client
+	// Timeout bounds each call. Default 30s.
+	Timeout time.Duration
+}
+
+// DefaultConductorTimeout is what a nil Timeout means.
+const DefaultConductorTimeout = 30 * time.Second
+
+func (c HTTPConductor) client() *http.Client {
+	if c.Client != nil {
+		return c.Client
+	}
+	timeout := c.Timeout
+	if timeout <= 0 {
+		timeout = DefaultConductorTimeout
+	}
+	return &http.Client{Timeout: timeout}
+}
+
+// ArtifactFetch is tier 3: ask "does this account hold this product at this
+// range?", mint the artifact.fetch capability, and redeem it — returning the
+// fetch grant, which is the proof the chain closed.
+//
+// The capability token crosses from the mint response to the redemption
+// request and is dropped on the floor here. It never reaches the caller: the
+// grant is the deliverable, and the token is a bearer credential that is spent
+// by the redemption, so handing it back would be handing back something
+// already used.
+//
+// The caller's token (the agent's caf credential) is presented as the bearer
+// for the mint and kept for the length of exactly this call. Whether it is
+// sufficient — whether the caller is a member of the account — is conductor's
+// decision, and the refusal is named: 401 unauthenticated, 404 not_found (an
+// agent acting alone is not a member, and conductor answers that with the
+// same 404 as an unknown account), 503 unavailable when identity cannot be
+// reached.
+func (c HTTPConductor) ArtifactFetch(ctx context.Context, accountID, artifact, versionRange, token string) (*FetchGrant, error) {
+	if strings.TrimSpace(c.BaseURL) == "" {
+		return nil, &ConductorError{Code: "no_conductor", Message: "no conductor URL configured"}
+	}
+
+	// The mint: POST /v1/accounts/{id}/artifact_fetches {artifact, version_range}.
+	capToken, err := c.mint(ctx, accountID, artifact, versionRange, token)
+	if err != nil {
+		return nil, err
+	}
+
+	// The redemption: POST /v1/capabilities/redeem {token, account_id}. The
+	// account_id must match the capability's own account — a capability for
+	// account A cannot fetch for account B — and conductor refuses a mismatch
+	// without spending the capability.
+	grant, err := c.redeem(ctx, capToken, accountID)
+	if err != nil {
+		return nil, err
+	}
+	return grant, nil
+}
+
+// mint posts the entitlement check and returns the capability token.
+func (c HTTPConductor) mint(ctx context.Context, accountID, artifact, versionRange, token string) (string, error) {
+	body, err := json.Marshal(map[string]string{
+		"artifact":      artifact,
+		"version_range": versionRange,
+	})
+	if err != nil {
+		return "", fmt.Errorf("encode the entitlement check: %w", err)
+	}
+	path := "/v1/accounts/" + accountID + "/artifact_fetches"
+	res, raw, err := c.do(ctx, token, http.MethodPost, path, body)
+	if err != nil {
+		return "", err
+	}
+	if res.StatusCode != http.StatusCreated {
+		return "", errorFrom(res.StatusCode, raw, "caf artifact fetch")
+	}
+	var payload struct {
+		Capability struct {
+			Token string `json:"token"`
+		} `json:"capability"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return "", fmt.Errorf("decode the mint answer: %w", err)
+	}
+	if strings.TrimSpace(payload.Capability.Token) == "" {
+		return "", &ConductorError{Code: "no_capability", Message: "the entitlement check passed but minted no capability token"}
+	}
+	return payload.Capability.Token, nil
+}
+
+// redeem redeems the capability and returns the fetch grant. The grant is the
+// capability's scope, read back from conductor — the proof that the capability
+// was real and has been spent.
+func (c HTTPConductor) redeem(ctx context.Context, capToken, accountID string) (*FetchGrant, error) {
+	body, err := json.Marshal(map[string]string{
+		"token":      capToken,
+		"account_id": accountID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("encode the redemption: %w", err)
+	}
+	res, raw, err := c.do(ctx, capToken, http.MethodPost, "/v1/capabilities/redeem", body)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, errorFrom(res.StatusCode, raw, "caf artifact fetch")
+	}
+	var payload struct {
+		Capability struct {
+			Purpose              string `json:"purpose"`
+			AccountID            string `json:"account_id"`
+			Artifact             string `json:"artifact"`
+			ArtifactVersionRange string `json:"artifact_version_range"`
+			ExpiresAt            string `json:"expires_at"`
+		} `json:"capability"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("decode the redemption answer: %w", err)
+	}
+	return &FetchGrant{
+		Purpose:      payload.Capability.Purpose,
+		AccountID:    payload.Capability.AccountID,
+		Artifact:     payload.Capability.Artifact,
+		VersionRange: payload.Capability.ArtifactVersionRange,
+		ExpiresAt:    payload.Capability.ExpiresAt,
+	}, nil
+}
+
+// do issues one authenticated POST and returns the status, the body and any
+// transport error. The token is presented as the bearer; an empty token is
+// refused here rather than sent as an empty bearer, which a server answers 401
+// for a token that never existed.
+func (c HTTPConductor) do(ctx context.Context, token, method, path string, body []byte) (*http.Response, []byte, error) {
+	if strings.TrimSpace(token) == "" {
+		return nil, nil, &ConductorError{Code: "unauthenticated", Message: "this call needs a caf token and none was presented"}
+	}
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(c.BaseURL, "/")+path, bytes.NewReader(body))
+	if err != nil {
+		return nil, nil, fmt.Errorf("build the conductor request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := c.client().Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("call conductor: %w", err)
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	if err != nil {
+		return res, nil, fmt.Errorf("read conductor's answer: %w", err)
+	}
+	return res, raw, nil
+}
+
+// errorFrom turns conductor's {error:{code,message}} body into a ConductorError.
+// The code is read out of the body because conductor names its refusals there,
+// and the two 403s — entitlement_required and version_not_granted — are
+// distinguished by the code and nothing else.
+func errorFrom(status int, raw []byte, op string) error {
+	var payload struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	_ = json.Unmarshal(raw, &payload)
+	code := payload.Error.Code
+	if code == "" {
+		code = http.StatusText(status)
+	}
+	message := payload.Error.Message
+	if message == "" {
+		message = firstLine(raw)
+	}
+	return &ConductorError{Status: status, Code: code, Message: message}
+}

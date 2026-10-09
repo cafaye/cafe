@@ -81,6 +81,13 @@ func (d Dependency) String() string {
 	return d.Name + " " + d.Version + " (" + requirement + ")"
 }
 
+// ManifestFileName is the one name a manifest may have. It is exported
+// because the file name is a contract between caf and the filesystem, not a
+// detail of the parser: `caf resolve` and `caf dev` both have to find the
+// manifest before either can read it, and a caller that had to guess the name
+// is a caller that cannot report "there is nothing here" on its own.
+func ManifestFileName() string { return manifestFileName }
+
 // Parse reads a manifest. A syntax error is returned; anything else is a
 // manifest with its problems, which Check reports.
 func Parse(data []byte) (Manifest, error) {
