@@ -68,6 +68,7 @@ func Commands() []*Command {
 	return []*Command{
 		newBackupCommand(backupDeps{}),
 		newBoxCommand(boxDeps{}),
+		newBoxdCommand(boxdDeps{}),
 		newContractCommand(),
 		newDeployCommand(deployDeps{}),
 		newDevCommand(defaultDevDeps()),

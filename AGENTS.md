@@ -24,6 +24,8 @@ internal/scaffold/  caf new and caf init: the template catalog, the render, the 
 internal/lock/      caf lock: the pin over specs, vendored schemas and generated output, and its verifier
 internal/telemetry/ GENERATED, and compiled: caf's own copy of `caf gen telemetry`'s output
 internal/mcp/       the MCP server: transports, the served table, the SDK seam
+internal/boxd/      the box daemon: the whitelisted route table, the Seam-ed world,
+                     and the outbound-only mTLS channel to conductor
 internal/ledger/    the reclamation ledger: what caf created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
@@ -237,6 +239,36 @@ the response and the record is the one window that cannot be closed from this
 side, and it is stated rather than hidden — caf answers an honest refusal naming
 it. Everything else is drivable into a table with one row per state a caf
 process can stop in, each row asserting the NUMBER of redemptions performed.
+
+
+`internal/boxd` is `caf boxd`, split the same way, and it is where invariant 4
+lives — the enforcement on the box rather than in the agent's instructions:
+
+- `doc.go` — what the daemon is, and the three rules it holds: a capability
+  must be in the table, alive and bound; no route may answer with a
+  Secret-shaped value; and the box key's lifetime is a connection's.
+- `secret.go` — the `Secret` shape, and the walk that hunts for it. Declared
+  in this package because the daemon defines what it is forbidden to return.
+- `route.go` — the `Route` type, the `World` interface a handler is handed,
+  and `Redeem`, the one entry point a capability has into the box. The
+  interface is the rule: no method runs a process, no method returns a
+  secret, so a handler cannot need what it was never given.
+- `identity.go` — the enrolled identity, the capability, the outcome, and the
+  `Conductor` channel's two outbound verbs.
+- `daemon.go` — the round: load, dial, redeem, ack, reconnect with a bounded
+  backoff. No listener in the type system any more than in the process.
+- `client.go` — the mTLS dial and the one-JSON-object-per-line protocol. The
+  server half of that protocol is conductor's (W1-P3); it is written down
+  here so both sides have something to be checked against from day one.
+
+`secret_test.go` is the load-bearing test of the whole packet: it renders
+every route in the table through a recording world and walks each answer's
+type graph, failing if any reachable type is Secret-shaped. It carries its
+own negative control — a route with a `Credential` in four disguises,
+watched going red — because a check nobody has seen fail is a check that
+might not work. `tls_test.go` is the second half: a real loopback TLS
+listener that requires the box's client certificate, proving the channel is
+mTLS rather than described as it.
 
 `internal/backup` is `caf backup`, split the same way, and it exists so that a
 second command that needs to know what a backup is does not grow its own:
@@ -494,23 +526,25 @@ information and needs no framework. The compose document is written by hand in
 has no YAML encoder and a general one would order the document's keys by
 whatever order its own map does — which is the one thing about it that must not
 happen. There are two packages with dependencies, and the argument is the same in both:
-the standard library cannot do the job. `internal/box`, `internal/ledger`,
-`internal/ports`, `internal/reclaim`, `internal/ryuk` and `internal/lock` have
-none, and that is a constraint rather than an accident: the reclamation path is
-the one that has to keep working when nothing else does, and a dependency graph
-on the path that cleans up after a failure is a graph that can fail to load at
-exactly the wrong moment. `internal/lock` holds to it for a second reason: the
-failure it exists to catch is two processes disagreeing about a vendored schema
-or a generated client, and a verifier that cannot be rebuilt from a release
-tarball with nothing but a standard library is a verifier nobody can run in the
-one place a tarball gets checked. `internal/scaffold` is stdlib plus
-`internal/contract` and brings that package's two libraries with it, which is
-the deliberate answer rather than an accident of the import: the manifest a
-template renders is validated by the same compiled schema `caf contract lint`
-runs, and the generator cannot be allowed a second, weaker copy of the check its
-output has to pass. `internal/box` is stdlib only, and it holds to it for the
-same reason: the keyring seam and the conductor client sit on the path that
-reclaims after a failed enrollment.
+the standard library cannot do the job. `internal/box`, `internal/boxd`,
+`internal/ledger`, `internal/ports`, `internal/reclaim`, `internal/ryuk` and
+`internal/lock` have none, and that is a constraint rather than an accident: the
+reclamation path is the one that has to keep working when nothing else does, and
+a dependency graph on the path that cleans up after a failure is a graph that
+can fail to load at exactly the wrong moment. `internal/lock` holds to it for a
+second reason: the failure it exists to catch is two processes disagreeing about
+a vendored schema or a generated client, and a verifier that cannot be rebuilt
+from a release tarball with nothing but a standard library is a verifier nobody
+can run in the one place a tarball gets checked. `internal/box` holds to it for
+the same reason as lock: the keyring seam and the conductor client sit on the
+path that reclaims after a failed enrollment. `internal/boxd` holds to it for a
+third: it is the daemon on the customer's box, and a daemon whose dependency
+graph is its supply chain can be taken over by a package it never picked.
+`internal/scaffold` is stdlib plus `internal/contract` and brings that
+package's two libraries with it, which is the deliberate answer rather than an
+accident of the import: the manifest a template renders is validated by the same
+compiled schema `caf contract lint` runs, and the generator cannot be allowed a
+second, weaker copy of the check its output has to pass.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and

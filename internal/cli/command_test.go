@@ -13,6 +13,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 	want := []string{
 		"backup",
 		"box",
+		"boxd",
 		"contract",
 		"deploy",
 		"dev",
