@@ -80,6 +80,7 @@ func Commands() []*Command {
 		newLockCommand(),
 		newMCPCommand(),
 		newNewCommand(),
+		newProviderCommand(providerDeps{}),
 		newReclaimCommand(reclaimDeps{}),
 		newUpdateCommand(),
 		newVersionCommand(),

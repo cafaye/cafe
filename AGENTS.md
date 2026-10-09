@@ -28,6 +28,7 @@ internal/boxd/      the box daemon: the whitelisted route table, the Seam-ed wor
                      and the outbound-only mTLS channel to conductor
 internal/ledger/    the reclamation ledger: what caf created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
+internal/provider/  caf provider: the client half of boundary 6 — the envelope sealed to the box's public key, the conductor seam
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
 internal/ryuk/      the reaper lease client, for testcontainers' Ryuk
 internal/ci/        no code; the tests that keep .github/workflows/ci.yml and bin/prime honest
@@ -583,7 +584,26 @@ graph is its supply chain can be taken over by a package it never picked.
 package's two libraries with it, which is the deliberate answer rather than an
 accident of the import: the manifest a template renders is validated by the same
 compiled schema `caf contract lint` runs, and the generator cannot be allowed a
-second, weaker copy of the check its output has to pass.
+second, weaker copy of the check its output has to pass. the standard library cannot do the job. `internal/box`, `internal/ledger`,
+`internal/ports`, `internal/provider`, `internal/reclaim`, `internal/ryuk` and
+`internal/lock` have
+none, and that is a constraint rather than an accident: the reclamation path is
+the one that has to keep working when nothing else does, and a dependency graph
+on the path that cleans up after a failure is a graph that can fail to load at
+exactly the wrong moment. `internal/provider` is stdlib only for the same reason
+`internal/box` is: the sealing path is the one that must keep working when
+nothing else does, and the envelope it produces is opened by the box's own key. `internal/lock` holds to it for a second reason: the
+failure it exists to catch is two processes disagreeing about a vendored schema
+or a generated client, and a verifier that cannot be rebuilt from a release
+tarball with nothing but a standard library is a verifier nobody can run in the
+one place a tarball gets checked. `internal/scaffold` is stdlib plus
+`internal/contract` and brings that package's two libraries with it, which is
+the deliberate answer rather than an accident of the import: the manifest a
+template renders is validated by the same compiled schema `caf contract lint`
+runs, and the generator cannot be allowed a second, weaker copy of the check its
+output has to pass. `internal/box` is stdlib only, and it holds to it for the
+same reason: the keyring seam and the conductor client sit on the path that
+reclaims after a failed enrollment.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and
