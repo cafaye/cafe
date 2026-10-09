@@ -1,0 +1,36 @@
+// {{ .Name }} — a cafaye platform app scaffolded by `caf new --template platform`.
+//
+// This is a real service, not a placeholder: it listens on 8080 — the port
+// cafaye knows a Go service listens on — and answers the fleet's two
+// operational endpoints. Replace it with the app itself as it grows; the
+// manifest, the image and the loop in README.md stay.
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", ok) // the process is up
+	mux.HandleFunc("/readyz", ok)  // the process can serve
+
+	log.Printf("{{ .Name }} listening on :%s", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// ok is the whole contract of an operational endpoint: one line, no body to
+// keep in step with anything, and a 200 that means the process answered.
+func ok(w http.ResponseWriter, _ *http.Request) {
+	fmt.Fprintln(w, "ok")
+}

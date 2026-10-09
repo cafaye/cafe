@@ -1,0 +1,17 @@
+# {{ .Name }} — the image `caf dev` builds from this working tree.
+#
+# `caf dev` looks for the Dockerfile here because that is where kit's docker
+# templates put it: docker/Dockerfile, with the build context at the
+# repository root. This is the minimum a Go service needs to build from the
+# tree it is scaffolded into; move to kit's base image when the app outgrows
+# it — the port it listens on is part of the contract, so keep EXPOSE and the
+# languagePorts table agreeing (8080 for Go).
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+COPY . .
+RUN go build -o /out/{{ .Name }} .
+
+FROM alpine:3.21
+COPY --from=build /out/{{ .Name }} /usr/local/bin/{{ .Name }}
+EXPOSE 8080
+ENTRYPOINT ["{{ .Name }}"]

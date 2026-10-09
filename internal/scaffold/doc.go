@@ -29,9 +29,9 @@
 //     `additionalProperties: false`, so a manifest carrying a token does not
 //     validate, and the generator has no path to write one that passes.
 //
-// What this package is not: it does not compose the platform's own services
-// into an app. Templates scaffold a customer's app; the agent's editable
-// surface is the customer's repository, never cafaye's service source. W6-P2
-// composes identity + gateway + courier + parlor; this packet is the catalog
-// and the first template.
+// What this package is not: it does not patch the platform's own services.
+// Templates scaffold a customer's app; the agent's editable surface is the
+// customer's repository, never cafaye's service source. The `platform`
+// template composes identity + gateway + courier + parlor as dependencies —
+// it references them through the manifest, it does not fork them.
 package scaffold
