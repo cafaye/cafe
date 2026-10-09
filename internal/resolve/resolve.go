@@ -3,6 +3,7 @@ package resolve
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/cafaye/caf/internal/contract"
@@ -22,6 +23,13 @@ import (
 // mirror of this list lives in conductor's own tests; a change to either is a
 // change to both.
 var Products = []string{"kit", "platform", "identity", "courier"}
+
+// accountUUID is the shape conductor accepts for an account id
+// (Capability::UUID_RE), and it is the same UUID every caf account is. It is
+// here because caf has to refuse the same string conductor would refuse: a
+// lookup against a value that is not an id answers 404, and a 404 about
+// something the reader typed is a sentence that sends them to a log.
+var accountUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Coordinates is tier 2: where a service's code lives. It is the whole of what
 // pantry's coordinates operation serves — the name echoed from the path and
@@ -83,6 +91,12 @@ type FetchGrant struct {
 type Failure struct {
 	// Tier is the tier that failed: 1, 2 or 3.
 	Tier int `json:"tier"`
+	// Status is the HTTP status the service answered, and 0 for a caf-side
+	// refusal that never reached the wire. It is carried because the pair
+	// (status, code) is what a reader greps against the server's log, and a
+	// code alone loses the class of the answer: 403 and 422 both carry a
+	// `code`, and only one of them is about a credential.
+	Status int `json:"status,omitempty"`
 	// Code is the server's own error code: not_found, unauthorized,
 	// unavailable, entitlement_required, version_not_granted, … It is
 	// surfaced verbatim so a grep for the code finds both this report and
@@ -250,6 +264,24 @@ func (r *Resolver) resolveOne(ctx context.Context, dep contract.Dependency, toke
 			Message: "dependency `" + dep.Name + "` is a paid product, and the entitlement check runs against an account; pass --account <uuid> with the account that holds it"}
 		return res
 	}
+	if !accountUUID.MatchString(strings.TrimSpace(accountID)) {
+		// Conductor looks the capability up by account and answers 404 for an
+		// id that is not a UUID — a 404 that says "not found" about a string
+		// the reader typed. Refusing here names what was typed instead.
+		res.Failure = &Failure{Tier: 3, Code: "account_invalid",
+			Message: "`" + accountID + "` is not an account id; --account takes the UUID of the caf account that holds the entitlement"}
+		return res
+	}
+	if strings.TrimSpace(dep.Version) == "" {
+		// The manifest schema makes `version` OPTIONAL, and conductor's check
+		// makes it REQUIRED: an unbounded request is a question the endpoint
+		// refuses with 422. The two schemas disagree about one field, so caf
+		// is where the disagreement is settled rather than a round trip that
+		// answers 422 and blames the caller for it.
+		res.Failure = &Failure{Tier: 3, Code: "version_required",
+			Message: "dependency `" + dep.Name + "` is a paid product and the entitlement check is scoped to a version range, so this project must declare one; add `version: ^X.Y.Z` to its manifest"}
+		return res
+	}
 	if r.conductor == nil {
 		res.Failure = &Failure{Tier: 3, Code: "no_conductor", Message: "no conductor is configured, so the entitlement check cannot be asked"}
 		return res
@@ -282,11 +314,11 @@ func (r *Resolver) isProduct(name string) bool {
 func failureFrom(tier int, err error) *Failure {
 	var pe *PantryError
 	if errors.As(err, &pe) {
-		return &Failure{Tier: tier, Code: pe.Code, Message: pe.Detail}
+		return &Failure{Tier: tier, Status: pe.Status, Code: pe.Code, Message: pe.Detail}
 	}
 	var ce *ConductorError
 	if errors.As(err, &ce) {
-		return &Failure{Tier: tier, Code: ce.Code, Message: ce.Message}
+		return &Failure{Tier: tier, Status: ce.Status, Code: ce.Code, Message: ce.Message}
 	}
 	return &Failure{Tier: tier, Code: "resolution_failed", Message: err.Error()}
 }

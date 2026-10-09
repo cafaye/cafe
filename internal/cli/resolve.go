@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cafaye/caf/internal/agent"
@@ -112,7 +113,7 @@ func newResolveCommand(deps resolveDeps) *Command {
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.account, "account", "", "the caf account the tier-3 entitlement check runs against; required only when a dependency is a paid product")
 			fs.StringVar(&opts.pantry, "pantry", "", "pantry's origin; without it, "+pantryURLEnv+" is used")
-			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, the identity's conductor or "+conductorURLEnv+" is used")
+			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, "+conductorURLEnv+" is used and an unset variable is a refusal")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -139,13 +140,17 @@ type resolveOptions struct {
 // every required one resolved — an optional dependency that degraded is a
 // warning, not a block, which is the schema's `required: false` doing its job.
 func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env) error {
-	deps = deps.withDefaults()
+	// The flag overrides run BEFORE withDefaults, because withDefaults is
+	// what builds the HTTP clients out of the URL. A client built first and
+	// a URL written after it is a flag that changes nothing — the command
+	// would dial the environment's origin while the flag looked honored.
 	if opts.pantry != "" {
 		deps.pantryURL = opts.pantry
 	}
 	if opts.conductor != "" {
 		deps.conductorURL = opts.conductor
 	}
+	deps = deps.withDefaults()
 
 	manifest, err := readResolveManifest(project)
 	if err != nil {
@@ -163,10 +168,20 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 			continue
 		}
 		// The failure is named with the server's own code and detail, and the
-		// sentence a person reads is the code plus the detail: "403
-		// entitlement_required: product `identity` needs an entitlement —
-		// start one at https://cafaye.com" is a sentence with the remedy in it.
-		line := fmt.Sprintf("%d %s: %s", res.Failure.Tier, res.Failure.Code, res.Failure.Message)
+		// sentence a person reads is tier, status, code, detail — every part
+		// of it greppable against the server's log:
+		//
+		//   tier 3, 403 entitlement_required: product `identity` needs an
+		//   entitlement — start one at https://cafaye.com
+		//
+		// A caf-side refusal that never reached the wire carries no status,
+		// and the tier is what distinguishes "the name is wrong" from "you
+		// are not entitled" without parsing the code.
+		line := "tier " + strconv.Itoa(res.Failure.Tier)
+		if res.Failure.Status != 0 {
+			line += ", " + strconv.Itoa(res.Failure.Status)
+		}
+		line += " " + res.Failure.Code + ": " + res.Failure.Message
 		if res.Required {
 			sayResolve(env.Stderr, "%s — BLOCKED: %s", res.Name, line)
 			blocked++
@@ -175,14 +190,18 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 		sayResolve(env.Stderr, "%s — DEGRADED (optional): %s", res.Name, line)
 	}
 
+	// ONE write, and its error is returned rather than discarded. A truncated
+	// document is worse than a failed command: a machine that piped stdout
+	// into a parser has half a report and an exit 0 saying otherwise, which
+	// is the one outcome the stream split exists to prevent.
+	if err := writeJSON(report, env.Stdout); err != nil {
+		return fmt.Errorf("write the resolution report: %w", err)
+	}
 	if blocked > 0 {
-		// The report on stdout is the whole answer; stderr already carries each
-		// named failure. Nothing more is said here, and the exit code is the
-		// verdict — the same rule `caf contract lint` follows.
-		_ = writeJSON(report, env.Stdout)
+		// stderr already carries each named failure, and the exit code is
+		// the verdict — the same rule `caf contract lint` follows.
 		return errReported
 	}
-	_ = writeJSON(report, env.Stdout)
 	return nil
 }
 

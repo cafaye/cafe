@@ -157,6 +157,9 @@ func TestPaidServiceResolvesThroughAllThreeTiers(t *testing.T) {
 // stops there: no coordinates are fetched and no entitlement is checked,
 // because a service that does not exist has neither.
 func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
+	// pantry's own sentence from internal/httpapi/httpapi.go's
+	// `catalog.ErrNoSuchService` branch. It deliberately does not echo the
+	// name, which is what keeps a 404 from being an existence oracle.
 	pantry := &fakePantry{serviceErr: &PantryError{Status: 404, Code: "not_found", Detail: "no official cafaye service is registered under that name"}}
 	cond := &fakeConductor{}
 	r := NewResolver(pantry, cond)
@@ -169,6 +172,9 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 	}
 	if res.Failure.Tier != 1 {
 		t.Errorf("tier = %d, want 1", res.Failure.Tier)
+	}
+	if res.Failure.Status != 404 {
+		t.Errorf("status = %d, want 404", res.Failure.Status)
 	}
 	if res.Failure.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", res.Failure.Code)
@@ -301,6 +307,90 @@ func TestNoPantryIsANamedFailure(t *testing.T) {
 	res := report.Services[0]
 	if res.Failure == nil || res.Failure.Code != "no_catalog" {
 		t.Fatalf("failure = %+v, want a no_catalog failure", res.Failure)
+	}
+}
+
+// The manifest schema makes `version` OPTIONAL; conductor's check makes it
+// REQUIRED. The disagreement is settled on caf's side rather than in a round
+// trip that answers 422 and blames the reader for it, and it is a failure the
+// resolver records like any other — so an OPTIONAL paid dependency with no
+// range degrades instead of blocking.
+func TestPaidDependencyWithoutAVersionIsNamedAndNeverAsks(t *testing.T) {
+	pantry := &fakePantry{
+		service: &Service{Name: "identity"},
+		coords:  &Coordinates{Name: "identity"},
+	}
+	cond := &fakeConductor{}
+	r := NewResolver(pantry, cond)
+
+	dep := contract.Dependency{Name: "identity", Version: "", Required: true}
+	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "11111111-1111-4111-8111-111111111111")
+
+	res := report.Services[0]
+	if res.Failure == nil {
+		t.Fatalf("a paid dependency with no range resolved without a failure")
+	}
+	if res.Failure.Code != "version_required" {
+		t.Errorf("code = %q, want version_required", res.Failure.Code)
+	}
+	if !strings.Contains(res.Failure.Message, "version") {
+		t.Errorf("message = %q, want it to name the field", res.Failure.Message)
+	}
+	if cond.calls != 0 {
+		t.Errorf("conductor calls = %d, want 0 (the question is unaskable without a range)", cond.calls)
+	}
+}
+
+// An --account that is not a UUID is a 404 from conductor, and a 404 about a
+// string the reader typed is a sentence that sends them nowhere. Caf refuses
+// it with the string echoed back.
+func TestAccountThatIsNotAUUIDIsNamed(t *testing.T) {
+	pantry := &fakePantry{
+		service: &Service{Name: "identity"},
+		coords:  &Coordinates{Name: "identity"},
+	}
+	cond := &fakeConductor{}
+	r := NewResolver(pantry, cond)
+
+	dep := contract.Dependency{Name: "identity", Version: "^0.1.0", Required: true}
+	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "not-a-uuid")
+
+	res := report.Services[0]
+	if res.Failure == nil || res.Failure.Code != "account_invalid" {
+		t.Fatalf("failure = %+v, want an account_invalid failure", res.Failure)
+	}
+	if !strings.Contains(res.Failure.Message, "not-a-uuid") {
+		t.Errorf("message = %q, want it to echo what was typed", res.Failure.Message)
+	}
+	if cond.calls != 0 {
+		t.Errorf("conductor calls = %d, want 0 (the account is not an id)", cond.calls)
+	}
+}
+
+// A version the schema accepts is a version conductor accepts, and the two
+// patterns are the same one: ^X.Y.Z, ~X.Y.Z, >=X.Y.Z and an exact X.Y.Z. This
+// table is the mirror of core's `semverRange` $defs and conductor's
+// VersionRange::PATTERN, and a row added to one must be added to the other
+// three — which is why it is a table rather than one example.
+func TestAVersionTheSchemaAcceptsIsAVersionConductorAccepts(t *testing.T) {
+	for _, v := range []string{"^0.1.0", "~0.1.0", ">=0.1.0", "0.1.0"} {
+		pantry := &fakePantry{service: &Service{Name: "identity"}, coords: &Coordinates{Name: "identity"}}
+		cond := &fakeConductor{grant: &FetchGrant{Artifact: "identity", VersionRange: v}}
+		r := NewResolver(pantry, cond)
+
+		dep := contract.Dependency{Name: "identity", Version: v, Required: true}
+		report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "11111111-1111-4111-8111-111111111111")
+
+		if report.Services[0].Failure != nil {
+			t.Errorf("%s: failed: %+v", v, report.Services[0].Failure)
+			continue
+		}
+		if cond.calls != 1 {
+			t.Errorf("%s: conductor calls = %d, want 1", v, cond.calls)
+		}
+		if cond.version != v {
+			t.Errorf("%s: the range sent was %q", v, cond.version)
+		}
 	}
 }
 

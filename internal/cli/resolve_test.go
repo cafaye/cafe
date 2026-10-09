@@ -456,6 +456,92 @@ owner:
 	}
 }
 
+// The manifest schema makes `version` OPTIONAL and conductor's check makes it
+// REQUIRED — an unbounded request is a 422 the endpoint refuses. The
+// disagreement is settled on caf's side rather than in a round trip that
+// answers 422 and blames the reader for it.
+func TestResolvePaidDependencyWithoutAVersionIsNamed(t *testing.T) {
+	ring := newAgentTestRing()
+	pantry := &fakeResolvePantry{
+		service: &resolve.Service{Name: "identity"},
+		coords:  &resolve.Coordinates{Name: "identity"},
+	}
+	cond := &fakeResolveConductor{}
+	deps := resolveTestEnv(t, ring, pantry, cond)
+
+	project := resolveTestProject(t, `name: app
+description: An application.
+language: go
+core: ^0.2.0
+dependencies:
+  - name: identity
+repository:
+  url: git@github.com:cafaye/app.git
+  defaultBranch: master
+  visibility: public
+owner:
+  team: app
+  contact: app@cafaye.com
+`)
+	code, _, stderr := runResolveCLI(t, deps, "--account", "11111111-1111-4111-8111-111111111111", project)
+
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "version_required") {
+		t.Errorf("stderr does not name the failure:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "version") || !strings.Contains(stderr, "^X.Y.Z") {
+		t.Errorf("stderr does not say what to add:\n%s", stderr)
+	}
+	if cond.calls != 0 {
+		t.Errorf("conductor calls = %d, want 0 (the question is unaskable without a range)", cond.calls)
+	}
+}
+
+// An --account that is not a UUID is a 404 from conductor, and a 404 about a
+// string the reader typed is a sentence that sends them nowhere. Refusing here
+// names what was typed instead.
+func TestResolveAccountThatIsNotAUUIDIsNamed(t *testing.T) {
+	ring := newAgentTestRing()
+	pantry := &fakeResolvePantry{
+		service: &resolve.Service{Name: "identity"},
+		coords:  &resolve.Coordinates{Name: "identity"},
+	}
+	cond := &fakeResolveConductor{}
+	deps := resolveTestEnv(t, ring, pantry, cond)
+
+	project := resolveTestProject(t, `name: app
+description: An application.
+language: go
+core: ^0.2.0
+dependencies:
+  - name: identity
+    version: ^0.1.0
+repository:
+  url: git@github.com:cafaye/app.git
+  defaultBranch: master
+  visibility: public
+owner:
+  team: app
+  contact: app@cafaye.com
+`)
+	code, _, stderr := runResolveCLI(t, deps, "--account", "not-a-uuid", project)
+
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "account_invalid") {
+		t.Errorf("stderr does not name the failure:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "not-a-uuid") {
+		t.Errorf("stderr does not say what was typed:\n%s", stderr)
+	}
+	if cond.calls != 0 {
+		t.Errorf("conductor calls = %d, want 0 (the account is not an id)", cond.calls)
+	}
+}
+
 // The usage error and the argument count, checked through the command rather
 // than around it.
 func TestResolveUsage(t *testing.T) {
