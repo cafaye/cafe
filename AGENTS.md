@@ -15,6 +15,7 @@ shared CI and lint configuration comes from `cafaye/kit` — neither lives here.
 ```
 cmd/caf/main.go     thin entrypoint: build a cli.Options, exit with its code
 internal/cli/       router, registry, one file per subcommand
+internal/box/       caf box: the keypair, the capability redemption, the phases
 internal/contract/  the core contract: manifests, the vendored schemas, versions
 internal/backup/    caf backup: the cross-file contract, the plan, the cycle
 internal/dev/       the local stack: the planner, the renderer, two seams
@@ -199,6 +200,43 @@ declaration that changed without the change being deliberate is the defect. The
 alternative — leaving `gate.yml` out of the lock — would leave the file that
 decides what "green" means here as the one artifact in this repository with no
 pin on it at all.
+
+`internal/box` is `caf box`, split by the same rule and it is the package the
+whole agents-first layer turns on:
+
+- `doc.go` — what the package is, its four seams, and the one invariant that
+  shapes every other file.
+- `ring.go` — the `Keyring` seam and `FileRing`, the 0600 store it defaults to.
+- `identity.go` — the `Identity` type, which has NO private key field, and the
+  two encodings that turn a keypair into wire form.
+- `conductor.go` — the `Conductor` seam and the HTTP client that redeems a
+  capability, with conductor's four answers mapped onto three sentinels.
+- `store.go` — the enrollment journal, the ordering rule it enforces, and the
+  three stages a retry converges from.
+- `lifecycle.go` — the phase table, and `status`/`plan`/`apply`/`logs`/`verify`
+  over it.
+
+**The private key is never printed, and that is a property of the type rather
+than of a comment.** `Identity` has no field that could hold it, so no document,
+error, report or `%v` over a store's output can carry one; the only thing that
+ever leaves this package about the key is its EXISTENCE, which `verify` reports
+as a boolean. The non-secrets are a separate file and the key is a separate
+store, so the thing that gets shared carries no credential and the thing that
+holds the credential is not a file anybody reads. The test asserts it over
+every document every command produces AND over both streams, with the control
+half being that the public key IS printed — a build that redacted everything
+would pass by leaking nothing at all.
+
+**The capability is presented once, and the count is what proves it.** Conductor
+enforces single-use in its own database, so a second redemption is always
+refused server-side and a test that asserted "the retry failed" would pass
+against a client that redeemed twice. The journal is the fixing: `prepared`
+before the POST, `redeemed` immediately after the response, and the identity
+written last and only when the redemption is safely recorded. A crash between
+the response and the record is the one window that cannot be closed from this
+side, and it is stated rather than hidden — caf answers an honest refusal naming
+it. Everything else is drivable into a table with one row per state a caf
+process can stop in, each row asserting the NUMBER of redemptions performed.
 
 `internal/backup` is `caf backup`, split the same way, and it exists so that a
 second command that needs to know what a backup is does not grow its own:
@@ -456,20 +494,23 @@ information and needs no framework. The compose document is written by hand in
 has no YAML encoder and a general one would order the document's keys by
 whatever order its own map does — which is the one thing about it that must not
 happen. There are two packages with dependencies, and the argument is the same in both:
-the standard library cannot do the job. `internal/ledger`, `internal/ports`,
-`internal/reclaim`, `internal/ryuk` and `internal/lock` have none, and that is a
-constraint rather than an accident: the reclamation path is the one that has to
-keep working when nothing else does, and a dependency graph on the path that
-cleans up after a failure is a graph that can fail to load at exactly the wrong
-moment. `internal/lock` holds to it for a second reason: the failure it exists to
-catch is two processes disagreeing about a vendored schema or a generated client,
-and a verifier that cannot be rebuilt from a release tarball with nothing but a
-standard library is a verifier nobody can run in the one place a tarball gets
-checked. `internal/scaffold` is stdlib plus `internal/contract` and brings that
-package's two libraries with it, which is the deliberate answer rather than an
-accident of the import: the manifest a template renders is validated by the same
-compiled schema `caf contract lint` runs, and the generator cannot be allowed a
-second, weaker copy of the check its output has to pass.
+the standard library cannot do the job. `internal/box`, `internal/ledger`,
+`internal/ports`, `internal/reclaim`, `internal/ryuk` and `internal/lock` have
+none, and that is a constraint rather than an accident: the reclamation path is
+the one that has to keep working when nothing else does, and a dependency graph
+on the path that cleans up after a failure is a graph that can fail to load at
+exactly the wrong moment. `internal/lock` holds to it for a second reason: the
+failure it exists to catch is two processes disagreeing about a vendored schema
+or a generated client, and a verifier that cannot be rebuilt from a release
+tarball with nothing but a standard library is a verifier nobody can run in the
+one place a tarball gets checked. `internal/scaffold` is stdlib plus
+`internal/contract` and brings that package's two libraries with it, which is
+the deliberate answer rather than an accident of the import: the manifest a
+template renders is validated by the same compiled schema `caf contract lint`
+runs, and the generator cannot be allowed a second, weaker copy of the check its
+output has to pass. `internal/box` is stdlib only, and it holds to it for the
+same reason: the keyring seam and the conductor client sit on the path that
+reclaims after a failed enrollment.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and

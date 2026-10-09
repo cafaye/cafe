@@ -82,6 +82,12 @@ a run in which they passed.
 | `caf dev [project]` | run the local development stack | **works** |
 | `caf deploy <service>` | deploy a service or app to the platform | **works** |
 | `caf backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
+| `caf box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
+| `caf box status --json` | which box this is, which phase it is at, and what is next | **works** |
+| `caf box plan --json` | the install, phase by phase, with this box's position marked | **works** |
+| `caf box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
+| `caf box logs --json` | the box's own log: what happened, when, and to which phase | **works** |
+| `caf box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
 | `caf gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
 | `caf gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
 | `caf lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |
