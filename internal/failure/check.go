@@ -182,7 +182,7 @@ func (r Report) String() string {
 // Describe is the one line a caller prints beside the count: how many rules,
 // how many held. It is the library's own summary and it is what `caf failure
 // check` prints last.
-func Describe(r Report) string {
+func (r Report) Describe() string {
 	return fmt.Sprintf("%d rule(s), %d condition(s) hold, %d unknown", r.Rules, len(r.Holds()), len(r.Unknown()))
 }
 

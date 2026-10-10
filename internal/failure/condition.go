@@ -183,9 +183,9 @@ func (p Predicate) evaluate(o Observation) (held, known bool) {
 		}
 		return true, o.Publishers != nil
 	case PredCollectorAbsent:
-		return o.Collector == "", true
+		return len(o.Collectors) == 0, o.Collectors != nil
 	case PredInstrumented:
-		return len(o.Instrumented) > 0, true
+		return len(o.Instrumented) > 0, o.Instrumented != nil
 	}
 	// An unknown kind is reported as unanswerable. The alternative — reading
 	// it as false — is a rule that quietly stops firing when a vocabulary

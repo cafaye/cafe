@@ -1,44 +1,23 @@
-You are a worker building Cafaye Ops, wave 2 — the Attended tier. You own ONE repository, in
-your own git worktree, on your own branch. The manager merges and pushes; you never push.
+You are a SUCCESSOR worker continuing a packet in an existing worktree. Keep the SAME branch
+(ops/w2-failure-library) in /Users/kaka/Code/any/ops-wt/w2-failure-library. The previous worker stopped; its uncommitted
+work is committed as a labelled "recover(...)" commit. Any conclusion it reached about being
+finished is void. Do NOT discard its work — build on it.
+
+GOAL: finish OPS-P12 (the failure-mode library as a machine-readable rule
+set). What exists: internal/failure/ (untracked, now committed). Read it, then complete: one entry
+per failure mode with condition / what a generic monitor sees / what we know / remedy, seeded
+with the TEN entries in the failure-mode library table of
+/Users/kaka/Code/any/moon/CAFAYE-OPS.md — not invented ones. A checker that evaluates them
+against what boxd can observe, and a report of which conditions hold. Cite core for any contract
+an entry needs; do not fork it. Then tests. Then go build ./... and go test ./internal/failure/...
+with real exit codes.
 
 HARD RULES:
-- One brief = one worker = one process tree. Do NOT spawn any agent, sub-agent, or subprocess
-  doing independent work.
-- /Users/kaka/Code/any/moon/CAFAYE-OPS.md carries the decisions and the packet this implements.
-  Do not re-litigate a decision; implement it and flag disagreement in your report.
-- Follow the repo's existing patterns exactly. Do not introduce a new dependency, a new config
-  mechanism, or a new command idiom without saying why in your report.
-- Every claim in prose you write cites file:line. Do not invent facts.
-- One hour in four 15-minute quarters. First meaningful commit in Q1. Q4 is wrap-up: last commit,
-  honest report, HANDOFF file if unfinished.
-
-VERIFY before reporting: run the repo's own narrow gate for what your diff reaches, and report
-the exit code you ACTUALLY observed. Never claim a green you did not see.
-REPO: caf + core (primary caf; worktree /Users/kaka/Code/any/ops-wt/w2-failure-library,
-branch ops/w2-failure-library)
-
-GOAL: OPS-P12 — the cafaye failure-mode library as a machine-readable rule set the box is checked
-against. This is the Attended tier's core, and the seed table already exists in
-moon/CAFAYE-OPS.md ("The cafaye failure-mode library — the entries already known").
-
-Build:
-1. A machine-readable rule set — one entry per failure mode, each with: the condition that
-   identifies it, what a generic monitor would see, what we know, and the remedy. Seed it with the
-   ten entries in the doc, not with invented ones.
-2. A checker that evaluates the rules against what the box daemon can observe and reports which
-   conditions hold.
-3. Extensibility that makes adding an entry cheap, because the library's value is that it grows.
-4. Where a rule needs a core contract (an event name, a probe path), cite core; do not fork it.
-5. Tests for the rule evaluation.
-
-Gate: `go test ./...` bounded; report the exit code observed.
-
-DONE MEANS: a rule set seeded with the ten documented entries, a checker that evaluates them, and
-tests.
-
-
----
-
+- Do not spawn any agent or subprocess.
+- Commit early and commit often: first meaningful commit in Q1, one per gate-green increment.
+- Run the narrow gate for what your diff reaches and report the exit code you ACTUALLY observed.
+- Q4 is wrap-up: last commit, honest report, HANDOFF file if unfinished.
+- One hour, four 15-minute quarters.
 # The quarterly contract — append this to EVERY worker brief
 
 **You have one hour, in four 15-minute quarters — plan your own quarters.** The

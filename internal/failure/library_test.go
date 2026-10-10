@@ -145,7 +145,7 @@ func fullyPopulated() Observation {
 		},
 		Outbox:       map[string]int{"courier": 900, "identity": 0},
 		Publishers:   []string{},
-		Collector:    "",
+		Collectors:   []string{},
 		Instrumented: []string{"courier", "identity", "gateway", "kit"},
 	}
 }

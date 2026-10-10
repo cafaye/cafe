@@ -26,17 +26,17 @@ type Observation struct {
 	// Services are the names running on the box. This is the one fact
 	// boxd.World has today (internal/boxd/identity.go:130-135), so it is the
 	// one fact every rule can be asked about on a box as it stands.
-	Services []string
+	Services []string `json:"services,omitempty"`
 
 	// Replicas is how many replicas each service runs. Rule 8 needs it:
 	// gateway sessions are per-process, so a second replica is a live outage
 	// (CAFAYE-OPS.md:746).
-	Replicas map[string]int
+	Replicas map[string]int `json:"replicas,omitempty"`
 
 	// Settings is, per service, the names of the settings that ARE set. Names
 	// only — see the type comment. Rules 3, 4, 9 and 10 read presence and
 	// absence here.
-	Settings map[string][]string
+	Settings map[string][]string `json:"settings,omitempty"`
 
 	// Probes are the probe answers observed, one per service and path. The
 	// paths are core's: `/healthz` and `/readyz` are pinned by
@@ -44,40 +44,47 @@ type Observation struct {
 	// `/readyz` is a readiness answer rather than a liveness one — the schema
 	// pins 503 there precisely because an orchestrator that reads any non-2xx
 	// as "not listening" would restart a running container.
-	Probes []Probe
+	Probes []Probe `json:"probes,omitempty"`
 
 	// Healthchecks is the healthcheck path the substrate is configured to use
 	// for each service. Rule 2 needs it: kit's proxy healthchecks `/up`
 	// (CAFAYE-OPS.md:740), which is neither of core's two paths.
-	Healthchecks map[string]string
+	Healthchecks map[string]string `json:"healthchecks,omitempty"`
 
 	// Databases is every database a service declares. Rule 5 needs it: two
 	// services declaring one database name is two pockets of Postgres,
 	// because `KIT_POSTGRES_DATABASES` merges last-one-wins
 	// (CAFAYE-OPS.md:743).
-	Databases []Database
+	Databases []Database `json:"databases,omitempty"`
 
 	// Outbox is how many unprocessed outbox rows each service has. Rule 7
 	// needs it: an event is a row, and no service starts a publisher loop
 	// (CAFAYE-OPS.md:745, :839-842).
-	Outbox map[string]int
+	Outbox map[string]int `json:"outbox,omitempty"`
 
 	// Publishers are the services with a publisher loop running. Rule 7 reads
 	// the absence in it.
-	Publishers []string
+	Publishers []string `json:"publishers,omitempty"`
 
-	// Collector is the address the box's services export to. Empty means the
-	// shipped default collector, which is an address rather than a service:
-	// core pins `<SERVICE>_OTEL_ENDPOINT` as the contract and the shipped
-	// collector as only its default value
-	// (core/schemas/telemetry/otel-endpoint.schema.json), so an endpoint set
-	// to nothing and no collector running are the same fact seen twice.
-	Collector string
+	// Collectors are the collector addresses that run on this box. Empty means
+	// none do — which, on a box whose services export signals, is the
+	// traces-going-nowhere fact itself (CAFAYE-OPS.md:744).
+	//
+	// It is a slice rather than a string for the nil convention the whole type
+	// runs on: nil means the observation never looked and empty means it
+	// looked and found none. A string could not say which of those it was, and
+	// the difference is rule 6's whole answer. Core is why the fact is this
+	// shape at all: `<SERVICE>_OTEL_ENDPOINT` is the contract and the shipped
+	// collector is only its default value
+	// (core/schemas/telemetry/otel-endpoint.schema.json), so "nothing is
+	// collecting" is a fact about the box's stack rather than about a variable
+	// somebody forgot to set.
+	Collectors []string `json:"collectors,omitempty"`
 
 	// Instrumented are the services that export signals. Rule 6 needs it:
 	// instrumented in four services with no collector anywhere is traces
 	// going nowhere (CAFAYE-OPS.md:744).
-	Instrumented []string
+	Instrumented []string `json:"instrumented,omitempty"`
 }
 
 // Probe is one observed probe answer. LatencyMS is the whole answer's latency
@@ -86,16 +93,16 @@ type Observation struct {
 // (CAFAYE-OPS.md:739) — the connection is fine and the answer takes 4.4
 // seconds.
 type Probe struct {
-	Service string
-	Path    string
+	Service string `json:"service"`
+	Path    string `json:"path"`
 	// Status is the HTTP status the probe answered. 503 from `/readyz` is
 	// core's own contract for "a dependency is gone"
 	// (probes.schema.json, `readyz.statusCode`), which is what distinguishes
 	// rule 1's condition from a service that is merely slow.
-	Status int
+	Status int `json:"status"`
 	// LatencyMS is how long the answer took. The 4.4s figure is the doc's own
 	// (CAFAYE-OPS.md:739, :804), not a measurement of this fleet's.
-	LatencyMS int
+	LatencyMS int `json:"latency_ms"`
 }
 
 // Database is one declared database and the service that declares it. The name
@@ -103,8 +110,8 @@ type Probe struct {
 // with one name are one database and the second service's role never exists
 // (CAFAYE-OPS.md:743).
 type Database struct {
-	Name    string
-	Service string
+	Name    string `json:"name"`
+	Service string `json:"service"`
 }
 
 // Service reports whether the named service is running.
