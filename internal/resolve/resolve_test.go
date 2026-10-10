@@ -13,21 +13,21 @@ import (
 // through, without a network. It records what it was asked so a test can
 // assert the token was presented and the tiers were consulted in order.
 type fakePantry struct {
-	service    *Service
-	serviceErr error
+	project    *Project
+	projectErr error
 	coords     *Coordinates
 	coordsErr  error
 
-	serviceCalls int
+	projectCalls int
 	coordsCalls  int
 	lastName     string
 	lastToken    string
 }
 
-func (f *fakePantry) Service(_ context.Context, name string) (*Service, error) {
-	f.serviceCalls++
+func (f *fakePantry) Project(_ context.Context, name string) (*Project, error) {
+	f.projectCalls++
 	f.lastName = name
-	return f.service, f.serviceErr
+	return f.project, f.projectErr
 }
 
 func (f *fakePantry) Coordinates(_ context.Context, name, token string) (*Coordinates, error) {
@@ -68,12 +68,12 @@ func deps(names ...string) []contract.Dependency {
 	return out
 }
 
-// The happy path for a free service: tier 1 confirms the name, tier 2 hands
+// The happy path for a free project: tier 1 confirms the name, tier 2 hands
 // over the coordinates, and tier 3 is never consulted — a free service is not
 // a product, so the entitlement check is not asked.
-func TestFreeServiceResolvesThroughTier1AndTier2(t *testing.T) {
+func TestAFreeProjectResolvesThroughTier1AndTier2(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "gateway", Repository: PublicRepo{Visibility: "public"}},
+		project: &Project{Name: "gateway", Repository: PublicRepo{Visibility: "public"}},
 		coords:  &Coordinates{Name: "gateway", Repository: Repository{URL: "git@github.com:cafaye/gateway.git", DefaultBranch: "master"}},
 	}
 	cond := &fakeConductor{}
@@ -105,11 +105,11 @@ func TestFreeServiceResolvesThroughTier1AndTier2(t *testing.T) {
 	}
 }
 
-// The happy path for a paid service: all three tiers, and the fetch grant is
+// The happy path for a paid project: all three tiers, and the fetch grant is
 // the proof the chain closed.
-func TestPaidServiceResolvesThroughAllThreeTiers(t *testing.T) {
+func TestAPaidProjectResolvesThroughAllThreeTiers(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity", Repository: PublicRepo{Visibility: "private"}},
+		project: &Project{Name: "identity", Repository: PublicRepo{Visibility: "private"}},
 		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:cafaye/identity.git", DefaultBranch: "master"}},
 	}
 	cond := &fakeConductor{grant: &FetchGrant{
@@ -160,7 +160,7 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 	// pantry's own sentence from internal/httpapi/httpapi.go's
 	// `catalog.ErrNoSuchService` branch. It deliberately does not echo the
 	// name, which is what keeps a 404 from being an existence oracle.
-	pantry := &fakePantry{serviceErr: &PantryError{Status: 404, Code: "not_found", Detail: "no official cafaye service is registered under that name"}}
+	pantry := &fakePantry{projectErr: &PantryError{Status: 404, Code: "not_found", Detail: "no official cafaye service is registered under that name"}}
 	cond := &fakeConductor{}
 	r := NewResolver(pantry, cond)
 
@@ -194,7 +194,7 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 // and the walk stops before tier 3.
 func TestNoCredentialIsANamedTier2Failure(t *testing.T) {
 	pantry := &fakePantry{
-		service:   &Service{Name: "gateway"},
+		project:   &Project{Name: "gateway"},
 		coordsErr: &PantryError{Status: 401, Code: "unauthorized", Detail: "this operation requires a caf token and none was presented"},
 	}
 	r := NewResolver(pantry, &fakeConductor{})
@@ -218,7 +218,7 @@ func TestNoCredentialIsANamedTier2Failure(t *testing.T) {
 // and where to start one, and the test asserts both.
 func TestEntitlementRequiredIsNamedWithProductAndRemedy(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity"},
+		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:cafaye/identity.git"}},
 	}
 	cond := &fakeConductor{err: &ConductorError{Status: 403, Code: "entitlement_required",
@@ -250,7 +250,7 @@ func TestEntitlementRequiredIsNamedWithProductAndRemedy(t *testing.T) {
 // project asks for. Both ranges are spelled out, and the test asserts both.
 func TestVersionNotGrantedNamesBothRanges(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity"},
+		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
 	cond := &fakeConductor{err: &ConductorError{Status: 403, Code: "version_not_granted",
@@ -278,7 +278,7 @@ func TestVersionNotGrantedNamesBothRanges(t *testing.T) {
 // remedy is the flag that names it.
 func TestPaidDependencyWithoutAccountIsNamed(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity"},
+		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
 	r := NewResolver(pantry, &fakeConductor{})
@@ -317,7 +317,7 @@ func TestNoPantryIsANamedFailure(t *testing.T) {
 // range degrades instead of blocking.
 func TestPaidDependencyWithoutAVersionIsNamedAndNeverAsks(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity"},
+		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
 	cond := &fakeConductor{}
@@ -346,7 +346,7 @@ func TestPaidDependencyWithoutAVersionIsNamedAndNeverAsks(t *testing.T) {
 // it with the string echoed back.
 func TestAccountThatIsNotAUUIDIsNamed(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity"},
+		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
 	cond := &fakeConductor{}
@@ -374,7 +374,7 @@ func TestAccountThatIsNotAUUIDIsNamed(t *testing.T) {
 // three — which is why it is a table rather than one example.
 func TestAVersionTheSchemaAcceptsIsAVersionConductorAccepts(t *testing.T) {
 	for _, v := range []string{"^0.1.0", "~0.1.0", ">=0.1.0", "0.1.0"} {
-		pantry := &fakePantry{service: &Service{Name: "identity"}, coords: &Coordinates{Name: "identity"}}
+		pantry := &fakePantry{project: &Project{Name: "identity"}, coords: &Coordinates{Name: "identity"}}
 		cond := &fakeConductor{grant: &FetchGrant{Artifact: "identity", VersionRange: v}}
 		r := NewResolver(pantry, cond)
 
@@ -398,7 +398,7 @@ func TestAVersionTheSchemaAcceptsIsAVersionConductorAccepts(t *testing.T) {
 // with a named failure, after tiers 1 and 2 have succeeded.
 func TestNoConductorIsANamedFailureForPaidOnly(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "identity"},
+		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
 	r := NewResolver(pantry, nil)
@@ -417,7 +417,7 @@ func TestNoConductorIsANamedFailureForPaidOnly(t *testing.T) {
 // A transport failure is a named failure, not a panic and not a silent skip:
 // the resolver reports it and the dependency is recorded as failed.
 func TestTransportFailureIsNamed(t *testing.T) {
-	pantry := &fakePantry{serviceErr: errors.New("dial tcp: connection refused")}
+	pantry := &fakePantry{projectErr: errors.New("dial tcp: connection refused")}
 	r := NewResolver(pantry, &fakeConductor{})
 
 	report := r.Resolve(context.Background(), ".", deps("gateway"), "cafaye_token", "")
@@ -438,7 +438,7 @@ func TestTransportFailureIsNamed(t *testing.T) {
 // walk for the others, so a project sees all its named failures at once.
 func TestEveryDependencyIsResolvedIndependently(t *testing.T) {
 	pantry := &fakePantry{
-		service: &Service{Name: "gateway"},
+		project: &Project{Name: "gateway"},
 		coords:  &Coordinates{Name: "gateway"},
 	}
 	cond := &fakeConductor{err: &ConductorError{Status: 403, Code: "entitlement_required", Message: "product `identity` needs an entitlement"}}
@@ -461,7 +461,7 @@ func TestEveryDependencyIsResolvedIndependently(t *testing.T) {
 // warn-vs-block. The resolver does not decide it — conductor never sees it.
 func TestRequiredFlagTravelsWithTheResolution(t *testing.T) {
 	pantry := &fakePantry{
-		service:   &Service{Name: "identity"},
+		project:   &Project{Name: "identity"},
 		coordsErr: &PantryError{Status: 401, Code: "unauthorized", Detail: "no token"},
 	}
 	r := NewResolver(pantry, &fakeConductor{})
