@@ -410,14 +410,34 @@ func (r backupRun) drillRecord(started time.Time, err error, report string) back
 			rec.Reason = backup.DrillReasonRefused
 		}
 		rec.Detail = firstNonEmptyLine(report)
-	default:
+	case errors.Is(err, backup.ErrCycleFailed):
 		rec.Outcome, rec.Reason = backup.DrillFailed, backup.DrillReasonFailed
 		rec.Detail = firstNonEmptyLine(report)
 		if rec.Detail == "" && err != nil {
 			rec.Detail = firstNonEmptyLine(err.Error())
 		}
+	default:
+		// The cycle never got going: the engine is not installed, the project
+		// cannot be read, the plan cannot be built. ErrCycleFailed is the ONE
+		// sentinel a cycle that actually ran returns (run.go's failureReport is
+		// its only source), so its absence is the signal — and "caf could not
+		// start" has to be a different fact from "the restore did not hold",
+		// because one is a machine to fix and the other is a backup to fix.
+		rec.Outcome, rec.Reason = backup.DrillFailed, backup.DrillReasonNotRun
+		// The error, not the report: before the cycle starts the report's first
+		// line is the cycle's own header, and a record whose detail is
+		// "backing up from … with kamal 2.12.0" says nothing about why it stopped.
+		rec.Detail = firstNonEmptyLine(errorLine(err))
 	}
 	return rec
+}
+
+// errorLine is an error's first line, and "" for a nil one.
+func errorLine(err error) string {
+	if err == nil {
+		return ""
+	}
+	return firstNonEmptyLine(err.Error())
 }
 
 // writeRecord appends to the store the command was wired with.

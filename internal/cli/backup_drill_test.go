@@ -343,6 +343,39 @@ func TestTheDrillVerbIsDispatchedByName(t *testing.T) {
 	}
 }
 
+// A facility that never started is a different fact from a restore that did not
+// hold, and the record keeps them apart. ErrCycleFailed is the one sentinel a
+// cycle that actually ran returns, so its absence is the signal — without it, "the
+// engine is not installed" would read as "your backup is broken", which sends a
+// reader to fix the wrong thing.
+func TestADrillThatCouldNotStartIsRecordedAsNotRun(t *testing.T) {
+	dir := project(t)
+	drills := filepath.Join(t.TempDir(), "drills")
+	runner := &backupRunner{
+		out:   fixtureResolved(t),
+		fails: map[string]error{backup.Preflight: errors.New("exec: kamal: executable file not found in $PATH")},
+	}
+
+	_, stderr, code := drillEnv(t, dir, drillDeps(runner, drills), "--table", "users", "identity")
+	if code != exitFailure {
+		t.Fatalf("exit = %d, want %d: a drill that never ran has proven nothing", code, exitFailure)
+	}
+
+	rec := latestRecord(t, drills, "identity")
+	if !rec.Failed() {
+		t.Fatalf("a drill that never ran was recorded as %s", rec.Outcome)
+	}
+	if rec.Reason != backup.DrillReasonNotRun {
+		t.Errorf("reason = %q, want %q", rec.Reason, backup.DrillReasonNotRun)
+	}
+	if !strings.Contains(rec.Detail, "kamal") {
+		t.Errorf("the detail does not name what was missing: %q", rec.Detail)
+	}
+	if !strings.Contains(stderr, "caf-backup/drill-not-run") {
+		t.Errorf("the alert line does not name the reason:\n%s", stderr)
+	}
+}
+
 // Two drills over one store both land, which is the property the store's lock
 // exists for and the reason the record is not silently overwritten.
 func TestTwoDrillsBothLand(t *testing.T) {

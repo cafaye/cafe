@@ -82,6 +82,7 @@ a run in which they passed.
 | `caf dev [project]` | run the local development stack | **works** |
 | `caf deploy <service>` | deploy a service or app to the platform | **works** |
 | `caf backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
+| `caf backup drill <service>` | the same cycle unattended, with the outcome recorded and `--json` for a machine | **works** |
 | `caf box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
 | `caf agent register --name "Noel"` | ask identity for an unclaimed agent, store its token in the OS keyring, print the claim URL on stderr | **works** |
 | `caf agent login` / `whoami` | make one saved agent session active, and ask identity who this machine is | **works** |
@@ -721,6 +722,77 @@ the proof this machine can produce, and it needs no cluster.
 
 Kamal and `kit/templates/kamal` retire at parity, not before — the Kamal path is the
 default and is unchanged.
+
+### `caf backup drill` — the outcome is recorded, not just printed
+
+Everything above is a verdict printed to a terminal the process then closes, which is
+the difference between a drill that happened and a drill anybody can point at. So the
+drill has an unattended form that **records** it:
+
+```sh
+caf backup drill <service> --table <table> [flags] [--json]
+```
+
+It is the same cycle with the confirmation taken away — a drill on a schedule has nobody
+to answer a prompt, and a command that hung waiting for one would be a schedule that never
+ran. Every run appends one JSON file per service under the state directory:
+`CAF_DRILL_DIR`, else `$XDG_STATE_HOME/caf/drills`, else `~/.local/state/caf/drills`.
+That is `internal/ledger`'s `DefaultDir` convention, and it is state rather than config —
+these are records caf wrote about work it did, not decisions a person made, and an
+editable record is not evidence. The last twelve drills are kept, which is a year of the
+monthly cadence.
+
+`--json` writes **one** document to stdout and moves caf's own report to stderr, so a
+script pipes stdout into a parser without skipping a line of prose:
+
+```
+$ caf backup drill --table users --json identity    # the report goes to stderr
+{
+  "service": "identity",
+  "engine": "kamal",
+  "scratch": "identity_drill",
+  "tables": ["users"],
+  "outcome": "failed",
+  "reason": "caf-backup/drill-not-run",
+  "detail": "caf backup: kamal could not read the deployment, so there is nothing to back up: exit status 1",
+  "started_at": "2026-10-10T09:00:00Z",
+  "finished_at": "2026-10-10T09:00:02Z",
+  "duration_ms": 1383
+}
+```
+
+The monthly report and the box agent read that document. Nothing secret is in it and
+nothing can be: caf never reads a credential's value, so it has none to record.
+
+A refused drill is a third outcome and not a boolean, because "the restore worked" and
+"caf would not touch the service" are different facts with different fixes — one is a log
+to read and one is a file to edit. A refusal's record names the **clause**, not only the
+class, so a script learns which line to change rather than only that the config is wrong.
+A fourth fact is kept apart from all of those: `caf-backup/drill-not-run` means the cycle
+never started — the engine is not installed, or the deployment cannot be read — and
+recording it as a failed *restore* would send a reader to fix the wrong thing.
+
+### What a failed drill does
+
+Exit 1, a `caf-backup/drill-…` reason a script can match, and one line on stderr naming
+the service and where the record went:
+
+```
+caf backup drill: caf-backup/drill-failed: identity did not prove a restore (failed)
+  kamal-backup drill production --database identity_drill failed: exit status 1
+  recorded in ~/.local/state/caf/drills
+```
+
+caf has no notification transport — the tier copy states that nobody is paged — so the
+exit code and the named reason are the whole convention, and a monitor that wants more
+reads `--json`. A record that could not be written is itself a failure: a verdict that
+was printed and forgotten is the gap this closes, and a drill whose record did not land
+has been forgotten exactly as thoroughly.
+
+**The schedule is not here.** `caf backup drill` is what a schedule RUNS; it is not a
+scheduler. The cadence stays where the fleet already keeps it — cron, a systemd timer, or
+the box's own — and the record's `finished_at` is what tells you whether it has been
+running.
 
 ## `caf doctor`
 

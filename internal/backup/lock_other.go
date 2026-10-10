@@ -66,7 +66,7 @@ func (k *drillLock) Release() error {
 	if closeErr != nil {
 		return closeErr
 	}
-	if removeErr != nil && !errors.Is(err, os.ErrNotExist) {
+	if removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
 		return fmt.Errorf("drill store: release the store lock: %w", removeErr)
 	}
 	return nil
