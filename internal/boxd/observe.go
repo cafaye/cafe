@@ -73,9 +73,8 @@ type Observation struct {
 	// credential closest to a hard stop there is — an expired enrollment is a
 	// box that can no longer dial anywhere.
 	Certificate Certificate `json:"certificate"`
-	// Disk is the box's root filesystem. v0 reports it as unknown because
-	// reading it needs the substrate; the field is here so the day it is
-	// measurable does not move the schema.
+	// Disk is the box's root filesystem in bytes, measured by the world (see
+	// Disk's own comment for why the measurement is not made here).
 	Disk Disk `json:"disk"`
 	// LastDrill is the most recent backup drill for a service on this box,
 	// and nil when this box has never run a drill — a box with no history is
@@ -137,15 +136,37 @@ type Certificate struct {
 	DaysLeft *int `json:"days_left,omitempty"`
 }
 
-// Disk is the box's root filesystem. v0 has no portable way to read it — the
-// daemon may not import syscall (AGENTS.md forbids it in this package, because
-// the reclamation path must build for every release target) and the standard
-// library exposes no disk usage — so the field is a stated gap, not a guess.
+// Disk is the box's root filesystem, in bytes, with the derived percentage
+// stored rather than recomputed by every consumer that wants to ask "is this
+// box filling up".
+//
+// The reading is made by the WORLD, not by this package. boxd is stdlib-only by
+// the house rule (AGENTS.md: the daemon must build for every release target with
+// nothing but the standard library, and internal/boxd's own test fails the build
+// if it imports os/exec or syscall), and the standard library exposes no disk
+// usage on any platform — so the measurement lives in internal/cli, which already
+// owns the platform probes `caf doctor` reads (doctor_probe_darwin.go,
+// doctor_probe_linux.go, doctor_probe_windows.go) and is allowed to import
+// syscall there. The type is declared here, next to the observation it belongs to,
+// so the day the reading becomes portable does not move the schema.
 type Disk struct {
-	// Status is "ok" or "unknown". v0 always reports "unknown".
+	// Status is "ok" or "unknown".
 	Status string `json:"status"`
 	// Detail says why, and what would fill it.
 	Detail string `json:"detail,omitempty"`
+	// Path is the filesystem that was measured — the root, on a box, named so a
+	// reader that manages several mounts knows which one this was.
+	Path string `json:"path,omitempty"`
+	// TotalBytes is the size of the filesystem. Omitted when Status is not "ok".
+	TotalBytes uint64 `json:"total_bytes,omitempty"`
+	// FreeBytes is what is left. A consumer wants the free number, not a
+	// percentage it has to un-derive.
+	FreeBytes uint64 `json:"free_bytes,omitempty"`
+	// UsedBytes and UsedPercent are derived from the two above and stored, for
+	// the same reason DaysLeft and AgeDays are: a consumer that has to do the
+	// arithmetic is a consumer that will eventually get it wrong.
+	UsedBytes   uint64  `json:"used_bytes,omitempty"`
+	UsedPercent float64 `json:"used_percent,omitempty"`
 }
 
 // DrillFact is the last backup drill, flattened to the facts a report needs.

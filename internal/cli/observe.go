@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/cafaye/caf/internal/backup"
@@ -157,6 +159,56 @@ func certStatus(notAfter, now time.Time, warnWindow time.Duration) (status strin
 func observeRange() (string, bool) {
 	r := os.Getenv("CAF_BOX_RANGE")
 	return r, r != ""
+}
+
+// diskFact measures the box's root filesystem for the observation. The reading
+// is made here, in internal/cli, rather than in internal/boxd: boxd is
+// stdlib-only by the house rule and the standard library exposes no disk usage
+// on any platform, while this package already owns the platform probes
+// `caf doctor` reads and is permitted syscall behind them. The observation's
+// type lives in boxd next to the document it belongs to; the measurement lives
+// where the platform is allowed to be named.
+//
+// It takes the path rather than reading "/" inline so a test measures a real
+// filesystem it created, and so the report can name what it measured. A
+// measurement that fails is reported as `unknown` with the error's own words —
+// the pantry principle, applied to a number: a zero where a capacity belongs is
+// a claim that the box is empty, and that is the worst possible failure of this
+// field.
+func diskFact(path string) boxd.Disk {
+	reading, err := diskUsage(path)
+	if err != nil {
+		return boxd.Disk{Status: "unknown", Detail: err.Error(), Path: path}
+	}
+	if reading.Total == 0 {
+		return boxd.Disk{
+			Status: "unknown",
+			Detail: "the filesystem at " + path + " reports no size",
+			Path:    path,
+		}
+	}
+	used := reading.Total - reading.Free
+	return boxd.Disk{
+		Status:       "ok",
+		Path:         path,
+		TotalBytes:   reading.Total,
+		FreeBytes:    reading.Free,
+		UsedBytes:    used,
+		UsedPercent:  100 * float64(used) / float64(reading.Total),
+		Detail:       fmt.Sprintf("measured with statfs against %s; free is what the box can write, excluding the filesystem's reserved blocks", path),
+	}
+}
+
+// rootDiskPath is what diskFact measures on a box. The absolute spelling of "/"
+// rather than the literal, because the Win32 call refuses a path with no drive
+// in it and the root of the current drive is the same question on all three
+// release targets.
+func rootDiskPath() string {
+	abs, err := filepath.Abs("/")
+	if err != nil {
+		return "/"
+	}
+	return abs
 }
 
 // certWarnWindow is how close to expiry a certificate is called "expiring".

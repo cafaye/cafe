@@ -407,17 +407,17 @@ func (w boxWorld) Envelope(context.Context, boxd.Envelope) (boxd.EnvelopeResult,
 // the read half of the observe stream the observe.report route answers with.
 // It gathers the facts v0 can honestly read: the deployed version (the
 // enrolled identity), the install phase (the daemon's own state file), the
-// client certificate's expiry (the enrollment's own certificate) and the most
-// recent backup drill (the drill directory this box writes). It computes which
-// of conductor's candidate releases are pending against the box's own version
-// range. What it cannot read in v0 — root disk usage, which needs the
-// substrate and is unreachable without a platform syscall the daemon may not
-// import — is reported as `unknown` with the reason, never guessed.
+// client certificate's expiry (the enrollment's own certificate), the root
+// filesystem's usage (one statfs, made here because boxd itself may not import
+// syscall) and the most recent backup drill (the drill directory this box
+// writes). It computes which of conductor's candidate releases are pending
+// against the box's own version range.
 //
 // ctx is honoured at each bounded read: there is no long-running loop here —
-// every gather is one read of a local file — but a cancelled context stops the
-// assembly rather than returning a stale report, because a report assembled
-// for a connection that has already gone away is a report nobody will ack.
+// every gather is one read of a local file and one syscall — but a cancelled
+// context stops the assembly rather than returning a stale report, because a
+// report assembled for a connection that has already gone away is a report
+// nobody will ack.
 func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.Observation, error) {
 	now := time.Now().UTC()
 
@@ -441,12 +441,9 @@ func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.
 		DeployedVersion: w.id.Version,
 		Conductor:       w.id.Conductor,
 		CollectedAt:     now,
-		Certificate:     cert,
-		Disk: boxd.Disk{
-			Status: "unknown",
-			Detail: "root filesystem usage needs the substrate; it lands with the substrate packet",
-		},
-		LastDrill: drill,
+		Certificate: cert,
+		Disk:        diskFact(rootDiskPath()),
+		LastDrill:   drill,
 	}
 	if rangeText, ok := observeRange(); ok {
 		obs.VersionRange = boxd.VersionRange{Range: rangeText, Status: "ok"}
