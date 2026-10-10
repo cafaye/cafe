@@ -22,11 +22,29 @@ import (
 // or a state directory in, one page out — without a file the test cannot see.
 type reportDeps struct {
 	stdin io.Reader
+	// drillDir is where the drill journals live. A test sets it; a real run
+	// leaves it empty and resolves it from the environment, exactly as
+	// backup.DefaultDrillDir does — so `caf report` reads the same store
+	// `caf backup` wrote, and no second opinion about where that is.
+	drillDir string
+	// secretStateDir is the directory holding the rotation schedule. A test
+	// sets it for the reason drillDir is one.
+	secretStateDir string
 }
 
 func (d reportDeps) withDefaults() reportDeps {
 	if d.stdin == nil {
 		d.stdin = os.Stdin
+	}
+	if d.drillDir == "" {
+		if dir, err := backup.DefaultDrillDir(); err == nil {
+			d.drillDir = dir
+		}
+	}
+	if d.secretStateDir == "" {
+		if dir, err := defaultSecretStateDir(); err == nil {
+			d.secretStateDir = dir
+		}
 	}
 	return d
 }
@@ -92,6 +110,15 @@ func newReportCommand(deps reportDeps) *Command {
 // reportRenderCommand is the verb. It is named with its full invocation so its
 // usage errors read as the words the person typed.
 func reportRenderCommand(deps reportDeps) *Command {
+	// The flags are captured rather than looked up on a second flag set. A
+	// verb that re-parsed its own positionals would lose every flag the router
+	// already consumed — measured here: the re-parse saw `--json` as a path and
+	// wrote markdown into a pipeline expecting a document.
+	var (
+		machine bool
+		period  string
+		box     string
+	)
 	c := &Command{
 		Name:    "report render",
 		Summary: "assemble one month of facts and print the page",
@@ -101,9 +128,9 @@ func reportRenderCommand(deps reportDeps) *Command {
 			"(or \"-\") the document is read from stdin. Run `caf report` for what\n" +
 			"the document carries, and what is honest about a section with no data.",
 		Flags: func(fs *flag.FlagSet) {
-			fs.Bool("json", false, "write the machine form (one JSON document) instead of markdown")
-			fs.String("period", "", "the window: 2026-09, 30d, or a date range 2026-09-01..2026-09-30. Default: the last calendar month")
-			fs.String("box", "", "the enrolled identity this report is about; the default is the input document's own")
+			fs.BoolVar(&machine, "json", false, "write the machine form (one JSON document) instead of markdown")
+			fs.StringVar(&period, "period", "", "the window: 2026-09, 30d, or a date range 2026-09-01..2026-09-30. Default: the last calendar month")
+			fs.StringVar(&box, "box", "", "the enrolled identity this report is about; the default is the input document's own")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -120,7 +147,7 @@ func reportRenderCommand(deps reportDeps) *Command {
 				errUsage, c.Name, c.Usage)
 		}
 
-		period, err := parseReportPeriod(fs.Lookup("period").Value.String())
+		window, err := parseReportPeriod(period)
 		if err != nil {
 			return fmt.Errorf("caf report render: %w", err)
 		}
@@ -134,9 +161,9 @@ func reportRenderCommand(deps reportDeps) *Command {
 		// command's own. The one exception is --box, which is the identity the
 		// report is filed under and a document with none is not a disagreement.
 		if in.Period.Start.IsZero() && in.Period.End.IsZero() {
-			in.Period = period
+			in.Period = window
 		}
-		if box := fs.Lookup("box").Value.String(); box != "" {
+		if box != "" {
 			in.Box = box
 		}
 
@@ -144,21 +171,20 @@ func reportRenderCommand(deps reportDeps) *Command {
 		// read, so the two packets that left files get filled rather than
 		// gapped. Both are absent by default and neither is an error: a report
 		// on a machine that has never drilled is a report that says so.
-		if dir, err := backup.DefaultDrillDir(); err == nil {
-			in.Drills = append(in.Drills, readDrillRecords(dir)...)
-		}
-		if dir, err := defaultSecretStateDir(); err == nil {
-			if state, err := secret.Load(dir); err == nil {
-				in.Rotations = state
-				in.Inventory = secret.Inventory()
-			}
+		in.Drills = append(in.Drills, readDrillRecords(deps.drillDir)...)
+		if state, err := secret.Load(deps.secretStateDir); err == nil {
+			in.Rotations = state
+			// The inventory is a table about the fleet rather than a fact
+			// about this box, so it is the one section a machine with no state
+			// anywhere can still fill.
+			in.Inventory = secret.Inventory()
 		}
 		if in.Now.IsZero() {
 			in.Now = time.Now()
 		}
 
 		rep := report.Assemble(in)
-		if fs.Lookup("json").Value.String() == "true" {
+		if machine {
 			// Machine JSON to stdout, one document, the contract internal/agent
 			// holds — so a box agent can pipe it without a parser guessing
 			// where the words end.
