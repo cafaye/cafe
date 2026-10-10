@@ -160,10 +160,10 @@ var ErrUsage = errors.New("caf secret: invalid invocation")
 // would not touch, with the reason, and exits non-zero: the not-rotatable class
 // is a report, not a silence.
 type Refusal struct {
-	Name   string
-	Class  Class
-	Reason string
-	Source string
+	Name   string `json:"name"`
+	Class  Class  `json:"class"`
+	Reason string `json:"reason"`
+	Source string `json:"source"`
 }
 
 func (r Refusal) Error() string {
