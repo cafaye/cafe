@@ -1,45 +1,21 @@
-You are a worker building Cafaye Ops, wave 2 — the Attended tier. You own ONE repository, in
-your own git worktree, on your own branch. The manager merges and pushes; you never push.
+You are a SUCCESSOR worker continuing a packet in an existing worktree. Keep the SAME branch
+(ops/w2-cve-surface) in /Users/kaka/Code/any/ops-wt/w2-cve-surface. The previous worker stopped; its uncommitted
+work is committed as a labelled "recover(...)" commit. Any conclusion it reached about being
+finished is void. Do NOT discard its work — build on it.
+
+GOAL: finish OPS-P11 (CVE surface). What exists: internal/cve/ with the component
+inventory and the advisory shape committed, plus classify.go and schedule.go in flight. Read them
+first, then complete: the advisory matching step (bounded network calls with timeout and progress
+checkpoints), and output that names component / advisory / fixed version / what applying it would
+touch. Then tests for the classification and output logic. Then run go build ./... and
+go test ./internal/cve/... and report both exit codes.
 
 HARD RULES:
-- One brief = one worker = one process tree. Do NOT spawn any agent, sub-agent, or subprocess
-  doing independent work.
-- /Users/kaka/Code/any/moon/CAFAYE-OPS.md carries the decisions and the packet this implements.
-  Do not re-litigate a decision; implement it and flag disagreement in your report.
-- Follow the repo's existing patterns exactly. Do not introduce a new dependency, a new config
-  mechanism, or a new command idiom without saying why in your report.
-- Every claim in prose you write cites file:line. Do not invent facts.
-- One hour in four 15-minute quarters. First meaningful commit in Q1. Q4 is wrap-up: last commit,
-  honest report, HANDOFF file if unfinished.
-
-VERIFY before reporting: run the repo's own narrow gate for what your diff reaches, and report
-the exit code you ACTUALLY observed. Never claim a green you did not see.
-REPO: caf (worktree /Users/kaka/Code/any/ops-wt/w2-cve-surface, branch ops/w2-cve-surface)
-
-GOAL: OPS-P11 — the CVE surface of a box, computed on a schedule.
-
-The gap is measured in our own notes: three repos run a dependency scan, none run zizmor, and
-twelve have none. For an Attended customer the value is a continuous answer to "what on my box has
-a known advisory and what does fixing it require".
-
-Build:
-1. A component inventory per box — every installed component and version. Read what the substrate
-  installer actually installs (moon/cafaye/kit/templates/substrate/install.sh) and what the box
-  daemon can already observe; do not invent components.
-2. A matching step against advisories on a schedule. Bound every network call with `timeout` and
-   progress checkpoints; a network call that hangs is an invisible stall.
-3. Output that names the component, the advisory, the fixed version, and what applying it would
-   touch — because "you have 14 advisories" without that is useless to a buyer.
-4. Tests, in the repo's style, for the classification and output logic (not for the network).
-
-Gate: `go test ./...` bounded; report the exit code observed.
-
-DONE MEANS: a per-box component inventory, an advisory match on a schedule, and output that names
-what a fix would touch.
-
-
----
-
+- Do not spawn any agent or subprocess.
+- Commit early and commit often: first meaningful commit in Q1, one per gate-green increment.
+- Run the narrow gate for what your diff reaches and report the exit code you ACTUALLY observed.
+- Q4 is wrap-up: last commit, honest report, HANDOFF file if unfinished.
+- One hour, four 15-minute quarters.
 # The quarterly contract — append this to EVERY worker brief
 
 **You have one hour, in four 15-minute quarters — plan your own quarters.** The
