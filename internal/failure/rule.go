@@ -191,7 +191,7 @@ func Library() []Rule {
 			ID:      "gateway-sessions-per-process",
 			Failure: "gateway sessions are per-process",
 			Sees:    "works",
-			Known: "run one replica; scaling to two is a live outage (CAFAYE-OPS.md:746)",
+			Known:   "run one replica; scaling to two is a live outage (CAFAYE-OPS.md:746)",
 			Remedy: "Run exactly one replica. Everything looks right at two, which is " +
 				"what makes it an outage rather than a failure.",
 			Contract: "",

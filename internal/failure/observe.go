@@ -86,8 +86,8 @@ type Observation struct {
 // (CAFAYE-OPS.md:739) — the connection is fine and the answer takes 4.4
 // seconds.
 type Probe struct {
-	Service   string
-	Path      string
+	Service string
+	Path    string
 	// Status is the HTTP status the probe answered. 503 from `/readyz` is
 	// core's own contract for "a dependency is gone"
 	// (probes.schema.json, `readyz.statusCode`), which is what distinguishes
