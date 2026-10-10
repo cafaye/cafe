@@ -104,6 +104,9 @@ a run in which they passed.
 | `caf contract lint <path>` | validate `cafaye.yml` against the core schema, and the OpenAPI document it names | **works** |
 | `caf contract breaking <a> <b>` | compare two OpenAPI revisions, reporting which tier each change breaks | **works** |
 | `caf contract resolve <c> <v>` | resolve a core version constraint | **works** |
+| `caf cve inventory` | every component on the box and its version, against what the substrate pins | **works** |
+| `caf cve scan` | the box's CVE surface: the component, the advisory, the fixed version, and what applying it touches | **works** |
+| `caf cve schedule` | print the cron line that puts the scan on a schedule | **works** |
 | `caf mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
 | `caf boxd` | run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities (invariant 4) | **works** |
 | `caf version` | print the caf version | **works** |

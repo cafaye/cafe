@@ -228,17 +228,22 @@ func SaveState(path string, s State) error {
 // advisory feed would see one request per box in one second. Spreading the
 // hour across the day is what a fleet-wide schedule costs, and it is free
 // because cron's step syntax already does it.
+//
+// No `--quiet` is rendered, and that is deliberate: the checkpoints go to
+// stderr, so a cron run that stalls leaves the phase it stopped in in the
+// mail cron sends. A line that suppressed them would be a line whose only
+// output on a stall was nothing at all.
 func CronLine(s Schedule, binary string) string {
 	every := s.Every
 	if every < time.Hour {
-		return fmt.Sprintf("*/%d * * * * %s cve scan --quiet  # every %s", int(every.Minutes()), binary, every)
+		return fmt.Sprintf("*/%d * * * * %s cve scan  # every %d minutes", int(every.Minutes()), binary, int(every.Minutes()))
 	}
 	hours := int(every.Hours())
 	if hours < 24 {
-		return fmt.Sprintf("0 */%d * * * %s cve scan --quiet  # every %d hours", hours, binary, hours)
+		return fmt.Sprintf("0 */%d * * * %s cve scan  # every %d hours", hours, binary, hours)
 	}
 	if hours == 24 {
-		return fmt.Sprintf("0 */6 * * * %s cve scan --quiet  # daily, spread across the fleet's egress", binary)
+		return fmt.Sprintf("0 */6 * * * %s cve scan  # daily, spread across the fleet's egress", binary)
 	}
-	return fmt.Sprintf("0 0 */%d * * %s cve scan --quiet  # every %d days", hours/24, binary, hours/24)
+	return fmt.Sprintf("0 0 */%d * * %s cve scan  # every %d days", hours/24, binary, hours/24)
 }

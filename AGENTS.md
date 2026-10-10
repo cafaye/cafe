@@ -18,6 +18,7 @@ internal/cli/       router, registry, one file per subcommand
 internal/box/       caf box: the keypair, the capability redemption, the phases
 internal/run/       the resumable install model: run, steps, events, lease
 internal/contract/  the core contract: manifests, the vendored schemas, versions
+internal/cve/       caf cve: the box's component inventory, the advisory match, what a fix touches
 internal/backup/    caf backup: the cross-file contract, the plan, the cycle
 internal/dev/       the local stack: the planner, the renderer, two seams
 internal/gen/       caf gen: the pure generator, and the drift gate that keeps it honest
@@ -360,7 +361,7 @@ flag into a warning on stderr and an exit 0, versus a BLOCKED line and an
 exit 1. Conductor never sees `required` — it is caf's side of the
 contract, and a server that had an opinion about it would have two.
 
-the standard library cannot do the job. `internal/box`, `internal/ledger`,
+the standard library cannot do the job. `internal/cve`, `internal/box`, `internal/ledger`,
 `internal/ports`, `internal/reclaim`, `internal/ryuk`,
 `internal/lock` and
 `internal/run` have none, and that is a constraint rather than an accident: the
@@ -370,12 +371,18 @@ fail to load at exactly the wrong moment. `internal/run` holds to it for a third
 reason of its own: it is the state a box installs itself into, and the phases it
 records are the ones that run before anything else is on the box — a store that
 needed a library could not be read by the `caf` binary that has to recover the
-install, only by a newer one. `internal/lock` holds to it for a second reason: the
-failure it exists to catch is two processes disagreeing about a vendored schema
+install, only by a newer one. `internal/lock` holds to it for a second reason: thefailure it exists to catch is two processes disagreeing about a vendored schema
 or a generated client, and a verifier that cannot be rebuilt from a release
 tarball with nothing but a standard library is a verifier nobody can run in the
-one place a tarball gets checked. `internal/scaffold` is stdlib plus
-`internal/contract` and brings that package's two libraries with it, which is
+one place a tarball gets checked. `internal/cve` is the exception that proves the paragraph, in the other direction:
+it holds to no-dependency for the reason the paragraphs above give for the
+reclamation path, and for one of its own — the advisory source is `net/http` and
+`encoding/json`, so the scan that answers "what on my box has a known advisory"
+cannot fail to build, or fail to run, because of a dependency tree on the
+operator's machine. A scanner that needed a library would be a scanner whose
+answer depended on somebody else's release schedule.
+
+`internal/scaffold` is stdlib plus`internal/contract` and brings that package's two libraries with it, which is
 the deliberate answer rather than an accident of the import: the manifest a
 template renders is validated by the same compiled schema `caf contract lint`
 runs, and the generator cannot be allowed a second, weaker copy of the check its
@@ -625,7 +632,7 @@ does not run, add it there in the same commit.
    count it expects.
 4. Add the row to the README command table.
 5. Add the package to the Layout section above if it is a new one, and count it in
-   the dependency paragraph — "There are two packages with dependencies" is a claim
+   the dependency paragraph — "There are three packages with dependencies" is a claim
    about the tree, and a new package makes it wrong.
 6. `bin/prime`, `gofmt -l .`, `go vet ./...` — and if the change added a test,
    raise the floor in `gate.yml` in the same commit, or step 6 will tell you so.

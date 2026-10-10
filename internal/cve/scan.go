@@ -42,6 +42,9 @@ type Scan struct {
 	WriteState bool
 	// Output is where the rendered report goes. Nil means io.Discard.
 	Output io.Writer
+	// Emit is where the phase checkpoints go. Nil means Discard, and the CLI
+	// always sets it to stderr — see internal/cli/cve.go.
+	Emit Emitter
 	// JSON selects the machine document over the human one, the idiom every
 	// verb in internal/cli/box.go already uses.
 	JSON bool
@@ -81,6 +84,9 @@ type Outcome struct {
 // may be early. It is reported on the Outcome rather than swallowed.
 func (s Scan) Run(ctx context.Context) (Outcome, error) {
 	emit := Discard()
+	if s.Emit != nil {
+		emit = s.Emit
+	}
 	start := time.Now()
 	if s.Now != nil {
 		start = s.Now()
