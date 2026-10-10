@@ -409,8 +409,13 @@ func gaps(rep Report, in Input) []string {
 	if rep.FailureModes.Rules == 0 {
 		out = append(out, "failure modes: the library was never evaluated — a report over zero rules is not a clean bill of health")
 	}
-	for _, m := range rep.FailureModes.Unknown {
-		out = append(out, "failure mode "+m.ID+": not evaluated — the observation does not carry "+m.Missing)
+	if len(rep.FailureModes.Unknown) > 0 {
+		// One line and not ten. The missing facts are deduplicated by the
+		// library's own SortedMissing, so a reader sees the shape of what the
+		// box owes rather than the same three fields named nine times — the
+		// argument lock/verify.go made about forty copies of one remedy.
+		out = append(out, fmt.Sprintf("failure modes: %d rule(s) not evaluated — the observation does not carry %s",
+			len(rep.FailureModes.Unknown), strings.Join(rep.FailureModes.Missing, ", ")))
 	}
 	return out
 }
@@ -423,7 +428,7 @@ func (r Report) Summary() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s: %s — %d service(s)", dashIf(r.Box), r.Period.String(), len(r.Availability.Services))
 	if r.Availability.FleetPerMille > 0 {
-		fmt.Fprintf(&b, ", %.2f%% uptime", float64(r.Availability.FleetPerMille)/10)
+		fmt.Fprintf(&b, ", %.2f%% uptime", float64(r.Availability.FleetPerMille)/100)
 	}
 	if len(r.Incidents) > 0 {
 		fmt.Fprintf(&b, ", %d incident(s)", len(r.Incidents))

@@ -49,13 +49,13 @@ func renderAvailability(b *strings.Builder, r Report) {
 	}
 	if r.Availability.FleetPerMille > 0 {
 		fmt.Fprintf(b, "Fleet uptime **%.2f%%** across %d service(s).\n\n",
-			float64(r.Availability.FleetPerMille)/10, len(r.Availability.Services))
+			float64(r.Availability.FleetPerMille)/100, len(r.Availability.Services))
 	}
 	b.WriteString("| service | uptime | downtime | longest outage |\n")
 	b.WriteString("| --- | --- | --- | --- |\n")
 	for _, u := range r.Availability.Services {
 		fmt.Fprintf(b, "| %s | %.2f%% | %s | %s |\n",
-			u.Service, float64(u.UptimePerMille)/10,
+			u.Service, float64(u.UptimePerMille)/100,
 			humanDuration(u.Downtime), humanDuration(u.LongestOutage))
 	}
 	b.WriteString("\n")
@@ -205,8 +205,6 @@ func renderSecurity(b *strings.Builder, r Report) {
 	if scan.Schedule != "" {
 		fmt.Fprintf(b, "- schedule: %s (%s)\n", scan.Schedule, scan.Staleness)
 	}
-	fmt.Fprintf(b, "- %d components, %d advisories: %d affected, %d with no published fix, %d unreadable\n",
-		scan.Counts.Components, scan.Counts.Advisories, scan.Counts.Affected, scan.Counts.NoFix, scan.Counts.Unknown)
 	if len(scan.Divergences) > 0 {
 		fmt.Fprintf(b, "- %d component(s) running a version the substrate does not declare\n", len(scan.Divergences))
 	}

@@ -75,7 +75,8 @@ func fixture() Input {
 		Inventory: []secret.Entry{
 			{Name: "SIGNUP_SIGNING_KEY", Namespace: "identity", Secret: "identity-secrets", Key: "SIGNUP_SIGNING_KEY",
 				Class: secret.NotRotatable, Reason: "identity publishes exactly one key", Source: "install.sh:1199", Shape: "32b64url"},
-			{Name: "SMTP_PASSWORD", Namespace: "courier", Class: secret.Rotatable, Interval: 90 * 24 * time.Hour, Shape: "32"},
+			{Name: "SMTP_PASSWORD", Namespace: "courier", Class: secret.Rotatable, Interval: 7 * 24 * time.Hour, Shape: "32"},
+			{Name: "COURIER_SECRET_BOX_KEY", Namespace: "courier", Class: secret.Rotatable, Interval: 90 * 24 * time.Hour, Shape: "64"},
 			{Name: "DATABASE_URL", Namespace: "courier", Class: secret.Conditional, Reason: "second write"},
 		},
 		Rotations: secret.State{
@@ -177,8 +178,14 @@ func TestAssembleFillsEverySectionAndNamesTheGapsItHas(t *testing.T) {
 	if rep.Security.Counts.Affected != 3 {
 		t.Errorf("affected = %d, want 3", rep.Security.Counts.Affected)
 	}
-	if len(rep.Secrets.Due) != 1 || rep.Secrets.Due[0] != "SMTP_PASSWORD" {
-		t.Errorf("due = %v, want [SMTP_PASSWORD]", rep.Secrets.Due)
+	// Both rotatable entries are due, for the two different reasons the rule
+	// has: SMTP_PASSWORD is past its interval, and COURIER_SECRET_BOX_KEY has
+	// never been rotated on this box, which secret.Due treats as due.
+	if len(rep.Secrets.Due) != 2 {
+		t.Errorf("due = %v, want [SMTP_PASSWORD COURIER_SECRET_BOX_KEY]", rep.Secrets.Due)
+	}
+	if len(rep.Secrets.RotatedInWindow) != 1 {
+		t.Errorf("rotated in window = %v, want the one entry the state records", rep.Secrets.RotatedInWindow)
 	}
 	if len(rep.Secrets.Refused) != 1 {
 		t.Errorf("refused = %v, want the one not-rotatable entry", rep.Secrets.Refused)
@@ -280,7 +287,7 @@ func TestACapacitySeriesThatHasNotMovedIsFlat(t *testing.T) {
 		Now:    now,
 		Capacity: &Capacity{Resource: "cpu", Unit: "%", Points: []CapacityPoint{
 			{At: now.Add(-30 * 24 * time.Hour), Value: 20.0},
-			{At: now, Value: 20.3},
+			{At: now, Value: 20.1},
 		}},
 	}
 	if got := Assemble(in).Capacity.Direction; got != "flat" {
@@ -332,6 +339,29 @@ func TestADrillOnTheBoundaryBelongsToTheNextMonth(t *testing.T) {
 	// proven restorable" is not scoped to the month.
 	if len(rep.Backups.Latest) != 1 {
 		t.Errorf("latest = %d, want 1", len(rep.Backups.Latest))
+	}
+}
+
+// The due rule in report.go is a copy of secret.Due's, and a copy drifts. This
+// is the control that stops it: the real inventory, through the real state, must
+// produce the same answer through both. If OPS-P10 moves its rule, this test
+// goes red and names the entry rather than the report quietly disagreeing with
+// `caf secret inventory` about what a customer owes.
+func TestTheDueRuleIsTheSecretPacketsOwn(t *testing.T) {
+	now := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
+	state := secret.NewState()
+	// A state that has rotated everything recently: one entry, this box, today.
+	state.Last["COURIER_SECRET_BOX_KEY"] = now.Add(-24 * time.Hour)
+	entries := secret.Inventory()
+
+	want := []string{}
+	for _, e := range secret.Due(state, now) {
+		want = append(want, e.Name)
+	}
+	got := dueEntries(entries, state, now)
+
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("due = %v, want %v — the report's copy of the rule has drifted from secret.Due", got, want)
 	}
 }
 
