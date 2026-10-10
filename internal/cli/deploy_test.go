@@ -556,7 +556,8 @@ func TestDeployRemoteDryRunIsRefusedToo(t *testing.T) {
 
 // The prompt names the account, because the account is the destination. A
 // confirmation that named only the service would be approving a deploy to no
-// stated place.
+// stated place — and one that printed an empty account shows the reader a hole
+// where the destination belongs.
 func TestDeployRemoteAsksNamingTheAccount(t *testing.T) {
 	runner := &remoteRunner{}
 	var prompt string
@@ -569,6 +570,28 @@ func TestDeployRemoteAsksNamingTheAccount(t *testing.T) {
 
 	if !strings.Contains(prompt, "acct-1") {
 		t.Errorf("the prompt does not name the account %q:\n  %s", "acct-1", prompt)
+	}
+}
+
+// The same prompt with no --account says there is no account, and names the flag
+// that fills it. "deploy identity to the operated platform, account ?" is a
+// sentence with a hole in it: the reader cannot tell whether they forgot the
+// flag or caf lost it.
+func TestDeployRemoteWithNoAccountDoesNotPromptWithAHoleInIt(t *testing.T) {
+	runner := &remoteRunner{}
+	var prompt string
+	confirm := func(p string) (bool, error) {
+		prompt = p
+		return false, nil
+	}
+
+	_, _, _ = runDeployAskingWith(t, runner, confirm, "--engine", "remote", "identity")
+
+	if !strings.Contains(prompt, deploy.AccountFlag) {
+		t.Errorf("the prompt does not name %q, so the reader is not told how to fix it:\n  %s", deploy.AccountFlag, prompt)
+	}
+	if !strings.Contains(prompt, "NO ACCOUNT") {
+		t.Errorf("the prompt does not say the account is missing:\n  %s", prompt)
 	}
 }
 

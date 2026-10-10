@@ -272,7 +272,16 @@ func (r deployRun) ask() (bool, error) {
 		where = "config/deploy." + where + ".yml over config/deploy.yml"
 	}
 	if r.opts.engine == deploy.EngineRemote {
-		where = "the operated platform, account " + r.opts.account
+		// The account is the destination, so a prompt that named only the
+		// service would be approving a deploy to no stated place — and a prompt
+		// that printed an empty account shows the reader a hole where the
+		// destination should be, which reads as caf's bug rather than theirs.
+		// It says so in as many words, and names the flag that fills it.
+		if r.opts.account == "" {
+			where = "the operated platform, and NO ACCOUNT is named — pass --account <uuid>, because the account is what the platform serves"
+		} else {
+			where = "the operated platform, account " + r.opts.account
+		}
 	}
 	return r.deps.confirm(fmt.Sprintf("caf deploy: deploy %s to %s? [y/N] ", r.service, where))
 }

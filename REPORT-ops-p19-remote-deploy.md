@@ -8,7 +8,7 @@ account on the shared platform rather than a cafaye deployment of its own.
 **Status.** the mechanism is built, tested and documented; **it cannot be enabled
 until TG-D1 records the tenancy decision**, and it does not deploy anything
 today.
-**Gate.** `bin/prime` — **exit 0**, 25 packages, 1141 top-level passes, 1204
+**Gate.** `bin/prime` — **exit 0**, 25 packages, 1142 top-level passes, 1204
 subtest passes, 0 failures, 8 skips, `live tier: 0 of 7 executed`.
 `gofmt -l .` printed nothing; `go vet ./...` printed nothing.
 `go test ./internal/deploy ./internal/cli -count=1` — both `ok`.
@@ -135,6 +135,28 @@ says three now, with the remote engine's own paragraph under "what a deploy mean
 under each engine", and its step names are in the constant list — a package doc
 that is two engines short is a claim about the tree that stopped being true.
 
+### The third defect, found by running the command rather than the tests
+
+Every test passes `--yes` or a confirming `confirm`, so none of them saw what
+`caf deploy --engine remote identity` actually prints without it:
+
+```
+$ caf deploy --engine remote identity
+caf deploy: deploy identity to the operated platform, account ? [y/N]
+```
+
+The prompt runs before the engine, and with no `--account` it named the
+destination as an empty string — the exact thing the comment above `ask()`
+claims to prevent, found by typing the command. It now says
+`and NO ACCOUNT is named — pass --account <uuid>`, and one more CLI test holds
+it there. **The ordering question is real and is not fixed here**: an operator is
+still asked to confirm a remote deploy before the engine tells them it cannot
+deploy. Restructuring `run()` to ask the engine for its plan first would move
+the refusal above the prompt — which is the order the package's own comment
+argues for — but it changes which stream the refusal's prose lands on, and that
+stream split is asserted in three tests. It is the first move for the packet that
+records TG-D1, not a thing to smuggle in here.
+
 ## 3. The gate, and why it is the shape it is
 
 `remoteEnabled` is a constant in the package that returns the refusal, and not
@@ -201,6 +223,7 @@ anything:
 695f0c1  REPORT-ops-p19-remote-deploy.md
 c1da37c  OPS-P19: the two gates this packet crossed — the W2 registry gap, and
          the floor
+c356e77  REPORT(OPS-P19): the second increment, and the stray worker brief removed
 8cb9aa2  deploy(remote): --account is the remote engine's, and the flag says so
 b7d8818  the operated remote: the mechanism, gated on TG-D1
 ```
