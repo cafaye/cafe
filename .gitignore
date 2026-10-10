@@ -26,6 +26,11 @@ coverage.txt
 .env.*
 !.env.example
 
+# `caf secret`'s rotation schedule, written next to wherever the command was
+# run. It is a runtime record and not a source file, and it is keyed to the box
+# that wrote it — a checked-in copy would be a schedule belonging to nobody.
+secret-rotations.json
+
 # Editor and OS noise.
 .DS_Store
 .idea/

@@ -1,6 +1,9 @@
 package secret
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -245,4 +248,132 @@ func TestDueIsAFunctionOfTheStateAndTheClock(t *testing.T) {
 	if got := len(Due(state, now.Add(DefaultInterval))); got != 3 {
 		t.Errorf("at the interval %d are due, want 3", got)
 	}
+}
+
+// Every citation names a fleet file and a line range, and this walks them so a
+// citation that drifts is caught here rather than by an operator who follows it
+// and finds the wrong sentence. The files are not in this repository — doc.go
+// says why — so the walk skips silently when the fleet is not checked out
+// beside this one, which is the ordinary case on a CI runner and the reason
+// this is a walk rather than a fetch.
+func TestEveryCitationPointsAtSomething(t *testing.T) {
+	roots := []string{
+		os.Getenv("HOME") + "/Code/any/moon",
+		"../../moon",
+	}
+	var root string
+	for _, candidate := range roots {
+		if st, err := os.Stat(filepath.Join(candidate, "cafaye")); err == nil && st.IsDir() {
+			root = candidate
+			break
+		}
+	}
+	if root == "" {
+		t.Skip("the fleet is not checked out beside this worktree; the citations are checkable by hand")
+	}
+
+	// install.sh line ranges, keyed by the citation string the table uses.
+	ranges := map[string][2]int{
+		"cafaye/kit/templates/substrate/install.sh:1075-1082":   {1075, 1082},
+		"cafaye/kit/templates/substrate/install.sh:1084-1093":   {1084, 1093},
+		"cafaye/kit/templates/substrate/install.sh:1094-1100":   {1094, 1100},
+		"cafaye/kit/templates/substrate/install.sh:1101-1105":   {1101, 1105},
+		"cafaye/kit/templates/substrate/install.sh:1211-1220":   {1211, 1220},
+		"cafaye/kit/templates/substrate/install.sh:1228-1232":   {1228, 1232},
+		"cafaye/kit/templates/substrate/install.sh:1239-1244":   {1239, 1244},
+		"cafaye/kit/templates/substrate/install.sh:1106-1109":   {1106, 1109},
+		"cafaye/kit/templates/substrate/install.sh:933-939":     {933, 939},
+		"cafaye/kit/templates/substrate/install.sh:887,892-909": {887, 909},
+	}
+	installer := filepath.Join(root, ranges0Path(ranges))
+	if !fileReadable(installer) {
+		t.Skipf("the fleet's install.sh is not at %s", installer)
+	}
+	installerLines := fileLines(t, installer)
+	for citation, span := range ranges {
+		lo, hi := span[0], span[1]
+		if hi > len(installerLines) {
+			t.Errorf("%s ends past the end of install.sh (%d lines)", citation, len(installerLines))
+			continue
+		}
+		block := strings.ToLower(strings.Join(installerLines[lo-1:hi], "\n"))
+		if !strings.Contains(block, "secret") && !strings.Contains(block, "password") {
+			t.Errorf("%s does not mention a secret or a password:\n%s", citation, block)
+		}
+	}
+
+	// The runbook line citations, one by one, each named by a word that has to
+	// be on the line it claims.
+	lineWords := map[string]string{
+		filepath.Join(root, "cafaye/identity/README.md:299"):       "SIGNUP_SIGNING_KEY",
+		filepath.Join(root, "cafaye/identity/README.md:310"):       "OAUTH_ENCRYPTION_KEY",
+		filepath.Join(root, "cafaye/identity/README.md:356"):       "expires one hour",
+		filepath.Join(root, "cafaye/identity/README.md:1348"):      "One key",
+		filepath.Join(root, "cafaye/muse/README.md:332-333"):       "per request",
+		filepath.Join(root, "cafaye/identity/README.md:1035-1039"): "MFA_ENCRYPTION_KEY",
+	}
+	for citation, want := range lineWords {
+		path, span, ok := splitRange(citation)
+		if !ok {
+			continue
+		}
+		if !fileReadable(path) {
+			continue
+		}
+		lines := fileLines(t, path)
+		if span[1] > len(lines) {
+			t.Errorf("%s ends past the end of the file (%d lines)", citation, len(lines))
+			continue
+		}
+		block := strings.Join(lines[span[0]-1:span[1]], "\n")
+		if !strings.Contains(block, want) {
+			t.Errorf("%s does not contain %q", citation, want)
+		}
+	}
+}
+
+// The path install.sh lives at under every root, taken once so the two halves
+// above agree.
+func ranges0Path(ranges map[string][2]int) string {
+	for citation := range ranges {
+		if path, _, ok := splitRange(citation); ok {
+			return path
+		}
+	}
+	return ""
+}
+
+// splitRange splits a "path:lo-hi" or "path:lo" citation.
+func splitRange(citation string) (string, [2]int, bool) {
+	i := strings.LastIndex(citation, ":")
+	if i < 0 {
+		return "", [2]int{}, false
+	}
+	path, span := citation[:i], citation[i+1:]
+	var lo, hi int
+	if strings.Contains(span, "-") {
+		if _, err := fmt.Sscanf(span, "%d-%d", &lo, &hi); err != nil {
+			return "", [2]int{}, false
+		}
+	} else {
+		if _, err := fmt.Sscanf(span, "%d", &lo); err != nil {
+			return "", [2]int{}, false
+		}
+		hi = lo
+	}
+	return path, [2]int{lo, hi}, true
+}
+
+func fileReadable(path string) bool {
+	st, err := os.Stat(path)
+	return err == nil && !st.IsDir()
+}
+
+func fileLines(t *testing.T, path string) []string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+	return strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n")
 }

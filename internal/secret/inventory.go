@@ -184,7 +184,7 @@ const (
 	srcKeyBase     = "cafaye/kit/templates/substrate/install.sh:1228-1232,1239-1244"
 	srcRedisURL    = "cafaye/kit/templates/substrate/install.sh:1211-1220"
 	srcRedisPW     = "cafaye/kit/templates/substrate/install.sh:933-939"
-	srcRoles       = "cafaye/kit/templates/substrate/install.sh:888,893-910"
+	srcRoles       = "cafaye/kit/templates/substrate/install.sh:887,892-909"
 	srcNeverPatch  = "cafaye/kit/templates/substrate/install.sh:1159"
 	srcIDReadme    = "cafaye/identity/README.md:299"
 	srcOIDCJwks    = "cafaye/identity/README.md:1348"
