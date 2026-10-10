@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -32,11 +33,24 @@ type backupDeps struct {
 	// pipeline must either be given -yes or fail, and both of those have to be
 	// assertable.
 	confirm func(prompt string) (bool, error)
+	// drills is where the outcome is recorded. Empty means the resolved default,
+	// and a test always sets it. It is a parameter rather than a package-level
+	// variable for the reason the runner is: the store is where the printed
+	// verdict stops being forgotten, and a store nobody can redirect is a store
+	// no test can assert on.
+	drills string
 }
 
 func (b backupDeps) withDefaults() backupDeps {
 	if b.confirm == nil {
 		b.confirm = confirmBackupOnStdin
+	}
+	if b.drills == "" {
+		// A machine with no home directory and no CAF_DRILL_DIR cannot say
+		// where the record goes, which is a refusal rather than a reason to
+		// write it somewhere nobody will look. The error surfaces at the
+		// command, which names the variable that fixes it.
+		b.drills, _ = backup.DefaultDrillDir()
 	}
 	return b
 }
@@ -152,6 +166,12 @@ run more permissive than the real one is worse than no dry run.`
 
 // newBackupCommand takes its seams. The router passes the zero value and gets the
 // real wiring.
+//
+// `caf backup` is a parent with one verb besides itself: `caf backup drill` is
+// the same cycle with the confirmation taken away and the outcome recorded and
+// reported as a machine document. The parent dispatches the way `caf contract`
+// does, and the drill verb is a Command of its own named with its full
+// invocation so its usage errors read as the words the user typed.
 func newBackupCommand(deps backupDeps) *Command {
 	opts := &backupOptions{}
 	c := &Command{
@@ -160,16 +180,13 @@ func newBackupCommand(deps backupDeps) *Command {
 		Usage:    "caf backup [flags] <service>",
 		LongHelp: backupLongHelp,
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.environment, "env", "", "environment overlay, as config/deploy.<env>.yml merged over config/deploy.yml")
-			fs.StringVar(&opts.scratch, "scratch", "", "database to drill the restore into; dropped on every path. Default <service>_drill")
-			fs.Var(&opts.tables, "table", "a table that must hold rows after the restore. Repeatable, and required: a drill with no table asserts nothing")
-			fs.BoolVar(&opts.dryRun, "dry-run", false, "print every command that would run; changes nothing")
-			fs.BoolVar(&opts.yes, "yes", false, "back up without asking; required where nobody can answer the prompt")
-			fs.DurationVar(&opts.timeout, "timeout", backup.DefaultTimeout, "budget for each command, so a hung pull or dump is a failure rather than a hang")
-			fs.StringVar(&opts.engine, "engine", "", "backup engine: kamal (the default, the engine the fleet runs) or cnpg (the launch substrate's, where there is no Kamal)")
+			declareBackupFlags(fs, opts)
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
+		if len(args) > 0 && args[0] == "drill" {
+			return newBackupDrillCommand(deps).Execute(env, args[1:])
+		}
 		if err := wantArgs(c.Name, c.Usage, 1, len(args)); err != nil {
 			return err
 		}
@@ -182,6 +199,23 @@ func newBackupCommand(deps backupDeps) *Command {
 	return c
 }
 
+// declareBackupFlags is the whole flag surface both backup invocations take.
+//
+// One function rather than two copies, because the cycle and the drill differ in
+// exactly one thing — whether an operator is asked — and seven duplicated
+// declarations is seven places for the two to drift apart on. --yes is declared
+// on both and not only the cycle: a script that always passes it works against
+// either form, and the drill simply never asks.
+func declareBackupFlags(fs *flag.FlagSet, opts *backupOptions) {
+	fs.StringVar(&opts.environment, "env", "", "environment overlay, as config/deploy.<env>.yml merged over config/deploy.yml")
+	fs.StringVar(&opts.scratch, "scratch", "", "database to drill the restore into; dropped on every path. Default <service>_drill")
+	fs.Var(&opts.tables, "table", "a table that must hold rows after the restore. Repeatable, and required: a drill with no table asserts nothing")
+	fs.BoolVar(&opts.dryRun, "dry-run", false, "print every command that would run; changes nothing")
+	fs.BoolVar(&opts.yes, "yes", false, "back up without asking; required where nobody can answer the prompt")
+	fs.DurationVar(&opts.timeout, "timeout", backup.DefaultTimeout, "budget for each command, so a hung pull or dump is a failure rather than a hang")
+	fs.StringVar(&opts.engine, "engine", "", "backup engine: kamal (the default, the engine the fleet runs) or cnpg (the launch substrate's, where there is no Kamal)")
+}
+
 // backupRun is one `caf backup` invocation, gathered so the steps read top to
 // bottom and can be tested without a closure capturing five variables.
 type backupRun struct {
@@ -189,6 +223,14 @@ type backupRun struct {
 	service string
 	deps    backupDeps
 	env     *Env
+	// drill is the verb that runs the cycle unattended: it is the form a
+	// schedule uses, so it never asks and it always records.
+	drill bool
+	// asJSON emits the outcome as one machine document on stdout and moves the
+	// engine's own report to stderr. It is the same split `caf agent` makes and
+	// for the same reason: an agent pipes stdout into a parser, and a report
+	// interleaved with the document is a document nobody can decode.
+	asJSON bool
 }
 
 func (r backupRun) run() error {
@@ -203,7 +245,18 @@ func (r backupRun) run() error {
 	// about whether to go ahead and do it. Somebody who typed `caf backup` to see
 	// what it would do gets the answer, not a prompt.
 	if r.opts.dryRun {
+		if r.asJSON {
+			return fmt.Errorf("%w: caf backup drill --json with --dry-run: a dry run runs nothing, so there is no outcome to emit; run it for real, or drop --json", errUsage)
+		}
 		return r.runCycle(runner, true)
+	}
+
+	// A drill on a schedule has nobody to answer a prompt, and a command that
+	// hung waiting for one would be a schedule that never ran. So the drill
+	// skips the question the cycle asks — which is the whole difference between
+	// the two, and the reason there are two forms at all.
+	if r.drill {
+		return r.runCycle(runner, false)
 	}
 
 	ok, err := r.ask()
@@ -217,27 +270,56 @@ func (r backupRun) run() error {
 	return r.runCycle(runner, false)
 }
 
+// runCycle runs the cycle and, unless it was a dry run, records what it proved.
+//
+// The record is written AFTER the engine's report and BEFORE the exit is
+// decided, and that order is the packet: the verdict used to be printed here
+// and forgotten, and a store written before the verdict would be a store
+// guessing at it.
 func (r backupRun) runCycle(runner backup.Runner, dryRun bool) error {
+	// The report is teed into a buffer while it is written, because the record's
+	// detail field has to carry the sentence that named the failure and the
+	// engine's sentinels deliberately do not: ErrCycleFailed's comment says the
+	// caller must not print the report a second time, and reading it back out of
+	// the buffer is the way to record it without printing it again.
+	var report bytes.Buffer
+	stdout := r.reportOut()
+	if !dryRun {
+		stdout = io.MultiWriter(stdout, &report)
+	}
+
+	started := time.Now().UTC()
 	err := backup.Run(ctxOrBackground(r.env), runner, backup.Request{
 		Service: r.service,
 		Engine:  r.opts.engine,
 		Env:     r.opts.environment,
-		Scratch: r.opts.scratch,
+		Scratch: r.scratchName(),
 		Tables:  r.opts.tables,
 		DryRun:  dryRun,
 		Timeout: r.opts.timeout,
-	}, r.out(), r.errOut())
-	// Three classes, three exits, and the class is the sentinel rather than the
-	// message — so a reworded refusal cannot quietly stop being recognised as one.
-	//
-	//   ErrUsage      caf was invoked wrongly. Exit 2, the message on stderr.
-	//   ErrRefused    a committed configuration is wrong. Exit 1, and the refusal
-	//                 is ALREADY the report on stdout, so stderr stays empty: a
-	//                 `caf: ...` line there puts a truncated copy in the place a
-	//                 CI log greps, and the truncated copy is the one without the
-	//                 advice in it.
-	//   anything else the cycle ran and something broke. Exit 1, the cause on
-	//                 stderr, and the report already printed on stdout.
+	}, stdout, r.errOut())
+	if dryRun {
+		// Nothing ran, so there is nothing to remember. A dry run that wrote a
+		// record would be a dry run with a side effect, which is the one thing a
+		// dry run must never be.
+		return r.classify(err)
+	}
+	return r.recordAndReport(started, err, report.String())
+}
+
+// classify is the three classes, three exits, and the class is the sentinel
+// rather than the message — so a reworded refusal cannot quietly stop being
+// recognised as one.
+//
+//	ErrUsage      caf was invoked wrongly. Exit 2, the message on stderr.
+//	ErrRefused    a committed configuration is wrong. Exit 1, and the refusal
+//	              is ALREADY the report on stdout, so stderr stays empty: a
+//	              `caf: ...` line there puts a truncated copy in the place a
+//	              CI log greps, and the truncated copy is the one without the
+//	              advice in it.
+//	anything else the cycle ran and something broke. Exit 1, the cause on
+//	              stderr, and the report already printed on stdout.
+func (r backupRun) classify(err error) error {
 	switch {
 	case err == nil:
 		return nil
@@ -248,6 +330,173 @@ func (r backupRun) runCycle(runner backup.Runner, dryRun bool) error {
 	default:
 		return err
 	}
+}
+
+// recordAndReport persists the outcome, emits the machine document when asked
+// for it, and puts the one line a human has to see on stderr when the drill
+// failed.
+func (r backupRun) recordAndReport(started time.Time, err error, report string) error {
+	rec := r.drillRecord(started, err, report)
+	// The write is a failure of its own and not a warning. The gap this packet
+	// closes is a verdict that was printed and forgotten, and a drill whose
+	// record did not land has been forgotten exactly as thoroughly — so it
+	// exits nonzero with the path in the sentence rather than exiting 0 on the
+	// strength of a restore nobody will be able to point at.
+	if writeErr := r.writeRecord(rec); writeErr != nil {
+		return fmt.Errorf("caf backup: the drill %s, and caf could not record it: %w\n"+
+			"  The result is only in the report above. Set CAF_DRILL_DIR to a writable directory and run it again.",
+			rec.Outcome, writeErr)
+	}
+
+	if r.asJSON {
+		// One document, on stdout, and nothing else: a consumer that has to skip
+		// a prose line to reach its JSON is a consumer that will one day skip the
+		// wrong line.
+		if err := writeJSONDoc(r.out(), rec); err != nil {
+			return err
+		}
+	}
+	if rec.Failed() && r.drill {
+		// The alert, and it is the DRILL's rather than the cycle's. The cycle's
+		// contract is that a refusal is a report on stdout and stderr stays
+		// empty — a line there is a truncated copy of a paragraph in the place a
+		// CI log greps — and that decision is not this packet's to revisit. A
+		// drill is the other case: nobody is watching a terminal, so the line is
+		// the only thing a human will ever see of the failure.
+		//
+		// It is not a copy of the report either. The report is several sentences
+		// about a mechanism; this is one line naming the machine-matchable reason,
+		// the service and where the record went.
+		//
+		// caf has no notification transport — the tier copy states that nobody
+		// is paged (OPS-P20) — so the convention this uses is the one caf already
+		// has: exit nonzero and a named reason. A monitor that wants more reads
+		// --json.
+		fmt.Fprintf(r.errOut(), "caf backup drill: %s: %s did not prove a restore (%s)\n",
+			rec.Reason, rec.Service, rec.Outcome)
+		if rec.Detail != "" {
+			fmt.Fprintf(r.errOut(), "  %s\n", rec.Detail)
+		}
+		fmt.Fprintf(r.errOut(), "  recorded in %s\n", r.deps.drills)
+	}
+	return r.classify(err)
+}
+
+// drillRecord is one cycle, as a fact about a service.
+func (r backupRun) drillRecord(started time.Time, err error, report string) backup.DrillRecord {
+	finished := time.Now().UTC()
+	rec := backup.DrillRecord{
+		Service:    r.service,
+		Engine:     r.engineName(),
+		Env:        r.opts.environment,
+		Scratch:    r.scratchName(),
+		Tables:     append([]string{}, r.opts.tables...),
+		StartedAt:  started,
+		FinishedAt: finished,
+		DurationMS: finished.Sub(started).Milliseconds(),
+	}
+	switch {
+	case err == nil:
+		rec.Outcome, rec.Reason = backup.DrillPassed, backup.DrillReasonPassed
+		rec.Detail = firstNonEmptyLine(report)
+	case errors.Is(err, backup.ErrRefused):
+		rec.Outcome = backup.DrillRefused
+		// The clause that broke, when the report named one. It is better than the
+		// class: a script matching caf-backup/drill-refused learns that the config
+		// is wrong, and one matching the clause learns which line to edit.
+		if reason := backup.ReportReason(report); reason != "" {
+			rec.Reason = reason
+		} else {
+			rec.Reason = backup.DrillReasonRefused
+		}
+		rec.Detail = firstNonEmptyLine(report)
+	case errors.Is(err, backup.ErrCycleFailed):
+		rec.Outcome, rec.Reason = backup.DrillFailed, backup.DrillReasonFailed
+		rec.Detail = firstNonEmptyLine(report)
+		if rec.Detail == "" && err != nil {
+			rec.Detail = firstNonEmptyLine(err.Error())
+		}
+	default:
+		// The cycle never got going: the engine is not installed, the project
+		// cannot be read, the plan cannot be built. ErrCycleFailed is the ONE
+		// sentinel a cycle that actually ran returns (run.go's failureReport is
+		// its only source), so its absence is the signal — and "caf could not
+		// start" has to be a different fact from "the restore did not hold",
+		// because one is a machine to fix and the other is a backup to fix.
+		rec.Outcome, rec.Reason = backup.DrillFailed, backup.DrillReasonNotRun
+		// The error, not the report: before the cycle starts the report's first
+		// line is the cycle's own header, and a record whose detail is
+		// "backing up from … with kamal 2.12.0" says nothing about why it stopped.
+		rec.Detail = firstNonEmptyLine(errorLine(err))
+	}
+	return rec
+}
+
+// errorLine is an error's first line, and "" for a nil one.
+func errorLine(err error) string {
+	if err == nil {
+		return ""
+	}
+	return firstNonEmptyLine(err.Error())
+}
+
+// writeRecord appends to the store the command was wired with.
+func (r backupRun) writeRecord(rec backup.DrillRecord) error {
+	if r.deps.drills == "" {
+		return errors.New("no drill directory was resolved: set CAF_DRILL_DIR to say where drill records go")
+	}
+	store, err := backup.OpenDrillStore(r.deps.drills)
+	if err != nil {
+		return err
+	}
+	_, err = store.Append(rec)
+	return err
+}
+
+// engineName is the engine that ran, named. An empty flag means the default and
+// the record has to say so, because a report about the wrong engine is a report
+// about a drill that never happened.
+func (r backupRun) engineName() string {
+	if r.opts.engine == "" {
+		return backup.EngineKamal
+	}
+	return r.opts.engine
+}
+
+// scratchName is the database the restore is drilled into, resolved once so the
+// prompt, the request and the record cannot name three different ones.
+func (r backupRun) scratchName() string {
+	if r.opts.scratch != "" {
+		return r.opts.scratch
+	}
+	return r.service + "_drill"
+}
+
+// reportOut is where the engine's own report goes. A machine consumes stdout,
+// so the report moves to stderr when the outcome is a machine document — the
+// same split `caf agent` makes.
+func (r backupRun) reportOut() io.Writer {
+	if r.asJSON {
+		return r.errOut()
+	}
+	return r.out()
+}
+
+// firstNonEmptyLine is the first line of a report that says anything.
+//
+// It is not doctor.go's firstLine, which takes an error and splits its first
+// line whatever it holds: a report opens with a blank line by convention (every
+// report in internal/backup does), so a record's detail field built from that
+// would be empty on exactly the records that need it. Taking a string rather
+// than an error is the same difference — the thing being summarised here is a
+// paragraph caf printed, not an error.
+func firstNonEmptyLine(text string) string {
+	for _, line := range strings.Split(text, "\n") {
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 // confirmBackupOnStdin is confirm.go's reader under this command's name. The
@@ -266,10 +515,7 @@ func (r backupRun) ask() (bool, error) {
 	if r.opts.yes {
 		return true, nil
 	}
-	scratch := r.opts.scratch
-	if scratch == "" {
-		scratch = r.service + "_drill"
-	}
+	scratch := r.scratchName()
 	tables := strings.Join(r.opts.tables, ", ")
 	if r.opts.engine == backup.EngineCNPG {
 		return r.deps.confirm(fmt.Sprintf(

@@ -108,6 +108,33 @@ type DrillRecord struct {
 // reads as the sentence it is: this record failed.
 func (r DrillRecord) Failed() bool { return r.Outcome.Failed() }
 
+// ReportReason pulls the machine-matchable reason out of a rendered report.
+//
+// It lives here rather than at the call site because the format is
+// contract.go's: a refusal's row is `caf-backup/<name>` on a line of its own,
+// and the package that WRITES that line is the package that should read it
+// back. A second copy of the format at the call site is a second thing that
+// breaks when the format moves — and the failure is silent, because a reader
+// that finds nothing answers "" rather than an error.
+//
+// It is what makes a refused drill's record name the clause that broke instead
+// of only naming the class: detail carries the whole sentence, and reason
+// carries this.
+func ReportReason(report string) Reason {
+	for _, line := range strings.Split(report, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, reasonPrefix) {
+			return Reason(line)
+		}
+	}
+	return ""
+}
+
+// reasonPrefix is the namespace every caf-backup reason is written under, which
+// is contract.go's `caf-backup/` and the only thing a report can be scanned for
+// that cannot appear in prose caf did not write.
+const reasonPrefix = "caf-backup/"
+
 // Age is how long ago the drill finished, against now.
 //
 // It is here because "the last drill was six months ago" is the other half of
