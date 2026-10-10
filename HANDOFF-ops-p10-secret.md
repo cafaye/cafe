@@ -26,7 +26,7 @@ No merge, no push — that is the manager's.
 | `go build ./...` | exit 0 |
 | `go test -count=1 ./internal/secret/` | ok, exit 0 |
 | `go test -count=1 ./internal/cli/` | ok, exit 0 |
-| `./bin/prime` | **exit 0** — `24 packages, 1082 top-level passes, 1190 subtest passes, 0 failures, 8 skips` |
+| `./bin/prime` | **exit 0** — `24 packages, 1083 top-level passes, 1190 subtest passes, 0 failures, 8 skips` |
 | `go vet ./...` | exit 0, no output |
 | `gofmt -l .` | no output, exit 0 |
 
