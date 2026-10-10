@@ -134,15 +134,13 @@ func reportRenderCommand(deps reportDeps) *Command {
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
-		if err := wantArgs(c.Name, c.Usage, 1, len(args)); err != nil {
-			return err
-		}
-		fs := c.FlagSet()
-		if err := fs.Parse(args); err != nil {
-			return err
-		}
-		rest := fs.Args()
-		if len(rest) != 1 {
+		// No second flag set here. The router has already parsed the flags and
+		// hands Run the positionals; a verb that rebuilt its own flag set would
+		// register the flags a second time, and a registration sets the
+		// variable back to its default — measured here as `--json` arriving
+		// false and the page writing markdown into a pipeline expecting a
+		// document.
+		if len(args) != 1 {
 			return fmt.Errorf("%w: %s: want one input document, or none to read stdin (usage: %s)",
 				errUsage, c.Name, c.Usage)
 		}
@@ -152,7 +150,7 @@ func reportRenderCommand(deps reportDeps) *Command {
 			return fmt.Errorf("caf report render: %w", err)
 		}
 
-		in, err := readReportInput(rest[0], deps.stdin)
+		in, err := readReportInput(args[0], deps.stdin)
 		if err != nil {
 			return fmt.Errorf("caf report render: %w", err)
 		}
@@ -184,20 +182,23 @@ func reportRenderCommand(deps reportDeps) *Command {
 		}
 
 		rep := report.Assemble(in)
+
+		// The gap count goes to stderr as a sentence in BOTH forms, so a script
+		// reading stdout gets one clean document and a person still learns the
+		// page was honest about what it did not know. The split is the one
+		// internal/agent holds: machine JSON on stdout, human prose on stderr,
+		// and no flag that chooses which stream gets the words.
+		if len(rep.Gaps) > 0 {
+			fmt.Fprintf(env.Stderr, "caf report: %d section(s) could not be filled; they are named in the page\n", len(rep.Gaps))
+		}
 		if machine {
-			// Machine JSON to stdout, one document, the contract internal/agent
-			// holds — so a box agent can pipe it without a parser guessing
-			// where the words end.
+			// One indented document, the contract internal/agent holds — so a
+			// box agent can pipe it without a parser guessing where the words
+			// end.
 			return report.Encode(env.Stdout, rep)
 		}
 		if err := report.Render(env.Stdout, rep); err != nil {
 			return fmt.Errorf("caf report render: %w", err)
-		}
-		// The gap count goes to stderr as a sentence, so a script reading
-		// stdout gets one document and a person still learns the page was
-		// honest about what it did not know.
-		if len(rep.Gaps) > 0 {
-			fmt.Fprintf(env.Stderr, "caf report: %d section(s) could not be filled; they are named in the page\n", len(rep.Gaps))
 		}
 		return nil
 	}

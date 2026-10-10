@@ -144,8 +144,10 @@ func TestReportRenderWritesOneJSONDocument(t *testing.T) {
 	if len(rep.Upstream) != 2 || rep.Upstream[1].Decision != report.DecisionHeld {
 		t.Errorf("upstream = %+v, want the applied release and the held one", rep.Upstream)
 	}
-	if !dec.More() {
-		t.Error("the stream holds more than one document; a script cannot pipe it")
+	// And nothing after it but the newline: a stream with a second document
+	// in it is a stream a script pipes into a parser that reads one.
+	if rest := strings.TrimSpace(out[dec.InputOffset():]); rest != "" {
+		t.Errorf("the stream holds more than the one document: %q", rest)
 	}
 }
 
@@ -154,9 +156,12 @@ func TestReportRenderWritesOneJSONDocument(t *testing.T) {
 // what it did not know. This is the assertion that keeps those two promises
 // from drifting into each other.
 func TestReportRenderSaysNothingFalseOnStdoutAboutItsGaps(t *testing.T) {
+	// A document with a box and a window and nothing else, so there are gaps
+	// to be honest about. The fixture above fills every section, and a test
+	// that used it would be asserting a sentence that never prints.
 	dir := t.TempDir()
 	path := filepath.Join(dir, "input.json")
-	writeFile(t, path, fixtureDocument)
+	writeFile(t, path, `{"box":"fresh-box","period":{"start":"2026-09-01T00:00:00Z","end":"2026-10-01T00:00:00Z"}}`)
 
 	stdout, stderr, err := runReport(t, reportDeps{stdin: strings.NewReader("")}, "--json", path)
 	if err != nil {
