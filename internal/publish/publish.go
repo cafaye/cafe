@@ -178,11 +178,15 @@ type Proposal struct {
 	Requirements []Requirement `json:"requirements"`
 }
 
-// Step is one write's outcome. Detail carries the server's own words on a
-// failure and the idempotent phrase on an already-done — never a paraphrase,
-// because an agent reading the report must be able to grep the server's log.
+// Step is one write's outcome. Name is the thing the operation acted on — the
+// project for register and publish_version, the TARGET for declare_requirement,
+// which is the end of the edge the manifest's reader cannot see from the
+// proposal alone. Detail carries the server's own words on a failure and the
+// idempotent phrase on an already-done — never a paraphrase, because an agent
+// reading the report must be able to grep the server's log.
 type Step struct {
 	Operation string `json:"operation"`
+	Name      string `json:"name,omitempty"`
 	Status    string `json:"status"`
 	Detail    string `json:"detail,omitempty"`
 }
@@ -351,39 +355,41 @@ func manifestDocument(manifest contract.Manifest) (map[string]any, []byte, error
 func Run(ctx context.Context, p Publisher, token string, proposal Proposal) Report {
 	report := Report{Proposal: proposal}
 
+	name := proposal.Registration.Name
+
 	_, err := p.Register(ctx, token, proposal.Registration)
 	if err != nil {
 		if idempotent(err, idempotentRegistered) {
-			report.Steps = append(report.Steps, Step{OpRegister, StatusAlreadyExists, err.Error()})
+			report.Steps = append(report.Steps, Step{OpRegister, name, StatusAlreadyExists, err.Error()})
 		} else {
-			report.Steps = append(report.Steps, Step{OpRegister, StatusFailed, err.Error()})
+			report.Steps = append(report.Steps, Step{OpRegister, name, StatusFailed, err.Error()})
 			return report
 		}
 	} else {
-		report.Steps = append(report.Steps, Step{OpRegister, StatusCreated, ""})
+		report.Steps = append(report.Steps, Step{OpRegister, name, StatusCreated, ""})
 	}
 
-	if _, err := p.PublishVersion(ctx, token, proposal.Registration.Name, proposal.Tag); err != nil {
+	if _, err := p.PublishVersion(ctx, token, name, proposal.Tag); err != nil {
 		if idempotent(err, idempotentPublished) {
-			report.Steps = append(report.Steps, Step{OpVersion, StatusAlreadyExists, err.Error()})
+			report.Steps = append(report.Steps, Step{OpVersion, name, StatusAlreadyExists, err.Error()})
 		} else {
-			report.Steps = append(report.Steps, Step{OpVersion, StatusFailed, err.Error()})
+			report.Steps = append(report.Steps, Step{OpVersion, name, StatusFailed, err.Error()})
 			return report
 		}
 	} else {
-		report.Steps = append(report.Steps, Step{OpVersion, StatusCreated, ""})
+		report.Steps = append(report.Steps, Step{OpVersion, name, StatusCreated, ""})
 	}
 
 	for _, req := range proposal.Requirements {
-		if _, err := p.DeclareRequirement(ctx, token, proposal.Registration.Name, req); err != nil {
+		if _, err := p.DeclareRequirement(ctx, token, name, req); err != nil {
 			if idempotent(err, idempotentDeclared) {
-				report.Steps = append(report.Steps, Step{OpRequirement, StatusAlreadyExists, err.Error()})
+				report.Steps = append(report.Steps, Step{OpRequirement, req.Name, StatusAlreadyExists, err.Error()})
 				continue
 			}
-			report.Steps = append(report.Steps, Step{OpRequirement, StatusFailed, err.Error()})
+			report.Steps = append(report.Steps, Step{OpRequirement, req.Name, StatusFailed, err.Error()})
 			continue
 		}
-		report.Steps = append(report.Steps, Step{OpRequirement, StatusCreated, ""})
+		report.Steps = append(report.Steps, Step{OpRequirement, req.Name, StatusCreated, ""})
 	}
 
 	report.Published = true

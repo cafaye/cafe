@@ -83,6 +83,7 @@ func Commands() []*Command {
 		newMCPCommand(),
 		newNewCommand(),
 		newProviderCommand(providerDeps{}),
+		newPublishCommand(publishDeps{}),
 		newReclaimCommand(reclaimDeps{}),
 		newReportCommand(reportDeps{}),
 		newResolveCommand(resolveDeps{}),
