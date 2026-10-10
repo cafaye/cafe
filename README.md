@@ -80,7 +80,7 @@ a run in which they passed.
 | `caf init` | write the `cafaye.yml` manifest for an existing project, validated against core's schema | **works** |
 | `caf new <name>` | scaffold a new cafaye service or app from the template catalog | **works** |
 | `caf dev [project]` | run the local development stack | **works** |
-| `caf deploy <service>` | deploy a service or app to the platform | **works** |
+| `caf deploy <service>` | deploy a service or app: `--engine kamal` (default), `--engine argo` or `--engine remote` (the operated platform, pinned off until TG-D1) | **works** |
 | `caf backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
 | `caf backup drill <service>` | the same cycle unattended, with the outcome recorded and `--json` for a machine | **works** |
 | `caf box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
@@ -562,6 +562,45 @@ the release that never goes healthy being refused while the previous one keeps
 serving. **Read that file's header before running it on a machine that is not
 yours**: it starts an SSH daemon, publishes a port, and uses the global container
 name `kamal-docker-registry` that Kamal itself owns.
+
+### `--engine remote`, and why it refuses
+
+```sh
+$ caf deploy --engine remote --account acct-1 --yes identity
+The remote engine deploys a service into the cafaye-operated platform, where
+every client the account serves is an account on one shared deployment rather
+than a cafaye deployment of its own. ...
+```
+
+That is the third engine, and it deploys **nothing**. The refusal is the packet.
+
+What it would do: ask the operated platform which deployment serves the named
+`--account`, and hand it one deploy request — the service, the version and the
+commit it was built from. The customer's app is built once and deployed once,
+and every client they serve is an account on the shared platform rather than a
+cafaye deployment of its own. That is the platform's reason to exist, and it is
+what `caf deploy` could not name before: the other two engines both target
+something the operator runs themselves.
+
+Why it does not do that yet: **one deployment serving many accounts is only safe
+once one deployment is proven safe for strangers** — `TENANCY-GATE.md`, whose
+TG-D1 records the decision. `caf` cannot make that decision and does not try.
+So the gate is a constant in the package that returns the refusal, and not a
+flag, an environment variable or a config key: a tenancy decision a CI job could
+set with nobody deciding it is not a decision.
+
+The mechanism is built and tested. `planForRemote` is the function the gate calls
+once TG-D1 is recorded, and `internal/deploy/remote_test.go` drives it — the two
+steps, the request read back out of the plan's own argv (so a dry run shows
+exactly what a real deploy asks), the account the request carries, and a report
+that states what the deploy did *not* do. Each test in that half opens by
+asserting the shipped gate is still closed, so a test written against an enabled
+engine would fail rather than pass by accident. Enabling it when the decision
+lands is one line.
+
+`--dry-run` is refused too, and ahead of the plan: the first thing a remote
+deploy says is why it cannot deploy. A dry run that listed the steps and left
+the refusal out would read as a deploy that works.
 
 ## `caf backup`
 

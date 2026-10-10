@@ -96,7 +96,7 @@ gate:
       # expected skips. OPS-P9 added 29 top-level tests — 16 in
       # internal/backup/drill_test.go and 13 in internal/cli/backup_drill_test.go
       # — and neither added a subtest, so only this floor moved.
-      minimum: 1079
+      minimum: 1135
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1157, measured.
