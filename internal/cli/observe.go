@@ -184,18 +184,18 @@ func diskFact(path string) boxd.Disk {
 		return boxd.Disk{
 			Status: "unknown",
 			Detail: "the filesystem at " + path + " reports no size",
-			Path:    path,
+			Path:   path,
 		}
 	}
 	used := reading.Total - reading.Free
 	return boxd.Disk{
-		Status:       "ok",
-		Path:         path,
-		TotalBytes:   reading.Total,
-		FreeBytes:    reading.Free,
-		UsedBytes:    used,
-		UsedPercent:  100 * float64(used) / float64(reading.Total),
-		Detail:       fmt.Sprintf("measured with statfs against %s; free is what the box can write, excluding the filesystem's reserved blocks", path),
+		Status:      "ok",
+		Path:        path,
+		TotalBytes:  reading.Total,
+		FreeBytes:   reading.Free,
+		UsedBytes:   used,
+		UsedPercent: 100 * float64(used) / float64(reading.Total),
+		Detail:      fmt.Sprintf("measured with statfs against %s; free is what the box can write, excluding the filesystem's reserved blocks", path),
 	}
 }
 

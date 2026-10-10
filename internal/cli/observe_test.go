@@ -228,14 +228,33 @@ func TestTheBoxWorldObservesItself(t *testing.T) {
 	if len(obs.PendingReleases) != 1 || obs.PendingReleases[0].Version != "1.5.0" {
 		t.Errorf("pending releases = %+v, want exactly core 1.5.0", obs.PendingReleases)
 	}
-	if obs.Disk.Status != "unknown" || obs.Disk.Detail == "" {
-		t.Errorf("disk = %+v, want unknown with a reason (v0 cannot read it)", obs.Disk)
+	// Disk is measured, not guessed: the root filesystem of the machine this
+	// test runs on is real, and the numbers have to be consistent with each
+	// other — a used percentage that is not the two byte counts' ratio is a
+	// report a consumer cannot act on.
+	if obs.Disk.Status != "ok" || obs.Disk.TotalBytes == 0 || obs.Disk.Path == "" {
+		t.Errorf("disk = %+v, want ok with a path and a size", obs.Disk)
+	}
+	if obs.Disk.FreeBytes > obs.Disk.TotalBytes {
+		t.Errorf("disk free %d exceeds total %d", obs.Disk.FreeBytes, obs.Disk.TotalBytes)
+	}
+	if obs.Disk.UsedBytes+obs.Disk.FreeBytes != obs.Disk.TotalBytes {
+		t.Errorf("disk used %d + free %d != total %d", obs.Disk.UsedBytes, obs.Disk.FreeBytes, obs.Disk.TotalBytes)
+	}
+	wantPercent := 100 * float64(obs.Disk.UsedBytes) / float64(obs.Disk.TotalBytes)
+	if diff := obs.Disk.UsedPercent - wantPercent; diff > 0.001 || diff < -0.001 {
+		t.Errorf("disk used_percent = %v, want %v", obs.Disk.UsedPercent, wantPercent)
 	}
 
 	// Machine-readable: the document marshals, unmarshals and round-trips.
 	raw, err := json.Marshal(obs)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
+	}
+	for _, key := range []string{`"disk"`, `"total_bytes"`, `"used_percent"`} {
+		if !strings.Contains(string(raw), key) {
+			t.Errorf("the JSON document is missing the key %s the consumers read", key)
+		}
 	}
 	var back boxd.Observation
 	if err := json.Unmarshal(raw, &back); err != nil {
@@ -271,6 +290,64 @@ func TestTheBoxWorldObservesWithoutARangeHonestly(t *testing.T) {
 	}
 	if len(obs.PendingReleases) != 0 {
 		t.Errorf("pending releases = %+v, want none when the range is unknown", obs.PendingReleases)
+	}
+}
+
+// TestDiskFactMeasuresARealFilesystem: the disk reading is a measurement, not
+// a placeholder, and it is measured against a filesystem the test created so
+// the machine's own fullness cannot decide the outcome. A box whose root is 98%
+// full and a box whose root is 30% full must produce the same shape, differing
+// only in the numbers — which is the property a policy engine classifies
+// against.
+func TestDiskFactMeasuresARealFilesystem(t *testing.T) {
+	dir := t.TempDir()
+	got := diskFact(dir)
+	if got.Status != "ok" {
+		t.Skipf("this platform could not measure %s: %+v", dir, got)
+	}
+	if got.Path != dir {
+		t.Errorf("path = %q, want %q", got.Path, dir)
+	}
+	if got.TotalBytes == 0 {
+		t.Errorf("total = 0 for a filesystem that exists: %+v", got)
+	}
+	if got.FreeBytes > got.TotalBytes {
+		t.Errorf("free %d exceeds total %d", got.FreeBytes, got.TotalBytes)
+	}
+	if got.UsedBytes+got.FreeBytes != got.TotalBytes {
+		t.Errorf("used %d + free %d != total %d", got.UsedBytes, got.FreeBytes, got.TotalBytes)
+	}
+	if got.UsedPercent < 0 || got.UsedPercent > 100 {
+		t.Errorf("used_percent = %v, want it inside [0,100]", got.UsedPercent)
+	}
+}
+
+// TestDiskFactNamesAFailureRatherThanGuessing: a path that cannot be measured
+// reports `unknown` with the error's own words, and carries no bytes. A zero
+// where a capacity belongs is a claim that the disk is empty, and that is the
+// failure that would turn a policy engine's "act now" into a false alarm.
+func TestDiskFactNamesAFailureRatherThanGuessing(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "nowhere")
+	got := diskFact(missing)
+	if got.Status != "unknown" {
+		t.Fatalf("status = %q, want unknown for a path that does not exist", got.Status)
+	}
+	if got.Detail == "" {
+		t.Errorf("an unknown disk reading named no reason: %+v", got)
+	}
+	if got.TotalBytes != 0 || got.FreeBytes != 0 || got.UsedBytes != 0 || got.UsedPercent != 0 {
+		t.Errorf("an unknown disk reading carried numbers: %+v", got)
+	}
+}
+
+// TestRootDiskPathIsAbsolute: the path the observation measures is absolute,
+// because the Win32 spelling of the question refuses anything else and a path
+// that only works on one of the three release targets is a path that reports
+// `unknown` on the other two.
+func TestRootDiskPathIsAbsolute(t *testing.T) {
+	got := rootDiskPath()
+	if !filepath.IsAbs(got) {
+		t.Errorf("root disk path = %q, want an absolute path", got)
 	}
 }
 

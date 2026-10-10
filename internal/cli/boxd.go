@@ -441,9 +441,9 @@ func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.
 		DeployedVersion: w.id.Version,
 		Conductor:       w.id.Conductor,
 		CollectedAt:     now,
-		Certificate: cert,
-		Disk:        diskFact(rootDiskPath()),
-		LastDrill:   drill,
+		Certificate:     cert,
+		Disk:            diskFact(rootDiskPath()),
+		LastDrill:       drill,
 	}
 	if rangeText, ok := observeRange(); ok {
 		obs.VersionRange = boxd.VersionRange{Range: rangeText, Status: "ok"}
