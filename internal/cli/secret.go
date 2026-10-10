@@ -394,6 +394,12 @@ func (r secretRotateRun) targets(state secret.State) ([]secret.Entry, []secret.R
 // refused, and the exit code carries the verdict: a run that rotated something
 // and refused something is a partial run, and a script has to be able to tell.
 func (r secretRotateRun) report(rotated []string, refused []secret.Refusal) error {
+	// An empty document is noise: a dry run of one rotatable entry has nothing
+	// rotated and nothing refused, and "{}" on stdout is a parser's problem
+	// rather than an answer. The prose above it is the answer.
+	if len(rotated) == 0 && len(refused) == 0 {
+		return nil
+	}
 	doc := struct {
 		Rotated []string         `json:"rotated,omitempty"`
 		Refused []secret.Refusal `json:"refused,omitempty"`

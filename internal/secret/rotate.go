@@ -286,12 +286,12 @@ func PlanRotation(entry Entry) (Plan, error) {
 	}
 	for _, r := range entry.RestartTargets() {
 		steps = append(steps, Step{
-			Name: "restart " + r.Namespace + "/" + r.Name,
+			Name: "restart " + r.Namespace + "/deployment/" + r.Name,
 			Argv: []string{"kubectl", "rollout", "restart", "deployment/" + r.Name, "-n", r.Namespace},
 			Why:  "a secret a running pod has already read does not change the pod: the restart is what makes the new value live.",
 		})
 		steps = append(steps, Step{
-			Name: "wait for " + r.Namespace + "/" + r.Name,
+			Name: "wait for " + r.Namespace + "/deployment/" + r.Name,
 			Argv: []string{"kubectl", "rollout", "status", "deployment/" + r.Name, "-n", r.Namespace, "--timeout=300s"},
 			Why:  "a rotation that restarted and walked away is a rotation nobody knows finished.",
 		})
