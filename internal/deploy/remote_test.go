@@ -3,6 +3,7 @@ package deploy
 import (
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 )
@@ -262,6 +263,154 @@ func TestTheRequestStepHandsThePlatformTheAccountsDeploy(t *testing.T) {
 	got := fake.deployReqs[0]
 	if got.AccountID != "acct-1" || got.Service != "identity" || got.Version != "0.2.0" {
 		t.Errorf("the request carries %+v, which is not the account's deploy for identity 0.2.0", got)
+	}
+}
+
+// TestThePlanDoesNotWriteAnAccountFlagWithNoValue is the argv half of the
+// missing-account refusal, and it is a test rather than a comment because the
+// first version of the plan wrote `--account` with an empty value after it.
+//
+// The argv the plan prints is the argv the runner parses, so a flag with no
+// value in it is not cosmetic: the token after it — `--yes`, or `--version` —
+// would be read as the account, and the platform would be asked about a
+// deployment serving an account called "--yes".
+func TestThePlanDoesNotWriteAnAccountFlagWithNoValue(t *testing.T) {
+	// The shipped gate is asserted to be closed on the way in, the way
+	// everything else in this half enters.
+	if remoteEnabled {
+		t.Fatalf("remoteEnabled is true, so the tests below are not exercising a gated engine")
+	}
+	// The plan the flag would have produced: `caf deploy --engine remote
+	// identity` with no --account on the command line at all.
+	plan := planForRemote(Deployment{Dir: ".", Service: "identity"}, Options{Version: "0.2.0"})
+	for _, step := range plan.Steps {
+		for _, tok := range step.Argv {
+			if tok == AccountFlag {
+				t.Errorf("step %q writes %s with no value after it: %v", step.Name, AccountFlag, step.Argv)
+			}
+		}
+		if got := requestFromArgv(step.Argv).AccountID; got != "" {
+			t.Errorf("step %q reads back account %q from an argv that names none", step.Name, got)
+		}
+		if got := requestFromArgv(step.Argv).Service; got != "identity" {
+			t.Errorf("step %q reads back service %q, not identity", step.Name, got)
+		}
+	}
+}
+
+// TestTheServiceIsTheLastTokenEvenWhenItIsNamedLikeTheEngine is the second
+// defect the parser had: it took the last element as the service only when that
+// element was not the engine's own name, so a service called `remote` would
+// have been deployed as a service called nothing.
+func TestTheServiceIsTheLastTokenEvenWhenItIsNamedLikeTheEngine(t *testing.T) {
+	argv := []string{"caf", "deploy", "--engine", EngineRemote, AccountFlag, "acct-1", "--yes", EngineRemote}
+	if got := requestFromArgv(argv).Service; got != EngineRemote {
+		t.Errorf("the request carries service %q, not %q: %v", got, EngineRemote, argv)
+	}
+}
+
+// TestAFlagShapedTokenIsNotAnAccountValue is the parser's missing-value rule.
+// `--account --yes` is an account nobody named, and reading `--yes` as the id
+// would be a deploy to a destination that does not exist.
+func TestAFlagShapedTokenIsNotAnAccountValue(t *testing.T) {
+	argv := []string{"caf", "deploy", "--engine", EngineRemote, AccountFlag, "--yes", "identity"}
+	req := requestFromArgv(argv)
+	if req.AccountID != "" {
+		t.Errorf("the request carries account %q, which is a flag and not an account", req.AccountID)
+	}
+	if req.Service != "identity" {
+		t.Errorf("the request carries service %q, not identity", req.Service)
+	}
+}
+
+// enabledRunner is the post-TG-D1 runner: a Runner whose Plan is open, which
+// today can only be stood up by a test. Every step is delegated to the shipped
+// RemoteRunner, so what executes is the shipped code and only the gate is stood
+// in for — the same door planForRemote is, and for the same reason.
+type enabledRunner struct {
+	t      *testing.T
+	remote Remote
+	asked  int
+}
+
+func (e *enabledRunner) Plan(dep Deployment, opts Options) (Plan, error) {
+	if remoteEnabled {
+		e.t.Skip("remoteEnabled is true, so RunnerFor(EngineRemote) is the runner to use")
+	}
+	return planForRemote(dep, opts), nil
+}
+
+func (e *enabledRunner) Run(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error {
+	if remoteEnabled {
+		e.t.Skip("remoteEnabled is true, so RunnerFor(EngineRemote) is the runner to use")
+	}
+	e.asked++
+	return (&RemoteRunner{Remote: e.remote}).Run(ctx, dir, step, stdout, stderr)
+}
+
+// TestARemoteDryRunWithNoAccountIsRefusedBeforeItPrintsAnything is the
+// orchestration half of the missing-account refusal: it is caught before the
+// dry run lists the steps, because a dry run that showed what would be asked
+// and not why it cannot be asked would read as a deploy that works.
+func TestARemoteDryRunWithNoAccountIsRefusedBeforeItPrintsAnything(t *testing.T) {
+	fake := &fakeRemote{}
+	r := &enabledRunner{t: t, remote: fake}
+	var stdout, stderr strings.Builder
+	err := runRemoteDeploy(context.Background(), r,
+		Request{Dir: ".", Service: "identity", Engine: EngineRemote, DryRun: true},
+		&stdout, &stderr)
+	if err == nil {
+		t.Fatal("a remote dry run with no account succeeded")
+	}
+	if !errors.Is(err, ErrRefused) {
+		t.Errorf("the missing account is not a refusal: %v", err)
+	}
+	if !strings.Contains(err.Error(), AccountFlag) {
+		t.Errorf("the refusal does not name the flag to pass: %v", err)
+	}
+	if strings.Contains(stdout.String(), "this is what caf deploy would ask") {
+		t.Errorf("the dry run printed the steps before refusing:\n%s", stdout.String())
+	}
+	if r.asked != 0 {
+		t.Errorf("the refused dry run ran %d steps", r.asked)
+	}
+	if len(fake.readCalls) != 0 || len(fake.deployReqs) != 0 {
+		t.Errorf("the refused dry run reached the platform: %d reads and %d requests", len(fake.readCalls), len(fake.deployReqs))
+	}
+}
+
+// TestTheEnabledOrchestrationEndsInAReportThatStatesItsLimits drives the whole
+// remote deploy — plan, both steps, report — through the same door, and asserts
+// the report is actually reached rather than only called in a test of its own.
+// What it asserts is the same honesty as the report test above, and the
+// difference is that this one would fail if the orchestration stopped short of
+// printing it.
+func TestTheEnabledOrchestrationEndsInAReportThatStatesItsLimits(t *testing.T) {
+	fake := &fakeRemote{
+		account:    &RemoteAccount{ID: "acct-1", DeploymentID: "dep-9", ServedVersion: "0.1.0"},
+		deployment: &RemoteDeployment{ID: "req-1", AccountID: "acct-1", Version: "0.2.0", Accepted: true},
+	}
+	r := &enabledRunner{t: t, remote: fake}
+	var stdout, stderr strings.Builder
+	err := runRemoteDeploy(context.Background(), r,
+		Request{Dir: ".", Service: "identity", Account: "acct-1", Version: "0.2.0", Engine: EngineRemote},
+		&stdout, &stderr)
+	if err != nil {
+		t.Fatalf("the enabled orchestration failed: %v", err)
+	}
+	if r.asked != 2 {
+		t.Errorf("the orchestration ran %d steps, not the two in the plan", r.asked)
+	}
+	if len(fake.readCalls) != 1 || fake.readCalls[0] != "acct-1" {
+		t.Errorf("the boundary step was asked about %v, not exactly once about acct-1", fake.readCalls)
+	}
+	if len(fake.deployReqs) != 1 || fake.deployReqs[0].AccountID != "acct-1" {
+		t.Errorf("the request step handed the platform %+v, not one request for acct-1", fake.deployReqs)
+	}
+	for _, want := range []string{"dep-9", "req-1", "what this did NOT do", "apply the release"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("the orchestration's report does not say %q:\n%s", want, stdout.String())
+		}
 	}
 }
 

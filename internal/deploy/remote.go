@@ -424,6 +424,15 @@ func runRemoteDeploy(ctx context.Context, r Runner, req Request, stdout, stderr 
 		return err
 	}
 
+	if dep.Account == "" {
+		// The account is checked before anything is printed, dry run or not,
+		// for the same reason the tenancy gate is checked first: a dry run
+		// that listed the steps and left out why they cannot run would read as
+		// a deploy that works. This one is a refusal about a missing flag
+		// rather than about a decision, so it is not dressed up as the gate.
+		return noAccountRefusal()
+	}
+
 	if req.DryRun {
 		printRemoteDryRun(stdout, plan)
 		return nil
