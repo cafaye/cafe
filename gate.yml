@@ -86,18 +86,18 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 23, measured with `go list ./...` on this tree. The security and
+      # 24, measured with `go list ./...` on this tree: internal/cve landed with OPS-P11. The security and
       # substance packages are pinned by name and existence: emitter, box,
       # boxd, agent, provider, run, resolve, scaffold.
-      minimum: 23
+      minimum: 24
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 1051, measured: 1059 declared on the merged tree, 8 expected skips.
-      minimum: 1051
+      # 1080, measured: 1088 declared on the merged tree, 8 expected skips.
+      minimum: 1080
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # 1157, measured.
-      minimum: 1157
+      # 1165, measured: internal/cve's classification tables and the cve CLI verbs.
+      minimum: 1165
 
     - id: live-tier
       match: '^caf: live tier: [0-9]+ of 7 executed'

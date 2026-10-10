@@ -251,6 +251,14 @@ func newCveScanCommand(deps cveDeps) *Command {
 				WriteState: !f.noWrite,
 				Output:     env.Stdout,
 				JSON:       f.json,
+				Emit: cve.EmitterFunc(func(phase, detail string) {
+					// Stderr, so the machine document on stdout stays one
+					// JSON document and a cron run that stalls leaves the
+					// phase it stopped in in the mail cron sends. This is
+					// the whole answer to "a network call that hangs is an
+					// invisible stall": not a faster network, a line.
+					fmt.Fprintf(env.Stderr, "caf cve scan: %s: %s\n", phase, detail)
+				}),
 			}.Run(context.Background())
 			if err != nil {
 				return fmt.Errorf("caf cve scan: %w", err)

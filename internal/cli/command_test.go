@@ -16,6 +16,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 		"box",
 		"boxd",
 		"contract",
+		"cve",
 		"deploy",
 		"dev",
 		"doctor",
