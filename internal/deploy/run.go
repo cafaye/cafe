@@ -47,6 +47,11 @@ type Request struct {
 	// check and the reports — because the Argo substrate has no Kamal config to
 	// read and no accessory port to expose.
 	Engine string
+	// Account is the account on the operated platform that a remote deploy
+	// serves. It is required only by EngineRemote, and it is a Request field
+	// rather than a flag the runner reads because the plan puts it in the argv
+	// it prints — see remote.go. The two enabled engines leave it empty.
+	Account string
 }
 
 // Run performs one deploy, or resolves one, and reports what it did.
@@ -70,11 +75,15 @@ type Request struct {
 func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) error {
 	// The engine is the runner's, and the branch is on the engine the caller
 	// selected: the Argo substrate has no Kamal config to read and no accessory
-	// port to expose, so the parts of the deploy that are Kamal's are skipped
+	// port to expose, and the operated remote has neither a project to read nor
+	// a command to run, so the parts of the deploy that are Kamal's are skipped
 	// rather than faked. The Kamal path below is byte-identical to what it was
 	// before the second engine existed — its tests are the proof.
-	if req.Engine == EngineArgo {
+	switch req.Engine {
+	case EngineArgo:
 		return runArgoDeploy(ctx, r, req, stdout, stderr)
+	case EngineRemote:
+		return runRemoteDeploy(ctx, r, req, stdout, stderr)
 	}
 
 	dir := req.Dir

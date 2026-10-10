@@ -80,6 +80,12 @@ type Deployment struct {
 	// release is built from. The commit message names it, so a reader can trace
 	// a running release back to the source it came from.
 	Commit string
+	// Account is the account on the operated platform that a remote deploy
+	// serves, as the --account flag names it. The Argo engine's facts are here
+	// for the same reason Kamal's are: the plan is the engine's and both
+	// engines are asked for it with one signature. The two enabled engines
+	// leave it empty.
+	Account string
 }
 
 // Options is one `caf deploy` invocation's choices, after flag parsing.

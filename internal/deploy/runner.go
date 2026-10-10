@@ -18,6 +18,8 @@ const (
 	// EngineArgo is the Argo engine: a values commit, a push, and a wait for
 	// Argo to sync. It is the launch substrate's engine, where there is no
 	// Kamal and CI never holds cluster credentials.
+	//
+	// EngineRemote is declared in remote.go, beside the gate that pins it off.
 	EngineArgo = "argo"
 )
 
@@ -47,9 +49,11 @@ func RunnerFor(engine string) (Runner, error) {
 		return NewKamalRunner(), nil
 	case EngineArgo:
 		return NewArgoRunner(), nil
+	case EngineRemote:
+		return NewRemoteRunner(), nil
 	default:
-		return nil, fmt.Errorf("%w: --engine must be %q (the default) or %q, not %q",
-			ErrUsage, EngineKamal, EngineArgo, engine)
+		return nil, fmt.Errorf("%w: --engine must be %q (the default), %q or %q, not %q",
+			ErrUsage, EngineKamal, EngineArgo, EngineRemote, engine)
 	}
 }
 
@@ -73,10 +77,11 @@ func RunnerFor(engine string) (Runner, error) {
 // after-the-fact report.
 //
 // The interface is declared HERE and satisfied by the engines in this package
-// (kamal.go's KamalRunner, argo.go's ArgoRunner), wired in internal/cli. This
-// package imports neither cli nor backup, and that is deliberate: a package
-// that imports another to reach an interface has an import edge where none is
-// needed, and the two commands make different claims about different engines.
+// (kamal.go's KamalRunner, argo.go's ArgoRunner, remote.go's RemoteRunner),
+// wired in internal/cli. This package imports neither cli nor backup, and that
+// is deliberate: a package that imports another to reach an interface has an
+// import edge where none is needed, and the two commands make different claims
+// about different engines.
 type Runner interface {
 	// Plan returns the engine's plan for one service: which commands run, in
 	// what order, and what each is for.

@@ -168,6 +168,34 @@ func deployProject(t *testing.T, files map[string]string) string {
 	return dir
 }
 
+// runDeployWith executes the command with a runner of the test's choosing. It is
+// the seam runDeploy already uses, spelled for a runner that is not the Kamal
+// recording one, because the remote engine needs a runner that answers with the
+// gated plan.
+func runDeployWith(t *testing.T, runner deploy.Runner, args ...string) (int, string, string) {
+	t.Helper()
+	return runDeployAskingWith(t, runner, func(string) (bool, error) { return true, nil }, args...)
+}
+
+func runDeployAskingWith(t *testing.T, runner deploy.Runner, confirm func(string) (bool, error), args ...string) (int, string, string) {
+	t.Helper()
+	c := newDeployCommand(deployDeps{runner: runner, confirm: confirm})
+	var stdout, stderr bytes.Buffer
+	err := c.Execute(&Env{Stdout: &stdout, Stderr: &stderr, Context: context.Background()}, args)
+	switch {
+	case err == nil:
+		return exitSuccess, stdout.String(), stderr.String()
+	case errors.Is(err, errReported):
+		return exitFailure, stdout.String(), stderr.String()
+	case errors.Is(err, errUsage):
+		fmt.Fprintf(&stderr, "caf: %v\n", err)
+		return exitUsage, stdout.String(), stderr.String()
+	default:
+		fmt.Fprintf(&stderr, "caf: %v\n", err)
+		return exitFailure, stdout.String(), stderr.String()
+	}
+}
+
 // runDeploy executes the command the way the router does, including the decision
 // about what lands on stderr. Asserting on a buffer the router never filled would
 // make every "the message says X" case pass for the wrong reason.
@@ -461,6 +489,144 @@ func TestDeployEnvWithNoOverlayIsRefusedByName(t *testing.T) {
 
 // A missing deploy engine is the most common first failure, and it must arrive as
 // an instruction rather than as exec's wording.
+// remoteRunner is a deploy.Runner that answers as the remote engine does: the
+// plan is refused, because that is what the shipped engine returns until TG-D1 is
+// recorded. It is the same seam every other case here uses — a fake that records
+// what it was asked — pointed at the gated engine.
+type remoteRunner struct {
+	asked int
+}
+
+func (r *remoteRunner) Plan(dep deploy.Deployment, opts deploy.Options) (deploy.Plan, error) {
+	// NewRemoteRunner is the production constructor, so the gate under test is
+	// the shipped one and not a copy in the test. A test that carried its own
+	// copy of a tenancy check would pass if the real one were removed.
+	return deploy.NewRemoteRunner().Plan(dep, opts)
+}
+
+func (r *remoteRunner) Run(_ context.Context, dir string, step deploy.Step, _, _ io.Writer) error {
+	r.asked++
+	return nil
+}
+
+// The remote engine's refusal has to arrive as a refusal: exit 1, the whole
+// answer on stdout and nothing on stderr. That is what makes the difference
+// between "this will be fixed by recording a decision" and "the deploy ran and
+// something broke", and a user who sees the second goes looking at logs that
+// cannot help them.
+func TestDeployRemoteRefusesUntilTheTenancyDecisionIsRecorded(t *testing.T) {
+	runner := &remoteRunner{}
+
+	code, stdout, stderr := runDeployWith(t, runner, "--engine", "remote", "--account", "acct-1", "identity")
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d (a refusal, not a usage error and not a crash)", code, exitFailure)
+	}
+	if stderr != "" {
+		t.Errorf("stderr carries the refusal, which puts a second copy of the report where a CI log greps:\n%s", stderr)
+	}
+	for _, want := range []string{"TG-D1", "TENANCY-GATE.md", "remote"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("stdout does not name %q; the reader is sent to look and finds nothing:\n%s", want, stdout)
+		}
+	}
+	if runner.asked != 0 {
+		t.Errorf("the refused deploy ran %d steps; a gated engine must run none", runner.asked)
+	}
+}
+
+// A dry run of the refused engine is refused too, and that order is the point:
+// the first thing a remote deploy says is why it cannot deploy, and a dry run
+// that listed the steps would read as a deploy that works.
+func TestDeployRemoteDryRunIsRefusedToo(t *testing.T) {
+	runner := &remoteRunner{}
+
+	code, stdout, _ := runDeployWith(t, runner, "--engine", "remote", "--dry-run", "--account", "acct-1", "identity")
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d", code, exitFailure)
+	}
+	if !strings.Contains(stdout, "TG-D1") {
+		t.Errorf("the dry run's answer does not name the decision it waits on:\n%s", stdout)
+	}
+	if runner.asked != 0 {
+		t.Errorf("the dry run ran %d steps", runner.asked)
+	}
+}
+
+// The prompt names the account, because the account is the destination. A
+// confirmation that named only the service would be approving a deploy to no
+// stated place — and one that printed an empty account shows the reader a hole
+// where the destination belongs.
+func TestDeployRemoteAsksNamingTheAccount(t *testing.T) {
+	runner := &remoteRunner{}
+	var prompt string
+	confirm := func(p string) (bool, error) {
+		prompt = p
+		return false, nil
+	}
+
+	_, _, _ = runDeployAskingWith(t, runner, confirm, "--engine", "remote", "--account", "acct-1", "identity")
+
+	if !strings.Contains(prompt, "acct-1") {
+		t.Errorf("the prompt does not name the account %q:\n  %s", "acct-1", prompt)
+	}
+}
+
+// The same prompt with no --account says there is no account, and names the flag
+// that fills it. "deploy identity to the operated platform, account ?" is a
+// sentence with a hole in it: the reader cannot tell whether they forgot the
+// flag or caf lost it.
+func TestDeployRemoteWithNoAccountDoesNotPromptWithAHoleInIt(t *testing.T) {
+	runner := &remoteRunner{}
+	var prompt string
+	confirm := func(p string) (bool, error) {
+		prompt = p
+		return false, nil
+	}
+
+	_, _, _ = runDeployAskingWith(t, runner, confirm, "--engine", "remote", "identity")
+
+	if !strings.Contains(prompt, deploy.AccountFlag) {
+		t.Errorf("the prompt does not name %q, so the reader is not told how to fix it:\n  %s", deploy.AccountFlag, prompt)
+	}
+	if !strings.Contains(prompt, "NO ACCOUNT") {
+		t.Errorf("the prompt does not say the account is missing:\n  %s", prompt)
+	}
+}
+
+// --account with an engine that has no account to name is a usage error rather
+// than a silent drop. The flag is the destination of a remote deploy, so passing
+// it to kamal or argo means an operator said which account and was not answered.
+func TestDeployAccountWithTheWrongEngineIsRefusedByName(t *testing.T) {
+	runner := newRecordingRunner()
+
+	code, stdout, stderr := runDeployWith(t, runner, "--account", "acct-1", "identity")
+	if code != exitUsage {
+		t.Errorf("exit code = %d, want %d (stderr: %s)", code, exitUsage, stderr)
+	}
+	for _, want := range []string{"--account", deploy.EngineRemote, "kamal"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr does not name %q, so the reader cannot tell which flag and which engine:\n%s", want, stderr)
+		}
+	}
+	if len(runner.commandsSeen) != 0 {
+		t.Errorf("a refused deploy ran %d steps", len(runner.commandsSeen))
+	}
+	if stdout != "" {
+		t.Errorf("stdout carries a usage error, which is not the report stream:\n%s", stdout)
+	}
+
+	// And under argo, which is as far from the operated platform as kamal is.
+	code, _, stderr = runDeployWith(t, runner, "--engine", "argo", "--account", "acct-1", "identity")
+	if code != exitUsage {
+		t.Errorf("exit code = %d, want %d under argo (stderr: %s)", code, exitUsage, stderr)
+	}
+	if !strings.Contains(stderr, "argo") {
+		t.Errorf("the argo refusal does not name argo:\n%s", stderr)
+	}
+}
+
 func TestDeployWithNoKamalInstalledSaysHowToInstallIt(t *testing.T) {
 	runner := newRecordingRunner()
 	runner.errs["kamal version"] = fmt.Errorf("%w\n%s", deploy.ErrKamalMissing, "gem install kamal")
@@ -592,7 +758,7 @@ func TestDeployRefusesAnUnknownEngine(t *testing.T) {
 	if code != exitUsage {
 		t.Errorf("exit code = %d, want %d (stderr: %s)", code, exitUsage, stderr)
 	}
-	for _, want := range []string{"kamal", "argo"} {
+	for _, want := range []string{"kamal", "argo", "remote"} {
 		if !strings.Contains(stderr, want) {
 			t.Errorf("stderr does not name the valid engines %q:\n%s", want, stderr)
 		}
@@ -600,7 +766,9 @@ func TestDeployRefusesAnUnknownEngine(t *testing.T) {
 }
 
 // The help has to describe the dry run's meaning and name the one path, because
-// that is the sentence that makes both trustworthy.
+// that is the sentence that makes both trustworthy. It also has to say that the
+// remote engine is pinned off and why, because a help text that listed an engine
+// without that sentence would be advertising a deploy nobody can perform.
 func TestDeployHelpNamesTheOnePathAndWhatADryRunDoes(t *testing.T) {
 	code, stdout, _ := runCLI(t, testVersion, "help", "deploy")
 
@@ -614,6 +782,8 @@ func TestDeployHelpNamesTheOnePathAndWhatADryRunDoes(t *testing.T) {
 		"kamal setup",                  // the command kamal actually runs
 		"kamal-proxy",                  // and what serves the traffic
 		"refuses a dirty working tree", // and the one thing it will not do
+		"pinned off",                   // the remote engine, and its state
+		"TG-D1",                        // and the decision it waits on
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("help does not mention %q:\n%s", want, stdout)

@@ -50,6 +50,12 @@ type deployOptions struct {
 	// engine the fleet runs) or deploy.EngineArgo (the launch substrate's,
 	// where there is no Kamal).
 	engine string
+	// account is the account on the cafaye-operated platform that --engine
+	// remote serves. It is refused with the other two engines rather than
+	// hidden behind the gated one, so the flag's shape does not change when the
+	// tenancy decision lands — and an operator who says which account is
+	// answered rather than silently ignored.
+	account string
 }
 
 // deployLongHelp is the prose `caf deploy` prints under its usage line. It is
@@ -59,7 +65,6 @@ const deployLongHelp = `One command deploys a service, and the engine it uses is
 substrate runs. --engine selects it: kamal (the default, the engine the fleet
 runs) or argo (the launch substrate's, where there is no Kamal and CI never
 holds cluster credentials).
-
 KAMAL, the self-host engine. It drives Kamal: Kamal installs Docker on the host
 if the host lacks it, boots the accessories, builds and pushes the image, and
 rolls the release out behind kamal-proxy only once the new container answers its
@@ -94,7 +99,23 @@ ONE PATH. caf deploy <service> --engine <engine> --yes, from the project
 directory. --dry-run prints every command that would run — and, under Argo, the
 exact commit and the two files it would write — and executes nothing. Without
 --yes it asks first, and a machine with nobody to answer is told to pass --yes
-rather than left to guess.`
+rather than left to guess.
+
+REMOTE, the cafaye-operated platform, and it is pinned off. --engine remote is
+the third engine: it asks the operated platform which deployment serves the
+named --account, and hands it one deploy request — the service, the version and
+the commit it was built from. --account goes with it and with nothing else; the
+other two engines deploy somewhere you already pointed them at, so they have no
+account to name. The customer's app is built once and deployed once, and every
+client they serve is an account on the shared platform rather than a cafaye
+deployment of its own, which is the point of the platform.
+
+It does not deploy anything today, and the refusal is deliberate rather than a
+gap in the work: one deployment serving many accounts is only safe once the
+platform is proven safe for strangers, and that proof is TENANCY-GATE.md's
+TG-D1 — a decision recorded in the moon repository. The mechanism is built and
+tested, and the refusal names the decision it is waiting on. Until TG-D1 is
+recorded, use kamal or argo.`
 
 // newDeployCommand takes its seams, for the same reason newDevCommand and
 // newReclaimCommand do: a test can hand the command a runner that records argv
@@ -105,7 +126,7 @@ func newDeployCommand(deps deployDeps) *Command {
 	opts := &deployOptions{}
 	c := &Command{
 		Name:     "deploy",
-		Summary:  "deploy a service: kamal (build, push, roll out) or argo (a values commit, then wait for sync)",
+		Summary:  "deploy a service: kamal (build, push, roll out), argo (a values commit, then wait for sync) or remote (the cafaye-operated platform, pinned off)",
 		Usage:    "caf deploy [flags] <service>",
 		LongHelp: deployLongHelp,
 		Flags: func(fs *flag.FlagSet) {
@@ -113,7 +134,8 @@ func newDeployCommand(deps deployDeps) *Command {
 			fs.BoolVar(&opts.dryRun, "dry-run", false, "print every command that would run; changes nothing")
 			fs.BoolVar(&opts.yes, "yes", false, "deploy without asking; required where nobody can answer the prompt")
 			fs.StringVar(&opts.version, "version", "", "pin the release to this name; without it the engine decides")
-			fs.StringVar(&opts.engine, "engine", "", "deploy engine: kamal (the default, the engine the fleet runs) or argo (the launch substrate's, where there is no Kamal)")
+			fs.StringVar(&opts.engine, "engine", "", "deploy engine: kamal (the default, the engine the fleet runs), argo (the launch substrate's, where there is no Kamal) or remote (the cafaye-operated platform, pinned off until TG-D1)")
+			fs.StringVar(&opts.account, "account", "", "the cafaye account --engine remote serves; refused with the other two engines")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -160,6 +182,15 @@ func (r deployRun) runner() (deploy.Runner, error) {
 
 func (r deployRun) run() error {
 	r.deps = r.deps.withDefaults()
+	// --account names the one thing that makes a remote deploy a deploy, so
+	// passing it to an engine that has no use for it is refused rather than
+	// quietly dropped: an operator who typed --account meant to say which
+	// account, and the answer "ignored" is a destination nobody was given.
+	if r.opts.account != "" && r.opts.engine != deploy.EngineRemote {
+		return fmt.Errorf("%w: --account is the cafaye-operated platform's, so it goes with --engine %s: "+
+			"--engine %s has no account to name, because it deploys somewhere you already pointed it at",
+			errUsage, deploy.EngineRemote, engineName(r.opts.engine))
+	}
 	runner, err := r.runner()
 	if err != nil {
 		return fmt.Errorf("%w: %w", errUsage, err)
@@ -176,6 +207,7 @@ func (r deployRun) run() error {
 			Version: r.opts.version,
 			DryRun:  true,
 			Engine:  r.opts.engine,
+			Account: r.opts.account,
 		}, r.out(), r.errOut())
 	}
 
@@ -193,6 +225,7 @@ func (r deployRun) run() error {
 		Env:     r.opts.environment,
 		Version: r.opts.version,
 		Engine:  r.opts.engine,
+		Account: r.opts.account,
 	}, r.out(), r.errOut())
 	// A refusal and a failed deploy are told apart by the sentinel, and the
 	// difference is what the exit means to a script. Both exit 1; only one of
@@ -212,11 +245,22 @@ func isDeployRefusal(err error) bool {
 	return errors.Is(err, deploy.ErrRefused)
 }
 
+// engineName is the engine as a message says it, because the default is the
+// empty string and "not --engine " is a sentence with a hole in it.
+func engineName(engine string) string {
+	if engine == "" {
+		return deploy.EngineKamal + " (the default)"
+	}
+	return engine
+}
+
 // ask is the confirmation, and it is the only interactive thing caf does.
 //
 // A dry run never reaches it. --yes skips it. Everything else asks once, naming
 // the service and the environment, because a prompt that does not say what it is
-// about is a prompt people approve without reading.
+// about is a prompt people approve without reading. Under the remote engine it
+// names the account too, because the account is the destination and a prompt
+// that named only the service would be approving a deploy to no stated place.
 func (r deployRun) ask() (bool, error) {
 	if r.opts.yes {
 		return true, nil
@@ -226,6 +270,18 @@ func (r deployRun) ask() (bool, error) {
 		where = "config/deploy.yml"
 	} else {
 		where = "config/deploy." + where + ".yml over config/deploy.yml"
+	}
+	if r.opts.engine == deploy.EngineRemote {
+		// The account is the destination, so a prompt that named only the
+		// service would be approving a deploy to no stated place — and a prompt
+		// that printed an empty account shows the reader a hole where the
+		// destination should be, which reads as caf's bug rather than theirs.
+		// It says so in as many words, and names the flag that fills it.
+		if r.opts.account == "" {
+			where = "the operated platform, and NO ACCOUNT is named — pass --account <uuid>, because the account is what the platform serves"
+		} else {
+			where = "the operated platform, account " + r.opts.account
+		}
 	}
 	return r.deps.confirm(fmt.Sprintf("caf deploy: deploy %s to %s? [y/N] ", r.service, where))
 }
