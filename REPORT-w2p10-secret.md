@@ -66,6 +66,13 @@ build that redacted everything would pass by leaking nothing.
    been named at nobody. Caught by `cli/secret_test.go`'s
    `TestSecretRotateRefusesTheNotRotatableClassByName`.
 
+Two more were found by reading the real command's output rather than by a test,
+and both are fixed: the restart steps read `restart courier/courier` (namespace
+and deployment name with no separator) instead of
+`restart courier/deployment/courier`, and a dry run of ONE rotatable entry
+printed a bare `{}` at the end because the report rendered with nothing rotated
+and nothing refused.
+
 A third bug was fixed by inspection rather than by test: the presence check is
 the FIRST step of every plan, which made the positional
 `writeTargetAt(entry, i)` off by one — it would have handed the presence check
@@ -87,16 +94,42 @@ refusals every time, so the answer to "and the rest?" is never a silence.
 ## Gate numbers actually observed
 
 - `go build ./...` — exit 0
-- `go vet ./internal/cli/ ./internal/secret/` — exit 0 (and `./...` clean)
-- `gofmt -l internal/` — no output
-- `go test -count=1 ./internal/secret/` — **ok, 0.434s, exit 0**
-- `go test -count=1 ./internal/cli/` — **ok, 63.965s, exit 0**
-- `bin/prime` (full gate) — first run red:
-  `caf: 24 packages, 1080 top-level passes, 1190 subtest passes, 2 failures, 8 skips`
-  — the two failures were the lock tests, because the floors had been raised
-  without `caf lock` being re-run. After `go run ./cmd/caf lock .` the floors
-  are `packages: 24`, `suite: 1082` (1090 declared − 8 skips),
-  `subtests: 1182`.
+- `go vet ./...` — no output, exit 0
+- `gofmt -l .` — no output
+- `go test -count=1 ./internal/secret/` — **ok, 0.63s, exit 0** (20 top-level)
+- `go test -count=1 ./internal/cli/` — **ok, 62s, exit 0**
+- `bin/prime` (the full gate) — **exit 0**, final run:
+  `caf: 24 packages, 1083 top-level passes, 1190 subtest passes, 0 failures, 8 skips`
+  plus `caf: live tier: 0 of 7 executed`, which the declaration requires and
+  which `--live` is the mode that cannot silently not run.
+
+Two red runs happened first, and both are named because a green that was not
+earned is worth nothing:
+
+1. `1080 top-level passes, 2 failures` — the lock tests, because the floors had
+   been raised without `caf lock` being re-run over the moved `gate.yml` hash.
+   Fixed by re-running the lock, which is AGENTS.md's step 6.
+2. `1082 top-level passes, 1 failure` — `TestTheGateFloorIsNotBelowTheSuite-
+   CafClaimsToHave`: the tree declared 1091 top-level tests, not 1090, because
+   the citation walk was one more than the measurement was taken with. The
+   floor went 1051 → 1082 → 1083, measured each time rather than guessed
+   (1091 declared − 8 expected skips).
+
+The floors are `packages: 23`, `suite: 1083`, `subtests: 1182`, and the
+`subtests` floor is deliberately 8 under the measured 1190: the suite proof is
+the ratchet (`declared − minimum == expectedSkips`, exact in both directions)
+and the subtest floor is only a floor.
+
+## The citations are checkable, and the walk found a real defect
+
+`TestEveryCitationPointsAtSomething` walks every `file:line` this package cites
+against the fleet when it is checked out beside the worktree, and skips when it
+is not — a walk rather than a fetch, because a citation fetched at test time
+would be a citation that could move without anybody editing this tree. It found
+one: the Postgres role passwords were cited at `install.sh:888,893-910` when
+the dry-run line is **887** and the creation is **907-909**. An off-by-one in a
+citation is exactly the failure this test exists for — a reader who follows it
+lands on the wrong sentence and concludes the reason is wrong.
 
 ## Two things about this worktree a successor must know
 
