@@ -572,6 +572,38 @@ func TestDeployRemoteAsksNamingTheAccount(t *testing.T) {
 	}
 }
 
+// --account with an engine that has no account to name is a usage error rather
+// than a silent drop. The flag is the destination of a remote deploy, so passing
+// it to kamal or argo means an operator said which account and was not answered.
+func TestDeployAccountWithTheWrongEngineIsRefusedByName(t *testing.T) {
+	runner := newRecordingRunner()
+
+	code, stdout, stderr := runDeployWith(t, runner, "--account", "acct-1", "identity")
+	if code != exitUsage {
+		t.Errorf("exit code = %d, want %d (stderr: %s)", code, exitUsage, stderr)
+	}
+	for _, want := range []string{"--account", deploy.EngineRemote, "kamal"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr does not name %q, so the reader cannot tell which flag and which engine:\n%s", want, stderr)
+		}
+	}
+	if len(runner.commandsSeen) != 0 {
+		t.Errorf("a refused deploy ran %d steps", len(runner.commandsSeen))
+	}
+	if stdout != "" {
+		t.Errorf("stdout carries a usage error, which is not the report stream:\n%s", stdout)
+	}
+
+	// And under argo, which is as far from the operated platform as kamal is.
+	code, _, stderr = runDeployWith(t, runner, "--engine", "argo", "--account", "acct-1", "identity")
+	if code != exitUsage {
+		t.Errorf("exit code = %d, want %d under argo (stderr: %s)", code, exitUsage, stderr)
+	}
+	if !strings.Contains(stderr, "argo") {
+		t.Errorf("the argo refusal does not name argo:\n%s", stderr)
+	}
+}
+
 func TestDeployWithNoKamalInstalledSaysHowToInstallIt(t *testing.T) {
 	runner := newRecordingRunner()
 	runner.errs["kamal version"] = fmt.Errorf("%w\n%s", deploy.ErrKamalMissing, "gem install kamal")

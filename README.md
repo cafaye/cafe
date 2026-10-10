@@ -602,6 +602,22 @@ lands is one line.
 deploy says is why it cannot deploy. A dry run that listed the steps and left
 the refusal out would read as a deploy that works.
 
+`--account` goes with `--engine remote` and with nothing else. Passing it to
+`kamal` or `argo` is a usage error rather than a silent drop: the account is the
+destination, and an operator who typed it said which account, so they are
+answered — "the cafaye-operated platform's, and this engine deploys somewhere you
+already pointed it at" — rather than told nothing while the flag is discarded.
+
+The argv is the single copy of what a deploy asks, so the two defects the proofs
+caught in it are worth naming. `planForRemote` wrote `--account <account>`
+unconditionally, which with no `--account` on the command line produced
+`--account  --version 0.2.0` — and the parser read the token after the flag as
+the value, so the platform would have been asked which deployment serves an
+account called `--yes`. And the parser took the last token as the service only
+when it was not the engine's own name, so a service called `remote` would have
+been deployed as a service called nothing. Both are fixed and both were watched
+going red first.
+
 ## `caf backup`
 
 `caf backup` takes one real backup and then **proves it**, in one command:

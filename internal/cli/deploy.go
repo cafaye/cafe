@@ -51,9 +51,10 @@ type deployOptions struct {
 	// where there is no Kamal).
 	engine string
 	// account is the account on the cafaye-operated platform that --engine
-	// remote serves. It is ignored by the two enabled engines, and it is
-	// accepted on all three rather than hidden behind the gated one so that
-	// the flag's shape does not change when the tenancy decision lands.
+	// remote serves. It is refused with the other two engines rather than
+	// hidden behind the gated one, so the flag's shape does not change when the
+	// tenancy decision lands — and an operator who says which account is
+	// answered rather than silently ignored.
 	account string
 }
 
@@ -103,9 +104,11 @@ rather than left to guess.
 REMOTE, the cafaye-operated platform, and it is pinned off. --engine remote is
 the third engine: it asks the operated platform which deployment serves the
 named --account, and hands it one deploy request — the service, the version and
-the commit it was built from. The customer's app is built once and deployed
-once, and every client they serve is an account on the shared platform rather
-than a cafaye deployment of its own, which is the point of the platform.
+the commit it was built from. --account goes with it and with nothing else; the
+other two engines deploy somewhere you already pointed them at, so they have no
+account to name. The customer's app is built once and deployed once, and every
+client they serve is an account on the shared platform rather than a cafaye
+deployment of its own, which is the point of the platform.
 
 It does not deploy anything today, and the refusal is deliberate rather than a
 gap in the work: one deployment serving many accounts is only safe once the
@@ -132,7 +135,7 @@ func newDeployCommand(deps deployDeps) *Command {
 			fs.BoolVar(&opts.yes, "yes", false, "deploy without asking; required where nobody can answer the prompt")
 			fs.StringVar(&opts.version, "version", "", "pin the release to this name; without it the engine decides")
 			fs.StringVar(&opts.engine, "engine", "", "deploy engine: kamal (the default, the engine the fleet runs), argo (the launch substrate's, where there is no Kamal) or remote (the cafaye-operated platform, pinned off until TG-D1)")
-			fs.StringVar(&opts.account, "account", "", "the cafaye account --engine remote serves; ignored by the other two")
+			fs.StringVar(&opts.account, "account", "", "the cafaye account --engine remote serves; refused with the other two engines")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -179,6 +182,15 @@ func (r deployRun) runner() (deploy.Runner, error) {
 
 func (r deployRun) run() error {
 	r.deps = r.deps.withDefaults()
+	// --account names the one thing that makes a remote deploy a deploy, so
+	// passing it to an engine that has no use for it is refused rather than
+	// quietly dropped: an operator who typed --account meant to say which
+	// account, and the answer "ignored" is a destination nobody was given.
+	if r.opts.account != "" && r.opts.engine != deploy.EngineRemote {
+		return fmt.Errorf("%w: --account is the cafaye-operated platform's, so it goes with --engine %s: "+
+			"--engine %s has no account to name, because it deploys somewhere you already pointed it at",
+			errUsage, deploy.EngineRemote, engineName(r.opts.engine))
+	}
 	runner, err := r.runner()
 	if err != nil {
 		return fmt.Errorf("%w: %w", errUsage, err)
@@ -231,6 +243,15 @@ func (r deployRun) run() error {
 // refusal cannot quietly stop being recognised as one.
 func isDeployRefusal(err error) bool {
 	return errors.Is(err, deploy.ErrRefused)
+}
+
+// engineName is the engine as a message says it, because the default is the
+// empty string and "not --engine " is a sentence with a hole in it.
+func engineName(engine string) string {
+	if engine == "" {
+		return deploy.EngineKamal + " (the default)"
+	}
+	return engine
 }
 
 // ask is the confirmation, and it is the only interactive thing caf does.
