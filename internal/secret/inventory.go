@@ -174,7 +174,7 @@ func (e Entry) IsSecret() bool { return e.Provenance != Configuration }
 // these name are the ones the table claims. They are fleet paths, not paths in
 // this repository — doc.go says why.
 const (
-	srcRecord      = "cafaye/kit/templates/substrate/install.sh:1075-1082"
+	srcRecord      = "cafaye/kit/templates/substrate/install.sh:1088-1093"
 	srcGenerated   = "cafaye/kit/templates/substrate/install.sh:1084-1093"
 	srcMinted      = "cafaye/kit/templates/substrate/install.sh:1094-1100"
 	srcExternal    = "cafaye/kit/templates/substrate/install.sh:1101-1105"
@@ -182,7 +182,7 @@ const (
 	srcDerived     = "cafaye/kit/templates/substrate/install.sh:1106-1109"
 	srcRotate      = "cafaye/kit/templates/substrate/install.sh:1199,1217,1246,1277"
 	srcKeyBase     = "cafaye/kit/templates/substrate/install.sh:1228-1232,1239-1244"
-	srcRedisURL    = "cafaye/kit/templates/substrate/install.sh:1211-1220"
+	srcRedisURL    = "cafaye/kit/templates/substrate/install.sh:1239-1245"
 	srcRedisPW     = "cafaye/kit/templates/substrate/install.sh:933-939"
 	srcRoles       = "cafaye/kit/templates/substrate/install.sh:887,892-909"
 	srcNeverPatch  = "cafaye/kit/templates/substrate/install.sh:1159"

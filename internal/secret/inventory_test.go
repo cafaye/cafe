@@ -274,11 +274,11 @@ func TestEveryCitationPointsAtSomething(t *testing.T) {
 
 	// install.sh line ranges, keyed by the citation string the table uses.
 	ranges := map[string][2]int{
-		"cafaye/kit/templates/substrate/install.sh:1075-1082":   {1075, 1082},
+		"cafaye/kit/templates/substrate/install.sh:1088-1093":   {1088, 1093},
 		"cafaye/kit/templates/substrate/install.sh:1084-1093":   {1084, 1093},
 		"cafaye/kit/templates/substrate/install.sh:1094-1100":   {1094, 1100},
 		"cafaye/kit/templates/substrate/install.sh:1101-1105":   {1101, 1105},
-		"cafaye/kit/templates/substrate/install.sh:1211-1220":   {1211, 1220},
+		"cafaye/kit/templates/substrate/install.sh:1239-1245":   {1239, 1245},
 		"cafaye/kit/templates/substrate/install.sh:1228-1232":   {1228, 1232},
 		"cafaye/kit/templates/substrate/install.sh:1239-1244":   {1239, 1244},
 		"cafaye/kit/templates/substrate/install.sh:1106-1109":   {1106, 1109},
