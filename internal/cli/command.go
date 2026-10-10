@@ -71,6 +71,7 @@ func Commands() []*Command {
 		newBoxCommand(boxDeps{}),
 		newBoxdCommand(boxdDeps{}),
 		newContractCommand(),
+		newCveCommand(cveDeps{}),
 		newDeployCommand(deployDeps{}),
 		newDevCommand(defaultDevDeps()),
 		newDoctorCommand(),
