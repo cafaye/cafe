@@ -92,10 +92,12 @@ gate:
       minimum: 23
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 1079, measured: 1087 declared on the tree at ops/w2-backup-drill, 8
-      # expected skips. OPS-P9 added 29 top-level tests — 16 in
-      # internal/backup/drill_test.go and 13 in internal/cli/backup_drill_test.go
-      # — and neither added a subtest, so only this floor moved.
+      # 1135, measured on this tree: it declares 1143 top-level tests and
+      # expectedSkips is 8, so the gate runs 1135. The previous 1079 was 8 low:
+      # the two W2 packets that merged onto this branch since OPS-P9 raised it
+      # added the `cve` and `secret` commands, and each brought its own tests.
+      # No test moved off the skipping tier, so expectedSkips is unchanged and
+      # the whole difference is here.
       minimum: 1135
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'

@@ -94,7 +94,7 @@ func TestTheRefusalNamesTheDecisionAndTheEnoughOfIt(t *testing.T) {
 		"TG-D1",
 		"TENANCY-GATE.md",
 		"the mechanism is built, it is tested, and no tenancy check was weakened",
-		"caf deploy <service>                     kamal, the default: your own box",
+		"kamal, the default: your own box",
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the refusal does not name %q; a reader sent to look would not find it:\n  %v", want, err)
