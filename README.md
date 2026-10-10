@@ -97,6 +97,7 @@ a run in which they passed.
 | `caf box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
 | `caf provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to conductor — the agent never sees the value | **works** |
 | `caf provider status --json` | which providers this box is connected to, as conductor reports it; opens no envelope | **works** |
+| `caf failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
 | `caf gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
 | `caf gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
 | `caf lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |

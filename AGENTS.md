@@ -21,6 +21,7 @@ internal/contract/  the core contract: manifests, the vendored schemas, versions
 internal/cve/       caf cve: the box's component inventory, the advisory match, what a fix touches
 internal/backup/    caf backup: the cross-file contract, the plan, the cycle
 internal/dev/       the local stack: the planner, the renderer, two seams
+internal/failure/   caf failure: the failure-mode library, and the checker over it
 internal/gen/       caf gen: the pure generator, and the drift gate that keeps it honest
 internal/scaffold/  caf new and caf init: the template catalog, the render, the write
 internal/lock/      caf lock: the pin over specs, vendored schemas and generated output, and its verifier
@@ -361,7 +362,42 @@ flag into a warning on stderr and an exit 0, versus a BLOCKED line and an
 exit 1. Conductor never sees `required` — it is caf's side of the
 contract, and a server that had an opinion about it would have two.
 
+<<<<<<< HEAD
 the standard library cannot do the job. `internal/cve`, `internal/box`, `internal/ledger`,
+||||||| 9e05e81
+the standard library cannot do the job. `internal/box`, `internal/ledger`,
+=======
+`internal/failure` is the failure-mode library of OPS-P12, split by the same
+rule, and it is the one branch of the tree whose product is a sentence a
+customer reads rather than a file a machine writes:
+
+- `doc.go` — what the package is, the ten entries it holds, and the three
+  rules that hold them together: a condition is DATA, a rule the observation
+  cannot answer reports UNKNOWN rather than a pass, and no configured value is
+  ever a fact.
+- `rule.go` — the library itself: the ten rows `CAFAYE-OPS.md:737-748`
+  records, each with the doc's condition, what a generic monitor sees, what
+  we know, the remedy derived from it, and the core contract it cites.
+- `condition.go` — the twelve-predicate vocabulary and the evaluator that
+  returns three answers rather than two. It is stdlib only.
+- `observe.go` — the fact surface (`Observation`), the `Observer` seam, and
+  `BoxObserver`, which adapts `internal/boxd`'s `World` into the facts it has.
+- `check.go` — `Evaluate`, `Report`, and the rendering: every hold names the
+  rule, the evidence, the remedy and the contract; every unknown names the
+  fact the box did not supply. `caf failure check` (`internal/cli/failure.go`)
+  is the verb over it, and its observation document is the same `Observation`
+  shape, so the CLI and the box daemon are two producers of one input.
+
+**A rule that cannot be evaluated says so, and that is the whole design.**
+The library's first consumer is the box daemon, whose `World` carries service
+names and the install phase and nothing else, so a checker driven by it answers
+`unknown` for all ten rules — and names the fact each one needs. A false "does
+not hold" would be a green light over a blind spot, which is the report
+`internal/lock` refuses to produce; `TestTheBoxDaemonsObservationAnswersNothingAndSaysSo`
+in `check_test.go` watches that answer stay unknown rather than drift into a pass.
+
+the standard library cannot do the job. `internal/box`, `internal/ledger`,
+>>>>>>> ops/w2-failure-library
 `internal/ports`, `internal/reclaim`, `internal/ryuk`,
 `internal/lock` and
 `internal/run` have none, and that is a constraint rather than an accident: the
@@ -397,7 +433,12 @@ mint-and-redeem path to conductor are `net/http` and `encoding/json`, so the
 resolution path carries no dependency the pantry client cannot be rebuilt from a
 release tarball with. `internal/box` is stdlib only, and it holds to it for the
 same reason: the keyring seam and the conductor client sit on the path that
-reclaims after a failed enrollment.
+reclaims after a failed enrollment. `internal/failure` is stdlib plus
+`internal/boxd` and nothing else, and it holds to it for the same reason
+`internal/box` does: the library is checked against the box that reclaims
+after a failure, so the rule set cannot carry a dependency the reclamation
+path would have to fetch. What it imports from `internal/boxd` is the `World`
+seam and nothing that reaches a network.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and
