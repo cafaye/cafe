@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/cafaye/caf/internal/agent"
 )
 
 // The one interactive thing caf does, shared by the commands that ask.
@@ -57,6 +59,41 @@ func askOnStdin(command, prompt string) (bool, error) {
 	default:
 		return false, nil
 	}
+}
+
+// callerToken reads the active agent session's token out of the keyring, for
+// the length of exactly one command's server calls. It is a courier call: the
+// token is read, presented to the server, and kept nowhere — never printed,
+// never logged, never put in a document.
+//
+// It is shared by the commands that present a caf credential to a server
+// (resolve, publish) because the subtle part is not the reading — it is that a
+// machine with no token is not a fact to hide. The server's named refusal is
+// the honest answer to a caller with no credential, and the warning says so
+// rather than leaving the reader to infer it from a 401 two steps later.
+func callerToken(command, dir string, ring agent.Keyring, env *Env) string {
+	cfg, err := agent.LoadConfig(dir)
+	if err != nil {
+		fmt.Fprintf(errOrDiscard(env), "%s: could not read the agent config: %v\n", command, err)
+		return ""
+	}
+	sess, err := cfg.Select("", "")
+	if err != nil {
+		if errors.Is(err, agent.ErrNotRegistered) {
+			fmt.Fprintf(errOrDiscard(env), "%s: no agent session is registered, so the server will answer unauthorized; "+
+				"run `caf agent register` and have a human claim it\n", command)
+			return ""
+		}
+		fmt.Fprintf(errOrDiscard(env), "%s: could not select the agent session: %v\n", command, err)
+		return ""
+	}
+	token, err := ring.Get(agent.KeyringService, sess.TokenRef)
+	if err != nil || strings.TrimSpace(token) == "" {
+		fmt.Fprintf(errOrDiscard(env), "%s: no token in the keyring for session %s, so the server will answer unauthorized; "+
+			"run `caf agent register`\n", command, sess.Name)
+		return ""
+	}
+	return token
 }
 
 // out and errOut default to a discarded stream, so a run built by a test with

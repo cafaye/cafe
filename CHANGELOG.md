@@ -25,6 +25,37 @@ All notable changes to caf are recorded here. The format follows
 
 ### Added
 
+- **`caf publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api|worker|both|cli>]
+  [--json] [--pantry <url>] <project>` — take a project from a checkout into
+  the public catalog.** The shape is the approval-card pattern, and it is
+  OPS-D7's boundary at the level of a command: the tool proposes, a human
+  confirms. The manifest is validated by the same contract lint every other
+  command runs (never a second validator), the proposal — the registration,
+  the version tag, the dependency edges — is printed BEFORE anything is asked
+  or written, and nothing is written until somebody says yes.
+
+  A non-interactive run NEVER publishes without an explicit `--yes`: no
+  prompt, no `--yes`, no publish. `--dry-run` prints the proposal and writes
+  nothing. `--json` makes every outcome — the proposal, each step's result,
+  the final state — one machine-readable document, because an agent runs this
+  command in a pipeline.
+
+  The three writes run in order — register the project, publish the version,
+  declare each dependency edge — publisher-authenticated through the caller's
+  caf token, which is read, presented and never printed. Each is
+  idempotent-tolerant: a 409 carrying pantry's own "already registered /
+  published / declared" phrase is a report line and the sequence continues,
+  while the ordering rule's 409 ("no published semver version") is a refusal
+  that stops it. Any other failure names itself with the server's own code
+  and detail, so an agent reading the report can grep pantry's log.
+
+  The kind is derived from the contract surface when the manifest declares
+  one (HTTP and events in is `both`); a manifest with no surface cannot say
+  whether it is a binary, a server or a worker, so the command refuses and
+  names `--kind` rather than guessing a claim the publisher never made. The
+  trust model is Docker Hub's: push and it is public — publish is not gated
+  on entitlement for community projects, and conductor stays untouched.
+
 - **`caf lock <path>` — one file that pins the tree's specs, its vendored
   schemas and its generated clients, and `caf lock --verify <path>` to check
   them.** buf pins three classes in its lockfile — modules, the remote plugins

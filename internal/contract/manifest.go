@@ -182,6 +182,13 @@ func (m Manifest) CoreConstraint() (Constraint, error) {
 	return ParseConstraint(m.fields.Core)
 }
 
+// DocumentJSON is the manifest's own bytes, as JSON — the YAML the file was
+// written in, converted by Parse. It is the document a registry stores
+// verbatim and diffs against a git checkout, and the bytes a manifest_sha256
+// drift anchor is a fact about: the hash and the document have to come from
+// the same accessor, or the anchor is computed over bytes nobody else has seen.
+func (m Manifest) DocumentJSON() []byte { return m.documentJSON }
+
 // RepositoryURL is the SSH remote the service is developed in.
 func (m Manifest) RepositoryURL() string { return m.fields.Repository.URL }
 
@@ -190,6 +197,11 @@ func (m Manifest) DefaultBranch() string { return m.fields.Repository.DefaultBra
 
 // OwnerTeam is the accountable team, not the author.
 func (m Manifest) OwnerTeam() string { return m.fields.Owner.Team }
+
+// OwnerContact is the contact the registry publishes alongside the team: a
+// question about the project has to go somewhere, and the team is an
+// accountability unit rather than an inbox.
+func (m Manifest) OwnerContact() string { return m.fields.Owner.Contact }
 
 // firstLine takes the head of a multi-line error. goccy prints the position
 // and the reason on the first line and the offending source underneath, and a

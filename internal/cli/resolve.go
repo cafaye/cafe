@@ -152,7 +152,7 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 	}
 	deps = deps.withDefaults()
 
-	manifest, err := readResolveManifest(project)
+	manifest, err := readManifest(project)
 	if err != nil {
 		return err
 	}
@@ -205,24 +205,29 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 	return nil
 }
 
-// readResolveManifest reads and validates one project's cafaye.yml. The
-// validation is the contract linter's own, because caf has no second opinion
-// about what a valid manifest is: a command that validated with its own copy
-// of the rules would eventually disagree with `caf contract lint` about one
-// file, and that is the one divergence a single CLI cannot have.
-func readResolveManifest(project string) (contract.Manifest, error) {
+// readManifest reads and validates one project's cafaye.yml. The validation is
+// the contract linter's own, because caf has no second opinion about what a
+// valid manifest is: a command that validated with its own copy of the rules
+// would eventually disagree with `caf contract lint` about one file, and that
+// is the one divergence a single CLI cannot have.
+//
+// It is named for what it does rather than for resolve, because publish reads
+// the same manifest through the same gate: an error that says "caf resolve" on
+// a publish refusal is a refusal that sends a reader to the wrong command's
+// help.
+func readManifest(project string) (contract.Manifest, error) {
 	path := filepath.Join(project, contract.ManifestFileName())
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return contract.Manifest{}, fmt.Errorf("caf resolve: no %s in %s; a project declares its service in one (run %q to create it, or pass the project directory as the argument)",
+			return contract.Manifest{}, fmt.Errorf("no %s in %s; a project declares its service in one (run %q to create it, or pass the project directory as the argument)",
 				contract.ManifestFileName(), project, "caf init")
 		}
-		return contract.Manifest{}, fmt.Errorf("caf resolve: read %s: %w", path, err)
+		return contract.Manifest{}, fmt.Errorf("read %s: %w", path, err)
 	}
 	manifest, finding := contract.CheckData(path, data)
 	if !finding.OK() {
-		return contract.Manifest{}, fmt.Errorf("caf resolve: %s", finding.String())
+		return contract.Manifest{}, fmt.Errorf("%s", finding.String())
 	}
 	return manifest, nil
 }
@@ -234,28 +239,10 @@ func readResolveManifest(project string) (contract.Manifest, error) {
 // A machine with no token is not a failure. Tier 1 is anonymous and tier 2
 // answers a named unauthorized, which is the honest response to a caller with
 // no credential; the warning says so rather than leaving the reader to infer
-// it from a 401 two steps later.
+// it from a 401 two steps later. The reading itself is the shared
+// callerToken in confirm.go, because the courier rule is one rule.
 func (d resolveDeps) callerToken(env *Env) string {
-	cfg, err := agent.LoadConfig(d.dir)
-	if err != nil {
-		sayResolve(env.Stderr, "could not read the agent config: %v", err)
-		return ""
-	}
-	sess, err := cfg.Select("", "")
-	if err != nil {
-		if errors.Is(err, agent.ErrNotRegistered) {
-			sayResolve(env.Stderr, "no agent session is registered, so tier 1 runs anonymous and tier 2 will answer unauthorized; run `caf agent register` and have a human claim it")
-			return ""
-		}
-		sayResolve(env.Stderr, "could not select the agent session: %v", err)
-		return ""
-	}
-	token, err := d.ring.Get(agent.KeyringService, sess.TokenRef)
-	if err != nil || strings.TrimSpace(token) == "" {
-		sayResolve(env.Stderr, "no token in the keyring for session %s, so tier 1 runs anonymous and tier 2 will answer unauthorized; run `caf agent register`", sess.Name)
-		return ""
-	}
-	return token
+	return callerToken("caf resolve", d.dir, d.ring, env)
 }
 
 // sayResolve is the stderr half of the split: one sentence per dependency, for
