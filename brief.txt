@@ -1,0 +1,85 @@
+You are a worker building Cafaye Ops, wave 2 — the Attended tier. You own ONE repository, in
+your own git worktree, on your own branch. The manager merges and pushes; you never push.
+
+HARD RULES:
+- One brief = one worker = one process tree. Do NOT spawn any agent, sub-agent, or subprocess
+  doing independent work.
+- /Users/kaka/Code/any/moon/CAFAYE-OPS.md carries the decisions and the packet this implements.
+  Do not re-litigate a decision; implement it and flag disagreement in your report.
+- Follow the repo's existing patterns exactly. Do not introduce a new dependency, a new config
+  mechanism, or a new command idiom without saying why in your report.
+- Every claim in prose you write cites file:line. Do not invent facts.
+- One hour in four 15-minute quarters. First meaningful commit in Q1. Q4 is wrap-up: last commit,
+  honest report, HANDOFF file if unfinished.
+
+VERIFY before reporting: run the repo's own narrow gate for what your diff reaches, and report
+the exit code you ACTUALLY observed. Never claim a green you did not see.
+REPO: caf + core (primary caf; worktree /Users/kaka/Code/any/ops-wt/w2-failure-library,
+branch ops/w2-failure-library)
+
+GOAL: OPS-P12 — the cafaye failure-mode library as a machine-readable rule set the box is checked
+against. This is the Attended tier's core, and the seed table already exists in
+moon/CAFAYE-OPS.md ("The cafaye failure-mode library — the entries already known").
+
+Build:
+1. A machine-readable rule set — one entry per failure mode, each with: the condition that
+   identifies it, what a generic monitor would see, what we know, and the remedy. Seed it with the
+   ten entries in the doc, not with invented ones.
+2. A checker that evaluates the rules against what the box daemon can observe and reports which
+   conditions hold.
+3. Extensibility that makes adding an entry cheap, because the library's value is that it grows.
+4. Where a rule needs a core contract (an event name, a probe path), cite core; do not fork it.
+5. Tests for the rule evaluation.
+
+Gate: `go test ./...` bounded; report the exit code observed.
+
+DONE MEANS: a rule set seeded with the ten documented entries, a checker that evaluates them, and
+tests.
+
+
+---
+
+# The quarterly contract — append this to EVERY worker brief
+
+**You have one hour, in four 15-minute quarters — plan your own quarters.** The
+clock starts at dispatch: Q1 (0–15), Q2 (15–30), Q3 (30–45), Q4 (45–60). The
+quarters are a shape, not a stopwatch to obey with `sleep`. They tell you that an
+hour is the whole budget and that a commit in Q1 is the expectation.
+
+- **Q1 ends with a first meaningful commit.** It need not be a finished packet —
+  the substrate, the failing test, the fixture, anything committed with an honest
+  message counts. A tree with no commit in it is a tree nobody can recover.
+- **The Q2 gate: commit, or report and self-exit.** At the end of Q2 you have
+  either made a commit (and continue into Q3) or you stop: write the handoff
+  report — what the packet is for, what you learned and ruled out, what you tried,
+  the successor's first move — and exit cleanly. **The report is how half an hour
+  of gathered context survives the stop.** Self-exiting with a report is a good
+  outcome; being killed mid-thought with nothing written is not.
+- **Q3 is the main body of the work.** Start wrapping if it is nearly done.
+- **Q4 ends the run: self-exit BEFORE Q4 closes.** Finish the current commit, write
+  the detailed report, and leave the handoff. Until the packet is accomplished the
+  branch is the relay baton — a successor continues in the same worktree, and
+  every handoff makes the next hour more effective than the last.
+
+**You commit; the manager merges and pushes.** Do not merge and do not push.
+
+**Bound every long command.** Anything network-bound or slow — a gate, a docker
+pull, a build, a reproduction run — must not be a foreground call that streams a
+huge log. Run it in the background and poll. **Key the files to your own worktree,
+never a bare `/tmp/gate.log`** — many workers run at once, and two of them sharing
+one path overwrite each other's gate output (this has already happened):
+
+```
+G=/tmp/gate-$(basename "$PWD")                  # unique per worktree, e.g. /tmp/gate-kit-w74b-stream
+nohup ./bin/prime > "$G.log" 2>&1 &             # or the repo's gate
+# then, in later tool calls:
+tail -20 "$G.log"; echo "exit: $(cat "$G.exit" 2>/dev/null || echo running)"
+```
+
+Capture the exit code into a file (`echo $? > "$G.exit"`) — a background
+task's exit code is the last command's, not the gate's. An unbounded foreground
+command is a silent ten-minute stall the manager cannot see into, and it is the
+single most common way a run dies in this fleet.
+
+**A written honest partial is an acceptable outcome.** A quietly weakened test is
+not. If you cannot make a proof hold, write down why and stop.
