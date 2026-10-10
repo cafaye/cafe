@@ -79,8 +79,8 @@ type Entry struct {
 	Key string `json:"key,omitempty"`
 	// Deployment is the Deployment restarted when this entry rotates. Empty
 	// for an entry that does not own one.
-	Deployment string `json:"deployment,omitempty"`
-	Class      Class  `json:"class"`
+	Deployment string     `json:"deployment,omitempty"`
+	Class      Class      `json:"class"`
 	Provenance Provenance `json:"provenance"`
 	// Reason is the sentence that says WHY this class, and Source is the file
 	// and line it comes from. The two are separate so a renderer can put the
@@ -97,6 +97,12 @@ type Entry struct {
 	// identity refuses a SIGNUP_SIGNING_KEY that is not 32 bytes of base64url
 	// at boot, and Phoenix refuses a SECRET_KEY_BASE shorter than 64 bytes.
 	Shape string `json:"shape,omitempty"`
+	// LastRotated is when this box last rotated the entry, RFC3339, from the
+	// schedule state. It is absent when the entry has never been rotated here,
+	// which is a different statement from "rotated at the epoch" and must not
+	// render as one. It is the only field on this struct that is not a fact
+	// about the fleet — every other one is true of every box at once.
+	LastRotated string `json:"last_rotated,omitempty"`
 	// Writes are the OTHER keys a rotation has to replace in the same run.
 	// Only the Redis password has one: gateway's REDIS_URL embeds the password,
 	// so a rotation that wrote the secret and not the URL would take gateway
@@ -153,25 +159,25 @@ func (e Entry) IsSecret() bool { return e.Provenance != Configuration }
 // these name are the ones the table claims. They are fleet paths, not paths in
 // this repository — doc.go says why.
 const (
-	srcRecord     = "cafaye/kit/templates/substrate/install.sh:1075-1082"
-	srcGenerated  = "cafaye/kit/templates/substrate/install.sh:1084-1093"
-	srcMinted     = "cafaye/kit/templates/substrate/install.sh:1094-1100"
-	srcExternal   = "cafaye/kit/templates/substrate/install.sh:1101-1105"
-	srcRelayHdr   = "cafaye/kit/templates/substrate/install.sh:85-88"
-	srcDerived    = "cafaye/kit/templates/substrate/install.sh:1106-1109"
-	srcRotate     = "cafaye/kit/templates/substrate/install.sh:1199,1217,1246,1277"
-	srcKeyBase    = "cafaye/kit/templates/substrate/install.sh:1228-1232,1239-1244"
-	srcRedisURL   = "cafaye/kit/templates/substrate/install.sh:1211-1220"
-	srcRedisPW    = "cafaye/kit/templates/substrate/install.sh:933-939"
-	srcRoles      = "cafaye/kit/templates/substrate/install.sh:888,893-910"
-	srcNeverPatch = "cafaye/kit/templates/substrate/install.sh:1159"
-	srcIDReadme   = "cafaye/identity/README.md:299"
-	srcOIDCJwks   = "cafaye/identity/README.md:1348"
-	srcMFAReadme  = "cafaye/identity/README.md:1035-1039"
+	srcRecord      = "cafaye/kit/templates/substrate/install.sh:1075-1082"
+	srcGenerated   = "cafaye/kit/templates/substrate/install.sh:1084-1093"
+	srcMinted      = "cafaye/kit/templates/substrate/install.sh:1094-1100"
+	srcExternal    = "cafaye/kit/templates/substrate/install.sh:1101-1105"
+	srcRelayHdr    = "cafaye/kit/templates/substrate/install.sh:85-88"
+	srcDerived     = "cafaye/kit/templates/substrate/install.sh:1106-1109"
+	srcRotate      = "cafaye/kit/templates/substrate/install.sh:1199,1217,1246,1277"
+	srcKeyBase     = "cafaye/kit/templates/substrate/install.sh:1228-1232,1239-1244"
+	srcRedisURL    = "cafaye/kit/templates/substrate/install.sh:1211-1220"
+	srcRedisPW     = "cafaye/kit/templates/substrate/install.sh:933-939"
+	srcRoles       = "cafaye/kit/templates/substrate/install.sh:888,893-910"
+	srcNeverPatch  = "cafaye/kit/templates/substrate/install.sh:1159"
+	srcIDReadme    = "cafaye/identity/README.md:299"
+	srcOIDCJwks    = "cafaye/identity/README.md:1348"
+	srcMFAReadme   = "cafaye/identity/README.md:1035-1039"
 	srcOAuthReadme = "cafaye/identity/README.md:310"
-	srcPairTTL    = "cafaye/identity/README.md:356"
-	srcMuseReadme = "cafaye/muse/README.md:332-333"
-	srcPacket     = "moon/CAFAYE-OPS.md:784-786"
+	srcPairTTL     = "cafaye/identity/README.md:356"
+	srcMuseReadme  = "cafaye/muse/README.md:332-333"
+	srcPacket      = "moon/CAFAYE-OPS.md:784-786"
 )
 
 // DefaultInterval is the schedule the rotatable class runs on. Ninety days is
@@ -223,14 +229,14 @@ func Inventory() []Entry {
 		{
 			Name: "SECRET_KEY_BASE", Namespace: "courier", Secret: "courier-secrets",
 			Deployment: "courier", Class: Rotatable, Provenance: Generated, Interval: DefaultInterval,
-			Shape: "base64 of 64 random bytes",
+			Shape:  "base64 of 64 random bytes",
 			Reason: "born on the box, 64 bytes because Phoenix refuses shorter, and read back once-only so a re-run never rotates a live system. A rotation is a replace-and-restart; the cost is that sessions signed with the old value end.",
 			Source: srcKeyBase + ", " + srcRotate,
 		},
 		{
 			Name: "COURIER_SECRET_BOX_KEY", Namespace: "courier", Secret: "courier-secrets",
 			Deployment: "courier", Class: Rotatable, Provenance: Generated, Interval: DefaultInterval,
-			Shape: "base64 of 32 random bytes",
+			Shape:  "base64 of 32 random bytes",
 			Reason: "born on the box, 32 bytes base64, with no second holder anywhere — the rotation is entirely inside this box, which is what makes it the safest thing on the box to rotate.",
 			Source: srcKeyBase + ", " + srcRotate,
 		},
@@ -297,7 +303,7 @@ func Inventory() []Entry {
 		{
 			Name: "password", Namespace: "data", Secret: "redis-password", Key: "password",
 			Deployment: "redis", Class: Rotatable, Provenance: Generated, Interval: DefaultInterval,
-			Shape: "hex of 24 random bytes",
+			Shape:  "hex of 24 random bytes",
 			Reason: "born on the box and never regenerated on a re-run. A rotation replaces this secret AND rewrites gateway's REDIS_URL with the new value in the same run, then restarts both — the two writes are one rotation, not two.",
 			Source: srcRedisPW + ", " + srcRedisURL,
 			Writes: []Target{{

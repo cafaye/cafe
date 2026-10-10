@@ -49,6 +49,15 @@ type Step struct {
 	// reach it, and it is set after the plan is built so the plan a dry run
 	// printed and the plan that runs are the same object.
 	value Value
+
+	// write is the Target this step writes, and nil for a step that writes
+	// nothing. It is set when the plan is BUILT rather than derived from the
+	// step's index at run time, because an index is a coupling: a plan with a
+	// presence check in front of the writes and one without it are the same
+	// steps and different numbers, and a substitution that subtracted the
+	// wrong one would put a fresh SECRET_KEY_BASE in the presence check's
+	// argv. The step says what it writes.
+	write *Target
 }
 
 // Runner is every kubectl invocation in this package, and it returns what
@@ -162,6 +171,15 @@ func (r Refusal) Error() string {
 		r.Name, r.Class, r.Reason, r.Source)
 }
 
+// Human is the refusal as prose, for stderr. It is the same sentence as Error()
+// with the class's citation on its own line, and it is separate from Error()
+// because the two go to two different streams: a person reads stderr, and a
+// caller matching a sentinel reads the return.
+func (r Refusal) Human() string {
+	return fmt.Sprintf("caf secret: refusing to rotate %s: it is %s.\n  %s\n  %s\n",
+		r.Name, r.Class, r.Reason, r.Source)
+}
+
 // Plan is one rotation: the steps, in order, and what changed.
 //
 // A plan is built before anything runs so a dry run can print exactly what the
@@ -255,6 +273,7 @@ func PlanRotation(entry Entry) (Plan, error) {
 		Why:  "A read that answers with key NAMES only: the template ranges over .data and prints $k, never $v.",
 	})
 	for _, w := range entry.WriteTargets() {
+		target := w
 		steps = append(steps, Step{
 			Name:     "replace " + w.Namespace + "/" + w.Name + " key " + w.Key,
 			Argv:     []string{"kubectl", "apply", "-f", "-", "-n", w.Namespace},
@@ -262,13 +281,9 @@ func PlanRotation(entry Entry) (Plan, error) {
 			Redacted: redactedManifestFor(w),
 			Why: "the installer's own rotation posture: replace the secret and restart the pods. " +
 				"The value is piped on stdin and never reaches argv, where /proc would publish it.",
+			write: &target,
 		})
 	}
-	steps = append(steps, Step{
-		Name:  "confirm the keys are there",
-		Argv:  []string{"kubectl", "get", "secret", entry.Secret, "-n", entry.Namespace, "-o", "go-template=" + presenceTemplate},
-		Why:   "A read that answers with key NAMES only: the template ranges over .data and prints $k, never $v.",
-	})
 	for _, r := range entry.RestartTargets() {
 		steps = append(steps, Step{
 			Name: "restart " + r.Namespace + "/" + r.Name,
@@ -327,7 +342,11 @@ func valueFor(w Target, primary Value) Value {
 // It refuses for every class that is not rotatable, and it refuses BEFORE it
 // runs anything: a plan that was refused halfway would have written the first of
 // two keys and not the second, which is the outage the packet exists to prevent.
-func Rotate(ctx context.Context, name string, runner Runner, stdout, stderr io.Writer) (Plan, error) {
+//
+// The progress stream is the caller's to choose, and this command hands it
+// stderr: what kubectl said is a sentence for a person, not a document for a
+// parser.
+func Rotate(ctx context.Context, name string, runner Runner, progress io.Writer) (Plan, error) {
 	entry, err := Find(name)
 	if err != nil {
 		return Plan{}, err
@@ -342,40 +361,35 @@ func Rotate(ctx context.Context, name string, runner Runner, stdout, stderr io.W
 	}
 	// The generated value is substituted into the plan's documents here, after
 	// the plan is built, so the plan a dry run printed and the plan that runs
-	// are the same object with the same values.
+	// are the same object with the same values. The step names the Target it
+	// writes, so the presence check that precedes the writes — and the restarts
+	// that follow them — are never given a document by an index that was one
+	// off.
 	for i := range plan.Steps {
-		w := writeTargetAt(plan.Entry, i)
-		plan.Steps[i].Stdin = manifestFor(w, value)
+		if plan.Steps[i].write == nil {
+			continue
+		}
+		plan.Steps[i].Stdin = manifestFor(*plan.Steps[i].write, value)
 		plan.Steps[i].value = value
 	}
 	for _, step := range plan.Steps {
-		if _, err := fmt.Fprintf(stdout, "caf secret: %s\n", step.Name); err != nil {
+		if _, err := fmt.Fprintf(progress, "caf secret: %s\n", step.Name); err != nil {
 			return plan, err
 		}
 		if step.Stdin == "" {
 			// Nothing sensitive: print the command as the operator would type it.
-			fmt.Fprintf(stdout, "  %s\n", strings.Join(step.Argv, " "))
+			fmt.Fprintf(progress, "  %s\n", strings.Join(step.Argv, " "))
 		} else {
-			fmt.Fprintf(stdout, "  kubectl apply -f - (document on stdin, value never printed)\n")
+			fmt.Fprintf(progress, "  kubectl apply -f - (document on stdin, value never printed)\n")
 		}
 		if _, err := runner.Run(ctx, step); err != nil {
 			return plan, err
 		}
 	}
-	if _, err := fmt.Fprintf(stdout, "caf secret: %s\n", plan.Report); err != nil {
+	if _, err := fmt.Fprintf(progress, "caf secret: %s\n", plan.Report); err != nil {
 		return plan, err
 	}
 	return plan, nil
-}
-
-// writeTargetAt maps a step index to the Target it writes, or an empty Target
-// for a step that writes nothing.
-func writeTargetAt(entry Entry, i int) Target {
-	targets := entry.WriteTargets()
-	if i < len(targets) {
-		return targets[i]
-	}
-	return Target{}
 }
 
 // Due is the schedule half: which of the rotatable class is past its interval,
@@ -392,7 +406,7 @@ func Due(state State, now time.Time) []Entry {
 		if e.Class != Rotatable || e.Interval <= 0 {
 			continue
 		}
-		last, ok := state.Last[e.Name]
+		last, ok := state.Last[e.StateKey()]
 		if !ok || now.Sub(last) >= e.Interval {
 			out = append(out, e)
 		}
