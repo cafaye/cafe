@@ -5,8 +5,10 @@
 # reasoning (`docs/gate.md`). Across the fifteen repositories in the cafaye
 # workspace "run the gate" had five different spellings, and every one of them
 # was found by a human getting it wrong. This is caf's, and every number in it
-# was measured on this tree at de25e37 + caf-07 — not copied from core's, not
-# from another service's, and not rounded.
+# was measured on this tree at aa54700 — the OPS-P13 monthly-report merge — where
+# `./bin/prime` reported 27 packages, 1195 top-level passes, 1214 subtest passes
+# and 8 skips. Not copied from core's, not from another service's, and not
+# rounded.
 #
 # THE GAP THIS CLOSES, in one sentence. `caf-06` merged 12,480 lines across 60
 # files, five of them new packages — `internal/ledger`, `internal/ports`,
@@ -86,21 +88,36 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 24, measured with `go list ./...` on this tree: internal/cve landed with OPS-P11. The security and
-      # substance packages are pinned by name and existence: emitter, box,
-      # boxd, agent, provider, run, resolve, scaffold.
-      minimum: 26
+      # 27, measured with `go list ./...` on this tree at aa54700. The count moved
+      # once per packet of the Cafaye Ops wave: internal/cve landed with OPS-P11
+      # (to 25), internal/failure with OPS-P12 (to 26) and internal/report with
+      # OPS-P13 (to 27). The security and substance packages are pinned by name
+      # and existence: emitter, box, boxd, agent, provider, run, resolve,
+      # scaffold.
+      minimum: 27
     - id: suite
       match: '^caf: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
-      # 1128, measured with `./bin/prime` on this tree (25 packages, 1204 subtests, 8 skips).
-      # The floor moved twice in the Cafaye Ops wave: OPS-P9 (backup drill) and
-      # OPS-P10/P11/P12 (secret inventory, cve surface, failure library) each
-      # added top-level tests and no subtests, so only this number changed.
+      # 1195, measured with `./bin/prime` on this tree at aa54700, in the same run
+      # that reported 27 packages, 1214 subtests and 8 skips. This floor moved in
+      # every packet of the Cafaye Ops wave — OPS-P9 (backup drill), OPS-P10/P11/P12
+      # (secret inventory, cve surface, failure library) and, last, OPS-P13 (the
+      # monthly report), which added 8 top-level tests in internal/report and 7 in
+      # internal/cli/report_test.go. It is exact in both directions rather than a
+      # bound: the tree declares 1203 test functions and the gate skips 8, which is
+      # the identity internal/ci's ratchet holds.
       minimum: 1195
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # 1165, measured: internal/cve's classification tables and the cve CLI verbs.
-      minimum: 1208
+      # 1214, measured with `./bin/prime` on this tree at aa54700, in the same run
+      # as the two floors above. This is the floor the last bump left behind: the
+      # OPS-P13 merge raised the suite floor from 1180 to 1195 and left this one at
+      # its OPS-P12 value, so it sat six below what the gate reports. A floor below
+      # what runs is a floor that has stopped detecting a decrease, which is its
+      # whole job, so it is quoted at the measurement rather than under it. The
+      # wave's earlier subtests are this number too: internal/cve's classification
+      # tables and the cve CLI verbs took it there, and OPS-P13's report tests took
+      # it the rest of the way.
+      minimum: 1214
 
     - id: live-tier
       match: '^caf: live tier: [0-9]+ of 7 executed'
