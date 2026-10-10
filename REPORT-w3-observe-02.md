@@ -136,19 +136,28 @@ tests). `caf.lock` re-pinned in both.
    exactly that shape — `CandidateRelease{name, version}`.
 2. **OPS-P16 (policy engine)** consumes this document. The per-service rows are
    what make its monthly-report output true; the disk number is the capacity
-   input it classifies rather than the box.
-3. **Disk path**: the observation measures the root. A box whose data lives on
+   input it classifies rather than the box.3. **Disk path**: the observation measures the root. A box whose data lives on
    another mount wants that mount named; the path is a parameter of
    `diskFact`, so the seam exists and nothing chooses it yet.
 
 ## One thing the operator should know
 
-At 18:08, while this session was running, something else committed
-`internal/cli/disk_probe_unix.go` to this branch with the message
+At 18:08, while this session was running, a process I did not start committed a
+mid-flight snapshot of my work to this branch:
 `127a0f0 recover(w3-observe-caf): in-flight work after the provider dropped the
-session`. It was not me — I had written the file two minutes earlier and had run
-no `git commit`. The content is the file I wrote, unmodified, and it is now the
-parent of my first commit. I left the commit in place rather than rewriting
-history on a branch another process may be reading; flagging it because a
-commit with a message that says the session dropped, made during a live
-session, is the kind of thing an operator wants to know about.
+session` (author date 18:08:03, six files). I had run no `git commit` at that
+point; my first commit was 30 minutes later. The workspace also holds
+`/private/tmp/resume-wt/` worktrees from earlier packets, so the shape is an
+automated session-recovery mechanism, but it fired inside a live session.
+
+Two consequences worth writing down rather than glossing:
+
+- **It is a snapshot, not my work.** Its `disk_probe_windows.go` is the version
+  that calls `syscall.GetDiskFreeSpaceEx`, which does not exist in the standard
+  library's Windows `syscall` package — I measured that exact line failing to
+  compile in this directory minutes earlier, then rewrote the file to reach
+  `GetDiskFreeSpaceExW` through a lazy proc. So `127a0f0` is an intermediate
+  commit on this branch that does not build for `GOOS=windows`.
+- **The branch tip is fine.** `628ed31`, `00eeb83` and `cc01bca` supersede it,
+  and `bin/prime` exits 0 on the tip. I left the stray commit in place rather
+  than rewriting history on a branch another process is committing to.
