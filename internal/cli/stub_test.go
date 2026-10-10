@@ -30,13 +30,7 @@ var stubCommands = []stubCommand{}
 // this list, so `env` is here and `env up` is not, and `gen` is here while
 // `gen telemetry` is not.
 var workingCommands = []string{
-<<<<<<< HEAD
-	"agent", "backup", "box", "boxd", "contract", "cve", "deploy", "dev", "doctor", "env", "gen", "init", "lock", "mcp", "new", "provider", "reclaim", "resolve", "secret", "update", "version",
-||||||| 9e05e81
-	"agent", "backup", "box", "boxd", "contract", "deploy", "dev", "doctor", "env", "gen", "init", "lock", "mcp", "new", "provider", "reclaim", "resolve", "update", "version",
-=======
-	"agent", "backup", "box", "boxd", "contract", "deploy", "dev", "doctor", "env", "failure", "gen", "init", "lock", "mcp", "new", "provider", "reclaim", "resolve", "update", "version",
->>>>>>> ops/w2-failure-library
+	"agent", "backup", "box", "boxd", "contract", "cve", "deploy", "dev", "doctor", "env", "failure", "gen", "init", "lock", "mcp", "new", "provider", "reclaim", "resolve", "secret", "update", "version",
 }
 
 // invocation builds a valid command line for a stub: its flags, then the
