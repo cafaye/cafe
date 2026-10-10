@@ -1,51 +1,22 @@
-You are a worker building Cafaye Ops, wave 2 — the Attended tier. You own ONE repository, in
-your own git worktree, on your own branch. The manager merges and pushes; you never push.
+You are a SUCCESSOR worker continuing a packet in an existing worktree. Keep the SAME branch
+(ops/w2-secret-inventory) in /Users/kaka/Code/any/ops-wt/w2-secret-inventory. The previous worker stopped; its uncommitted
+work is committed as a labelled "recover(...)" commit. Any conclusion it reached about being
+finished is void. Do NOT discard its work — build on it.
+
+GOAL: finish OPS-P10 (secret inventory + rotation). What exists:
+internal/secret/ (untracked, now committed). Read it, then complete: enumerate the secrets a box
+holds and classify each rotatable / conditional / not-rotatable with the REASON (the fleet's own
+runbooks say MUSE_VAULT_KEY cannot be rotated and the OIDC signing key has no overlap window;
+COURIER_SECRET_BOX_KEY, SECRET_KEY_BASE and the Redis password can). A JSON output command, the
+rotation path for the rotatable class on a schedule, and a NAMED refusal for the rest rather than
+a silent skip. Then tests. Then go build ./... and go test ./internal/secret/... with real exit codes.
 
 HARD RULES:
-- One brief = one worker = one process tree. Do NOT spawn any agent, sub-agent, or subprocess
-  doing independent work.
-- /Users/kaka/Code/any/moon/CAFAYE-OPS.md carries the decisions and the packet this implements.
-  Do not re-litigate a decision; implement it and flag disagreement in your report.
-- Follow the repo's existing patterns exactly. Do not introduce a new dependency, a new config
-  mechanism, or a new command idiom without saying why in your report.
-- Every claim in prose you write cites file:line. Do not invent facts.
-- One hour in four 15-minute quarters. First meaningful commit in Q1. Q4 is wrap-up: last commit,
-  honest report, HANDOFF file if unfinished.
-
-VERIFY before reporting: run the repo's own narrow gate for what your diff reaches, and report
-the exit code you ACTUALLY observed. Never claim a green you did not see.
-REPO: caf + conductor (primary caf; worktree /Users/kaka/Code/any/ops-wt/w2-secret-inventory,
-branch ops/w2-secret-inventory)
-
-GOAL: OPS-P10 — a secret inventory per box that marks what is rotatable and rotates that class
-on a schedule.
-
-Why this matters more here: the fleet's own runbooks say MUSE_VAULT_KEY cannot be rotated (a
-rotation would fork every stored credential), and the OIDC signing key has no overlap window so a
-rotation is a cutover. Meanwhile COURIER_SECRET_BOX_KEY, SECRET_KEY_BASE and the Redis password
-can be rotated. An inventory that knows the difference is the product.
-
-Build:
-1. Enumerate the secrets a box holds and classify each as rotatable / conditional / not-rotatable,
-   with the REASON recorded (cite the runbook that says so). The kit installer's SECRET RECORD
-   block and moon/cafaye/kit/templates/substrate/install.sh are the source of truth for what
-   exists; conductor's models are the source for what is tracked.
-2. A command that outputs the inventory as JSON — name, rotatable class, last rotated, why-not when
-   it is not rotatable.
-3. Rotation for the rotatable class, on a schedule, that reports what it changed and refuses
-   (naming the reason) for the not-rotatable class rather than silently skipping it.
-4. If you touch conductor, keep to its boundary 8 (installation state and capabilities only, no
-   box access) and add nothing that holds a secret in plaintext.
-
-Gate: caf's `go test ./...` bounded, and conductor's gate is `PARALLEL_WORKERS=1 bin/rails test`
-(Rails forks segfault the pg extension on this machine — never run it with parallel forks).
-
-DONE MEANS: an inventory with rotatable classes and reasons, a rotation path for the rotatable
-class, and a named refusal for the rest.
-
-
----
-
+- Do not spawn any agent or subprocess.
+- Commit early and commit often: first meaningful commit in Q1, one per gate-green increment.
+- Run the narrow gate for what your diff reaches and report the exit code you ACTUALLY observed.
+- Q4 is wrap-up: last commit, honest report, HANDOFF file if unfinished.
+- One hour, four 15-minute quarters.
 # The quarterly contract — append this to EVERY worker brief
 
 **You have one hour, in four 15-minute quarters — plan your own quarters.** The

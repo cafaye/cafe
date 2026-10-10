@@ -140,9 +140,24 @@ func (e Entry) RestartTargets() []Target {
 	return append(out, e.Restarts...)
 }
 
+// KeyOrName is the key inside the Secret: the entry's Key when it names one,
+// and its Name otherwise.
+//
+// Most entries are a key whose name is the entry's own — COURIER_SECRET_BOX_KEY
+// in courier-secrets — and the two that are not (the Redis password's key is
+// `password`) say so. A write target built from e.Key raw would write to the
+// empty string on most of the table, which kubectl would answer with an error
+// naming nothing.
+func (e Entry) KeyOrName() string {
+	if e.Key == "" {
+		return e.Name
+	}
+	return e.Key
+}
+
 // WriteTargets is every key a rotation replaces, its own first.
 func (e Entry) WriteTargets() []Target {
-	out := []Target{{Namespace: e.Namespace, Name: e.Secret, Key: e.Key}}
+	out := []Target{{Namespace: e.Namespace, Name: e.Secret, Key: e.KeyOrName()}}
 	return append(out, e.Writes...)
 }
 
@@ -380,10 +395,7 @@ func (e Entry) String() string {
 	if e.Secret == "" {
 		return ""
 	}
-	key := e.Key
-	if key == "" {
-		key = e.Name
-	}
+	key := e.KeyOrName()
 	if e.Namespace == "" {
 		return e.Secret + "/" + key
 	}

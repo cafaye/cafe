@@ -347,6 +347,9 @@ func valueFor(w Target, primary Value) Value {
 // stderr: what kubectl said is a sentence for a person, not a document for a
 // parser.
 func Rotate(ctx context.Context, name string, runner Runner, progress io.Writer) (Plan, error) {
+	// A nil writer is io.Discard, the rule NewKubectl already holds: a rotation
+	// that cannot write anywhere is still a rotation that must not fail.
+	progress = writerOrDiscard(progress)
 	entry, err := Find(name)
 	if err != nil {
 		return Plan{}, err
