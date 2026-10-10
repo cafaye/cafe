@@ -209,7 +209,15 @@ func (r *RemoteRunner) Plan(dep Deployment, opts Options) (Plan, error) {
 // The account is a parameter rather than something the runner looks up, because
 // it arrived on a flag and the plan is where a flag becomes a fact.
 func planForRemote(dep Deployment, opts Options) Plan {
-	argv := []string{"caf", "deploy", "--engine", EngineRemote, AccountFlag, dep.Account}
+	argv := []string{"caf", "deploy", "--engine", EngineRemote}
+	// The account is written only when there is one. A plan whose argv carried
+	// `--account` with nothing after it would be an argv nobody could run —
+	// `caf deploy --account --yes identity` parses --yes as the account — and
+	// the omission is what makes Run's refusal name the flag rather than the
+	// platform being asked about an account called "--yes".
+	if dep.Account != "" {
+		argv = append(argv, AccountFlag, dep.Account)
+	}
 	if opts.Version != "" {
 		argv = append(argv, "--version", opts.Version)
 	}
@@ -253,10 +261,7 @@ func (r *RemoteRunner) Run(ctx context.Context, dir string, step Step, stdout, s
 	}
 	req := requestFromArgv(step.Argv)
 	if req.AccountID == "" {
-		return fmt.Errorf("%w: the remote engine has no account to deploy for.\n"+
-			"  Name it with %s <uuid>: the account is what the shared platform serves, and\n"+
-			"  a remote deploy with no account is a deploy to no place. The two engines that\n"+
-			"  are enabled need no account, because neither of them is the shared platform.", ErrRefused, AccountFlag)
+		return noAccountRefusal()
 	}
 	switch step.Name {
 	case Boundary:
@@ -296,23 +301,36 @@ func runRemoteRequest(ctx context.Context, rem Remote, req RemoteRequest, stdout
 // It is a parser rather than four parameters because the plan is the single copy:
 // what the dry run printed is what the runner asked for, and a request assembled
 // from a value the dry run never showed would be a deploy nobody was shown.
+//
+// Two rules hold it to that, and both are about the argv the plan writes rather
+// than about argv in general:
+//
+//   - The service is the LAST token, whatever it is called. The plan writes the
+//     flags first and the argument last, so the last element is the argument —
+//     including for a service named after the engine, which the previous version
+//     dropped and which would have been a deploy of the wrong service.
+//   - A value that looks like a flag is a MISSING value. `--account` followed by
+//     `--yes` is an account nobody named, and reading `--yes` as the account id
+//     would send the platform a question about a destination that does not exist.
+//     Account ids are uuids, so this costs nothing that is real.
 func requestFromArgv(argv []string) RemoteRequest {
 	req := RemoteRequest{}
-	for i := 0; i < len(argv); i++ {
+	if n := len(argv); n > 0 {
+		req.Service = argv[n-1]
+	}
+	// The last token is the service, so no flag can have a value after it.
+	for i := 0; i+1 < len(argv); i++ {
+		var into *string
 		switch argv[i] {
 		case AccountFlag:
-			if i+1 < len(argv) {
-				req.AccountID = argv[i+1]
-			}
+			into = &req.AccountID
 		case "--version":
-			if i+1 < len(argv) {
-				req.Version = argv[i+1]
-			}
-		case EngineRemote:
-			// The service is the last element, after every flag the plan writes.
-			if n := len(argv); n > 0 && argv[n-1] != EngineRemote {
-				req.Service = argv[n-1]
-			}
+			into = &req.Version
+		default:
+			continue
+		}
+		if !strings.HasPrefix(argv[i+1], "-") {
+			*into = argv[i+1]
 		}
 	}
 	return req
@@ -337,6 +355,18 @@ func orUnrecorded(version string) string {
 		return "an unrecorded version"
 	}
 	return version
+}
+
+// noAccountRefusal is the refusal a remote deploy with no --account gets, from
+// the two places that can notice: the step, which reads the account back out of
+// the plan's own argv, and the orchestration before it prints a dry run. One
+// function rather than two sentences, because the sentence names the flag and a
+// reader who is told the same thing twice should be told it the same way.
+func noAccountRefusal() error {
+	return fmt.Errorf("%w: the remote engine has no account to deploy for.\n"+
+		"  Name it with %s <uuid>: the account is what the shared platform serves, and\n"+
+		"  a remote deploy with no account is a deploy to no place. The two engines that\n"+
+		"  are enabled need no account, because neither of them is the shared platform.", ErrRefused, AccountFlag)
 }
 
 // remoteRefusal is the error the gate returns.
