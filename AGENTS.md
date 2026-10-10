@@ -32,6 +32,7 @@ internal/ports/     the port block, the reservation that holds a port, the probe
 internal/provider/  caf provider: the client half of boundary 6 — the envelope sealed to the box's public key, the conductor seam
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
 internal/resolve/   caf resolve: the tiered catalog's consumer — a manifest's dependencies through tiers 1/2/3, and the named failures
+internal/secret/    caf secret: the box's secret inventory, its three classes, and the rotation path for the rotatable one
 internal/ryuk/      the reaper lease client, for testcontainers' Ryuk
 internal/ci/        no code; the tests that keep .github/workflows/ci.yml and bin/prime honest
 bin/prime           the gate: go mod download && go build ./... && go test -v ./... , then say what ran
@@ -359,6 +360,44 @@ resolver's.** The resolver reports every failure WITH its dependency's
 flag into a warning on stderr and an exit 0, versus a BLOCKED line and an
 exit 1. Conductor never sees `required` — it is caf's side of the
 contract, and a server that had an opinion about it would have two.
+
+`internal/secret` is `caf secret`, split by the same rule, and it is the
+inventory the Attended tier sells as its first assurance item:
+
+- `doc.go` — what the package is, where the enumeration comes from, the three
+  classes, and the one invariant (the inventory never reads a secret's value).
+- `inventory.go` — the table: every key the kit installer's SECRET RECORD
+  declares, plus the three it does not carry (the Redis password, the Postgres
+  role passwords, muse's vault key), each with its class, its reason and the
+  file:line that reason comes from. It is also the lookup, which is why the
+  inventory and the rotation cannot disagree about what a secret is.
+- `rotate.go` — the pure `PlanRotation`, the `Runner` seam, and the value
+  generator in the installer's own spellings. **A generated value never
+  reaches argv** — argv is visible to every other process on the box through
+  /proc — so it travels in an apply document on stdin instead, which is the
+  discipline the kit installer holds itself to. The presence check is
+  templated to answer with key NAMES only, so the read a rotation performs
+  cannot carry a value even by accident.
+- `state.go` — the schedule. `last rotated` per entry in a JSON file that
+  holds no credential, which is what makes "on a schedule" a fact about the
+  last run rather than a cron line nobody can see.
+- `render.go` — the JSON document `caf secret inventory` prints.
+
+**A rotation REFUSES rather than skips.** The not-rotatable class is the
+product: muse's vault key seals every stored credential, so a rotation forks
+all of them, and identity's JWKS publishes exactly one key, so a rotation of
+the OIDC signing key is a cutover with no overlap window. A run that skipped
+those silently would answer "nothing to do", and the operator would conclude
+the inventory held nothing that needed rotating — the weekend the packet
+exists to prevent. So every refusal names the entry, the class, the reason and
+the citation, and the exit is non-zero.
+
+It has one import, and it is this repository's own `internal/deploy` — for
+`ResolveKubectl` and `ErrKubectlMissing`, so that "kubectl is not installed"
+is spelled in exactly one place in this tree. It adds no external dependency,
+and its own two clients (the kubectl invocation and the state file) are
+standard library only, which is the same constraint the reclamation path
+holds.
 
 the standard library cannot do the job. `internal/box`, `internal/ledger`,
 `internal/ports`, `internal/reclaim`, `internal/ryuk`,

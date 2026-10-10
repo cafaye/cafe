@@ -110,6 +110,10 @@ a run in which they passed.
 | `caf reclaim` | reclaim what a caf session left behind, containers before volumes | **works** |
 | `caf env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
 | `caf resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project>` | resolve a project's `cafaye.yml` dependencies through the catalog's tiers — tier 1 listing, tier 2 coordinates, tier 3 the entitlement check and the fetch grant — naming every failure and degrading `required: false` | **works** |
+| `caf secret inventory [--box <id>]` | every secret the box holds, classified rotatable / conditional / not-rotatable with the reason and the file:line it comes from — one JSON document | **works** |
+| `caf secret rotate [<name>] [--dry-run] [--yes] [--all]` | rotate the rotatable class on the schedule recorded in the state file, and name every entry it refuses to touch — no silent skips | **works** |
+| `caf secret inventory [--state-dir <dir>] [--box <id>]` | every secret this box holds, each classed rotatable / conditional / not-rotatable with the reason and the file:line it comes from, as one JSON document | **works** |
+| `caf secret rotate [--dry-run] [--all] [--yes] [--timeout <d>] [--state-dir <dir>] [--box <id>] [name]` | rotate the rotatable class on its schedule, and refuse the rest by name — a value is never printed, never put in argv, and never read back out of the cluster | **works** |
 | `caf update [path]` | merge the template's updates into this checkout and advance the template pin | **works** |
 
 Every command in the table above works; there are no stubs left in v0.

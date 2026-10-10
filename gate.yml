@@ -86,18 +86,20 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 23, measured with `go list ./...` on this tree. The security and
-      # substance packages are pinned by name and existence: emitter, box,
-      # boxd, agent, provider, run, resolve, scaffold.
-      minimum: 23
+      # 24, measured with `go list ./...` on this tree: 23 plus
+      # `internal/secret`, added by the secret inventory packet. The security
+      # and substance packages are pinned by name and existence: emitter, box,
+      # boxd, agent, provider, run, resolve, scaffold, secret.
+      minimum: 24
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 1051, measured: 1059 declared on the merged tree, 8 expected skips.
-      minimum: 1051
+      # 1082, measured: 1090 declared on the merged tree, 8 expected skips.
+      minimum: 1082
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # 1157, measured.
-      minimum: 1157
+      # 1182, measured: 1190 subtest passes on the merged tree, and the same
+      # 8 expected skips the suite proof carries.
+      minimum: 1182
 
     - id: live-tier
       match: '^caf: live tier: [0-9]+ of 7 executed'
