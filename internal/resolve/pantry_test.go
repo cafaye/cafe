@@ -13,7 +13,7 @@ import (
 // is what is under test.
 func TestHTTPPantryTier1ServesTheListingEntry(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/services/identity" {
+		if r.URL.Path != "/v1/projects/identity" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		if r.Header.Get("Authorization") != "" {
@@ -25,7 +25,7 @@ func TestHTTPPantryTier1ServesTheListingEntry(t *testing.T) {
 	defer srv.Close()
 
 	p := HTTPPantry{BaseURL: srv.URL}
-	svc, err := p.Service(context.Background(), "identity")
+	svc, err := p.Project(context.Background(), "identity")
 	if err != nil {
 		t.Fatalf("service: %v", err)
 	}
@@ -46,12 +46,12 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/not_found","title":"Not found","status":404,"detail":"no official cafaye service is registered under that name","instance":"/v1/services/nope","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/not_found","title":"Not found","status":404,"detail":"no official cafaye service is registered under that name","instance":"/v1/projects/nope","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
 	p := HTTPPantry{BaseURL: srv.URL}
-	_, err := p.Service(context.Background(), "nope")
+	_, err := p.Project(context.Background(), "nope")
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
@@ -80,7 +80,7 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 // coordinates.
 func TestHTTPPantryTier2ServesCoordinatesWithTheToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/services/identity/coordinates" {
+		if r.URL.Path != "/v1/projects/identity/coordinates" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		if got := r.Header.Get("Authorization"); got != "Bearer cafaye_x" {
@@ -112,13 +112,13 @@ func TestHTTPPantryTier2ServesCoordinatesWithTheToken(t *testing.T) {
 // is where that rule is pinned.
 func TestHTTPPantryTier2UnauthorizedIsNamed(t *testing.T) {
 	const noEntitlementYet = "this operation requires a caf token and none was presented. A service's " +
-		"repository coordinates are tier 2: `GET /v1/services` and `GET /v1/services/{name}` publish what a " +
+		"repository coordinates are tier 2: `GET /v1/projects` and `GET /v1/projects/{name}` publish what a " +
 		"service is, and this operation alone publishes where its code lives. Present `Authorization: Bearer " +
 		"cafaye_…` with a live caf token"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/unauthorized","title":"Unauthorized","status":401,"detail":"` + noEntitlementYet + `","instance":"/v1/services/identity/coordinates","code":"unauthorized","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/unauthorized","title":"Unauthorized","status":401,"detail":"` + noEntitlementYet + `","instance":"/v1/projects/identity/coordinates","code":"unauthorized","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
@@ -151,7 +151,7 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/unavailable","title":"Service unavailable","status":503,"detail":"the presented caf token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/services/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/unavailable","title":"Service unavailable","status":503,"detail":"the presented caf token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/projects/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
@@ -175,7 +175,7 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 // A client with no endpoint refuses rather than GETting a relative path.
 func TestHTTPPantryWithoutBaseURLRefuses(t *testing.T) {
 	p := HTTPPantry{}
-	if _, err := p.Service(context.Background(), "identity"); err == nil {
+	if _, err := p.Project(context.Background(), "identity"); err == nil {
 		t.Fatalf("a client with no endpoint resolved without an error")
 	} else if _, ok := err.(*PantryError); !ok {
 		t.Errorf("error = %T, want *PantryError", err)

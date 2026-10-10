@@ -11,27 +11,35 @@ import (
 	"unicode/utf8"
 )
 
-// Service is tier 1's answer: one service's listing entry. It is the advertised
-// half of the catalog — what a service is, free and paid alike — and it
-// deliberately carries no repository coordinates. Those are tier 2's, and the
-// line between them is the whole of the tiered catalog's design.
+// Project is tier 1's answer: one project's listing entry. It is the
+// advertised half of the catalog — what a project is, free and paid alike —
+// and it deliberately carries no repository coordinates. Those are tier 2's,
+// and the line between them is the whole of the tiered catalog's design.
 //
 // The shape is pantry's wire shape, and pantry publishes exactly FOUR
 // advertising facts: name, description, language and `repository.visibility`.
 // `visibility` is NESTED under `repository`, and it is the field that lets a
-// caller tell a public service from a private one before it asks for
+// caller tell a public project from a private one before it asks for
 // coordinates it may not get — it stays on tier 1 because whether a repository
 // is public is itself an advertising fact. A client that spelled it as a
 // top-level `visibility` would be reading a key pantry never sends, which is
 // the hole a hand-written struct gives you when the document is the contract.
-type Service struct {
+//
+// W3 renamed pantry's catalog schema from `Service` to `Project`, and its
+// routes from the `services` family to the `projects` family; this type is
+// the client half of that rename. The fields are otherwise UNCHANGED — `kind`,
+// `core`, `basePath`, `exposes`, `consumes`, `dependencies` and `owner` are in
+// pantry's schema and are not decoded here, because caf asks tier 1 for one
+// thing only (does this name exist, and is it public) and a struct that
+// carried the whole schema would be a second copy of it.
+type Project struct {
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
 	Language    string     `json:"language,omitempty"`
 	Repository  PublicRepo `json:"repository"`
 }
 
-// PublicRepo is what tier 1 says about a service's repository — one field and
+// PublicRepo is what tier 1 says about a project's repository — one field and
 // not three. `url` and `defaultBranch` are the coordinates, they are tier 2's,
 // and they are not in this object for anyone else.
 type PublicRepo struct {
@@ -93,21 +101,21 @@ func (c HTTPPantry) client() *http.Client {
 	return &http.Client{Timeout: timeout}
 }
 
-// Service is tier 1: one service's listing entry, anonymous.
-func (c HTTPPantry) Service(ctx context.Context, name string) (*Service, error) {
-	var svc Service
-	if err := c.get(ctx, nil, "/v1/services/"+name, &svc); err != nil {
+// Project is tier 1: one project's listing entry, anonymous.
+func (c HTTPPantry) Project(ctx context.Context, name string) (*Project, error) {
+	var proj Project
+	if err := c.get(ctx, nil, "/v1/projects/"+name, &proj); err != nil {
 		return nil, err
 	}
-	return &svc, nil
+	return &proj, nil
 }
 
-// Coordinates is tier 2: one service's repository coordinates, behind the
+// Coordinates is tier 2: one project's repository coordinates, behind the
 // caller's caf token. The token is presented as a bearer and kept for the
 // length of exactly this call.
 func (c HTTPPantry) Coordinates(ctx context.Context, name, token string) (*Coordinates, error) {
 	var coords Coordinates
-	if err := c.get(ctx, &token, "/v1/services/"+name+"/coordinates", &coords); err != nil {
+	if err := c.get(ctx, &token, "/v1/projects/"+name+"/coordinates", &coords); err != nil {
 		return nil, err
 	}
 	return &coords, nil

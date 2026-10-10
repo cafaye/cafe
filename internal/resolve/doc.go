@@ -5,11 +5,11 @@
 // THE THREE TIERS, AND WHAT EACH ONE IS FOR. A dependency is resolved through
 // the tiers in order, and the order is the semantics:
 //
-//	Tier 1  the listing	pantry  GET /v1/services/{name}	        anonymous
-//	Tier 2  the metadata	pantry  GET /v1/services/{name}/coordinates  caf token
+//	Tier 1  the listing	pantry  GET /v1/projects/{name}	         anonymous
+//	Tier 2  the metadata	pantry  GET /v1/projects/{name}/coordinates  caf token
 //	Tier 3  the artifact	conductor POST …/artifact_fetches → redeem	entitlement
 //
-// Tier 1 says the service exists and what it is (name, description, language,
+// Tier 1 says the project exists and what it is (name, description, language,
 // `repository.visibility`) — advertising, free and paid alike (D5). Tier 2
 // says where its code lives (repository coordinates), to any caller
 // presenting a live caf token. Tier 3 says whether the caller may fetch the
@@ -18,6 +18,14 @@
 // version-range), and the redemption is the fetch grant. A free service never
 // reaches tier 3 — it is not a product, and conductor's check refuses it with
 // 422.
+//
+// TWO VOCABULARIES, and the difference is deliberate rather than sloppy. Tier
+// 1 serves pantry's `Project` — W3 renamed pantry's catalog schema from
+// `Service` — and tier 3 asks conductor about its PRODUCTS (`kit`,
+// `platform`, `identity`, `courier`), which are still service names because
+// conductor's contract did not move. A sentence about the catalog says
+// "project"; a sentence about what is paid says "product"; the runtime word
+// "service" survives in caf's own vocabulary.
 //
 // THE ONE INVARIANT, stated once because everything else here is downstream of
 // it: **the caller's credential is presented, never stored.** The resolver

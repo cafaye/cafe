@@ -26,8 +26,8 @@ var resolveCallerToken = "cafaye_" + strings.Repeat("k", 40)
 // asked and with what token, because "the resolver walked the tiers in order"
 // is a claim about calls rather than about output.
 type fakeResolvePantry struct {
-	service    *resolve.Service
-	serviceErr error
+	project    *resolve.Project
+	projectErr error
 	coords     *resolve.Coordinates
 	coordsErr  error
 
@@ -35,12 +35,12 @@ type fakeResolvePantry struct {
 	lastToken string
 }
 
-func (f *fakeResolvePantry) Service(_ context.Context, name string) (*resolve.Service, error) {
+func (f *fakeResolvePantry) Project(_ context.Context, name string) (*resolve.Project, error) {
 	f.calls = append(f.calls, "tier1:"+name)
-	if f.serviceErr != nil {
-		return nil, f.serviceErr
+	if f.projectErr != nil {
+		return nil, f.projectErr
 	}
-	return f.service, nil
+	return f.project, nil
 }
 
 func (f *fakeResolvePantry) Coordinates(_ context.Context, name, token string) (*resolve.Coordinates, error) {
@@ -124,7 +124,7 @@ func runResolveCLI(t *testing.T, deps resolveDeps, args ...string) (code int, st
 func TestResolveAllResolvedIsOneJSONDocument(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "gateway", Repository: resolve.PublicRepo{Visibility: "public"}},
+		project: &resolve.Project{Name: "gateway", Repository: resolve.PublicRepo{Visibility: "public"}},
 		coords:  &resolve.Coordinates{Name: "gateway", Repository: resolve.Repository{URL: "git@github.com:cafaye/gateway.git"}},
 	}
 	cond := &fakeResolveConductor{grant: &resolve.FetchGrant{
@@ -193,7 +193,7 @@ owner:
 func TestResolveEntitlementRequiredBlocksWithTheNamedFailure(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "identity"},
+		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
 	cond := &fakeResolveConductor{err: &resolve.ConductorError{Status: 403, Code: "entitlement_required",
@@ -233,7 +233,7 @@ owner:
 func TestResolveVersionNotGrantedNamesBothRanges(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "identity"},
+		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
 	cond := &fakeResolveConductor{err: &resolve.ConductorError{Status: 403, Code: "version_not_granted",
@@ -274,7 +274,7 @@ owner:
 func TestResolveOptionalDependencyDegradesWithAWarning(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "identity"},
+		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
 	cond := &fakeResolveConductor{err: &resolve.ConductorError{Status: 403, Code: "entitlement_required",
@@ -322,7 +322,7 @@ owner:
 // service that does not exist has no coordinates and no entitlement.
 func TestResolveUnknownNameStopsAtTierOne(t *testing.T) {
 	ring := newAgentTestRing()
-	pantry := &fakeResolvePantry{serviceErr: &resolve.PantryError{Status: 404, Code: "not_found",
+	pantry := &fakeResolvePantry{projectErr: &resolve.PantryError{Status: 404, Code: "not_found",
 		Detail: "no official cafaye service is registered under that name"}}
 	cond := &fakeResolveConductor{}
 	deps := resolveTestEnv(t, ring, pantry, cond)
@@ -381,7 +381,7 @@ func TestResolveWithoutAManifestNamesTheCommand(t *testing.T) {
 // try.
 func TestResolveWithoutASessionSaysSoAndStillRuns(t *testing.T) {
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "gateway"},
+		project: &resolve.Project{Name: "gateway"},
 		coords:  &resolve.Coordinates{Name: "gateway", Repository: resolve.Repository{URL: "git@github.com:cafaye/gateway.git"}},
 	}
 	deps := resolveDeps{dir: t.TempDir(), ring: newAgentTestRing(), pantry: pantry, conductor: &fakeResolveConductor{}}
@@ -424,7 +424,7 @@ owner:
 func TestResolvePaidDependencyWithoutAccountNamesTheFlag(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "identity"},
+		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
 	cond := &fakeResolveConductor{}
@@ -465,7 +465,7 @@ owner:
 func TestResolvePaidDependencyWithoutAVersionIsNamed(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "identity"},
+		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
 	cond := &fakeResolveConductor{}
@@ -507,7 +507,7 @@ owner:
 func TestResolveAccountThatIsNotAUUIDIsNamed(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
-		service: &resolve.Service{Name: "identity"},
+		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
 	cond := &fakeResolveConductor{}
@@ -557,10 +557,10 @@ func TestResolveFlagsNameTheOriginsEndToEnd(t *testing.T) {
 	pantry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pantryHits++
 		switch r.URL.Path {
-		case "/v1/services/identity":
+		case "/v1/projects/identity":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go"}`))
-		case "/v1/services/identity/coordinates":
+		case "/v1/projects/identity/coordinates":
 			if got := r.Header.Get("Authorization"); got != "Bearer "+resolveCallerToken {
 				t.Errorf("tier 2 bearer = %q, want the caller's token", got)
 			}
