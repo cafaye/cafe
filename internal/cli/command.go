@@ -84,6 +84,7 @@ func Commands() []*Command {
 		newProviderCommand(providerDeps{}),
 		newReclaimCommand(reclaimDeps{}),
 		newResolveCommand(resolveDeps{}),
+		newSecretCommand(secretDeps{}),
 		newUpdateCommand(),
 		newVersionCommand(),
 	}
