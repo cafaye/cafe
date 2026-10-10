@@ -1,0 +1,354 @@
+package cli
+
+import (
+	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/json"
+	"encoding/pem"
+	"math/big"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/cafaye/caf/internal/backup"
+	"github.com/cafaye/caf/internal/boxd"
+)
+
+// The observe stream's pure facts, driven as tables, plus one integration that
+// assembles a real Observation through the box-world's own readers — a real
+// self-signed certificate on disk, a real backup drill journal, and the two
+// env seams. The point of the integration is that the WHOLE machine-readable
+// document is produced by the real path, marshalled, and read back, because the
+// consumers (the policy engine OPS-P16, the monthly report OPS-P13) consume
+// JSON and a report that does not marshal is a report nobody reads.
+
+// TestPendingAgainstRangeMatchesInRangeNewer is the version-range match: a
+// release is pending when it is inside the box's range AND strictly newer than
+// what is deployed. Both halves matter — an already-deployed release is not
+// pending, and a release outside the range is not this box's to apply.
+func TestPendingAgainstRangeMatchesInRangeNewer(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name       string
+		rangeText  string
+		deployed   string
+		candidates []boxd.CandidateRelease
+		want       []string // "name@version", in order
+	}{
+		{
+			name:      "in range and newer is pending; equal, older and out of range are not",
+			rangeText: "^1.2.3",
+			deployed:  "1.2.3",
+			candidates: []boxd.CandidateRelease{
+				{Name: "core", Version: "1.2.3"},
+				{Name: "core", Version: "1.4.0"},
+				{Name: "core", Version: "2.0.0"},
+				{Name: "core", Version: "1.1.0"},
+			},
+			want: []string{"core@1.4.0"},
+		},
+		{
+			name:       "a floor range admits everything above the deployed",
+			rangeText:  ">=1.0.0",
+			deployed:   "1.2.0",
+			candidates: []boxd.CandidateRelease{{Name: "core", Version: "9.9.9"}},
+			want:       []string{"core@9.9.9"},
+		},
+		{
+			name:       "a candidate whose version does not parse is skipped, not fatal",
+			rangeText:  "^1.2.3",
+			deployed:   "1.2.3",
+			candidates: []boxd.CandidateRelease{{Name: "core", Version: "not-a-version"}, {Name: "core", Version: "1.5.0"}},
+			want:       []string{"core@1.5.0"},
+		},
+		{
+			name:       "an empty range classifies nothing rather than calling everything pending",
+			rangeText:  "",
+			deployed:   "1.2.3",
+			candidates: []boxd.CandidateRelease{{Name: "core", Version: "9.9.9"}},
+			want:       nil,
+		},
+		{
+			name:       "a deployed version that does not parse classifies nothing",
+			rangeText:  "^1.2.3",
+			deployed:   "latest",
+			candidates: []boxd.CandidateRelease{{Name: "core", Version: "1.5.0"}},
+			want:       nil,
+		},
+	}
+	_ = now
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pendingAgainstRange(tt.rangeText, tt.deployed, tt.candidates)
+			if len(got) != len(tt.want) {
+				t.Fatalf("pending = %+v, want %v", got, tt.want)
+			}
+			for i, r := range got {
+				if got := r.Name + "@" + r.Version; got != tt.want[i] {
+					t.Errorf("pending[%d] = %q, want %q", i, got, tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+// TestHealthStatusNamesEveryDegradedReason: health is a classification, and a
+// degraded box says WHY — a healthy/degraded word with no reason is a report
+// nobody can act on, which is the whole point of carrying reasons.
+func TestHealthStatusNamesEveryDegradedReason(t *testing.T) {
+	okCert := boxd.Certificate{Status: "ok"}
+	expiringCert := boxd.Certificate{Status: "expiring"}
+	passed := &boxd.DrillFact{Outcome: string(backup.DrillPassed)}
+	failed := &boxd.DrillFact{Outcome: string(backup.DrillFailed)}
+
+	tests := []struct {
+		name       string
+		cert       boxd.Certificate
+		drill      *boxd.DrillFact
+		wantStatus string
+		wantReason string // a substring of one reason
+	}{
+		{"a passed drill and a long-lived certificate is healthy", okCert, passed, "healthy", ""},
+		{"a failed drill is degraded and says so", okCert, failed, "degraded", "did not pass"},
+		{"no drill is degraded: a box that has never proved a restore", okCert, nil, "degraded", "no backup drill"},
+		{"an expiring certificate is degraded and names it", expiringCert, passed, "degraded", "close to expiry"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := healthStatus(3, tt.cert, tt.drill)
+			if h.Status != tt.wantStatus {
+				t.Fatalf("status = %q, want %q", h.Status, tt.wantStatus)
+			}
+			if h.Phase != 3 {
+				t.Errorf("phase = %d, want 3", h.Phase)
+			}
+			if tt.wantReason == "" {
+				if len(h.Reasons) != 0 {
+					t.Errorf("healthy box carried reasons: %v", h.Reasons)
+				}
+				return
+			}
+			if len(h.Reasons) == 0 {
+				t.Fatalf("a degraded box named no reason")
+			}
+			joined := strings.Join(h.Reasons, "; ")
+			if !strings.Contains(joined, tt.wantReason) {
+				t.Errorf("reasons %q do not name %q", joined, tt.wantReason)
+			}
+		})
+	}
+}
+
+// TestCertStatusClassifiesRemainingLife: an expired certificate is a box that
+// can no longer dial, an expiring one is a box with a window, and DaysLeft is
+// allowed to go negative so a consumer can say HOW expired.
+func TestCertStatusClassifiesRemainingLife(t *testing.T) {
+	now := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name       string
+		notAfter   time.Time
+		wantStatus string
+		wantSigned bool // DaysLeft negative
+	}{
+		{"forty days out is ok", now.Add(40 * 24 * time.Hour), "ok", false},
+		{"ten days out is expiring", now.Add(10 * 24 * time.Hour), "expiring", false},
+		{"in the past is expired, with negative days", now.Add(-5 * 24 * time.Hour), "expired", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status, days := certStatus(tt.notAfter, now, certWarnWindow)
+			if status != tt.wantStatus {
+				t.Fatalf("status = %q, want %q", status, tt.wantStatus)
+			}
+			if tt.wantSigned && days >= 0 {
+				t.Errorf("DaysLeft = %d, want negative for an expired certificate", days)
+			}
+			if !tt.wantSigned && days <= 0 {
+				t.Errorf("DaysLeft = %d, want positive", days)
+			}
+		})
+	}
+}
+
+// TestTheBoxWorldObservesItself is the integration: the real box-world assembles
+// a machine-readable Observation from a real certificate on disk, a real backup
+// drill journal, the two env seams, and a conductor's candidate releases. It is
+// marshalled and read back, because that is what the policy engine and the
+// monthly report will do.
+func TestTheBoxWorldObservesItself(t *testing.T) {
+	now := time.Now()
+	t.Setenv("CAF_BOX_RANGE", "^1.0.0")
+	t.Setenv("CAF_DRILL_DIR", filepath.Join(t.TempDir(), "drills"))
+
+	identityPath := writeObserveBox(t, "1.0.0", now.Add(40*24*time.Hour))
+	// A drill that passed two days ago.
+	writeObserveDrill(t, backup.DrillRecord{
+		Service:    "identity",
+		Engine:     "cnpg",
+		Scratch:    "identity_drill",
+		Outcome:    backup.DrillPassed,
+		Reason:     backup.DrillReasonPassed,
+		FinishedAt: now.Add(-48 * time.Hour),
+	})
+
+	world := newBoxWorld(boxd.Identity{BoxID: "box-test", Conductor: "conductor.example.com:443", Version: "1.0.0"},
+		identityPath, filepath.Join(t.TempDir(), "boxd-state.json"))
+	obs, err := world.Observe(context.Background(), boxd.ObserveParams{Releases: []boxd.CandidateRelease{
+		{Name: "core", Version: "1.5.0"}, // in ^1.0.0, newer → pending
+		{Name: "core", Version: "2.0.0"}, // out of range → not pending
+	}})
+	if err != nil {
+		t.Fatalf("observe: %v", err)
+	}
+
+	if obs.SchemaVersion != boxd.ObservationSchemaVersion {
+		t.Errorf("schema_version = %d, want %d", obs.SchemaVersion, boxd.ObservationSchemaVersion)
+	}
+	if obs.BoxID != "box-test" || obs.DeployedVersion != "1.0.0" {
+		t.Errorf("box_id/deployed = %q/%q", obs.BoxID, obs.DeployedVersion)
+	}
+	if obs.VersionRange.Status != "ok" || obs.VersionRange.Range != "^1.0.0" {
+		t.Errorf("version range = %+v, want ok ^1.0.0", obs.VersionRange)
+	}
+	if obs.Certificate.Status != "ok" || obs.Certificate.ExpiresAt == nil || obs.Certificate.DaysLeft == nil {
+		t.Errorf("certificate = %+v, want ok with an expiry and days left", obs.Certificate)
+	}
+	if obs.Health.Status != "healthy" {
+		t.Errorf("health = %+v, want healthy (ok cert, passed drill)", obs.Health)
+	}
+	if obs.LastDrill == nil || obs.LastDrill.Outcome != string(backup.DrillPassed) {
+		t.Errorf("last drill = %+v, want the passed drill", obs.LastDrill)
+	}
+	if len(obs.PendingReleases) != 1 || obs.PendingReleases[0].Version != "1.5.0" {
+		t.Errorf("pending releases = %+v, want exactly core 1.5.0", obs.PendingReleases)
+	}
+	if obs.Disk.Status != "unknown" || obs.Disk.Detail == "" {
+		t.Errorf("disk = %+v, want unknown with a reason (v0 cannot read it)", obs.Disk)
+	}
+
+	// Machine-readable: the document marshals, unmarshals and round-trips.
+	raw, err := json.Marshal(obs)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var back boxd.Observation
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatalf("the observation does not round-trip as JSON: %v", err)
+	}
+	if back.SchemaVersion != obs.SchemaVersion || len(back.PendingReleases) != 1 {
+		t.Errorf("round-trip lost data: %+v", back)
+	}
+	for _, key := range []string{`"schema_version"`, `"box_id"`, `"deployed_version"`, `"health"`, `"certificate"`, `"pending_releases"`} {
+		if !strings.Contains(string(raw), key) {
+			t.Errorf("the JSON document is missing the key %s the consumers read", key)
+		}
+	}
+}
+
+// TestTheBoxWorldObservesWithoutARangeHonestly: a box that has not been told
+// its version range reports the ones it cannot classify as none, and says the
+// range is unknown — rather than guessing and calling everything pending.
+func TestTheBoxWorldObservesWithoutARangeHonestly(t *testing.T) {
+	t.Setenv("CAF_BOX_RANGE", "")
+	identityPath := writeObserveBox(t, "1.0.0", time.Now().Add(40*24*time.Hour))
+
+	world := newBoxWorld(boxd.Identity{BoxID: "box-test", Version: "1.0.0"},
+		identityPath, filepath.Join(t.TempDir(), "boxd-state.json"))
+	obs, err := world.Observe(context.Background(), boxd.ObserveParams{Releases: []boxd.CandidateRelease{
+		{Name: "core", Version: "9.9.9"},
+	}})
+	if err != nil {
+		t.Fatalf("observe: %v", err)
+	}
+	if obs.VersionRange.Status != "unknown" || obs.VersionRange.Detail == "" {
+		t.Errorf("version range = %+v, want unknown with a reason", obs.VersionRange)
+	}
+	if len(obs.PendingReleases) != 0 {
+		t.Errorf("pending releases = %+v, want none when the range is unknown", obs.PendingReleases)
+	}
+}
+
+// writeObserveBox writes an enrolled identity and a real self-signed client
+// certificate with the given NotAfter, and returns the identity file path. The
+// certificate is generated in-process so the test is hermetic — no fixture to
+// expire, no key to keep.
+func writeObserveBox(t *testing.T, version string, notAfter time.Time) string {
+	t.Helper()
+	dir := t.TempDir()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	tmpl := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "box-test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     notAfter,
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("create certificate: %v", err)
+	}
+	certPath := filepath.Join(dir, "box.crt")
+	keyPath := filepath.Join(dir, "box.key")
+	writePEM(t, certPath, "CERTIFICATE", der)
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		t.Fatalf("marshal key: %v", err)
+	}
+	writePEM(t, keyPath, "EC PRIVATE KEY", keyDER)
+
+	identityPath := filepath.Join(dir, "box-identity.json")
+	doc := identityDocument{
+		BoxID:       "box-test",
+		Conductor:   "conductor.example.com:443",
+		Version:     version,
+		Certificate: "box.crt",
+		Key:         "box.key",
+	}
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal identity: %v", err)
+	}
+	if err := os.WriteFile(identityPath, data, 0o600); err != nil {
+		t.Fatalf("write identity: %v", err)
+	}
+	return identityPath
+}
+
+func writePEM(t *testing.T, path, blockType string, der []byte) {
+	t.Helper()
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create %s: %v", path, err)
+	}
+	defer f.Close()
+	if err := pem.Encode(f, &pem.Block{Type: blockType, Bytes: der}); err != nil {
+		t.Fatalf("write pem %s: %v", path, err)
+	}
+}
+
+// writeObserveDrill appends one drill record to the drill directory the env
+// seam names, so the box-world's reader finds a real journal.
+func writeObserveDrill(t *testing.T, rec backup.DrillRecord) {
+	t.Helper()
+	dir, err := backup.DefaultDrillDir()
+	if err != nil {
+		t.Fatalf("drill dir: %v", err)
+	}
+	store, err := backup.OpenDrillStore(dir)
+	if err != nil {
+		t.Fatalf("open drill store: %v", err)
+	}
+	if _, err := store.Append(rec); err != nil {
+		t.Fatalf("append drill: %v", err)
+	}
+}

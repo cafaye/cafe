@@ -31,6 +31,10 @@ import (
 type recordingWorld struct {
 	identity Identity
 	stack    StackStatus
+	// observe is what Observe answers. It is a field so a test can set a
+	// representative report, and so the walk in TestEveryRoute... sees the
+	// real Observation shape rather than the zero value alone.
+	observe Observation
 }
 
 func (r recordingWorld) Identity() Identity { return r.identity }
@@ -46,6 +50,35 @@ func (r recordingWorld) Envelope(_ context.Context, env Envelope) (EnvelopeResul
 	// box key's business and this seam stands in for the box, not the key.
 	return EnvelopeResult{Installed: true}, nil
 }
+func (r recordingWorld) Observe(_ context.Context, _ ObserveParams) (Observation, error) {
+	// The observation the tests render. Every enumerable field is populated
+	// so the Secret-shaped walk sees each sub-type in the graph, not just the
+	// one the happy path happens to reach.
+	return r.observe, nil
+}
+
+// representativeObservation is a fully-populated Observation for the walk: a
+// healthy-ish report with a nil-versus-set contrast in it, so the pointer
+// fields are exercised in both states.
+func representativeObservation(now time.Time) Observation {
+	expires := now.Add(30 * 24 * time.Hour)
+	finished := now.Add(-20 * time.Hour)
+	days := 30
+	age := 0
+	return Observation{
+		SchemaVersion:   ObservationSchemaVersion,
+		BoxID:           "box-test",
+		DeployedVersion: "1.2.3",
+		VersionRange:    VersionRange{Range: "^1.2.0", Status: "ok"},
+		Conductor:       "conductor.example.com:443",
+		CollectedAt:     now,
+		Health:          Health{Status: "healthy", Phase: 3},
+		Certificate:     Certificate{Status: "ok", ExpiresAt: &expires, DaysLeft: &days},
+		Disk:            Disk{Status: "unknown", Detail: "needs the substrate"},
+		LastDrill:       &DrillFact{Outcome: "passed", Reason: "caf-backup/drill-passed", FinishedAt: &finished, AgeDays: &age},
+		PendingReleases: []PendingRelease{{Name: "core", Version: "1.4.0"}},
+	}
+}
 
 // TestEveryRouteRefusesToAnswerWithASecret is the load-bearing test of the
 // whole packet. Two halves, in one render: each route is driven through the
@@ -60,6 +93,7 @@ func TestEveryRouteRefusesToAnswerWithASecret(t *testing.T) {
 	world := recordingWorld{
 		identity: Identity{BoxID: "box-test", Conductor: "conductor.example.com:443", Version: "test"},
 		stack:    StackStatus{Services: []string{"k3s", "identity", "courier"}, Phase: 3, Detail: "phase 3 of 8"},
+		observe:  representativeObservation(time.Now()),
 	}
 
 	for _, route := range table {
@@ -279,6 +313,7 @@ func TestEveryRouteInTheTableRedeems(t *testing.T) {
 	world := recordingWorld{
 		identity: Identity{BoxID: "box-test", Version: "test"},
 		stack:    StackStatus{Services: []string{"k3s"}, Phase: 1},
+		observe:  representativeObservation(time.Now()),
 	}
 	for _, route := range table {
 		t.Run(route.Name, func(t *testing.T) {

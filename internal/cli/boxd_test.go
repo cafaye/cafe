@@ -129,6 +129,9 @@ func (w staticWorld) Apply(_ context.Context, phase int) (boxd.ApplyResult, erro
 func (w staticWorld) Envelope(context.Context, boxd.Envelope) (boxd.EnvelopeResult, error) {
 	return boxd.EnvelopeResult{Installed: true}, nil
 }
+func (w staticWorld) Observe(_ context.Context, _ boxd.ObserveParams) (boxd.Observation, error) {
+	return boxd.Observation{SchemaVersion: boxd.ObservationSchemaVersion, BoxID: w.id.BoxID, DeployedVersion: w.id.Version}, nil
+}
 
 // fakeDeps assembles the seam for a command driven by the test.
 func fakeDeps(t *testing.T, id boxd.Identity, ch *queueConductor) (boxdDeps, *counterDialer) {
@@ -321,7 +324,8 @@ func TestTheIdentityFileRefusesAnUnusableDocument(t *testing.T) {
 // rather than a failure or a double application.
 func TestTheBoxWorldAppliesIdempotently(t *testing.T) {
 	state := filepath.Join(t.TempDir(), "boxd-state.json")
-	world := newBoxWorld(boxd.Identity{BoxID: "box-test"}, state)
+	identity := filepath.Join(t.TempDir(), "box-identity.json")
+	world := newBoxWorld(boxd.Identity{BoxID: "box-test"}, identity, state)
 
 	first, err := world.Apply(context.Background(), 3)
 	if err != nil || first.Applied != 1 {
@@ -348,7 +352,8 @@ func TestTheBoxWorldAppliesIdempotently(t *testing.T) {
 // refuses rather than pretending — a silent success would be the box telling
 // conductor a credential was installed when it was not.
 func TestTheBoxWorldRefusesTheEnvelopeHonestly(t *testing.T) {
-	world := newBoxWorld(boxd.Identity{BoxID: "box-test"}, filepath.Join(t.TempDir(), "boxd-state.json"))
+	identity := filepath.Join(t.TempDir(), "box-identity.json")
+	world := newBoxWorld(boxd.Identity{BoxID: "box-test"}, identity, filepath.Join(t.TempDir(), "boxd-state.json"))
 	_, err := world.Envelope(context.Background(), boxd.Envelope{Provider: "cloudflare"})
 	if err == nil || !strings.Contains(err.Error(), "substrate") {
 		t.Fatalf("err = %v; want it to name the substrate as what is missing", err)
