@@ -31,7 +31,7 @@ var Products = []string{"kit", "platform", "identity", "courier"}
 // something the reader typed is a sentence that sends them to a log.
 var accountUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
-// Coordinates is tier 2: where a service's code lives. It is the whole of what
+// Coordinates is tier 2: where a project's code lives. It is the whole of what
 // pantry's coordinates operation serves — the name echoed from the path and
 // the repository — because that is the whole of what tier 2 reveals.
 //
@@ -41,7 +41,7 @@ var accountUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]
 type Coordinates struct {
 	// Name is the cafaye namespace name, echoed from the path.
 	Name string `json:"name"`
-	// Repository is the service's repository — the one thing tier 2 reveals
+	// Repository is the project's repository — the one thing tier 2 reveals
 	// that tier 1 does not.
 	Repository Repository `json:"repository"`
 }
@@ -171,10 +171,10 @@ type Report struct {
 // needs a server to prove the client is a test that cannot run on a bare CI
 // runner.
 type Pantry interface {
-	// Service is tier 1: one service's listing entry, anonymous. A 404 is
+	// Project is tier 1: one project's listing entry, anonymous. A 404 is
 	// an error carrying the not_found code.
-	Service(ctx context.Context, name string) (*Service, error)
-	// Coordinates is tier 2: one service's repository coordinates, gated on
+	Project(ctx context.Context, name string) (*Project, error)
+	// Coordinates is tier 2: one project's repository coordinates, gated on
 	// the caller's caf token. The token is presented, never stored.
 	Coordinates(ctx context.Context, name, token string) (*Coordinates, error)
 }
@@ -244,7 +244,7 @@ func (r *Resolver) resolveOne(ctx context.Context, dep contract.Dependency, toke
 		res.Failure = &Failure{Tier: 1, Code: "no_catalog", Message: "no pantry is configured, so the catalog cannot be read"}
 		return res
 	}
-	if _, err := r.pantry.Service(ctx, dep.Name); err != nil {
+	if _, err := r.pantry.Project(ctx, dep.Name); err != nil {
 		res.Failure = failureFrom(1, err)
 		return res
 	}

@@ -5,11 +5,11 @@
 // THE THREE TIERS, AND WHAT EACH ONE IS FOR. A dependency is resolved through
 // the tiers in order, and the order is the semantics:
 //
-//	Tier 1  the listing	pantry  GET /v1/services/{name}	        anonymous
-//	Tier 2  the metadata	pantry  GET /v1/services/{name}/coordinates  caf token
+//	Tier 1  the listing	pantry  GET /v1/projects/{name}	         anonymous
+//	Tier 2  the metadata	pantry  GET /v1/projects/{name}/coordinates  caf token
 //	Tier 3  the artifact	conductor POST …/artifact_fetches → redeem	entitlement
 //
-// Tier 1 says the service exists and what it is (name, description, language,
+// Tier 1 says the project exists and what it is (name, description, language,
 // `repository.visibility`) — advertising, free and paid alike (D5). Tier 2
 // says where its code lives (repository coordinates), to any caller
 // presenting a live caf token. Tier 3 says whether the caller may fetch the
