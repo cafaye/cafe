@@ -76,10 +76,16 @@ type Observation struct {
 	// Disk is the box's root filesystem in bytes, measured by the world (see
 	// Disk's own comment for why the measurement is not made here).
 	Disk Disk `json:"disk"`
-	// LastDrill is the most recent backup drill for a service on this box,
-	// and nil when this box has never run a drill — a box with no history is
-	// the ordinary first state, not an error.
+	// LastDrill is the most recent backup drill across every service on this
+	// box — the box-level summary — and nil when this box has never run a
+	// drill: a box with no history is the ordinary first state, not an error.
 	LastDrill *DrillFact `json:"last_drill,omitempty"`
+	// Drills is the same history at the grain the monthly report needs: the
+	// newest drill PER SERVICE, newest first. A box running four services has
+	// four restores to prove, and "the last drill passed" hides that three of
+	// them were never proved this month. It is nil when no service has ever
+	// been drilled, which is the same nil LastDrill carries.
+	Drills []ServiceDrill `json:"drills,omitempty"`
 	// PendingReleases are the candidate releases that are both inside this
 	// box's version range and strictly newer than the deployed version. The
 	// applied-or-held question is a later packet's; this names what COULD be
@@ -187,6 +193,27 @@ type DrillFact struct {
 	// AgeDays is whole days since the drill finished, nil when the date is
 	// unknown. "The last drill passed, six months ago" is a different report
 	// from one passed yesterday, and a consumer should not compute it twice.
+	AgeDays *int `json:"age_days,omitempty"`
+}
+
+// ServiceDrill is one service's newest drill on this box. It is DrillFact with
+// the service named: a restore is proved for ONE database, so the fact that has
+// to survive the wire is which database, not only that some restore happened
+// somewhere on the box.
+type ServiceDrill struct {
+	// Service is the one that was drilled.
+	Service string `json:"service"`
+	// Outcome is backup's own word: passed, failed or refused.
+	Outcome string `json:"outcome"`
+	// Reason is the machine-matchable name (caf-backup/<name>).
+	Reason string `json:"reason,omitempty"`
+	// Detail is the failing command's or refusal's words, trimmed. It is
+	// prose and NOT what a script matches on — Reason is.
+	Detail string `json:"detail,omitempty"`
+	// FinishedAt is when the drill finished; nil if the record carried none.
+	FinishedAt *time.Time `json:"finished_at,omitempty"`
+	// AgeDays is whole days since the drill finished, nil when the date is
+	// unknown. Stored for the same reason DrillFact's is.
 	AgeDays *int `json:"age_days,omitempty"`
 }
 

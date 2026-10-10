@@ -92,14 +92,16 @@ gate:
       minimum: 23
     - id: suite
       match: '^caf: [0-9]+ packages, ([0-9]+) top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 1128, measured: 1136 top-level tests declared on this tree, 8 expected
+      # 1132, measured: 1140 top-level tests declared on this tree, 8 expected
       # skips. This number was 1079 while the w2 merges (cve-surface, secret
       # inventory) landed 46 top-level tests without moving the floor — the
       # ratchet was red on a merged tree until this packet swept it up. OPS-P15
       # adds 5 top-level tests (internal/cli/observe_test.go) so the floor moved
-      # to 1133-8, and the disk reading adds 3 more of its own (the measurement,
-      # the named failure, the absolute path), so it is now 1136-8.
-      minimum: 1128
+      # to 1133-8; the disk reading adds 3 (the measurement, the named failure,
+      # the absolute path) so it is 1136-8; the per-service drills add 4 (the
+      # table, the empty history, the two-world integration, the cancelled
+      # context) so it is now 1140-8.
+      minimum: 1132
     - id: subtests
       match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1157, measured.

@@ -351,6 +351,105 @@ func TestRootDiskPathIsAbsolute(t *testing.T) {
 	}
 }
 
+// TestServiceDrillsAreNewestPerServiceNewestFirst: the per-service grain is
+// the monthly report's unit of reassurance — "every service restored, and the
+// one that did not is named". A table drives three services with three
+// different histories, and asserts one row each, newest first, with the service
+// named and the age computed against the clock the test holds.
+func TestServiceDrillsAreNewestPerServiceNewestFirst(t *testing.T) {
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	recs := []backup.DrillRecord{
+		{Service: "courier", Outcome: backup.DrillPassed, Reason: backup.DrillReasonPassed, FinishedAt: now.Add(-72 * time.Hour)},
+		{Service: "billing", Outcome: backup.DrillFailed, Reason: backup.DrillReasonRefused, FinishedAt: now.Add(-5 * time.Hour)},
+		{Service: "identity", Outcome: backup.DrillPassed, Reason: backup.DrillReasonPassed, FinishedAt: now.Add(-30 * time.Hour)},
+	}
+	got := serviceDrills(recs, now)
+	if len(got) != 3 {
+		t.Fatalf("drills = %+v, want one row per service", got)
+	}
+	if got[0].Service != "billing" || got[1].Service != "identity" || got[2].Service != "courier" {
+		t.Fatalf("drills are not newest-first: %s, %s, %s", got[0].Service, got[1].Service, got[2].Service)
+	}
+	if got[0].Outcome != string(backup.DrillFailed) || got[0].Reason != string(backup.DrillReasonRefused) {
+		t.Errorf("the newest row lost the failing verdict: %+v", got[0])
+	}
+	if got[0].AgeDays == nil || *got[0].AgeDays != 0 {
+		t.Errorf("age days = %v, want 0 for a drill five hours ago", got[0].AgeDays)
+	}
+	if got[2].AgeDays == nil || *got[2].AgeDays != 3 {
+		t.Errorf("age days = %v, want 3 for a drill three days ago", got[2].AgeDays)
+	}
+}
+
+// TestServiceDrillsAreEmptyWhenNothingHasBeenDrilled: a box with no history
+// produces no rows, not zero-value ones. A row with an empty service name and
+// an empty outcome is a claim that some nameless service was drilled and
+// succeeded, which is the shape of a lie nobody can act on.
+func TestServiceDrillsAreEmptyWhenNothingHasBeenDrilled(t *testing.T) {
+	if got := serviceDrills(nil, time.Now()); len(got) != 0 {
+		t.Errorf("drills = %+v, want none for a box with no history", got)
+	}
+}
+
+// TestTheBoxWorldObservesEveryServiceItHasDrilled is the per-service half of
+// the integration: two real journals, two entries, and the box-level LastDrill
+// points at the newer of them. It is the wire shape a monthly report reads.
+func TestTheBoxWorldObservesEveryServiceItHasDrilled(t *testing.T) {
+	now := time.Now()
+	t.Setenv("CAF_BOX_RANGE", "")
+	t.Setenv("CAF_DRILL_DIR", filepath.Join(t.TempDir(), "drills"))
+	writeObserveDrill(t, backup.DrillRecord{
+		Service: "courier", Engine: backup.EngineCNPG, Scratch: "courier_drill",
+		Outcome: backup.DrillPassed, Reason: backup.DrillReasonPassed, FinishedAt: now.Add(-10 * 24 * time.Hour),
+	})
+	writeObserveDrill(t, backup.DrillRecord{
+		Service: "billing", Engine: backup.EngineKamal, Scratch: "billing_drill",
+		Outcome: backup.DrillFailed, Reason: backup.DrillReasonRefused, FinishedAt: now.Add(-2 * time.Hour),
+	})
+
+	world := newBoxWorld(boxd.Identity{BoxID: "box-test", Version: "1.0.0"},
+		writeObserveBox(t, "1.0.0", now.Add(40*24*time.Hour)), filepath.Join(t.TempDir(), "boxd-state.json"))
+	obs, err := world.Observe(context.Background(), boxd.ObserveParams{})
+	if err != nil {
+		t.Fatalf("observe: %v", err)
+	}
+
+	if len(obs.Drills) != 2 {
+		t.Fatalf("drills = %+v, want one row per drilled service", obs.Drills)
+	}
+	if obs.Drills[0].Service != "billing" || obs.Drills[0].Outcome != string(backup.DrillFailed) {
+		t.Errorf("drills[0] = %+v, want the newer failing billing drill first", obs.Drills[0])
+	}
+	if obs.LastDrill == nil || obs.LastDrill.Outcome != string(backup.DrillFailed) {
+		t.Errorf("the box-level last drill = %+v, want the newest record's verdict", obs.LastDrill)
+	}
+	// The wire shape: the rows and the summary survive a marshal round trip.
+	raw, err := json.Marshal(obs)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(raw), `"drills"`) || !strings.Contains(string(raw), `"last_drill"`) {
+		t.Errorf("the JSON document is missing the per-service drill rows or the box-level summary: %s", raw)
+	}
+}
+
+// TestTheObserveStopsWhenTheConnectionIsGone: the assembly is bounded by the
+// caller's context, because a report assembled for a connection that has
+// already gone away is a report nobody will ack. A cancelled context is
+// refused rather than answered with a stale document.
+func TestTheObserveStopsWhenTheConnectionIsGone(t *testing.T) {
+	t.Setenv("CAF_BOX_RANGE", "")
+	identityPath := writeObserveBox(t, "1.0.0", time.Now().Add(40*24*time.Hour))
+	world := newBoxWorld(boxd.Identity{BoxID: "box-test", Version: "1.0.0"},
+		identityPath, filepath.Join(t.TempDir(), "boxd-state.json"))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := world.Observe(ctx, boxd.ObserveParams{}); err == nil {
+		t.Error("a cancelled context still produced an observation")
+	}
+}
+
 // writeObserveBox writes an enrolled identity and a real self-signed client
 // certificate with the given NotAfter, and returns the identity file path. The
 // certificate is generated in-process so the test is hermetic — no fixture to

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/cafaye/caf/internal/backup"
@@ -99,6 +100,51 @@ func healthStatus(phase int, cert boxd.Certificate, drill *boxd.DrillFact) boxd.
 		status = "degraded"
 	}
 	return boxd.Health{Status: status, Phase: phase, Reasons: reasons}
+}
+
+// serviceDrill flattens one service's newest record. It is drillFact with the
+// service named, and it takes the record rather than reading anything: the
+// reading is the caller's, so this stays a function a table can drive.
+func serviceDrill(rec backup.DrillRecord, now time.Time) boxd.ServiceDrill {
+	finished := rec.FinishedAt
+	age := ageDays(rec.FinishedAt, now)
+	return boxd.ServiceDrill{
+		Service:    rec.Service,
+		Outcome:    string(rec.Outcome),
+		Reason:     string(rec.Reason),
+		Detail:     rec.Detail,
+		FinishedAt: &finished,
+		AgeDays:    &age,
+	}
+}
+
+// serviceDrills is the whole drill history at the per-service grain, newest
+// first. The order is by the record's own finish time rather than by service
+// name, so a reader looking at the first entry sees the most recently proved
+// restore on the box — which is the one the monthly report leads with — and a
+// reader looking for a service finds it wherever it sorted.
+//
+// A box that has never drilled produces no rows: the box-level LastDrill nil
+// is the fact that says "no history at all", and a table of zero rows beside it
+// would be a second spelling of the same nothing.
+func serviceDrills(recs []backup.DrillRecord, now time.Time) []boxd.ServiceDrill {
+	rows := make([]boxd.ServiceDrill, 0, len(recs))
+	for _, rec := range recs {
+		rows = append(rows, serviceDrill(rec, now))
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		return drillTime(rows[i]).After(drillTime(rows[j]))
+	})
+	return rows
+}
+
+// drillTime reads a row's finish time, treating an absent one as the zero time
+// so an unfinished record sorts last rather than panicking the comparison.
+func drillTime(d boxd.ServiceDrill) time.Time {
+	if d.FinishedAt == nil {
+		return time.Time{}
+	}
+	return *d.FinishedAt
 }
 
 // drillFact flattens a backup.DrillRecord to the boxd DrillFact the

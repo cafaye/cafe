@@ -1492,7 +1492,7 @@ read a credential, because neither route exists to be asked for.
 | Route | What it does | Mutates? |
 |---|---|---|
 | `box.status` | the box's enrolled identity, the daemon's version, where its conductor is | no |
-| `observe.report` | the observe stream: health, deployed version, certificate expiry, disk, last backup drill, and which releases are pending against the box's version range — as one machine-readable JSON document | no |
+| `observe.report` | the observe stream: health, deployed version, certificate expiry, disk, the last backup drill per service and across the box, and which releases are pending against the box's version range — as one machine-readable JSON document | no |
 | `stack.status` | the substrate's phase, and the phase the install plan reached | no |
 | `stack.apply` | apply one phase of the recorded install plan, idempotently | yes |
 | `provider.connect` | install a provider credential sealed to this box as a Kubernetes Secret | yes |

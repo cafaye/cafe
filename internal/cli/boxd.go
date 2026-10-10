@@ -444,6 +444,7 @@ func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.
 		Certificate:     cert,
 		Disk:            diskFact(rootDiskPath()),
 		LastDrill:       drill,
+		Drills:          w.drills(now),
 	}
 	if rangeText, ok := observeRange(); ok {
 		obs.VersionRange = boxd.VersionRange{Range: rangeText, Status: "ok"}
@@ -496,33 +497,45 @@ func (w boxWorld) certificate(now time.Time) boxd.Certificate {
 // with no drill history reports nil, which healthStatus turns into its own
 // named reason rather than a hole nobody notices.
 func (w boxWorld) lastDrill(now time.Time) *boxd.DrillFact {
-	dir, err := backup.DefaultDrillDir()
-	if err != nil {
-		return nil
-	}
-	rec, ok := latestDrillRecord(dir)
+	rec, ok := newestDrill(w.drillRecords())
 	if !ok {
 		return nil
 	}
 	return drillFact(rec, now)
 }
 
-// latestDrillRecord finds the newest drill record across the journals in a
-// drill directory. It reuses backup.DrillStore.Latest for the per-service
-// newest (which sorts and trims the journal on read) and picks the latest of
-// those across services, so "the last drill on this box" is a fact about the
-// newest record rather than about alphabetical service order.
-func latestDrillRecord(dir string) (backup.DrillRecord, bool) {
+// drills is the same history at the per-service grain: the newest record for
+// every service this box has a journal for, so a box running four services
+// reports four restores and names which of them were never proved.
+func (w boxWorld) drills(now time.Time) []boxd.ServiceDrill {
+	return serviceDrills(w.drillRecords(), now)
+}
+
+// drillRecords is the newest record for each service this box has drilled,
+// in no guaranteed order — the callers that care sort, for their own reason.
+func (w boxWorld) drillRecords() []backup.DrillRecord {
+	dir, err := backup.DefaultDrillDir()
+	if err != nil {
+		return nil
+	}
+	return latestDrillRecords(dir)
+}
+
+// latestDrillRecords finds the newest drill record in each journal in a drill
+// directory. It reuses backup.DrillStore.Latest for the per-service newest
+// (which sorts and trims the journal on read) and returns them all, so
+// "the drills on this box" is a fact about the journals that exist rather than
+// about a single winner across them.
+func latestDrillRecords(dir string) []backup.DrillRecord {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return backup.DrillRecord{}, false
+		return nil
 	}
 	store, err := backup.OpenDrillStore(dir)
 	if err != nil {
-		return backup.DrillRecord{}, false
+		return nil
 	}
-	var best backup.DrillRecord
-	found := false
+	var recs []backup.DrillRecord
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
@@ -531,6 +544,18 @@ func latestDrillRecord(dir string) (backup.DrillRecord, bool) {
 		if err != nil || !ok {
 			continue
 		}
+		recs = append(recs, rec)
+	}
+	return recs
+}
+
+// newestDrill picks the single newest record out of a set, which is what the
+// box-level LastDrill field is: a summary of the whole box, next to the
+// per-service rows that say which service it was.
+func newestDrill(recs []backup.DrillRecord) (backup.DrillRecord, bool) {
+	var best backup.DrillRecord
+	found := false
+	for _, rec := range recs {
 		if !found || rec.FinishedAt.After(best.FinishedAt) {
 			best, found = rec, true
 		}
