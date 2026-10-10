@@ -68,7 +68,7 @@ func (r Report) Summary() string {
 	}
 	line := fmt.Sprintf("%s: %d components checked against %d advisories — %d affected, %d with no fix, %d unreadable",
 		box, r.Counts.Components, r.Counts.Advisories, r.Counts.Affected, r.Counts.NoFix, r.Counts.Unknown)
-	if len(r.Findings) == 0 && r.Counts.Unknown == 0 {
+	if r.Clean() {
 		line += "; nothing to act on"
 	}
 	return line

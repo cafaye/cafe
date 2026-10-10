@@ -56,10 +56,10 @@ type Finding struct {
 // Counts is the shape of the answer in numbers, for the one line a person
 // reads first.
 type Counts struct {
-	Affected    int `json:"affected"`
-	NoFix       int `json:"no_fix"`
-	Unaffected  int `json:"unaffected"`
-	Unknown     int `json:"unknown"`
+	Affected   int `json:"affected"`
+	NoFix      int `json:"no_fix"`
+	Unaffected int `json:"unaffected"`
+	Unknown    int `json:"unknown"`
 	// Components is how many components were classified, not how many had
 	// advisories — so "17 components, 3 affected" is the honest pair and
 	// "3 advisories" alone is not.
@@ -125,17 +125,17 @@ func Classify(components []Component, advisories []Advisory) ([]Finding, Counts)
 			continue
 		}
 		f := Finding{
-			Component: c.Name,
-			Version:   c.Version,
-			Kind:      c.Kind,
-			Severity:  a.Severity,
+			Component:  c.Name,
+			Version:    c.Version,
+			Kind:       c.Kind,
+			Severity:   a.Severity,
 			AdvisoryID: a.ID,
-			Summary:  a.Summary,
-			URL:      a.URL,
-			Class:    class,
-			Fixed:    a.Fixed,
-			Impact:   c.Blast,
-			Why:      whyFor(c, a, class),
+			Summary:    a.Summary,
+			URL:        a.URL,
+			Class:      class,
+			Fixed:      a.Fixed,
+			Impact:     c.Blast,
+			Why:        whyFor(c, a, class),
 		}
 		if c.Blast.Apply == "" {
 			f.ImpactUnknown = true

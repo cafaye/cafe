@@ -60,16 +60,27 @@ func ParseSchedule(text string) (Schedule, error) {
 	return Schedule{Every: d}, nil
 }
 
-// String is the schedule as written, so a report prints what the caller
-// asked for rather than what caf parsed.
+// String is the schedule as written, so a report prints what the caller asked
+// for rather than what caf parsed.
+//
+// It expresses the interval in the largest unit that divides it evenly, so a
+// 90-minute schedule prints "90m" rather than Go's "1h30m0s". That is not
+// pedantry: a report is read next to the configuration that set it, and a
+// reader who wrote `1d` and sees `24h0m0s` has to work out whether those are
+// the same setting before they can trust the rest of the line.
 func (s Schedule) String() string {
-	if s.Every == 0 {
+	switch {
+	case s.Every == 0:
 		return ""
-	}
-	if s.Every%(24*time.Hour) == 0 && s.Every >= 24*time.Hour {
+	case s.Every%(24*time.Hour) == 0 && s.Every >= 24*time.Hour:
 		return fmt.Sprintf("%dd", int(s.Every.Hours()/24))
+	case s.Every%time.Hour == 0:
+		return fmt.Sprintf("%dh", int(s.Every.Hours()))
+	case s.Every%time.Minute == 0:
+		return fmt.Sprintf("%dm", int(s.Every.Minutes()))
+	default:
+		return s.Every.String()
 	}
-	return s.Every.String()
 }
 
 // Due reports whether a scan is due, and when the next one is.

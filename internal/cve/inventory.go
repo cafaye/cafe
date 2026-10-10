@@ -459,19 +459,24 @@ func (inv *Inventory) Compare() []Divergence {
 // advisory against a component nobody declared is still an advisory against a
 // thing running on the box, and the catalogue's job is to characterise the
 // substrate, not to set the scope of what can be vulnerable.
+//
+// The declared half comes first and in catalogue order, and the observed
+// extras are appended sorted by name, so two runs over one box produce the
+// same list.
 func (inv *Inventory) Components() []Component {
 	out := make([]Component, 0, len(inv.Declared)+len(inv.Observed))
 	out = append(out, inv.Declared...)
+	var extras []Component
 	known := make(map[string]bool, len(inv.Declared))
 	for _, c := range inv.Declared {
 		known[c.Name] = true
 	}
 	for _, c := range inv.Observed {
 		if !known[c.Name] {
-			out = append(out, c)
+			extras = append(extras, c)
 		}
 	}
-	return out
+	return append(out, sortedByName(extras)...)
 }
 
 // sameVersion reports whether two spellings name the same version.
@@ -493,38 +498,65 @@ func sameVersion(declared, observed string) bool {
 	return aok && bok && a == b
 }
 
-// comparable is the three-integer form of a version as the substrate writes
-// it: a leading `v` comes off, a `+build` suffix comes off, and anything else
-// that is not three numbers fails rather than being coerced.
+// comparable is the three-integer form of a version as the substrate and the
+// box actually write it, which is not always three integers.
 //
-// It fails honestly, and the caller says so. A version caf cannot compare is
-// reported as an unknown classification — "we do not know whether this is
-// affected, because we could not read the version" — rather than as
-// unaffected, which is the one wrong answer that gets a box left unpatched.
+// The box's own spellings carry two kinds of suffix and both are stripped,
+// because both are the same version for the purpose of an advisory:
+//
+//   - a build metadata suffix after a `+`, which is how the node agent writes
+//     itself: `v1.37.1+k3s1`.
+//   - a distro suffix after a `-`, which is how every pinned image writes
+//     itself: `7.4.1-alpine`, `2.10.24-alpine`. An alpine package version is
+//     an upstream version plus a revision, and an advisory's `fixed` is
+//     written in whichever of the two the publisher chose.
+//
+// The cost of stripping is stated rather than hidden: `7.4.2-rc1` and
+// `7.4.2` compare equal here, where semver orders the prerelease below the
+// release. That is the right trade for this substrate, whose advisories are
+// about images pinned to a distro tag rather than about prerelease ladders,
+// and it is why a version whose suffix is alphabetic in a way that is NOT a
+// distro tag — `latest`, `sha256:…`, `1.2.3.4` — still fails: leading
+// non-digits in the three components are refused rather than truncated.
+//
+// What is never done is coercing. A version caf cannot reduce to three
+// numbers fails here, and the caller says so: "we could not read the version"
+// and "the version is unaffected" are different sentences, and only one of
+// them is safe to act on.
 func comparable(version string) (string, bool) {
 	text := strings.TrimSpace(version)
 	if text == "" {
 		return "", false
 	}
-	if i := strings.IndexByte(text, '+'); i >= 0 {
-		text = text[:i]
+	// A digest or any other opaque reference has no leading version at all.
+	if strings.ContainsAny(text, ":/@") {
+		return "", false
 	}
 	text = strings.TrimPrefix(text, "v")
-	parts := strings.Split(text, ".")
+	parts := strings.SplitN(text, ".", 4)
 	if len(parts) != 3 {
 		return "", false
 	}
+	var out []string
 	for _, part := range parts {
-		if part == "" {
+		digits := leadingDigits(part)
+		if digits == "" {
 			return "", false
 		}
-		for _, r := range part {
-			if r < '0' || r > '9' {
-				return "", false
-			}
-		}
+		out = append(out, digits)
 	}
-	return text, true
+	return strings.Join(out, "."), true
+}
+
+// leadingDigits is the numeric prefix of one version component, or empty when
+// it does not start with a digit. `alpine` from `7.4.1-alpine` yields "1";
+// `x` from `v1.x` yields nothing and the version is refused.
+func leadingDigits(part string) string {
+	i := 0
+	for i < len(part) && part[i] >= '0' && part[i] <= '9' {
+		i++
+	}
+	return part[:i]
 }
 
 // compareVersions orders two versions by their numeric components, so 10.0.0
@@ -560,14 +592,4 @@ func sortedByName(in []Component) []Component {
 	copy(out, in)
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
-}
-
-// known reports whether the substrate catalogue names this component.
-func known(name string) bool {
-	for _, c := range Substrate {
-		if c.Name == name {
-			return true
-		}
-	}
-	return false
 }
