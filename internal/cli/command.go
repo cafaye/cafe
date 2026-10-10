@@ -75,7 +75,7 @@ func Commands() []*Command {
 		newDevCommand(defaultDevDeps()),
 		newDoctorCommand(),
 		newEnvCommand(),
-		newFailureCommand(),
+		newFailureCommand(failureDeps{}),
 		newGenCommand(),
 		newInitCommand(),
 		newLockCommand(),

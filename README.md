@@ -96,7 +96,7 @@ a run in which they passed.
 | `caf box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
 | `caf provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to conductor — the agent never sees the value | **works** |
 | `caf provider status --json` | which providers this box is connected to, as conductor reports it; opens no envelope | **works** |
-| `caf failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see; a rule the observation cannot answer is UNKNOWN, never a pass | **works** |
+| `caf failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
 | `caf gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
 | `caf gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
 | `caf lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |
@@ -104,7 +104,6 @@ a run in which they passed.
 | `caf contract lint <path>` | validate `cafaye.yml` against the core schema, and the OpenAPI document it names | **works** |
 | `caf contract breaking <a> <b>` | compare two OpenAPI revisions, reporting which tier each change breaks | **works** |
 | `caf contract resolve <c> <v>` | resolve a core version constraint | **works** |
-| `caf failure check [<observation.json>]` | check a box against the failure-mode library — the ten documented conditions a generic monitor cannot see, each answer `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
 | `caf mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
 | `caf boxd` | run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities (invariant 4) | **works** |
 | `caf version` | print the caf version | **works** |

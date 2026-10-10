@@ -31,7 +31,7 @@ func TestFailureCheckEvaluatesTheLibraryAgainstADocument(t *testing.T) {
 	  "publishers": []
 	}`)
 
-	out, err := runFailureCheck(t, path)
+	out, err := runFailureCheck(t, []string{path})
 	if err != nil {
 		t.Fatalf("caf failure check: %v", err)
 	}
@@ -51,25 +51,50 @@ func TestFailureCheckEvaluatesTheLibraryAgainstADocument(t *testing.T) {
 		}
 	}
 	// The OIDC row is the one the document does not exhibit: all three
-	// variables are set, so the condition does not hold and is not listed.
+	// variables are set, so the condition does not hold — and the report
+	// renders holds and unknowns only, because a healthy box's nine quiet rows
+	// are noise and the count line says how many there were.
 	if strings.Contains(out, "oidc-not-mounted") {
 		t.Error("the report names oidc-not-mounted against a document with all three variables set")
 	}
-	// The MFA row's observation fact is absent, so it is UNKNOWN and says so
-	// rather than passing.
-	if !strings.Contains(out, "identity-mfa-routes-absent") ||
-		!strings.Contains(out, "the observation does not carry Settings") {
-		t.Errorf("the MFA row is neither held nor named unanswerable:\n%s", out)
+	// The MFA row's fact IS in the document — identity's settings carry the
+	// three OIDC names and no MFA key — so it holds, which is the whole shape
+	// of the doc's row: absent, not broken.
+	if !strings.Contains(out, "identity-mfa-routes-absent") {
+		t.Errorf("the MFA row is not reported as holding:\n%s", out)
 	}
 	if !strings.Contains(out, "10 rule(s) evaluated") {
 		t.Errorf("the report does not say how many rules it evaluated:\n%s", out)
 	}
+	if !strings.Contains(out, "caf failure: 10 rule(s), 9 condition(s) hold, 0 unknown") {
+		t.Errorf("the summary line is not the count the report produced:\n%s", out)
+	}
 }
 
-// A document that cannot be read is a refusal naming the file, and stdin is the
-// default so the verb composes with the box-side half that does not exist yet.
+// Stdin is the default input, so the verb composes with the box-side half that
+// does not exist yet: `caf box observe | caf failure check` is the shape the
+// substrate packet completes. The reader is a seam parameter for the reason
+// deployDeps.confirm is — a test that read os.Stdin would hang.
+func TestFailureCheckReadsStdinByDefault(t *testing.T) {
+	const doc = `{"services": ["gateway"], "replicas": {"gateway": 3}}`
+
+	env := newTestEnv()
+	c := newFailureCommand(failureDeps{stdin: strings.NewReader(doc)})
+	if err := c.Execute(env, []string{"check", "-"}); err != nil {
+		t.Fatalf("caf failure check -: %v", err)
+	}
+	out := written(t, env.Stdout)
+	if !strings.Contains(out, "gateway-sessions-per-process") {
+		t.Errorf("the document exhibits gateway on three replicas and the report does not say so:\n%s", out)
+	}
+}
+
+// A document that cannot be read is a refusal naming the file, and one that is
+// not JSON is a refusal naming the decode. "Your observation is wrong" is a
+// sentence that sends a reader to a file they cannot fix.
 func TestFailureCheckRefusesWhatItCannotRead(t *testing.T) {
-	if _, err := runFailureCheck(t, filepath.Join(t.TempDir(), "absent.json")); err == nil {
+	absent := filepath.Join(t.TempDir(), "absent.json")
+	if _, err := runFailureCheck(t, []string{absent}); err == nil {
 		t.Fatal("an absent observation document produced a report")
 	} else if !strings.Contains(err.Error(), "read the observation") {
 		t.Errorf("err = %v, want it to name the read that failed", err)
@@ -77,24 +102,39 @@ func TestFailureCheckRefusesWhatItCannotRead(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "broken.json")
-	writeFile(t, path, "{\"services\": ")
-	env := newTestEnv()
-	env.Stdin = strings.NewReader("")
-	_ = path
-	c := lookupCommandOrFail(t, "failure check")
-	if err := c.Execute(env, []string{path}); err == nil {
+	writeFile(t, path, `{"services": `)
+	if _, err := runFailureCheck(t, []string{path}); err == nil {
 		t.Fatal("an observation document that is not JSON produced a report")
 	} else if !strings.Contains(err.Error(), "decode the observation") {
 		t.Errorf("err = %v, want it to name the decode that failed", err)
 	}
 }
 
-func runFailureCheck(t *testing.T, path string) (string, error) {
+// Bare `caf failure` answers rather than exiting 2, and an unknown verb names
+// the one that exists. A parent with no verbs a reader can discover is a
+// parent nobody uses.
+func TestFailureAnswersItsOwnHelpAndNamesItsVerb(t *testing.T) {
+	env := newTestEnv()
+	if err := newFailureCommand(failureDeps{}).Execute(env, nil); err != nil {
+		t.Fatalf("bare caf failure: %v", err)
+	}
+	if out := written(t, env.Stdout); !strings.Contains(out, "caf failure check") {
+		t.Errorf("bare `caf failure` did not print the verb:\n%s", out)
+	}
+
+	err := newFailureCommand(failureDeps{}).Execute(newTestEnv(), []string{"lint", "-"})
+	if err == nil || !strings.Contains(err.Error(), "unknown caf failure verb") {
+		t.Errorf("err = %v, want it to name the verb that does not exist", err)
+	}
+}
+
+// runFailureCheck runs the verb through the parent, the way a person types it,
+// so the dispatch is under test rather than assumed.
+func runFailureCheck(t *testing.T, args []string) (string, error) {
 	t.Helper()
 	env := newTestEnv()
-	c := lookupCommandOrFail(t, "failure check")
-	err := c.Execute(env, []string{path})
-	return env.Stdout.(*strings.Builder).String(), err
+	err := newFailureCommand(failureDeps{}).Execute(env, append([]string{"check"}, args...))
+	return written(t, env.Stdout), err
 }
 
 func writeFile(t *testing.T, path, content string) {
