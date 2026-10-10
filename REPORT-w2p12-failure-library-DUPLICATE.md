@@ -137,11 +137,46 @@ In `/tmp/w2-failure-library-finish`, on `ops/w2-failure-library`:
 5. `bin/prime`, bounded, plus `gofmt -l .` and `go vet ./...` which are not in
    `bin/prime` and are required separately.
 
-The exact exit codes from §5's ratchet run are recorded in the commit message
-that raises the floor; this file was written before that run finished, and the
-final numbers are on the branch rather than in this prose.
+The exit codes this worker observed on the recovered tree, after the edits:
+
+| command | exit |
+|---|---|
+| `go build ./...` | **0** |
+| `gofmt -l .` | **0** (no output) |
+| `go vet ./...` | **0** |
+| `go test -count=1 ./internal/failure/...` | **0** |
+| `go test -count=1 ./internal/ci/ -run TestTheGateFloor` | **0** (was 1) |
+| `go test -count=1 ./internal/lock/...` | **0** |
+| `go run ./cmd/caf lock --verify .` | **0** |
+| `go test -count=1 ./internal/cli/...` | **FAIL** — see §7.1 |
 
 ## 7. What is left for the successor
+
+### 7.1 The one red test, and whose it is
+
+`go test ./internal/cli/...` fails, and it fails **in the working tree only,
+not on the branch tip**:
+
+```
+command_test.go:37: registry = [agent backup box boxd contract deploy dev
+doctor env failure gen init lock mcp new provider reclaim resolve update
+version], want [... env gen init ...]
+```
+
+`git show HEAD:internal/cli/command.go | grep failure` is empty, and the
+working tree's `command.go:78` reads `newFailureCommand(failureDeps{})`. The
+duplicate worker registered the command in the working tree and had not yet
+added `"failure"` to `command_test.go`'s expected registry list when it
+collected this. Its refactor follows `resolveDeps`/`deployDeps`: a
+`failureDeps` struct with `withDefaults()`, so the command's stdin is a
+parameter a test owns. Whichever of the two lands it, the row in
+`command_test.go`'s `want` list is the other half.
+
+A successor should take the duplicate's working-tree shape (it is the better
+one — see §7.3), finish it, and commit it; the branch tip as it stands is green
+and functional without it.
+
+### 7.2 The library and the packet
 
 The library, its checker, its CLI and its tests exist and pass. What is
 outstanding:
@@ -169,10 +204,20 @@ outstanding:
 ## 8. Where the artifacts are
 
 - Branch `ops/w2-failure-library` in `/Users/kaka/Code/any/moon/cafaye/caf`:
-  the packet's code, through `26e5b50` plus this worker's commits.
+  `26e5b50` (the duplicate's committed work: `internal/cli/failure.go`, its
+  tests, the wiring, and the `internal/failure` fixes) plus `3d1e5c0`, this
+  worker's floors-and-docs commit.
+- The working tree of `/tmp/w2-failure-library-finish` also carries the
+  duplicate worker's UNCOMMITTED refactor (`internal/cli/command.go`,
+  `internal/cli/failure.go`, `internal/cli/failure_test.go`,
+  `internal/cli/stub_test.go`) — see §7.1. It is mid-edit and deliberately
+  uncommitted by this worker.
 - A full snapshot of `internal/failure/` as it stood at 15:50, before the
   duplicate's last edits: `/tmp/w2-failure-library-snapshot/`. It is the only
   copy of that intermediate state, and it is why the worktree's deletion cost
   nothing.
 - The recovered worktree this worker worked in:
-  `/tmp/w2-failure-library-finish`.
+  `/tmp/w2-failure-library-finish`. It still exists as a git worktree
+  registered to the caf repo; a manager collecting it should run
+  `git -C moon/cafaye/caf worktree remove --force` on it rather than deleting
+  the directory, or the registration lingers.
