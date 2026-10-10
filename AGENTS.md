@@ -20,6 +20,7 @@ internal/run/       the resumable install model: run, steps, events, lease
 internal/contract/  the core contract: manifests, the vendored schemas, versions
 internal/backup/    caf backup: the cross-file contract, the plan, the cycle
 internal/dev/       the local stack: the planner, the renderer, two seams
+internal/failure/   caf failure: the failure-mode library, and the checker over it
 internal/gen/       caf gen: the pure generator, and the drift gate that keeps it honest
 internal/scaffold/  caf new and caf init: the template catalog, the render, the write
 internal/lock/      caf lock: the pin over specs, vendored schemas and generated output, and its verifier
@@ -377,16 +378,17 @@ customer reads rather than a file a machine writes:
   `BoxObserver`, which adapts `internal/boxd`'s `World` into the facts it has.
 - `check.go` — `Evaluate`, `Report`, and the rendering: every hold names the
   rule, the evidence, the remedy and the contract; every unknown names the
-  fact the box did not supply.
+  fact the box did not supply. `caf failure check` (`internal/cli/failure.go`)
+  is the verb over it, and its observation document is the same `Observation`
+  shape, so the CLI and the box daemon are two producers of one input.
 
 **A rule that cannot be evaluated says so, and that is the whole design.**
 The library's first consumer is the box daemon, whose `World` carries service
 names and the install phase and nothing else, so a checker driven by it answers
-`unknown` for the nine rules that need more — and names the fact each one
-needs. A false "does not hold" would be a green light over a blind spot, which
-is the report `internal/lock` refuses to produce; `TestTheBoxDaemonsObserva-
-tionAnswersNothingAndSaysSo` in `check_test.go` watches that answer stay
-unknown rather than drift into a pass.
+`unknown` for all ten rules — and names the fact each one needs. A false "does
+not hold" would be a green light over a blind spot, which is the report
+`internal/lock` refuses to produce; `TestTheBoxDaemonsObservationAnswersNothingAndSaysSo`
+in `check_test.go` watches that answer stay unknown rather than drift into a pass.
 
 the standard library cannot do the job. `internal/box`, `internal/ledger`,
 `internal/ports`, `internal/reclaim`, `internal/ryuk`,
