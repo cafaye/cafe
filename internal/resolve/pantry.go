@@ -148,7 +148,7 @@ func (c HTTPPantry) get(ctx context.Context, token *string, path string, out any
 		return fmt.Errorf("read pantry's answer: %w", err)
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return problemError(res.StatusCode, raw)
+		return ProblemError(res.StatusCode, raw)
 	}
 	if err := json.Unmarshal(raw, out); err != nil {
 		return fmt.Errorf("decode pantry's answer: %w", err)
@@ -156,7 +156,7 @@ func (c HTTPPantry) get(ctx context.Context, token *string, path string, out any
 	return nil
 }
 
-// problemError turns pantry's problem document into a PantryError. The code
+// ProblemError turns pantry's problem document into a PantryError. The code
 // and detail are read out of the body rather than derived from the status,
 // because pantry names its refusals in the body (`code: not_found`) and two
 // different refusals can share a status.
@@ -171,7 +171,12 @@ func (c HTTPPantry) get(ctx context.Context, token *string, path string, out any
 // and the first line of the body: a proxy in front of pantry that answers
 // HTML is a fact the caller is entitled to, and dropping it would report a
 // 502 as "pantry said no".
-func problemError(status int, raw []byte) error {
+//
+// It is exported because the problem envelope is PANTRY'S, not the read path's:
+// the publish client (internal/publish) posts to the write routes and decodes
+// the same refusals, and a second copy of the decoder is a second thing to
+// drift. The read path's own non-2xx answers go through it unchanged.
+func ProblemError(status int, raw []byte) error {
 	var problem struct {
 		Code    string `json:"code"`
 		Detail  string `json:"detail"`
