@@ -23,6 +23,14 @@ type World interface {
 	// no key material — the identity is a name and an address, and the key is
 	// the transport's, loaded per connection in client.go.
 	Identity() Identity
+	// Observe assembles the one machine-readable report this box makes about
+	// itself — health, deployed version, certificate expiry, disk, the last
+	// backup drill, and which of the given candidate releases are pending
+	// against this box's version range. Read-only, and non-secret by
+	// construction: the answer is walked by the load-bearing test the same as
+	// every other route's. Params carries the release universe from conductor;
+	// the range and the deployed version are the box's own facts.
+	Observe(ctx context.Context, params ObserveParams) (Observation, error)
 	// Stack is what the substrate is running: the services, their phase, and
 	// the install phase the last plan reached. Read-only.
 	Stack(ctx context.Context) (StackStatus, error)
@@ -79,6 +87,7 @@ type Table []Route
 func Register() Table {
 	return Table{
 		boxStatusRoute(),
+		observeReportRoute(),
 		stackStatusRoute(),
 		stackApplyRoute(),
 		providerConnectRoute(),
@@ -152,7 +161,7 @@ func refuse(cap Capability, status Status, why string) Outcome {
 }
 
 // ---------------------------------------------------------------------------
-// the four routes
+// the routes
 // ---------------------------------------------------------------------------
 
 // boxStatus answers "who is this box and is it well". It is the route a

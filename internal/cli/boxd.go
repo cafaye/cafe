@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/cafaye/caf/internal/backup"
 	"github.com/cafaye/caf/internal/boxd"
 )
 
@@ -133,7 +136,7 @@ func runBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
 		if statePath == "" {
 			statePath = boxStatePath(identityPath)
 		}
-		deps.worldFor = func(id boxd.Identity) boxd.World { return newBoxWorld(id, statePath) }
+		deps.worldFor = func(id boxd.Identity) boxd.World { return newBoxWorld(id, identityPath, statePath) }
 	}
 
 	daemon, err := boxd.Open(boxd.Options{
@@ -283,12 +286,16 @@ func boxStatePath(identityPath string) string {
 // so Redeem's box binding compares the capability against the enrollment this
 // box is running as right now.
 type boxWorld struct {
-	id   boxd.Identity
-	path string
+	id boxd.Identity
+	// identityPath is where the enrolled identity lives, so Observe can read
+	// the box's own client certificate for its expiry date — the one
+	// credential-adjacent fact that decides whether the box can dial at all.
+	identityPath string
+	path         string
 }
 
-func newBoxWorld(id boxd.Identity, statePath string) boxWorld {
-	return boxWorld{id: id, path: statePath}
+func newBoxWorld(id boxd.Identity, identityPath, statePath string) boxWorld {
+	return boxWorld{id: id, identityPath: identityPath, path: statePath}
 }
 
 // boxState is the daemon's own record: which phase the plan reached and which
@@ -394,4 +401,164 @@ func (w boxWorld) Apply(_ context.Context, phase int) (boxd.ApplyResult, error) 
 func (w boxWorld) Envelope(context.Context, boxd.Envelope) (boxd.EnvelopeResult, error) {
 	return boxd.EnvelopeResult{}, fmt.Errorf("opening a sealed envelope and installing a Kubernetes Secret needs the substrate; " +
 		"that lands with the substrate packet, until then this route cannot be fulfilled")
+}
+
+// Observe assembles the machine-readable report this box makes about itself —
+// the read half of the observe stream the observe.report route answers with.
+// It gathers the facts v0 can honestly read: the deployed version (the
+// enrolled identity), the install phase (the daemon's own state file), the
+// client certificate's expiry (the enrollment's own certificate), the root
+// filesystem's usage (one statfs, made here because boxd itself may not import
+// syscall) and the most recent backup drill (the drill directory this box
+// writes). It computes which of conductor's candidate releases are pending
+// against the box's own version range.
+//
+// ctx is honoured at each bounded read: there is no long-running loop here —
+// every gather is one read of a local file and one syscall — but a cancelled
+// context stops the assembly rather than returning a stale report, because a
+// report assembled for a connection that has already gone away is a report
+// nobody will ack.
+func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.Observation, error) {
+	now := time.Now().UTC()
+
+	state, err := w.load()
+	if err != nil {
+		// A state file that cannot be read is a real problem, but the box can
+		// still report everything else; phase 0 is the honest stand-in and the
+		// health summary carries the gap only if it matters.
+		state = boxState{}
+	}
+	if err := ctx.Err(); err != nil {
+		return boxd.Observation{}, err
+	}
+
+	cert := w.certificate(now)
+	drill := w.lastDrill(now)
+
+	obs := boxd.Observation{
+		SchemaVersion:   boxd.ObservationSchemaVersion,
+		BoxID:           w.id.BoxID,
+		DeployedVersion: w.id.Version,
+		Conductor:       w.id.Conductor,
+		CollectedAt:     now,
+		Certificate:     cert,
+		Disk:            diskFact(rootDiskPath()),
+		LastDrill:       drill,
+		Drills:          w.drills(now),
+	}
+	if rangeText, ok := observeRange(); ok {
+		obs.VersionRange = boxd.VersionRange{Range: rangeText, Status: "ok"}
+		obs.PendingReleases = pendingAgainstRange(rangeText, w.id.Version, params.Releases)
+	} else {
+		obs.VersionRange = boxd.VersionRange{
+			Status: "unknown",
+			Detail: "the core constraint this box tracks is not set; enrollment writes CAF_BOX_RANGE when it lands",
+		}
+	}
+	obs.Health = healthStatus(state.Phase, cert, drill)
+	return obs, nil
+}
+
+// certificate reads the box's own client certificate for its expiry. The
+// certificate is public — its dates are not a secret — but its NotAfter is
+// the one date that decides whether this box can still dial conductor, which
+// is why an observation carries it rather than leaving it to be discovered
+// when the handshake starts failing.
+func (w boxWorld) certificate(now time.Time) boxd.Certificate {
+	store, err := newFileIdentityStore(w.identityPath)
+	if err != nil {
+		return boxd.Certificate{Status: "unknown", Detail: err.Error()}
+	}
+	doc, err := store.read()
+	if err != nil {
+		return boxd.Certificate{Status: "unknown", Detail: err.Error()}
+	}
+	if doc.Certificate == "" || doc.Key == "" {
+		return boxd.Certificate{Status: "unknown", Detail: "the enrolled identity names no certificate and key"}
+	}
+	pair, err := tls.LoadX509KeyPair(store.resolve(doc.Certificate), store.resolve(doc.Key))
+	if err != nil {
+		return boxd.Certificate{Status: "unknown", Detail: fmt.Sprintf("load the box certificate: %v", err)}
+	}
+	notAfter := pair.Leaf.NotAfter
+	status, days := certStatus(notAfter, now, certWarnWindow)
+	c := boxd.Certificate{Status: status, ExpiresAt: &notAfter, DaysLeft: &days}
+	switch status {
+	case "expiring":
+		c.Detail = fmt.Sprintf("the client certificate expires in %d day(s)", days)
+	case "expired":
+		c.Detail = fmt.Sprintf("the client certificate expired %d day(s) ago", -days)
+	}
+	return c
+}
+
+// lastDrill reads the most recent backup drill across every service this box
+// keeps a journal for, and flattens it to the observation's DrillFact. A box
+// with no drill history reports nil, which healthStatus turns into its own
+// named reason rather than a hole nobody notices.
+func (w boxWorld) lastDrill(now time.Time) *boxd.DrillFact {
+	rec, ok := newestDrill(w.drillRecords())
+	if !ok {
+		return nil
+	}
+	return drillFact(rec, now)
+}
+
+// drills is the same history at the per-service grain: the newest record for
+// every service this box has a journal for, so a box running four services
+// reports four restores and names which of them were never proved.
+func (w boxWorld) drills(now time.Time) []boxd.ServiceDrill {
+	return serviceDrills(w.drillRecords(), now)
+}
+
+// drillRecords is the newest record for each service this box has drilled,
+// in no guaranteed order — the callers that care sort, for their own reason.
+func (w boxWorld) drillRecords() []backup.DrillRecord {
+	dir, err := backup.DefaultDrillDir()
+	if err != nil {
+		return nil
+	}
+	return latestDrillRecords(dir)
+}
+
+// latestDrillRecords finds the newest drill record in each journal in a drill
+// directory. It reuses backup.DrillStore.Latest for the per-service newest
+// (which sorts and trims the journal on read) and returns them all, so
+// "the drills on this box" is a fact about the journals that exist rather than
+// about a single winner across them.
+func latestDrillRecords(dir string) []backup.DrillRecord {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	store, err := backup.OpenDrillStore(dir)
+	if err != nil {
+		return nil
+	}
+	var recs []backup.DrillRecord
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		rec, ok, err := store.Latest(strings.TrimSuffix(entry.Name(), ".json"))
+		if err != nil || !ok {
+			continue
+		}
+		recs = append(recs, rec)
+	}
+	return recs
+}
+
+// newestDrill picks the single newest record out of a set, which is what the
+// box-level LastDrill field is: a summary of the whole box, next to the
+// per-service rows that say which service it was.
+func newestDrill(recs []backup.DrillRecord) (backup.DrillRecord, bool) {
+	var best backup.DrillRecord
+	found := false
+	for _, rec := range recs {
+		if !found || rec.FinishedAt.After(best.FinishedAt) {
+			best, found = rec, true
+		}
+	}
+	return best, found
 }
