@@ -12,7 +12,7 @@ import (
 // the exact box a rule was written for without a cluster anywhere in sight.
 //
 // It carries NAMES and COUNTS and never a configured value. A service's
-// configuration is where credentials live — internal/boxd/route.go:133-135 says
+// configuration is where credentials live — internal/boxd/identity.go:131-134 says
 // as much, and the fact the ten rules need is a name's presence: `identity`'s
 // MFA routes are absent because `MFA_ENCRYPTION_KEY` is unset
 // (CAFAYE-OPS.md:741), so what identifies the failure mode is whether the name
