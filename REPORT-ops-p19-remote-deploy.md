@@ -8,7 +8,7 @@ account on the shared platform rather than a cafaye deployment of its own.
 **Status.** the mechanism is built, tested and documented; **it cannot be enabled
 until TG-D1 records the tenancy decision**, and it does not deploy anything
 today.
-**Gate.** `bin/prime` — **exit 0**, 25 packages, 1135 top-level passes, 1204
+**Gate.** `bin/prime` — **exit 0**, 25 packages, 1141 top-level passes, 1204
 subtest passes, 0 failures, 8 skips, `live tier: 0 of 7 executed`.
 `gofmt -l .` printed nothing; `go vet ./...` printed nothing.
 `go test ./internal/deploy ./internal/cli -count=1` — both `ok`.
@@ -68,7 +68,7 @@ would advertise a deploy nobody can perform. The prompt names the account too:
 the account is the destination, so a confirmation that named only the service
 would be approving a deploy to no stated place.
 
-### `internal/deploy/remote_test.go` — 12 tests in two halves
+### `internal/deploy/remote_test.go` — 17 tests in two halves
 
 Half one asserts the **gate**: the refusal is `ErrRefused` (exit 1, the CLI's
 `errReported` mapping) *and* `ErrTenancyUndecided`; it names TG-D1,
@@ -88,6 +88,52 @@ default refusal; and an unknown `--engine` naming all three engines.
 written against an enabled engine would fail rather than pass by accident, and
 that ordering is the reason the mechanism could be proved without touching the
 switch.
+
+## 2b. The second increment: two defects the proofs caught in the argv
+
+Writing the mechanism out and then reading it back found two bugs in the small
+space between the plan and the runner. Both are the same bug seen twice, because
+**the plan's argv is the single copy of what a deploy asks** — so anything wrong
+in it is a deploy that asks something nobody was shown.
+
+1. **`planForRemote` wrote `--account <account>` unconditionally.** With no
+   `--account` on the command line the argv was
+   `caf deploy --engine remote --account  --version 0.2.0 --yes identity`, and
+   `requestFromArgv` read the token *after* the flag as the value — so the
+   platform would have been asked which deployment serves an account called
+   `--yes`. The plan now writes the pair only when there is an account, which is
+   what makes `Run`'s refusal **name the flag** instead of guessing at a
+   destination.
+2. **`requestFromArgv` took the last token as the service only when it was not
+   the engine's own name.** A service called `remote` would have been deployed as
+   a service called nothing. The service is the last token, period: the plan
+   writes flags first and the argument last, which is the reason the parser can
+   read it back at all.
+
+A flag-shaped token is now a **missing value** rather than a value
+(`--account --yes` is an account nobody named; account ids are uuids, so nothing
+real starts with a dash).
+
+The missing-account refusal moved into `noAccountRefusal`, called from the step
+**and** from the orchestration before it prints a dry run — a dry run that
+listed the steps and left out why they cannot run would read as a deploy that
+works, which is the same argument the tenancy gate already makes for itself.
+
+**All three parser tests were watched going red against the code they replace**,
+not against a stub: the run printed the argv with the double space, the empty
+service, and the account called `--yes`. A check nobody has seen fail is a check
+that might not work.
+
+`internal/cli/deploy.go` gained one refusal: `--account` with an engine that is
+not `remote` is a usage error naming the flag and both engines, because a
+destination an operator stated and caf silently discarded is the failure this
+package's refusals exist to prevent. One CLI test names the flag, `remote`,
+`kamal` and `argo`, and asserts zero steps ran and stdout stayed empty.
+
+`internal/deploy/doc.go` said "Two engines, one seam" while there were three. It
+says three now, with the remote engine's own paragraph under "what a deploy means
+under each engine", and its step names are in the constant list — a package doc
+that is two engines short is a claim about the tree that stopped being true.
 
 ## 3. The gate, and why it is the shape it is
 
@@ -142,21 +188,27 @@ anything:
 - `gate.yml`'s `suite` floor was 8 low for the same reason: the tree declares
   1143 top-level tests and the floor said 1079. It moves to 1135 with the
   measurement in the comment, and `caf.lock` follows because `gate.yml` is a
-  pinned rule-bundle.
+  pinned rule-bundle. **The ratchet then did its job once more**: the six tests
+  this packet added took the declared count to 1149, so the floor moved
+  1135 → 1141 — measured, not guessed; the failing assertion names the number it
+  wants. The assertion itself was never edited.
 
 ## 6. Commits
 
 ```
+726fa13  deploy(remote): the argv nobody could run, and the parser that dropped a
+         service
+695f0c1  REPORT-ops-p19-remote-deploy.md
 c1da37c  OPS-P19: the two gates this packet crossed — the W2 registry gap, and
          the floor
+8cb9aa2  deploy(remote): --account is the remote engine's, and the flag says so
 b7d8818  the operated remote: the mechanism, gated on TG-D1
 ```
 
-The first commit of the packet carries a `recover(...)` message because the
-fleet's recovery harness swept the tree four times while the endpoint dropped
-the session — see §7. The second one is the packet's own text; the first is the
-gate-floor increment. `git log --oneline` is the order of events, not the order
-of authorship.
+The fleet's recovery harness swept the tree several times while the endpoint
+dropped the session, so some of these carry a `recover(...)` message and one of
+them swept in-flight work that had not been described yet — see §7.
+`git log --oneline` is the order of events, not the order of authorship.
 
 ## 7. What the manager needs to know
 
@@ -171,3 +223,19 @@ engine is ready to be pointed at a real platform the moment one exists to point
 at. Building the client before the platform's tenancy decision is recorded would
 be the exact failure mode `TENANCY-GATE.md` exists to prevent, and this packet
 is deliberately on the near side of it.
+
+**Cross-repo state, as of this run.** `TENANCY-GATE.md`'s Wave D has TG-D1
+depending on Waves A–C, and `CAFAYE-OPS.md`'s wave-1 preamble records that 5 of
+9 services declare their account boundary while `identity` and `courier`
+currently fail and `billing`/`parlor`/`pantry`/`conductor` declare nothing — so
+the decision is not recorded and this packet did not assume it either way. The
+`caf` side of the gate is the constant and the refusal above; the *platform* side
+of the gate is TG-A..TG-C in the other repositories, and neither is weakened,
+skipped or approximated here. The packet's gate on `conductor` (its half of the
+row) is untouched by this worktree.
+
+**What the successor's first move is, if any.** Nothing is unfinished. When
+TG-D1 lands: flip `remoteEnabled` to `true` in `internal/deploy/remote.go`, in
+the same commit that records the decision reference, and run `bin/prime` — the
+five tests that open by asserting the gate is closed will then fail by design,
+each one naming the line to change. That is the whole enablement.
