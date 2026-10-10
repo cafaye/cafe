@@ -328,7 +328,9 @@ consumer of W4's two upstream packets — the thing that makes a manifest's
   one unentitled OPTIONAL dependency resolves, and an error would destroy
   that fact.
 - `pantry.go` — tier 1 and tier 2. `HTTPPantry` is the real client; the
-  `Pantry` interface is the seam a test drives without a network.
+  `Pantry` interface is the seam a test drives without a network. Since W3 it
+  serves `/v1/projects/{name}` and `/v1/projects/{name}/coordinates` and
+  decodes a `Project` — pantry's `Service` schema renamed, its fields did not.
 - `conductor.go` — tier 3, the entitlement check → mint → redeem, in one
   call. The capability token crosses from the mint to the redemption and
   is dropped on the floor; the deliverable is the fetch GRANT, which is

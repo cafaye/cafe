@@ -187,6 +187,23 @@ All notable changes to caf are recorded here. The format follows
 
 ### Changed
 
+- **`caf resolve` now speaks pantry's `/v1/projects` API and decodes its
+  `Project` schema.** pantry's catalog renamed its routes (`/v1/services` →
+  `/v1/projects`, and `…/coordinates` with them) and its document's `Service`
+  schema to `Project`; this is caf's half of the same pinned contract. The
+  client's two routes, the `Pantry` seam's tier-1 method and the type it
+  decodes moved; every filter, paging, error code and the tier-2 flow are
+  unchanged, so a 404 is still a `not_found` carrying pantry's own detail and
+  the caller's caf token is still presented for exactly one call. Field names
+  are unchanged (`name`, `description`, `language`,
+  `repository.visibility`), which is why this is a rename and not a rewrite:
+  a client that spelled `visibility` top-level would read a key pantry never
+  sends. Nothing was added — the versions LIST route is a later phase, and
+  `caf resolve` does not call it. What did not move is the runtime word
+  "service": `caf dev`'s own vocabulary and conductor's product list
+  (`kit`, `platform`, `identity`, `courier`) still name services, because
+  those contracts did not change.
+
 - **`bin/prime` no longer claims to be kit's Go template.** Its header said
   "This is the kit Go template; if kit changes it, follow kit", which AGENTS.md
   has contradicted for a packet already. It is cafaye's own, and it has to be: a

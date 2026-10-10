@@ -19,6 +19,14 @@
 // reaches tier 3 — it is not a product, and conductor's check refuses it with
 // 422.
 //
+// TWO VOCABULARIES, and the difference is deliberate rather than sloppy. Tier
+// 1 serves pantry's `Project` — W3 renamed pantry's catalog schema from
+// `Service` — and tier 3 asks conductor about its PRODUCTS (`kit`,
+// `platform`, `identity`, `courier`), which are still service names because
+// conductor's contract did not move. A sentence about the catalog says
+// "project"; a sentence about what is paid says "product"; the runtime word
+// "service" survives in caf's own vocabulary.
+//
 // THE ONE INVARIANT, stated once because everything else here is downstream of
 // it: **the caller's credential is presented, never stored.** The resolver
 // takes the caller's caf token as a parameter, hands it to the pantry and
