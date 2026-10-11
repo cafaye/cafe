@@ -172,12 +172,12 @@ func TestADryRunPrintsEveryCommandAndWhyItIsThere(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"kamal setup",               // the step that changes a server
-		"--version v9",              // the release the operator pinned
-		"kamal app containers",      // the step a FAILURE would run
-		"only if the deploy above",  // and that it is conditional
-		"kamal config",              // the step that really ran
-		"was NOT run",               // that nothing changing was executed
+		"kamal setup",                // the step that changes a server
+		"--version v9",               // the release the operator pinned
+		"kamal app containers",       // the step a FAILURE would run
+		"only if the deploy above",   // and that it is conditional
+		"kamal config",               // the step that really ran
+		"was NOT run",                // that nothing changing was executed
 		"cafe deploy --yes identity", // and the exact command that does it
 	} {
 		if !strings.Contains(got, want) {

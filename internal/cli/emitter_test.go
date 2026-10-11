@@ -397,7 +397,7 @@ func TestEveryTelemetryVariableTheWiringReadsHasAnObservableEffect(t *testing.T)
 			name: "every per-signal exporter set to none",
 			why:  "the finer-grained half; naming all three is the point, because a no-op covering only traces is a service that still phones home",
 			env: map[string]string{
-				"CAFE_OTEL_ENDPOINT":     "http://127.0.0.1:1",
+				"CAFE_OTEL_ENDPOINT":    "http://127.0.0.1:1",
 				"OTEL_TRACES_EXPORTER":  "none",
 				"OTEL_METRICS_EXPORTER": "none",
 				"OTEL_LOGS_EXPORTER":    "none",
