@@ -65,9 +65,9 @@ func (f *fakeResolvePantry) Coordinates(_ context.Context, name, token string) (
 	return f.coords, nil
 }
 
-// fakeResolveConductor is the entitlement check, injected. It records the
+// fakeResolveControlPlane is the entitlement check, injected. It records the
 // triple the check was asked about.
-type fakeResolveConductor struct {
+type fakeResolveControlPlane struct {
 	grant    *resolve.FetchGrant
 	err      error
 	calls    int
@@ -76,7 +76,7 @@ type fakeResolveConductor struct {
 	token    string
 }
 
-func (f *fakeResolveConductor) ArtifactFetch(_ context.Context, _, artifact, versionRange, token string) (*resolve.FetchGrant, error) {
+func (f *fakeResolveControlPlane) ArtifactFetch(_ context.Context, _, artifact, versionRange, token string) (*resolve.FetchGrant, error) {
 	f.calls++
 	f.artifact = artifact
 	f.version = versionRange
@@ -97,13 +97,13 @@ func resolveTestProject(t *testing.T, body string) string {
 }
 
 // resolveTestEnv builds the deps one command needs: a directory it owns, an
-// in-memory keyring holding the caller's token, and a pantry and a conductor
+// in-memory keyring holding the caller's token, and a pantry and a control plane
 // that answer without a network. Nothing here touches the machine's config
 // directory, its keychain or the network.
-func resolveTestEnv(t *testing.T, ring *agentTestRing, pantry resolve.Pantry, conductor resolve.Conductor) resolveDeps {
+func resolveTestEnv(t *testing.T, ring *agentTestRing, pantry resolve.Pantry, controlPlane resolve.ControlPlane) resolveDeps {
 	t.Helper()
 	dir := t.TempDir()
-	deps := resolveDeps{dir: dir, ring: ring, pantry: pantry, conductor: conductor}
+	deps := resolveDeps{dir: dir, ring: ring, pantry: pantry, controlPlane: controlPlane}
 	// A registered session with a token in the ring is what a claimed agent
 	// looks like; the command reads the token out of the ring and never prints
 	// it, which is the invariant the token assertions below check.
@@ -140,10 +140,10 @@ func TestResolveAllResolvedIsOneJSONDocument(t *testing.T) {
 		project: &resolve.Project{Name: "gateway", Repository: resolve.PublicRepo{Visibility: "public"}},
 		coords:  &resolve.Coordinates{Name: "gateway", Repository: resolve.Repository{URL: "git@github.com:cafaye/gateway.git"}},
 	}
-	cond := &fakeResolveConductor{grant: &resolve.FetchGrant{
+	cp := &fakeResolveControlPlane{grant: &resolve.FetchGrant{
 		Purpose: "artifact.fetch", Artifact: "identity", VersionRange: "^0.1.0", ExpiresAt: "2026-10-09T16:00:00Z",
 	}}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -182,8 +182,8 @@ owner:
 	if pantry.lastToken != resolveCallerToken {
 		t.Errorf("tier 2 token is not the caller's token (len %d, want %d)", len(pantry.lastToken), len(resolveCallerToken))
 	}
-	if cond.token != resolveCallerToken {
-		t.Errorf("tier 3 token is not the caller's token (len %d, want %d)", len(cond.token), len(resolveCallerToken))
+	if cp.token != resolveCallerToken {
+		t.Errorf("tier 3 token is not the caller's token (len %d, want %d)", len(cp.token), len(resolveCallerToken))
 	}
 	// The control half, and it is load-bearing: a build that redacted
 	// everything would pass the assertions above by leaking nothing at all.
@@ -209,9 +209,9 @@ func TestResolveEntitlementRequiredBlocksWithTheNamedFailure(t *testing.T) {
 		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
-	cond := &fakeResolveConductor{err: &resolve.ConductorError{Status: 403, Code: "entitlement_required",
+	cp := &fakeResolveControlPlane{err: &resolve.ControlPlaneError{Status: 403, Code: "entitlement_required",
 		Message: "product `identity` needs an entitlement — start one at https://cafaye.com"}}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -249,9 +249,9 @@ func TestResolveVersionNotGrantedNamesBothRanges(t *testing.T) {
 		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
-	cond := &fakeResolveConductor{err: &resolve.ConductorError{Status: 403, Code: "version_not_granted",
+	cp := &fakeResolveControlPlane{err: &resolve.ControlPlaneError{Status: 403, Code: "version_not_granted",
 		Message: "your entitlement covers `^0.2.0`, this project asks for `^0.1.0`"}}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -290,9 +290,9 @@ func TestResolveOptionalDependencyDegradesWithAWarning(t *testing.T) {
 		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
-	cond := &fakeResolveConductor{err: &resolve.ConductorError{Status: 403, Code: "entitlement_required",
+	cp := &fakeResolveControlPlane{err: &resolve.ControlPlaneError{Status: 403, Code: "entitlement_required",
 		Message: "product `identity` needs an entitlement — start one at https://cafaye.com"}}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -337,8 +337,8 @@ func TestResolveUnknownNameStopsAtTierOne(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{projectErr: &resolve.PantryError{Status: 404, Code: "not_found",
 		Detail: "no official cafaye service is registered under that name"}}
-	cond := &fakeResolveConductor{}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	cp := &fakeResolveControlPlane{}
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -368,8 +368,8 @@ owner:
 			t.Errorf("an unknown name reached tier 2 (%v)", pantry.calls)
 		}
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (tier 1 failed first)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("controlPlane calls = %d, want 0 (tier 1 failed first)", cp.calls)
 	}
 }
 
@@ -377,7 +377,7 @@ owner:
 // rather than a bare "no such file".
 func TestResolveWithoutAManifestNamesTheCommand(t *testing.T) {
 	ring := newAgentTestRing()
-	deps := resolveTestEnv(t, ring, &fakeResolvePantry{}, &fakeResolveConductor{})
+	deps := resolveTestEnv(t, ring, &fakeResolvePantry{}, &fakeResolveControlPlane{})
 
 	code, _, stderr := runResolveCLI(t, deps, t.TempDir())
 
@@ -397,7 +397,7 @@ func TestResolveWithoutASessionSaysSoAndStillRuns(t *testing.T) {
 		project: &resolve.Project{Name: "gateway"},
 		coords:  &resolve.Coordinates{Name: "gateway", Repository: resolve.Repository{URL: "git@github.com:cafaye/gateway.git"}},
 	}
-	deps := resolveDeps{dir: t.TempDir(), ring: newAgentTestRing(), pantry: pantry, conductor: &fakeResolveConductor{}}
+	deps := resolveDeps{dir: t.TempDir(), ring: newAgentTestRing(), pantry: pantry, controlPlane: &fakeResolveControlPlane{}}
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -433,15 +433,15 @@ owner:
 }
 
 // A paid dependency with no --account is a cafe-side refusal that names the
-// flag, not a silent skip and not a call to conductor with an empty account.
+// flag, not a silent skip and not a call to the control plane with an empty account.
 func TestResolvePaidDependencyWithoutAccountNamesTheFlag(t *testing.T) {
 	ring := newAgentTestRing()
 	pantry := &fakeResolvePantry{
 		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
-	cond := &fakeResolveConductor{}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	cp := &fakeResolveControlPlane{}
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -466,12 +466,12 @@ owner:
 	if !strings.Contains(stderr, "--account") {
 		t.Errorf("stderr does not name the flag:\n%s", stderr)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (the account is missing, so the question is unaskable)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("controlPlane calls = %d, want 0 (the account is missing, so the question is unaskable)", cp.calls)
 	}
 }
 
-// The manifest schema makes `version` OPTIONAL and conductor's check makes it
+// The manifest schema makes `version` OPTIONAL and box's check makes it
 // REQUIRED — an unbounded request is a 422 the endpoint refuses. The
 // disagreement is settled on cafe's side rather than in a round trip that
 // answers 422 and blames the reader for it.
@@ -481,8 +481,8 @@ func TestResolvePaidDependencyWithoutAVersionIsNamed(t *testing.T) {
 		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
-	cond := &fakeResolveConductor{}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	cp := &fakeResolveControlPlane{}
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -509,12 +509,12 @@ owner:
 	if !strings.Contains(stderr, "version") || !strings.Contains(stderr, "^X.Y.Z") {
 		t.Errorf("stderr does not say what to add:\n%s", stderr)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (the question is unaskable without a range)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("controlPlane calls = %d, want 0 (the question is unaskable without a range)", cp.calls)
 	}
 }
 
-// An --account that is not a UUID is a 404 from conductor, and a 404 about a
+// An --account that is not a UUID is a 404 from box, and a 404 about a
 // string the reader typed is a sentence that sends them nowhere. Refusing here
 // names what was typed instead.
 func TestResolveAccountThatIsNotAUUIDIsNamed(t *testing.T) {
@@ -523,8 +523,8 @@ func TestResolveAccountThatIsNotAUUIDIsNamed(t *testing.T) {
 		project: &resolve.Project{Name: "identity"},
 		coords:  &resolve.Coordinates{Name: "identity"},
 	}
-	cond := &fakeResolveConductor{}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	cp := &fakeResolveControlPlane{}
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	project := resolveTestProject(t, `name: app
 description: An application.
@@ -552,8 +552,8 @@ owner:
 	if !strings.Contains(stderr, "not-a-uuid") {
 		t.Errorf("stderr does not say what was typed:\n%s", stderr)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (the account is not an id)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("controlPlane calls = %d, want 0 (the account is not an id)", cp.calls)
 	}
 }
 
@@ -585,9 +585,9 @@ func TestResolveFlagsNameTheOriginsEndToEnd(t *testing.T) {
 		}
 	}))
 	defer pantry.Close()
-	conductorHits := 0
-	conductor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conductorHits++
+	controlPlaneHits := 0
+	controlPlane := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		controlPlaneHits++
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v1/accounts/" + account + "/artifact_fetches":
@@ -596,13 +596,13 @@ func TestResolveFlagsNameTheOriginsEndToEnd(t *testing.T) {
 		case "/v1/capabilities/redeem":
 			_, _ = w.Write([]byte(`{"capability":{"purpose":"artifact.fetch","account_id":"` + account + `","artifact":"identity","artifact_version_range":"^0.1.0","expires_at":"2026-10-09T16:00:00Z"}}`))
 		default:
-			t.Errorf("conductor saw an unexpected path %q", r.URL.Path)
+			t.Errorf("control plane saw an unexpected path %q", r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
-	defer conductor.Close()
+	defer controlPlane.Close()
 
-	// Nil pantry and nil conductor, so withDefaults() builds the real clients
+	// Nil pantry and nil control plane, so withDefaults() builds the real clients
 	// out of the URLs the flags name.
 	dir := t.TempDir()
 	ring := newAgentTestRing()
@@ -634,7 +634,7 @@ owner:
   contact: app@cafaye.com
 `)
 	code, stdout, stderr := runResolveCLI(t, deps,
-		"--pantry", pantry.URL, "--conductor", conductor.URL, "--account", account, project)
+		"--pantry", pantry.URL, "--box", controlPlane.URL, "--account", account, project)
 
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
@@ -642,8 +642,8 @@ owner:
 	if pantryHits != 2 {
 		t.Errorf("pantry answered %d requests, want 2 (tiers 1 and 2)", pantryHits)
 	}
-	if conductorHits != 2 {
-		t.Errorf("conductor answered %d requests, want 2 (the mint and the redemption)", conductorHits)
+	if controlPlaneHits != 2 {
+		t.Errorf("control plane answered %d requests, want 2 (the mint and the redemption)", controlPlaneHits)
 	}
 	if !strings.Contains(stdout, "artifact.fetch") {
 		t.Errorf("the document carries no fetch grant:\n%s", stdout)
@@ -660,7 +660,7 @@ owner:
 // than around it.
 func TestResolveUsage(t *testing.T) {
 	ring := newAgentTestRing()
-	deps := resolveTestEnv(t, ring, &fakeResolvePantry{}, &fakeResolveConductor{})
+	deps := resolveTestEnv(t, ring, &fakeResolvePantry{}, &fakeResolveControlPlane{})
 
 	code, _, _ := runResolveCLI(t, deps)
 	if code == 0 {
@@ -679,8 +679,8 @@ func TestResolveAcceptsTheAddressForm(t *testing.T) {
 		project: &resolve.Project{Name: "widget", OwnerSlug: "alice"},
 		coords:  &resolve.Coordinates{Name: "widget", Repository: resolve.Repository{URL: "git@github.com:alice/widget.git"}},
 	}
-	cond := &fakeResolveConductor{}
-	deps := resolveTestEnv(t, ring, pantry, cond)
+	cp := &fakeResolveControlPlane{}
+	deps := resolveTestEnv(t, ring, pantry, cp)
 
 	code, stdout, stderr := runResolveCLI(t, deps, "alice/widget")
 
@@ -719,7 +719,7 @@ func TestResolveAddressFormRefusesTheWrongOwner(t *testing.T) {
 		addressErr: &resolve.PantryError{Status: 404, Code: "not_found",
 			Detail: "no official cafaye project is registered under the address alice/widget"},
 	}
-	deps := resolveTestEnv(t, ring, pantry, &fakeResolveConductor{})
+	deps := resolveTestEnv(t, ring, pantry, &fakeResolveControlPlane{})
 
 	code, _, stderr := runResolveCLI(t, deps, "alice/widget")
 
@@ -743,7 +743,7 @@ func TestResolveTreatsADirectoryWithASlashAsADirectory(t *testing.T) {
 		project: &resolve.Project{Name: "gateway", OwnerSlug: "cafaye"},
 		coords:  &resolve.Coordinates{Name: "gateway", Repository: resolve.Repository{URL: "git@github.com:cafaye/gateway.git"}},
 	}
-	deps := resolveTestEnv(t, ring, pantry, &fakeResolveConductor{})
+	deps := resolveTestEnv(t, ring, pantry, &fakeResolveControlPlane{})
 
 	base := t.TempDir()
 	project := filepath.Join(base, "alice", "widget")

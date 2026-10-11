@@ -108,7 +108,7 @@ type Outcome struct {
 	Message string `json:"message,omitempty"`
 }
 
-// Ack is one capability's full report to conductor: the decision about it,
+// Ack is one capability's full report to box: the decision about it,
 // and the answer the route produced.
 //
 // The answer is carried because a capability is a request — `stack.status`

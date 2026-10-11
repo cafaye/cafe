@@ -11,10 +11,10 @@ import (
 	"testing"
 )
 
-// recordingConductor is the seam a test drives connect and status through,
+// recordingControlPlane is the seam a test drives connect and status through,
 // without a network. It counts calls and records what was posted, the same
-// shape internal/box's counting conductor takes for the redemption.
-type recordingConductor struct {
+// shape internal/box's counting control plane takes for the redemption.
+type recordingControlPlane struct {
 	calls  int
 	posted []Connection
 	boxed  []string // box_id per Status call
@@ -22,7 +22,7 @@ type recordingConductor struct {
 	err    error
 }
 
-func (c *recordingConductor) Connect(_ context.Context, conn Connection) (*Connection, error) {
+func (c *recordingControlPlane) Connect(_ context.Context, conn Connection) (*Connection, error) {
 	c.calls++
 	c.posted = append(c.posted, conn)
 	if c.err != nil {
@@ -31,7 +31,7 @@ func (c *recordingConductor) Connect(_ context.Context, conn Connection) (*Conne
 	return &conn, nil
 }
 
-func (c *recordingConductor) Status(_ context.Context, boxID string) ([]Connection, error) {
+func (c *recordingControlPlane) Status(_ context.Context, boxID string) ([]Connection, error) {
 	c.calls++
 	c.boxed = append(c.boxed, boxID)
 	if c.err != nil {
@@ -63,20 +63,20 @@ func validRequest(t *testing.T) ConnectRequest {
 // — that is boundary 6, and it is asserted over the whole posted struct rather
 // than field by field.
 func TestConnectSealsAndPostsTheEnvelope(t *testing.T) {
-	cond := &recordingConductor{}
+	cp := &recordingControlPlane{}
 	req := validRequest(t)
 
-	conn, err := Connect(context.Background(), cond, req)
+	conn, err := Connect(context.Background(), cp, req)
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	if cond.calls != 1 {
-		t.Errorf("conductor calls = %d, want 1", cond.calls)
+	if cp.calls != 1 {
+		t.Errorf("control plane calls = %d, want 1", cp.calls)
 	}
-	if len(cond.posted) != 1 {
-		t.Fatalf("posted %d connections, want 1", len(cond.posted))
+	if len(cp.posted) != 1 {
+		t.Fatalf("posted %d connections, want 1", len(cp.posted))
 	}
-	posted := cond.posted[0]
+	posted := cp.posted[0]
 
 	if posted.Provider != "smtp" {
 		t.Errorf("provider = %q, want smtp", posted.Provider)
@@ -125,55 +125,55 @@ func TestConnectSealsAndPostsTheEnvelope(t *testing.T) {
 }
 
 // An unknown provider is refused BEFORE anything is sealed or posted — a
-// provider conductor would refuse is a usage mistake, and sealing an envelope
+// provider box would refuse is a usage mistake, and sealing an envelope
 // for it first would be work thrown away.
 func TestConnectRefusesAnUnknownProviderBeforeSealing(t *testing.T) {
-	cond := &recordingConductor{}
+	cp := &recordingControlPlane{}
 	req := validRequest(t)
 	req.Provider = "bogus"
 
-	_, err := Connect(context.Background(), cond, req)
+	_, err := Connect(context.Background(), cp, req)
 	if !errors.Is(err, ErrUnknownProvider) {
 		t.Fatalf("err = %v, want ErrUnknownProvider", err)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (nothing was posted)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0 (nothing was posted)", cp.calls)
 	}
 }
 
 // An empty credential is refused rather than sealed into an empty envelope.
 func TestConnectRefusesAnEmptyCredential(t *testing.T) {
-	cond := &recordingConductor{}
+	cp := &recordingControlPlane{}
 	req := validRequest(t)
 	req.Credential = "   "
 
-	_, err := Connect(context.Background(), cond, req)
+	_, err := Connect(context.Background(), cp, req)
 	if !errors.Is(err, ErrEmptyCredential) {
 		t.Fatalf("err = %v, want ErrEmptyCredential", err)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0", cp.calls)
 	}
 }
 
 // A connect with no box is refused: there is no key to seal to, and an envelope
 // sealed to nobody is a credential posted in the open.
 func TestConnectRefusesABoxThatIsNotEnrolled(t *testing.T) {
-	cond := &recordingConductor{}
+	cp := &recordingControlPlane{}
 	req := validRequest(t)
 	req.BoxID = ""
 	req.BoxPublic = nil
 
-	_, err := Connect(context.Background(), cond, req)
+	_, err := Connect(context.Background(), cp, req)
 	if err == nil {
 		t.Fatalf("connected without a box")
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0", cp.calls)
 	}
 }
 
-// Status reports what conductor holds and opens nothing: the envelopes come
+// Status reports what box holds and opens nothing: the envelopes come
 // back as opaque JSON and are passed through untouched, because a status that
 // opened envelopes would be a status that prints secrets.
 func TestStatusReportsConnectionsAndOpensNothing(t *testing.T) {
@@ -182,7 +182,7 @@ func TestStatusReportsConnectionsAndOpensNothing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seal: %v", err)
 	}
-	cond := &recordingConductor{answer: []Connection{{
+	cp := &recordingControlPlane{answer: []Connection{{
 		Provider:         "smtp",
 		Account:          "noel@example.com",
 		BoxID:            "box-11111111-2222-3333-4444-555555555555",
@@ -190,7 +190,7 @@ func TestStatusReportsConnectionsAndOpensNothing(t *testing.T) {
 		SealedCredential: envelope,
 	}}}
 
-	conns, err := Status(context.Background(), cond, "box-11111111-2222-3333-4444-555555555555")
+	conns, err := Status(context.Background(), cp, "box-11111111-2222-3333-4444-555555555555")
 	if err != nil {
 		t.Fatalf("status: %v", err)
 	}
@@ -214,8 +214,8 @@ func TestStatusReportsConnectionsAndOpensNothing(t *testing.T) {
 // providers" is the honest answer to the question ` + "`cafe provider status`" + `
 // asks, and it is what a fresh box should hear.
 func TestStatusWithNoConnectionsIsEmptyNotAnError(t *testing.T) {
-	cond := &recordingConductor{}
-	conns, err := Status(context.Background(), cond, "box-11111111-2222-3333-4444-555555555555")
+	cp := &recordingControlPlane{}
+	conns, err := Status(context.Background(), cp, "box-11111111-2222-3333-4444-555555555555")
 	if err != nil {
 		t.Fatalf("status: %v", err)
 	}
@@ -224,13 +224,13 @@ func TestStatusWithNoConnectionsIsEmptyNotAnError(t *testing.T) {
 	}
 }
 
-// A conductor that fails is reported as a failure, not folded into an empty
-// list: "conductor is unreachable" and "this box has no providers" are different
+// A control plane that fails is reported as a failure, not folded into an empty
+// list: "box is unreachable" and "this machine has no providers" are different
 // answers and only the first one tells the operator to go looking.
 func TestStatusReportsAFailureHonestly(t *testing.T) {
-	cond := &recordingConductor{err: errors.New("connection refused")}
-	_, err := Status(context.Background(), cond, "box-11111111-2222-3333-4444-555555555555")
+	cp := &recordingControlPlane{err: errors.New("connection refused")}
+	_, err := Status(context.Background(), cp, "box-11111111-2222-3333-4444-555555555555")
 	if err == nil {
-		t.Errorf("status swallowed the conductor's failure")
+		t.Errorf("status swallowed the control plane's failure")
 	}
 }

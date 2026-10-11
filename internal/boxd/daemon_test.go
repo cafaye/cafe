@@ -11,16 +11,16 @@ import (
 	"time"
 )
 
-// The daemon's loop is driven without a network: a fake conductor hands the
+// The daemon's loop is driven without a network: a fake control plane hands the
 // daemon a queue of capabilities and records every ack, a store hands it an
 // identity, and the world is the recording world secret_test.go already uses.
 // No test in this file starts a listener — TestTheChannelIsMutualTLS in
 // tls_test.go is the one that does, and it does so over loopback.
 
-// fakeConductor is a Conductor with a queue and a record. It is the seam's
+// fakeControlPlane is a ControlPlane with a queue and a record. It is the seam's
 // fake: a dozen lines, per the house rule, and it records every Ack with the
 // answer alongside so a test can assert the daemon acked what it redeemed.
-type fakeConductor struct {
+type fakeControlPlane struct {
 	queue   []Capability
 	acks    []Ack
 	nextErr error
@@ -31,7 +31,7 @@ type fakeConductor struct {
 	nextCalls int
 }
 
-func (f *fakeConductor) Next(context.Context) (Capability, error) {
+func (f *fakeControlPlane) Next(context.Context) (Capability, error) {
 	f.nextCalls++
 	if f.nextErr != nil {
 		return Capability{}, f.nextErr
@@ -49,7 +49,7 @@ func (f *fakeConductor) Next(context.Context) (Capability, error) {
 	return cap, nil
 }
 
-func (f *fakeConductor) Ack(_ context.Context, ack Ack) error {
+func (f *fakeControlPlane) Ack(_ context.Context, ack Ack) error {
 	if f.ackErr != nil {
 		return f.ackErr
 	}
@@ -57,21 +57,21 @@ func (f *fakeConductor) Ack(_ context.Context, ack Ack) error {
 	return nil
 }
 
-func (f *fakeConductor) Close() error {
+func (f *fakeControlPlane) Close() error {
 	f.closed = true
 	return nil
 }
 
-// fakeDialer hands the daemon one prepared conductor, and counts the dials so
+// fakeDialer hands the daemon one prepared control plane, and counts the dials so
 // a test can watch a reconnect happen.
 type fakeDialer struct {
-	ch     *fakeConductor
+	ch     *fakeControlPlane
 	err    error
 	dials  int
 	lastID Identity
 }
 
-func (d *fakeDialer) Dial(_ context.Context, id Identity) (Conductor, error) {
+func (d *fakeDialer) Dial(_ context.Context, id Identity) (ControlPlane, error) {
 	d.dials++
 	d.lastID = id
 	if d.err != nil {
@@ -98,7 +98,7 @@ func (s *fakeStore) Load(context.Context) (Identity, error) {
 
 // testIdentity is the identity every daemon test runs as.
 func testIdentity() Identity {
-	return Identity{BoxID: "box-test", Conductor: "conductor.invalid:443", Version: "test"}
+	return Identity{BoxID: "box-test", ControlPlane: "box.invalid:443", Version: "test"}
 }
 
 // testWorldFor builds the recording world with a BoxID so Redeem's binding
@@ -134,7 +134,7 @@ func oneCapability(route string) Capability {
 // whitelist, acks it, and — because the daemon was opened with Once — returns.
 // Every seam is a fake, so the whole lifecycle is provable with no network.
 func TestTheDaemonRedeemsOneCapabilityAndStops(t *testing.T) {
-	ch := &fakeConductor{queue: []Capability{oneCapability("box.status")}}
+	ch := &fakeControlPlane{queue: []Capability{oneCapability("box.status")}}
 	store := &fakeStore{id: testIdentity()}
 	d, err := Open(Options{
 		Store:    store,
@@ -169,10 +169,10 @@ func TestTheDaemonRedeemsOneCapabilityAndStops(t *testing.T) {
 
 // TestTheDaemonAcksARefusal: the whitelist fires on a capability naming a
 // route not in the table, and the daemon ACKS the refusal — a refusal
-// conductor never hears about is a capability it will re-send until the TTL
+// box never hears about is a capability it will re-send until the TTL
 // burns down.
 func TestTheDaemonAcksARefusal(t *testing.T) {
-	ch := &fakeConductor{queue: []Capability{{ID: "cap-evil", BoxID: "box-test", Route: "shell.exec"}}}
+	ch := &fakeControlPlane{queue: []Capability{{ID: "cap-evil", BoxID: "box-test", Route: "shell.exec"}}}
 	d, err := Open(Options{
 		Store:    &fakeStore{id: testIdentity()},
 		Keys:     &testKeys{},
@@ -201,7 +201,7 @@ func TestTheDaemonAcksARefusal(t *testing.T) {
 // and the daemon dials again rather than exiting — the box's whole job is to
 // be reachable, and a supervisor should not have to babysit it.
 func TestTheDaemonReconnectsAfterTheChannelEnds(t *testing.T) {
-	ch := &fakeConductor{nextErr: errors.New("connection reset")}
+	ch := &fakeControlPlane{nextErr: errors.New("connection reset")}
 	dialer := &fakeDialer{ch: ch}
 	var log strings.Builder
 	d, err := Open(Options{
@@ -250,7 +250,7 @@ func TestOpenRefusesAHalfConfiguredDaemon(t *testing.T) {
 	full := Options{
 		Store:    &fakeStore{id: testIdentity()},
 		Keys:     &testKeys{},
-		Dial:     &fakeDialer{ch: &fakeConductor{}},
+		Dial:     &fakeDialer{ch: &fakeControlPlane{}},
 		WorldFor: testWorldFor,
 	}
 	tests := []struct {
@@ -283,7 +283,7 @@ func TestOpenRefusesAHalfConfiguredDaemon(t *testing.T) {
 // the next connection. The daemon's own rule; the key's per-connection
 // lifetime is the real dialer's, and it is asserted in tls_test.go.
 func TestTheDaemonLoadsTheIdentityPerConnection(t *testing.T) {
-	ch := &fakeConductor{nextErr: errors.New("connection reset")}
+	ch := &fakeControlPlane{nextErr: errors.New("connection reset")}
 	store := &fakeStore{id: testIdentity()}
 	d, err := Open(Options{Store: store, Keys: &testKeys{}, Dial: &fakeDialer{ch: ch}, WorldFor: testWorldFor})
 	if err != nil {
@@ -318,7 +318,7 @@ func TestTheDaemonLoadsTheIdentityPerConnection(t *testing.T) {
 // line and on what it did NOT do (connect), and the run is cancelled once the
 // line has appeared.
 func TestTheDaemonReportsAMissingEnrollment(t *testing.T) {
-	dialer := &fakeDialer{ch: &fakeConductor{}}
+	dialer := &fakeDialer{ch: &fakeControlPlane{}}
 	var log lockedBuffer
 	d, err := Open(Options{
 		Store:    &fakeStore{err: errors.New("no enrolled identity: run cafe box enroll")},

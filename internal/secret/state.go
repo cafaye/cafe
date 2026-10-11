@@ -18,11 +18,11 @@ const StateFileName = "secret-rotations.json"
 // State is the schedule: when each entry was last rotated, and what the last run
 // of the not-rotatable class answered.
 //
-// It is the box's own record, not conductor's. Boundary 8 lets conductor hold
+// It is this machine's own record, not the control plane's. Boundary 8 lets box hold
 // installation state and capabilities, and a rotation record IS installation
 // state — but nothing in this packet needs a round trip to know whether a
 // rotation is due, and a rotation that could not run offline could not run on a
-// box whose conductor is unreachable. The record is written where the rotation
+// box whose control plane is unreachable. The record is written where the rotation
 // happened.
 type State struct {
 	// Last is when each entry was last rotated, keyed by the entry's own

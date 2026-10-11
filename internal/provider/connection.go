@@ -21,7 +21,7 @@ var Providers = []string{"smtp", "cloudflare"}
 // Connection is one email provider a box's account uses, as box records
 // it. Every field but SealedCredential is a non-secret: they say WHICH provider
 // and WHICH account, and those facts are what ` + "`cafe provider status`" + `
-// prints. SealedCredential is the envelope — ciphertext conductor cannot open
+// prints. SealedCredential is the envelope — ciphertext box cannot open
 // and the box can — and it is the one field no status report ever echoes.
 type Connection struct {
 	Provider         string            `json:"provider"`
@@ -33,7 +33,7 @@ type Connection struct {
 
 // ConnectRequest is what ` + "`cafe provider connect`" + ` seals and posts. The
 // credential is in plaintext here and ONLY here: it is sealed by Connect and
-// the envelope is what reaches conductor. The request is a parameter rather
+// the envelope is what reaches box. The request is a parameter rather
 // than three arguments because the day a fourth field lands, a caller that
 // passes three positional values breaks at compile time in the caller and not
 // at runtime in the server.
@@ -45,7 +45,7 @@ type ConnectRequest struct {
 	Credential string
 	// BoxPublic is the box's ed25519 public key, read from box.json. It is
 	// what the credential is sealed TO: the envelope is openable by the box
-	// and by nobody else, including conductor.
+	// and by nobody else, including box.
 	BoxPublic []byte
 }
 
@@ -67,7 +67,7 @@ type ControlPlane interface {
 
 // The two honest refusals a connect can meet before it reaches the network.
 var (
-	// ErrUnknownProvider is a provider conductor does not accept. It is a
+	// ErrUnknownProvider is a provider box does not accept. It is a
 	// usage error in the CLI's sense: the person typed a word cafe does not
 	// have, and the answer is the list of the ones it does.
 	ErrUnknownProvider = fmt.Errorf("unknown provider (the providers are %s)", strings.Join(Providers, ", "))
@@ -113,7 +113,7 @@ func Connect(ctx context.Context, c ControlPlane, req ConnectRequest) (*Connecti
 	return c.Connect(ctx, conn)
 }
 
-// Status reports the connections conductor holds for a box. It carries no
+// Status reports the connections box holds for a machine. It carries no
 // credential and opens none: the envelopes come back as opaque JSON and are
 // passed through untouched, because a status report that opened the envelopes
 // would be a status report that prints secrets.

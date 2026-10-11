@@ -28,10 +28,10 @@ internal/lock/      cafe lock: the pin over specs, vendored schemas and generate
 internal/telemetry/ GENERATED, and compiled: cafe's own copy of `cafe gen telemetry`'s output
 internal/mcp/       the MCP server: transports, the served table, the SDK seam
 internal/boxd/      the box daemon: the whitelisted route table, the Seam-ed world,
-                     and the outbound-only mTLS channel to conductor
+                     and the outbound-only mTLS channel to box
 internal/ledger/    the reclamation ledger: what cafe created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
-internal/provider/  cafe provider: the client half of boundary 6 — the envelope sealed to the box's public key, the conductor seam
+internal/provider/  cafe provider: the client half of boundary 6 — the envelope sealed to the box's public key, the control-plane seam
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
 internal/resolve/   cafe resolve: the tiered catalog's consumer — a manifest's dependencies through tiers 1/2/3, and the named failures
 internal/publish/   cafe publish: the write half of the same pantry client — the proposal, the three writes, the address a project registered under
@@ -257,8 +257,8 @@ whole agents-first layer turns on:
 - `ring.go` — the `Keyring` seam and `FileRing`, the 0600 store it defaults to.
 - `identity.go` — the `Identity` type, which has NO private key field, and the
   two encodings that turn a keypair into wire form.
-- `conductor.go` — the `Conductor` seam and the HTTP client that redeems a
-  capability, with conductor's four answers mapped onto three sentinels.
+- `control_plane.go` — the `ControlPlane` seam and the HTTP client that redeems a
+  capability, with box's four answers mapped onto three sentinels.
 - `store.go` — the enrollment journal, the ordering rule it enforces, and the
   three stages a retry converges from.
 - `lifecycle.go` — the phase table, and `status`/`plan`/`apply`/`logs`/`verify`
@@ -275,7 +275,7 @@ every document every command produces AND over both streams, with the control
 half being that the public key IS printed — a build that redacted everything
 would pass by leaking nothing at all.
 
-**The capability is presented once, and the count is what proves it.** Conductor
+**The capability is presented once, and the count is what proves it.** Box
 enforces single-use in its own database, so a second redemption is always
 refused server-side and a test that asserted "the retry failed" would pass
 against a client that redeemed twice. The journal is the fixing: `prepared`
@@ -300,11 +300,11 @@ lives — the enforcement on the box rather than in the agent's instructions:
   interface is the rule: no method runs a process, no method returns a
   secret, so a handler cannot need what it was never given.
 - `identity.go` — the enrolled identity, the capability, the outcome, and the
-  `Conductor` channel's two outbound verbs.
+  `ControlPlane` channel's two outbound verbs.
 - `daemon.go` — the round: load, dial, redeem, ack, reconnect with a bounded
   backoff. No listener in the type system any more than in the process.
 - `client.go` — the mTLS dial and the one-JSON-object-per-line protocol. The
-  server half of that protocol is conductor's (W1-P3); it is written down
+  server half of that protocol is box's (W1-P3); it is written down
   here so both sides have something to be checked against from day one.
 
 `secret_test.go` is the load-bearing test of the whole packet: it renders
@@ -332,13 +332,13 @@ consumer of W4's two upstream packets — the thing that makes a manifest's
   `Pantry` interface is the seam a test drives without a network. Since W3 it
   serves `/v1/projects/{name}` and `/v1/projects/{name}/coordinates` and
   decodes a `Project` — pantry's `Service` schema renamed, its fields did not.
-- `conductor.go` — tier 3, the entitlement check → mint → redeem, in one
+- `control_plane.go` — tier 3, the entitlement check → mint → redeem, in one
   call. The capability token crosses from the mint to the redemption and
   is dropped on the floor; the deliverable is the fetch GRANT, which is
   the capability's scope and not a secret.
 
 **A failure is named with the server's own code, never paraphrased.**
-`ConductorError` and `PantryError` carry the code and detail the service
+`ControlPlaneError` and `PantryError` carry the code and detail the service
 sent, and the resolver surfaces both verbatim: `403 entitlement_required`
 with the product and where to start one, `403 version_not_granted` with
 the granted range and the requested one. The tests assert the product
@@ -351,10 +351,10 @@ agent_unclaimed` habit applied to a second service.
 that does not exist has no coordinates and no entitlement to check, so a
 tier-1 failure ends the walk; a caller with no credential cannot read
 coordinates, so a tier-2 failure ends it before tier 3. A free service
-never reaches tier 3 — conductor's check would refuse it with a 422, and
+never reaches tier 3 — box's check would refuse it with a 422, and
 the client that asked anyway would be spending a round trip on a question
 the server already answered at boot. That last fact is why the resolver
-carries `Products` (conductor's paid vocabulary) rather than asking: there
+carries `Products` (box's paid vocabulary) rather than asking: there
 is no "what are the products" operation, and the drift risk is named in
 the constant's comment — the safe direction, because the alternative is a
 product that never resolves.
@@ -363,7 +363,7 @@ product that never resolves.
 resolver's.** The resolver reports every failure WITH its dependency's
 `Required` flag and never consults it; `cafe resolve` is what turns that
 flag into a warning on stderr and an exit 0, versus a BLOCKED line and an
-exit 1. Conductor never sees `required` — it is cafe's side of the
+exit 1. Box never sees `required` — it is cafe's side of the
 contract, and a server that had an opinion about it would have two.
 
 <<<<<<< HEAD
@@ -475,10 +475,10 @@ because a resolver that re-declared "a dependency is a name, a version and a
 required flag" would eventually disagree with the parser about whether an absent
 `version` is empty or absent, and that argument is the tier-3 question itself.
 Its own two clients are stdlib only: the tier-1/tier-2 path to pantry and the
-mint-and-redeem path to conductor are `net/http` and `encoding/json`, so the
+mint-and-redeem path to box are `net/http` and `encoding/json`, so the
 resolution path carries no dependency the pantry client cannot be rebuilt from a
 release tarball with. `internal/box` is stdlib only, and it holds to it for the
-same reason: the keyring seam and the conductor client sit on the path that
+same reason: the keyring seam and the control-plane client sit on the path that
 reclaims after a failed enrollment. `internal/failure` is stdlib plus
 `internal/boxd` and nothing else, and it holds to it for the same reason
 `internal/box` does: the library is checked against the box that reclaims

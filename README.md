@@ -95,8 +95,8 @@ a run in which they passed.
 | `cafe box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
 | `cafe box logs --json` | the box's own log: what happened, when, and to which phase | **works** |
 | `cafe box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
-| `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to conductor — the agent never sees the value | **works** |
-| `cafe provider status --json` | which providers this box is connected to, as conductor reports it; opens no envelope | **works** |
+| `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to box — the agent never sees the value | **works** |
+| `cafe provider status --json` | which providers this box is connected to, as box reports it; opens no envelope | **works** |
 | `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
 | `cafe gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
 | `cafe gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
@@ -109,12 +109,12 @@ a run in which they passed.
 | `cafe cve scan` | the box's CVE surface: the component, the advisory, the fixed version, and what applying it touches | **works** |
 | `cafe cve schedule` | print the cron line that puts the scan on a schedule | **works** |
 | `cafe mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
-| `cafe boxd` | run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities (invariant 4) | **works** |
+| `cafe boxd` | run the box daemon: outbound-only mTLS to box, redeeming whitelisted capabilities (invariant 4) | **works** |
 | `cafe version` | print the cafe version | **works** |
 | `cafe doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
 | `cafe reclaim` | reclaim what a cafe session left behind, containers before volumes | **works** |
 | `cafe env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
-| `cafe resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project\|owner/name>` | resolve a project's `cafaye.yml` dependencies through the catalog's tiers — tier 1 listing, tier 2 coordinates, tier 3 the entitlement check and the fetch grant — naming every failure and degrading `required: false`; `<owner>/<name>` resolves the one project that address names | **works** |
+| `cafe resolve [--account <uuid>] [--pantry <url>] [--box <url>] <project\|owner/name>` | resolve a project's `cafaye.yml` dependencies through the catalog's tiers — tier 1 listing, tier 2 coordinates, tier 3 the entitlement check and the fetch grant — naming every failure and degrading `required: false`; `<owner>/<name>` resolves the one project that address names | **works** |
 | `cafe publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api\|worker\|both\|cli>] [--json] [--pantry <url>] <project>` | publish a project to the cafaye catalog — non-interactive by default: the manifest is validated, the proposal (registration, version tag, dependency edges) is printed, and the three writes run; `--dry-run` is the proposal mode that writes nothing, `--yes` is an accepted no-op kept for compatibility, and every outcome is one JSON document | **works** |
 | `cafe secret inventory [--box <id>]` | every secret the box holds, classified rotatable / conditional / not-rotatable with the reason and the file:line it comes from — one JSON document | **works** |
 | `cafe secret rotate [<name>] [--dry-run] [--yes] [--all]` | rotate the rotatable class on the schedule recorded in the state file, and name every entry it refuses to touch — no silent skips | **works** |
@@ -1543,8 +1543,8 @@ function with an ordinary Go signature.
 ## `cafe boxd`
 
 `cafe boxd` is the root daemon that runs on the customer's box, in the same
-binary. It is the only thing on the box that can act on a conductor
-capability: it dials **out** to conductor over mTLS, waits for capabilities,
+binary. It is the only thing on the box that can act on a box
+capability: it dials **out** to box over mTLS, waits for capabilities,
 and redeems them. **It opens no listener.** There is no `-listen` flag — an
 undeclared flag is a usage error — and no inbound path exists in the package.
 The only connection a box has is the one it makes.
@@ -1556,7 +1556,7 @@ read a credential, because neither route exists to be asked for.
 
 | Route | What it does | Mutates? |
 |---|---|---|
-| `box.status` | the box's enrolled identity, the daemon's version, where its conductor is | no |
+| `box.status` | the box's enrolled identity, the daemon's version, where its control plane is | no |
 | `observe.report` | the observe stream: health, deployed version, certificate expiry, disk, the last backup drill per service and across the box, and which releases are pending against the box's version range — as one machine-readable JSON document | no |
 | `stack.status` | the substrate's phase, and the phase the install plan reached | no |
 | `stack.apply` | apply one phase of the recorded install plan, idempotently | yes |

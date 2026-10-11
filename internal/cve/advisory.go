@@ -201,7 +201,7 @@ type Source interface {
 // SourceError is a failure that names the upstream and what it said. A
 // paraphrase here — "the advisory source failed" — sends a reader to a log
 // that says nothing useful, which is the habit internal/resolve already
-// applies to conductor's and pantry's own codes.
+// applies to box's and pantry's own codes.
 type SourceError struct {
 	// Source is the name of the upstream as written in the report.
 	Source string

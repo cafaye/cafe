@@ -67,7 +67,7 @@ type Repository struct {
 // to artifact, closed.
 //
 // It carries the capability's SCOPE and never its token. The token is a
-// bearer credential, shown once by conductor and spent by the redemption; the
+// bearer credential, shown once by box and spent by the redemption; the
 // grant is what a fetch is authorised by, and it is a fact about the
 // entitlement rather than a secret.
 type FetchGrant struct {

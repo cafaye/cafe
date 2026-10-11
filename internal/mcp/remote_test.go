@@ -526,7 +526,7 @@ func TestTheRemoteTableIsExactlyWhatAddRemoteRegisters(t *testing.T) {
 // somebody wrote for exactly this purpose.
 func TestTheWorldsOwnReasonSurvives(t *testing.T) {
 	w := fixture()
-	w.failApply = errors.New("conductor is unreachable from this box; check the boxd channel")
+	w.failApply = errors.New("box is unreachable from this machine; check the boxd channel")
 	session := remote(t, w, operator())
 
 	res, err := session.call(t, "caf_apply", map[string]any{"release": "identity-0.2.0"})
@@ -536,7 +536,7 @@ func TestTheWorldsOwnReasonSurvives(t *testing.T) {
 	if !res.IsError {
 		t.Fatal("a world that failed was answered with a success")
 	}
-	if !strings.Contains(res.text(), "conductor is unreachable") {
+	if !strings.Contains(res.text(), "box is unreachable") {
 		t.Errorf("the world's reason was reworded:\n%s", res.text())
 	}
 }
@@ -545,7 +545,7 @@ func TestTheWorldsOwnReasonSurvives(t *testing.T) {
 // first rule in this package's restated for the remote half.
 func TestARemoteFailureIsAToolErrorNotAProtocolError(t *testing.T) {
 	w := fixture()
-	w.failPropose = errors.New("conductor refused the proposal")
+	w.failPropose = errors.New("box refused the proposal")
 	session := remote(t, w, operator())
 
 	res, err := session.call(t, "caf_propose", map[string]any{"release": "r"})
