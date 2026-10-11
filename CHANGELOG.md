@@ -23,22 +23,37 @@ All notable changes to caf are recorded here. The format follows
   Application's source and went with it; the substrate's own Application
   pins the chart version itself.
 
+### Changed
+
+- **`caf publish` is non-interactive by default.** Per the user's ruling of
+  2026-10-11 — "for cafaye i think we should make everything non interactive
+  by default as it shall mostly be used by agents" — the interactive
+  confirmation prompt is removed from the default path (not gated behind a
+  TTY check — gone): an agent runs `caf publish`, it publishes. `--dry-run`
+  remains exactly as it is — the proposal mode, safe anywhere, still the way
+  a human or an agent previews. `--yes` is retained as an accepted no-op
+  (help text says why), so scripts written while it was the escape hatch keep
+  working; no new flag replaces it. OPS-D7's "the boundary is the mint, not
+  the reach" still holds: what changed is that the mint's confirmation is the
+  ruling, not a prompt — and reviewability is after the fact, in pantry's
+  audit trail (the `publisher.minted` companion packet, not this one).
+
 ### Added
 
 - **`caf publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api|worker|both|cli>]
   [--json] [--pantry <url>] <project>` — take a project from a checkout into
-  the public catalog.** The shape is the approval-card pattern, and it is
-  OPS-D7's boundary at the level of a command: the tool proposes, a human
-  confirms. The manifest is validated by the same contract lint every other
-  command runs (never a second validator), the proposal — the registration,
-  the version tag, the dependency edges — is printed BEFORE anything is asked
-  or written, and nothing is written until somebody says yes.
+  the public catalog.** It is OPS-D7's boundary at the level of a command:
+  the customer's own agent reads, proposes and mints freely, and
+  reviewability is after the fact in pantry's audit trail. The manifest is
+  validated by the same contract lint every other command runs (never a
+  second validator), the proposal — the registration, the version tag, the
+  dependency edges — is printed BEFORE anything is written, and the mint
+  follows by default since 2026-10-11.
 
-  A non-interactive run NEVER publishes without an explicit `--yes`: no
-  prompt, no `--yes`, no publish. `--dry-run` prints the proposal and writes
-  nothing. `--json` makes every outcome — the proposal, each step's result,
-  the final state — one machine-readable document, because an agent runs this
-  command in a pipeline.
+  `--dry-run` prints the proposal and writes nothing. `--json` makes every
+  outcome — the proposal, each step's result, the final state — one
+  machine-readable document, because an agent runs this command in a pipeline
+  and parses the document rather than the prose.
 
   The three writes run in order — register the project, publish the version,
   declare each dependency edge — publisher-authenticated through the caller's

@@ -127,9 +127,11 @@ func publishTestProject(t *testing.T, body string) string {
 
 // publishTestEnv builds the deps one command needs: a directory it owns, an
 // in-memory keyring holding the caller's token under a registered session, a
-// publisher that answers without a network, a confirmation the test controls
-// and a tag derivation that needs no git repository. Nothing here touches the
-// machine's config directory, its keychain, the network or a repository.
+// publisher that answers without a network and a tag derivation that needs
+// no git repository. Nothing here touches the machine's config directory,
+// its keychain, the network, a repository — or a terminal: since the
+// 2026-10-11 ruling there is no confirmation to inject, and a test that
+// could answer a prompt would be a test for a prompt that must not exist.
 func publishTestEnv(t *testing.T, pub *fakePublishPublisher) publishDeps {
 	t.Helper()
 	dir := t.TempDir()
@@ -138,7 +140,6 @@ func publishTestEnv(t *testing.T, pub *fakePublishPublisher) publishDeps {
 		dir:       dir,
 		ring:      ring,
 		publisher: pub,
-		confirm:   func(string) (bool, error) { return true, nil },
 		tags:      func(string) (string, error) { return "v1.0.0", nil },
 	}
 	cfg := agent.Config{
@@ -175,7 +176,7 @@ func decodePublishReport(t *testing.T, stdout string) publish.Report {
 	return report
 }
 
-// The approval-card pattern's first half: a dry run prints the proposal — the
+// The proposal mode: a dry run prints the proposal — the
 // registration, the tag, the edges — and writes nothing. The publisher's call
 // list is the assertion: an empty list is the whole proof.
 func TestDryRunWritesNothing(t *testing.T) {
@@ -235,66 +236,57 @@ func TestDryRunJSONIsOneDocument(t *testing.T) {
 	}
 }
 
-// No --yes and a human who says no: the proposal is on stdout, nothing is
-// written, and the exit code is the verdict. The publisher's call list is
-// again the proof — the confirmation is the only thing that can authorize a
-// write, and it said no.
-func TestNoYesAndADeclinedConfirmationWritesNothing(t *testing.T) {
+// The user ruling of 2026-10-11 ("for cafaye i think we should make
+// everything non interactive by default as it shall mostly be used by
+// agents") removed the confirmation from the default path: an agent runs
+// `caf publish`, it publishes. No prompt anywhere in the default path —
+// not even a TTY-gated one. There is no confirmation seam left to inject,
+// so a default run that blocked on a TTY would hang this test rather than
+// ask it — and the publisher's call list is the proof the writes ran.
+func TestDefaultPublishesWithoutPrompting(t *testing.T) {
 	pub := &fakePublishPublisher{}
 	deps := publishTestEnv(t, pub)
-	deps.confirm = func(string) (bool, error) { return false, nil }
 	project := publishTestProject(t, publishFullManifest)
 
-	code, stdout, stderr := runPublishCLI(t, deps, project)
+	code, stdout, _ := runPublishCLI(t, deps, "--json", project)
 
-	if code != exitFailure {
-		t.Errorf("exit code = %d, want %d (stderr: %s)", code, exitFailure, stderr)
+	if code != exitSuccess {
+		t.Errorf("exit code = %d, want %d", code, exitSuccess)
 	}
-	if len(pub.calls) != 0 {
-		t.Errorf("a declined confirmation still wrote: %v", pub.calls)
-	}
-	if !strings.Contains(stdout, "proposal for `app`") {
-		t.Errorf("the proposal was not printed before the question\ngot:\n%s", stdout)
-	}
-	if !strings.Contains(stderr, "nothing was published") {
-		t.Errorf("stderr does not say nothing was published\ngot:\n%s", stderr)
-	}
-}
-
-// The agent-first contract: a run with nobody to ask REFUSES rather than
-// publishing. There is no prompt to answer in a pipeline, so the run is a
-// report — the proposal, no steps, published false, and the refusal naming
-// --yes as the next move.
-func TestNoYesAndNoTerminalRefuses(t *testing.T) {
-	pub := &fakePublishPublisher{}
-	deps := publishTestEnv(t, pub)
-	deps.confirm = func(string) (bool, error) { return false, errNoPrompt }
-	project := publishTestProject(t, publishFullManifest)
-
-	code, stdout, stderr := runPublishCLI(t, deps, "--json", project)
-
-	if code != exitFailure {
-		t.Errorf("exit code = %d, want %d (stderr: %s)", code, exitFailure, stderr)
-	}
-	if len(pub.calls) != 0 {
-		t.Errorf("an unconfirmed run wrote to the catalog: %v", pub.calls)
+	want := []string{publish.OpRegister, publish.OpVersion, publish.OpRequirement, publish.OpRequirement}
+	if strings.Join(pub.calls, ",") != strings.Join(want, ",") {
+		t.Errorf("calls = %v, want %v — the default run must publish the three writes in order", pub.calls, want)
 	}
 	report := decodePublishReport(t, stdout)
-	if report.Published {
-		t.Error("an unconfirmed run reports itself as published")
-	}
-	if len(report.Steps) != 0 {
-		t.Errorf("an unconfirmed run has steps: %v", report.Steps)
-	}
-	if !strings.Contains(report.Refusal, "--yes") {
-		t.Errorf("the refusal does not name --yes as the next move:\n%s", report.Refusal)
-	}
-	if !strings.Contains(stderr, "--yes") {
-		t.Errorf("stderr does not name --yes either\ngot:\n%s", stderr)
+	if !report.Published {
+		t.Errorf("a default publish is not published: %v", report.Steps)
 	}
 }
 
-// --yes is the escape hatch a non-interactive run must use: the three writes
+// `--yes` is retained as an accepted no-op, so any script written while the
+// flag was the escape hatch keeps working. It publishes exactly what the
+// default publishes — no more, no less.
+func TestYesIsAnAcceptedNoOp(t *testing.T) {
+	pub := &fakePublishPublisher{}
+	deps := publishTestEnv(t, pub)
+	project := publishTestProject(t, publishFullManifest)
+
+	code, stdout, _ := runPublishCLI(t, deps, "--yes", "--json", project)
+
+	if code != exitSuccess {
+		t.Errorf("exit code = %d, want %d", code, exitSuccess)
+	}
+	want := []string{publish.OpRegister, publish.OpVersion, publish.OpRequirement, publish.OpRequirement}
+	if strings.Join(pub.calls, ",") != strings.Join(want, ",") {
+		t.Errorf("calls = %v, want %v", pub.calls, want)
+	}
+	report := decodePublishReport(t, stdout)
+	if !report.Published {
+		t.Errorf("a --yes publish is not published: %v", report.Steps)
+	}
+}
+
+// A plain publish is the default: the three writes
 // run in order — register, publish the version, declare each edge — the token
 // is presented on every call, and the report says published.
 func TestYesPublishesTheThreeWritesInOrder(t *testing.T) {
