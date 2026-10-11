@@ -366,12 +366,6 @@ flag into a warning on stderr and an exit 0, versus a BLOCKED line and an
 exit 1. Box never sees `required` — it is cafe's side of the
 contract, and a server that had an opinion about it would have two.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-the standard library cannot do the job. `internal/cve`, `internal/box`, `internal/ledger`,
-||||||| 9e05e81
-||||||| da85b0f
-=======
 `internal/secret` is `cafe secret`, split by the same rule, and it is the
 inventory the Attended tier sells as its first assurance item:
 
@@ -410,9 +404,6 @@ and its own two clients (the kubectl invocation and the state file) are
 standard library only, which is the same constraint the reclamation path
 holds.
 
->>>>>>> ops/w2-secret-inventory
-the standard library cannot do the job. `internal/box`, `internal/ledger`,
-=======
 `internal/failure` is the failure-mode library of OPS-P12, split by the same
 rule, and it is the one branch of the tree whose product is a sentence a
 customer reads rather than a file a machine writes:
@@ -443,7 +434,6 @@ not hold" would be a green light over a blind spot, which is the report
 in `check_test.go` watches that answer stay unknown rather than drift into a pass.
 
 the standard library cannot do the job. `internal/box`, `internal/ledger`,
->>>>>>> ops/w2-failure-library
 `internal/ports`, `internal/reclaim`, `internal/ryuk`,
 `internal/lock` and
 `internal/run` have none, and that is a constraint rather than an accident: the

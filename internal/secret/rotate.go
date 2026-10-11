@@ -205,7 +205,7 @@ type Value string
 //
 // The spellings are the installer's, and they are load-bearing rather than
 // cosmetic: Phoenix refuses a SECRET_KEY_BASE shorter than 64 bytes at boot
-// (install.sh:1228-1232), so a rotation that minted a value the service would
+// (install.sh:1263-1265), so a rotation that minted a value the service would
 // refuse would be an outage disguised as a rotation.
 func Generate(shape string) (Value, error) {
 	switch shape {

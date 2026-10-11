@@ -15,7 +15,7 @@ const (
 	// Rotatable is the class that rotates on a schedule: replace the key in
 	// the Kubernetes Secret and restart the deployment. The installer records
 	// the posture itself — "rotate by replacing the secret and restarting the
-	// pods" (install.sh:1199, :1217, :1246, :1277) — so this class is doing
+	// pods" (install.sh:1234, :1252, :1281, :1312) — so this class is doing
 	// by hand what the runbook already says is the way.
 	Rotatable Class = "rotatable"
 
@@ -180,12 +180,12 @@ const (
 	srcExternal    = "cafaye/kit/templates/substrate/install.sh:1101-1105"
 	srcRelayHdr    = "cafaye/kit/templates/substrate/install.sh:85-88"
 	srcDerived     = "cafaye/kit/templates/substrate/install.sh:1106-1109"
-	srcRotate      = "cafaye/kit/templates/substrate/install.sh:1199,1217,1246,1277"
-	srcKeyBase     = "cafaye/kit/templates/substrate/install.sh:1228-1232,1239-1244"
+	srcRotate      = "cafaye/kit/templates/substrate/install.sh:1234,1252,1281,1312"
+	srcKeyBase     = "cafaye/kit/templates/substrate/install.sh:1263-1265,1274-1277"
 	srcRedisURL    = "cafaye/kit/templates/substrate/install.sh:1239-1245"
 	srcRedisPW     = "cafaye/kit/templates/substrate/install.sh:933-939"
 	srcRoles       = "cafaye/kit/templates/substrate/install.sh:887,892-909"
-	srcNeverPatch  = "cafaye/kit/templates/substrate/install.sh:1159"
+	srcNeverPatch  = "cafaye/kit/templates/substrate/install.sh:1179"
 	srcIDReadme    = "cafaye/identity/README.md:299"
 	srcOIDCJwks    = "cafaye/identity/README.md:1348"
 	srcMFAReadme   = "cafaye/identity/README.md:1035-1039"
