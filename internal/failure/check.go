@@ -73,6 +73,21 @@ func (r Report) Unknown() []Finding {
 	return out
 }
 
+// DoesNotHold is the findings whose condition was evaluated and was not
+// identified. It is here beside Holds and Unknown because a report that
+// rendered only two of its three verdicts would make the third invisible: a
+// rule that was checked and passed is a claim, and a claim nobody can count is
+// a claim nobody checks.
+func (r Report) DoesNotHold() []Finding {
+	var out []Finding
+	for _, f := range r.Findings {
+		if f.Verdict == DoesNotHold {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
 // Evaluate checks every rule in the library against one observation. It is a
 // pure function of the two, and it never fails: an entry whose condition cannot
 // be answered is reported as Unknown with the missing fact named, which is the
@@ -180,10 +195,17 @@ func (r Report) String() string {
 }
 
 // Describe is the one line a caller prints beside the count: how many rules,
-// how many held. It is the library's own summary and it is what `cafe failure
-// check` prints last.
+// how many held, how many could not be answered. It is the library's own
+// summary and it is what `cafe failure check` prints last.
+//
+// The does-not-hold count is in the line rather than left to the reader's
+// arithmetic, because a report over eleven rules where nine hold and one is
+// unknown is a report whose tenth row the reader cannot see — and the eleventh
+// entry is exactly the row whose answer (does not hold, the edge is serving) is
+// worth reading out loud.
 func (r Report) Describe() string {
-	return fmt.Sprintf("%d rule(s), %d condition(s) hold, %d unknown", r.Rules, len(r.Holds()), len(r.Unknown()))
+	return fmt.Sprintf("%d rule(s), %d condition(s) hold, %d does not hold, %d unknown",
+		r.Rules, len(r.Holds()), len(r.DoesNotHold()), len(r.Unknown()))
 }
 
 // SortedMissing is the observation fields the library needed and did not get,

@@ -10,7 +10,7 @@ import (
 // rather than a closure so the rule set stays data — see doc.go.
 type PredicateKind string
 
-// The vocabulary. Twelve, because the ten seed entries need these twelve and
+// The vocabulary. Fourteen, because the eleven library entries need these fourteen
 // not one more; the rule for adding a thirteenth is in this file's comment on
 // evaluate.
 const (
@@ -59,6 +59,22 @@ const (
 
 	// PredInstrumented: at least one service exports signals.
 	PredInstrumented PredicateKind = "instrumented"
+
+	// PredEdgeServing: the box's edge answered its own health path, or did
+	// not. Value 1 is "it is serving" and Value 0 is "it is not", because the
+	// failure mode this reads is a box whose edge is ABSENT while every
+	// service on it is fine — see rule 11. The zero is the one that matters
+	// and it has to be spellable, which is why the predicate carries a value
+	// rather than being a positive-only test.
+	PredEdgeServing PredicateKind = "edge-serving"
+
+	// PredEdgeHostUnhealthy: the edge routes the hostname in Service to an
+	// upstream it has observed unhealthy. It is the symmetric counterpart of
+	// the predicate above and it is a separate kind because it is a different
+	// failure with a different remedy: an edge that is UP and answering for a
+	// hostname whose app is gone looks healthy from every direction that is
+	// not the app's.
+	PredEdgeHostUnhealthy PredicateKind = "edge-host-unhealthy"
 )
 
 // Predicate is one test, with its arguments. Service, Name and Value carry
@@ -75,7 +91,7 @@ type Predicate struct {
 // Condition is one rule's identifying condition: every predicate in All, and
 // at least one of Any when Any is non-empty.
 //
-// Two connectives and not an expression tree, because the ten seed entries need
+// Two connectives and not an expression tree, because the eleven entries need
 // exactly this much and an expression tree would be machinery the library's
 // growth does not need. The conjunction covers "this fact and that fact" (a
 // slow readiness answer while the dependency is gone); the disjunction covers
@@ -186,6 +202,31 @@ func (p Predicate) evaluate(o Observation) (held, known bool) {
 		return len(o.Collectors) == 0, o.Collectors != nil
 	case PredInstrumented:
 		return len(o.Instrumented) > 0, o.Instrumented != nil
+	case PredEdgeServing:
+		if o.Edge == nil {
+			return false, false
+		}
+		if p.Value == 0 {
+			return !o.Edge.Serving, true
+		}
+		return o.Edge.Serving, true
+	case PredEdgeHostUnhealthy:
+		if o.Edge == nil {
+			return false, false
+		}
+		found := false
+		for _, host := range o.Edge.Hosts {
+			if p.Service != "" && host.Name != p.Service {
+				continue
+			}
+			found = true
+			if host.Health == "unhealthy" {
+				return true, true
+			}
+		}
+		// Not found is "the edge record has no such row", which is unknown;
+		// found and healthy is a real "does not hold".
+		return false, found
 	}
 	// An unknown kind is reported as unanswerable. The alternative — reading
 	// it as false — is a rule that quietly stops firing when a vocabulary
@@ -219,6 +260,8 @@ func (p Predicate) fact() string {
 		return "Collector"
 	case PredInstrumented:
 		return "Instrumented"
+	case PredEdgeServing, PredEdgeHostUnhealthy:
+		return "Edge"
 	}
 	return "no such predicate kind " + string(p.Kind)
 }
@@ -261,6 +304,16 @@ func (p Predicate) String() string {
 		return "no collector runs on this box"
 	case PredInstrumented:
 		return "at least one service exports signals"
+	case PredEdgeServing:
+		if p.Value == 0 {
+			return "the box's edge is not answering its own health path"
+		}
+		return "the box's edge is answering its own health path"
+	case PredEdgeHostUnhealthy:
+		if p.Service == "" {
+			return "the edge routes some hostname to an upstream it has observed unhealthy"
+		}
+		return "the edge routes " + p.Service + " to an upstream it has observed unhealthy"
 	}
 	return "unknown predicate " + string(p.Kind)
 }

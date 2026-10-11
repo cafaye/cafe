@@ -6,15 +6,16 @@ import (
 )
 
 // The seed is the packet's first claim, so it is asserted rather than trusted:
-// ten entries, in the doc's order, each with every field that makes it an
+// eleven entries, in the doc's order, each with every field that makes it an
 // entry rather than a line in a table. A library row with an empty Remedy is a
 // row that tells a reader what has happened and nothing about what to do, which
 // is trivia — and trivia in the Attended tier's core product is a thing the
 // library exists to avoid.
 func TestTheSeedIsTheTenDocumentedEntries(t *testing.T) {
 	rules := Library()
-	if got, want := len(rules), 10; got != want {
-		t.Fatalf("the library has %d entries; the doc's table at CAFAYE-OPS.md:731-748 has %d", got, want)
+	if got := len(rules); got != 11 {
+		t.Fatalf("the library has %d entries; the doc's table at CAFAYE-OPS.md:731-748 has 10 and the "+
+			"edge entry is the eleventh (see Library's comment)", got)
 	}
 
 	seen := map[string]bool{}
@@ -120,6 +121,66 @@ func TestNoRuleCarriesAConfiguredValue(t *testing.T) {
 	}
 }
 
+// The eleventh is the one entry the rest of this tree can produce a fact for,
+// so it gets its own fixture rather than riding on the seed's. The fixture is
+// the edge's own health answer — internal/edge's HealthPath document — reduced
+// to the two facts a rule may read, and the assertion is that the rule fires
+// when the edge is absent while the box is otherwise up.
+func TestTheEdgeEntryFiresWhenTheEdgeIsDownAndTheBoxIsUp(t *testing.T) {
+	rules := Library()
+	var rule Rule
+	for _, r := range rules {
+		if r.ID == "edge-down-while-every-readyz-is-green" {
+			rule = r
+		}
+	}
+	if rule.ID == "" {
+		t.Fatal("the library has no edge entry")
+	}
+
+	// The edge is gone and the box is otherwise alive: this is the condition,
+	// and it must be identified rather than answered unknown.
+	down := Observation{
+		Services: []string{"gateway", "identity"},
+		Edge:     &EdgeFact{Serving: false},
+	}
+	report := Evaluate([]Rule{rule}, down)
+	if got := len(report.Holds()); got != 1 {
+		t.Fatalf("the edge-down condition was identified %d time(s), want 1: %s", got, report.Findings[0].Missing)
+	}
+
+	// An edge that IS serving does not satisfy it. The opposite reading —
+	// "the edge is fine" — is what makes the entry a detector rather than a
+	// rule that fires whenever anything is wrong.
+	up := down
+	up.Edge = &EdgeFact{Serving: true, Hosts: []EdgeHost{{Name: "api.cafaye.test", Health: "healthy"}}}
+	if got := len(Evaluate([]Rule{rule}, up).Holds()); got != 0 {
+		t.Errorf("the edge-down condition fired with an edge that is serving")
+	}
+
+	// The symmetric counterpart: the edge is up and answering, and it is
+	// routing a hostname to an upstream it has already observed unhealthy.
+	// That is the failure that looks healthy from every direction that is not
+	// the app's, and the predicate exists so a successor can express it.
+	counter := Rule{
+		ID:      "control-edge-up-while-its-upstream-is-gone",
+		Failure: "the edge answers for a hostname whose app is gone",
+		Condition: Condition{All: []Predicate{
+			{Kind: PredEdgeHostUnhealthy, Service: "api.cafaye.test"},
+		}},
+	}
+	up.Edge.Hosts[0].Health = "unhealthy"
+	if got := len(Evaluate([]Rule{counter}, up).Holds()); got != 1 {
+		t.Error("the counterpart condition did not fire against an edge routing to an unhealthy upstream")
+	}
+
+	// And no box has the edge fact yet, so the real answer today is UNKNOWN
+	// rather than a green light over a blind spot.
+	if missing := Evaluate([]Rule{rule}, Observation{Services: []string{"gateway"}}).Findings[0].Missing; missing != "Edge" {
+		t.Errorf("an observation with no edge fact reports %q, want it to name Edge", missing)
+	}
+}
+
 // fullyPopulated is the box every rule in the seed was written against: every
 // fact present, and present in the shape that makes every condition answerable.
 // It is the fixture the other tests drive, and it is written once rather than
@@ -147,5 +208,12 @@ func fullyPopulated() Observation {
 		Publishers:   []string{},
 		Collectors:   []string{},
 		Instrumented: []string{"courier", "identity", "gateway", "kit"},
+		Edge: &EdgeFact{
+			Serving: true,
+			Hosts: []EdgeHost{
+				{Name: "api.cafaye.test", Upstream: "127.0.0.1:8080", Health: "healthy"},
+				{Name: "auth.cafaye.test", Upstream: "127.0.0.1:8081", Health: "healthy"},
+			},
+		},
 	}
 }

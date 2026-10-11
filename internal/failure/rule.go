@@ -50,18 +50,22 @@ type Rule struct {
 	Condition Condition
 }
 
-// Library is the seed: the ten entries CAFAYE-OPS.md:731-748 already records,
-// in the doc's own order. It is a function rather than a package-level variable
-// so no caller can append to the library the rest of the process reads, and so
-// a test can render it without mutating anything.
+// Library is the seed: the ten entries CAFAYE-OPS.md:731-748 already records
+// plus the eleventh this repository owes its own edge, in the doc's order with
+// the eleventh last. It is a function rather than a package-level variable so
+// no caller can append to the library the rest of the process reads, and so a
+// test can render it without mutating anything.
 //
-// IT IS TEN AND NOT ELEVEN, and that is a rule rather than a coincidence. The
-// library's value is that it compounds (CAFAYE-OPS.md:836-837), which means the
-// tempting move is to seed it with plausible entries nobody has seen. A
-// plausible entry is a guess, and a guess in a file a customer's box is checked
-// against is the kind that gets copied. Adding the eleventh entry costs a row
-// in this table, a row in the test fixture and a paragraph saying where it was
-// observed — nothing else.
+// IT IS ELEVEN AND NOT TWELVE, and the rule that kept it at ten still holds.
+// The tenth entry was refused for as long as the library had a floor to raise,
+// because a plausible entry is a guess and a guess in a file a customer's box
+// is checked against is the kind that gets copied. The eleventh is not a
+// guess: it is the one failure mode this repository can observe on itself,
+// because the box's edge is code in this tree (internal/edge) and the thing
+// that would catch its absence is a predicate over an observation field
+// nothing populates yet — which the checker reports as UNKNOWN and names,
+// exactly as the other ten do. Adding a twelfth costs a row here, a row in the
+// test fixture, and a paragraph saying where it was observed. Nothing else.
 func Library() []Rule {
 	return []Rule{
 		{
@@ -229,6 +233,53 @@ func Library() []Rule {
 				{Kind: PredSettingSet, Service: "muse", Name: "MUSE_VAULT_KEY"},
 				{Kind: PredSettingSet, Service: "identity", Name: "OIDC_SIGNING_KEY"},
 			}},
+		},
+		{
+			// The eleventh is this repository's own: the failure mode of the
+			// thing boxd runs in front of everything. It is appended after the
+			// ten rather than inserted among them because the doc's table has
+			// its own order and this entry is not in that table — it is in the
+			// plan's Phase B TLS note and in internal/edge.
+			ID:      "edge-down-while-every-readyz-is-green",
+			Failure: "the box's edge is down and every service's /readyz still answers 200",
+			Sees:    "all services healthy, heartbeat green, nothing to page about",
+			Known: "the edge is not a service, so nothing in the substrate's own " +
+				"health checks it: a box whose edge has gone answers `/readyz` for " +
+				"every app from inside the box, and the control-plane heartbeat is a " +
+				"different channel entirely (internal/boxd/client.go:15-24 is an " +
+				"outbound mTLS connection that survives an edge that is not " +
+				"listening). The edge is the only thing between a customer and " +
+				"every hostname the box serves, and internal/edge's HealthPath is " +
+				"the one path it answers itself so that an answer means the edge " +
+				"is alive rather than the app behind it is. The doc's observe-stream " +
+				"line already names cert expiry as something the stream has to carry " +
+				"(CAFAYE-OPS.md:660) and a box's edge is where that certificate " +
+				"lives; the doc's table does not record the edge's own failure, " +
+				"which is why this entry is the eleventh rather than a row in it.",
+			Remedy: "Probe the edge's own health path from OUTSIDE the box — " +
+				"`https://api.<box>/healthz` — and read the routing record it " +
+				"answers with. Nothing inside the box can substitute for it: a " +
+				"`/readyz` answered by an app behind a dead edge is a fact about " +
+				"the app. The symmetric counterpart is the mirror failure and it " +
+				"is the reason the edge's health column is the thing to read: the " +
+				"edge answers 200 for a hostname whose upstream it has already " +
+				"observed unhealthy, so an edge that is UP is not evidence that " +
+				"anything behind it is (predicate `edge-host-unhealthy`, over the " +
+				"same Edge fact).",
+			// No core contract is cited because core says nothing about a box's
+			// edge: core pins the two probe paths and the resource attributes,
+			// and the edge is a cafaye invention. An invented citation would be
+			// worse than an empty field — see Rule.Contract.
+			Contract: "",
+			Condition: Condition{
+				All: []Predicate{
+					{Kind: PredEdgeServing, Value: 0},
+				},
+				Any: []Predicate{
+					{Kind: PredServiceRunning, Service: "gateway"},
+					{Kind: PredServiceRunning, Service: "identity"},
+				},
+			},
 		},
 	}
 }

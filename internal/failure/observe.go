@@ -13,8 +13,8 @@ import (
 //
 // It carries NAMES and COUNTS and never a configured value. A service's
 // configuration is where credentials live — internal/boxd/identity.go:131-134 says
-// as much, and the fact the ten rules need is a name's presence: `identity`'s
-// MFA routes are absent because `MFA_ENCRYPTION_KEY` is unset
+// as much, and the fact the eleven rules need is a name's presence:
+// `identity`'s MFA routes are absent because `MFA_ENCRYPTION_KEY` is unset
 // (CAFAYE-OPS.md:741), so what identifies the failure mode is whether the name
 // is set, not what it is set to.
 //
@@ -85,6 +85,48 @@ type Observation struct {
 	// instrumented in four services with no collector anywhere is traces
 	// going nowhere (CAFAYE-OPS.md:744).
 	Instrumented []string `json:"instrumented,omitempty"`
+
+	// Edge is what the box's edge reports about itself — whether it is
+	// answering its own health path, and what it last knew about each
+	// hostname in its routing record. Rule 11 needs it, and it is the one
+	// fact in this surface about the thing a customer actually reaches.
+	//
+	// Nil means the observation never asked the edge, which is the state of
+	// every box today: internal/boxd's World carries service names and the
+	// install phase and nothing else (internal/boxd/route.go:26-28), so the
+	// edge's own answer is exactly what the substrate packet owes this
+	// library. That is the same honest UNKNOWN the other ten need, and it is
+	// worth naming because this fact is different in kind: an edge nobody
+	// probes is an edge that can be down with everything else green.
+	Edge *EdgeFact `json:"edge,omitempty"`
+}
+
+// EdgeFact is the box's edge, as a fact. It carries no certificate and no
+// key: the edge's own health answer is about routing
+// (internal/edge.HealthPath), so the one route a control plane can quote from
+// a box is also the one that could not carry a credential if it wanted to.
+type EdgeFact struct {
+	// Serving is whether the edge answered its own health path at all. It is
+	// a single boolean rather than a status because the failure mode rule 11
+	// identifies is not "the edge is degraded" — it is "the edge is not
+	// there", and the difference between those two is the whole entry.
+	Serving bool `json:"serving"`
+
+	// Hosts is one row per hostname in the edge's routing record.
+	Hosts []EdgeHost `json:"hosts,omitempty"`
+}
+
+// EdgeHost is one hostname's row: where it goes, and what the edge last
+// observed there.
+//
+// The health is the EDGE'S observation and not a service's opinion of itself,
+// which is what makes it worth carrying: a service that answers `/readyz`
+// from inside the box has no idea whether anything can reach it from outside,
+// and the edge is the only thing on the box that knows.
+type EdgeHost struct {
+	Name     string `json:"name"`
+	Upstream string `json:"upstream"`
+	Health   string `json:"health"`
 }
 
 // Probe is one observed probe answer. LatencyMS is the whole answer's latency
