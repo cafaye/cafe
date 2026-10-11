@@ -1,7 +1,7 @@
 # Vendored schema
 
 `manifest-0.2.json` is a **copy** of the manifest schema owned by
-[cafaye/core](https://github.com/cafaye/core), pinned here so `caf contract
+[cafaye/core](https://github.com/cafaye/core), pinned here so `cafe contract
 lint` validates against a known contract with no network at runtime.
 
 | | |
@@ -16,15 +16,15 @@ The file is byte-for-byte identical to core's. It carries no header comment
 because JSON has no comment syntax and editing it would break the byte
 identity the sha256 pins; this file is the header instead.
 
-## `telemetry/` — the six schemas `caf gen telemetry` is derived from
+## `telemetry/` — the six schemas `cafe gen telemetry` is derived from
 
 `telemetry/` holds six more copies, vendored for the same reason and pinned the
-same way. `caf gen telemetry` reads the attribute allowlists, the prohibition,
+same way. `cafe gen telemetry` reads the attribute allowlists, the prohibition,
 the resource contract, the `error.type` vocabulary, the span-name pattern and
 the endpoint/no-op contract out of **these files**, so every fact it emits is a
 fact core wrote rather than a fact somebody typed into cafe. That is the whole
 mechanism behind the generated artifact not drifting: a core bump that adds an
-`error.type` value or drops `db.operation` changes the bytes caf emits, and
+`error.type` value or drops `db.operation` changes the bytes cafe emits, and
 `internal/gen`'s drift gate turns red on the committed golden.
 
 | File | Core path under `schemas/telemetry/` | sha256 |
@@ -48,7 +48,7 @@ reader will ask:
 - **`probes.schema.json` is not here.** `healthz` and `readyz` are a contract
   about a service's dependency list, and no field in a `cafaye.yml` records
   what a service depends on at runtime. Emitting a `readyz` that checked
-  nothing is the exact failure that schema exists to prevent, so caf emits
+  nothing is the exact failure that schema exists to prevent, so cafe emits
   nothing rather than emitting a guess.
 - **The three `slo*` schemas are not here.** They are about windows and budgets
   a service declares about itself over time, which is a decision a person
@@ -57,19 +57,19 @@ reader will ask:
 - **`redaction.schema.json` is vendored and not yet read for its lists.** Its
   `neverRecord`, `prohibited` and `verifier` are a *policy's* content and live
   in core's `examples/valid/telemetry/redaction.json`, not in the schema — a
-  schema says the list has at least six entries, not what they are. caf does
+  schema says the list has at least six entries, not what they are. cafe does
   not invent them; see `internal/gen`'s doc for what it emits instead and
   which half of that decision is a manager's.
 
 The four telemetry rules that are genuinely in the schemas, and therefore the
-four caf reads rather than writes, are: the per-signal attribute allowlists
+four cafe reads rather than writes, are: the per-signal attribute allowlists
 (`$defs/tracesAttributes`, `$defs/measurementAttributes`, `$defs/logsAttributes`),
 the prohibition on unbounded identifiers (`$defs/measurementAttributes.not`),
 the resource attribute list (`$defs/resource`, byte-identical on all three
 signals), and the `error.type` closed vocabulary (one shared `enum`).
 
-The name is the **spec** version, not the caf version that shipped it, because
-the interesting fact about a pin is which contract it enforces. `caf 0.1.0`
+The name is the **spec** version, not the cafe version that shipped it, because
+the interesting fact about a pin is which contract it enforces. `cafe 0.1.0`
 enforcing `manifest-0.2.json` is correct; a file called `manifest-0.1.json`
 would say the opposite.
 
@@ -156,7 +156,7 @@ Then, in order:
    This is the check a telemetry refresh exists to pass or fail, and it fails by
    design: core's schemas now say something the committed golden in
    `internal/gen/testdata/` does not. Read the diff it prints, decide whether
-   the change is one caf can adopt, and then regenerate the golden with
+   the change is one cafe can adopt, and then regenerate the golden with
    `go test ./internal/gen/ -run TestUpdateTheGeneratedTelemetry -update`
    **only once you have read the diff**. Regenerating first is how a breaking
    core bump becomes an invisible one.
@@ -165,8 +165,8 @@ Then, in order:
 
 ## Why a copy and not a fetch
 
-`caf` never touches the network (AGENTS.md). A linter that downloads the
+`cafe` never touches the network (AGENTS.md). A linter that downloads the
 schema it validates against is a linter whose answer depends on the day it
 ran, and it cannot run on an air-gapped CI runner. A pinned copy makes
-`caf contract lint` deterministic, offline, and diffable: reviewing a core
+`cafe contract lint` deterministic, offline, and diffable: reviewing a core
 bump is reviewing one file.
