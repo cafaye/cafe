@@ -134,7 +134,7 @@ landed.
 
 ## Tests
 
-14 top-level tests added, and the failing state was committed first
+15 top-level tests added, and the failing state was committed first
 (`e8b745e`: the suite did not even compile, because `ProjectByAddress`,
 `Registered.OwnerSlug`, `Report.Address`, `Resolution.Owner` and
 `ResolveAddress` did not exist).
@@ -142,7 +142,7 @@ landed.
 | file | tests |
 | --- | --- |
 | `internal/resolve/pantry_test.go` | 2 — the address read's path, query-lessness, anonymity and `owner_slug` decode; the address 404 naming the address |
-| `internal/resolve/resolve_test.go` | 6 — the ambiguity retry; a plain 404 never retrying; no owner means no address read; the wrong-owner refusal (and no leaked coordinates); the matching address resolving without a second read; the addressed paid product's named range refusal |
+| `internal/resolve/resolve_test.go` | 7 — the ambiguity retry; a plain 404 never retrying; no owner means no address read; the wrong-owner refusal (and no leaked coordinates); the matching address resolving without a second read; the addressed paid product's named range refusal; an ambiguity spelled in the problem's `code` still retrying |
 | `internal/publish/publish_test.go` | 2 — the 201 body's address through the real HTTP client; the idempotent re-register naming no address |
 | `internal/cli/resolve_test.go` | 3 — the slash form (document carries `owner`+`name`); the wrong owner refused at exit 1; a directory spelled `owner/name` staying a directory |
 | `internal/cli/publish_test.go` | 1 — the address on both streams |
@@ -159,11 +159,11 @@ go test ./internal/resolve/... ./internal/cli/...   pass
 go vet ./...                                        clean
 gofmt -l .                                          prints nothing
 go run ./cmd/caf lock .                             caf.lock re-pinned (12 files)
-./bin/prime                                         28 packages, 1258 top-level passes,
+./bin/prime                                         28 packages, 1259 top-level passes,
                                                      1234 subtest passes, 0 failures, 8 skips
 ```
 
-`gate.yml`'s `suite` floor moved 1244 → 1258, which is exactly the 14 tests
+`gate.yml`'s `suite` floor moved 1244 → 1259, which is exactly the 15 tests
 this packet adds, and `caf.lock` is re-pinned in the same commit because the
 floor's hash moved — the friction `AGENTS.md` calls deliberate. The
 `live-tier` line is unchanged (0 of 7 executed; `bin/prime` is the declared

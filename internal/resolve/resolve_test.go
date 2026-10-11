@@ -670,3 +670,26 @@ func TestAnAddressedPaidProductStillNeedsARange(t *testing.T) {
 		t.Errorf("the refusal destroyed the coordinates the first two tiers answered")
 	}
 }
+
+// The code is matched beside the detail, because the day pantry names the
+// collision in a `code` the sentence may say anything at all — and a detector
+// that only read the prose would silently stop matching on the very release
+// that made the state reachable.
+func TestAnAmbiguitySpelledInTheCodeIsStillAmbiguity(t *testing.T) {
+	pantry := &fakePantry{
+		projectErr: &PantryError{Status: 404, Code: "name_ambiguous",
+			Detail: "no official cafaye project is registered under that name"},
+		address: &Project{Name: "widget", OwnerSlug: "alice"},
+		coords:  &Coordinates{Name: "widget"},
+	}
+
+	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+		context.Background(), "alice", "widget", "cafaye_token", "")
+
+	if pantry.addressCalls != 1 {
+		t.Fatalf("address reads = %d, want 1 — the code is the signal", pantry.addressCalls)
+	}
+	if report.Services[0].Failure != nil {
+		t.Fatalf("failed: %+v", report.Services[0].Failure)
+	}
+}

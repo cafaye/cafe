@@ -273,32 +273,31 @@ func (r *Resolver) ResolveAddress(ctx context.Context, owner, name, token, accou
 // ambiguousName asks whether a tier-1 error is pantry's "the bare name is not
 // globally unique" answer, as opposed to its plain "no such project" one.
 //
-// THE DETAIL IS THE SIGNAL, AND THAT IS A PROVISIONAL CONTRACT. Today the
-// state is unreachable — `projects_name_key` makes bare names unique, so no
-// such 404 can be produced — and pantry's document promises that when the key
-// is relaxed the collision answers 404 "naming the addresses". So the
-// detection cannot be on a code the server does not yet send and cannot be on
-// the whole sentence either, which will be reworded. It is on the two
-// spellings that say the thing: `ambiguous` (a code or a detail carrying it)
-// and `more than one owner` (the fact itself). Both drift risks are named and
-// both are the SAFE direction:
+// THE SIGNAL IS A PROVISIONAL CONTRACT, AND THAT IS STATED RATHER THAN HIDDEN.
+// Today the state is unreachable — `projects_name_key` makes bare names unique,
+// so no such 404 can be produced — and pantry's document promises that when the
+// key is relaxed the collision answers 404 "naming the addresses". So there is
+// no code to match on yet and no sentence either, because the sentence will be
+// reworded. What is matched is the two spellings that say the thing: `ambigu`
+// in the problem's code OR in its detail, and `more than one owner`, which is
+// the fact itself. Both drift risks are named and both are the SAFE direction:
 //
 //   - a false NEGATIVE stays a plain 404 — the caller gets the bare name's
 //     sentence and no extra read, which is exactly the brief's requirement.
 //   - a false POSITIVE costs one address read that 404s, and its own 404 names
 //     the address, so the reader learns which address was tried.
 //
-// The alternative — waiting for pantry to publish a code — would mean a
-// client that silently stops retrying the day the state becomes reachable,
-// which is the failure this resolver exists to prevent.
+// The alternative — waiting for pantry to publish a code — would mean a client
+// that silently stops retrying the day the state becomes reachable, which is
+// the failure this resolver exists to prevent.
 func ambiguousName(err error) bool {
 	var pe *PantryError
 	if !errors.As(err, &pe) {
 		return false
 	}
-	detail := strings.ToLower(pe.Detail)
-	return strings.Contains(detail, "ambigu") ||
-		strings.Contains(detail, "more than one owner")
+	haystack := strings.ToLower(pe.Detail + " " + pe.Code)
+	return strings.Contains(haystack, "ambigu") ||
+		strings.Contains(haystack, "more than one owner")
 }
 
 // resolveOne walks one dependency through the tiers in order and stops at the
