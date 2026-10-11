@@ -95,9 +95,12 @@ a run in which they passed.
 | `cafe box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
 | `cafe box logs --json` | the box's own log: what happened, when, and to which phase | **works** |
 | `cafe box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
+| `cafe box publish <id> <dir>` | deploy a release to the box and flip `current` at it with a rename — the atomic switch behind zero downtime | **works** |
+| `cafe box edge --json` | what the box's edge serves: hostnames, upstreams, the health the edge last observed, and the release behind `current` | **works** |
+| `cafe box rollback` | flip `current` back one release — the box's own filesystem, no control plane, no capability | **works** |
 | `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to box — the agent never sees the value | **works** |
 | `cafe provider status --json` | which providers this box is connected to, as box reports it; opens no envelope | **works** |
-| `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
+| `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the eleven documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
 | `cafe gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
 | `cafe gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
 | `cafe lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |

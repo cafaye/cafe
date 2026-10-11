@@ -29,6 +29,9 @@ internal/telemetry/ GENERATED, and compiled: cafe's own copy of `cafe gen teleme
 internal/mcp/       the MCP server: transports, the served table, the SDK seam
 internal/boxd/      the box daemon: the whitelisted route table, the Seam-ed world,
                      and the outbound-only mTLS channel to box
+internal/edge/      boxd's embedded edge: host routing, the three TLS modes, the
+                     release directories and the atomic `current` switch — the one
+                     piece of state the edge owns so nothing else keeps a copy
 internal/ledger/    the reclamation ledger: what cafe created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/provider/  cafe provider: the client half of boundary 6 — the envelope sealed to the box's public key, the control-plane seam
@@ -316,6 +319,76 @@ might not work. `tls_test.go` is the second half: a real loopback TLS
 listener that requires the box's client certificate, proving the channel is
 mTLS rather than described as it.
 
+`internal/edge` is the edge the box runs — boxd's embedded edge, and the plan's
+Phase B answer to kamal's per-box proxy (`lib/kamal/commands/proxy.rb`: one
+small container on the box terminates TLS, routes by hostname, and switches
+traffic between releases with zero downtime). It is split by what it is for,
+and it holds three rules:
+
+- `doc.go` — what the package is, why it is not a Traefik with an Ingress in
+  front of it, and the one thing it owns.
+- `spec.go` — the edge's one piece of state: host → upstream, the health the
+  edge observed, and the last-deploy pointer. It is a small record on purpose
+  — every field is a field two commands have to agree about — and complete,
+  because a routing fact the spec did not carry would be a routing fact kept
+  somewhere else. `Load`/`Save` are atomic and the spec is validated on both
+  sides of the disk, so a record nobody can read is refused rather than
+  interpreted.
+- `release.go` — releases on disk, `current` as a symlink, and the one
+  operation `Switch` that both a deploy and a rollback are. The flip is a
+  symlink plus a `rename(2)` over `current`, so the switch is atomic from a
+  reader's point of view: a request either reaches the old release or the new
+  one, never a directory that is half-written.
+- `tls.go` — the three TLS modes the plan's TLS note names: Let's Encrypt
+  HTTP-01 once the zone is proxied, a Cloudflare origin certificate while DNS
+  is grey-clouded, and a certificate the box mints itself for `*.svc` names,
+  which never appear in public DNS and so have no business asking an ACME
+  account for anything. It also serves the HTTP-01 challenge tokens, because
+  the edge serves the challenge and the substrate performs it.
+- `proxy.go` — the gateway: host routing on the Host header, the health the
+  edge probes and records, and the one path the edge answers itself.
+
+**Three TLS modes exist because a box is in three states, and the third is not
+a compromise.** `*.svc.cafaye.com` never appears in public DNS (the plan's
+stability rule 4 makes a leak a five-alarm fire), so the names that are only
+ever reached cluster-internally are terminated with a certificate the box
+issued itself and no ACME account is involved at all. A box that had to reach
+Let's Encrypt to encrypt its own internal traffic would be a box whose
+internal traffic depended on the public internet.
+
+**The edge owns exactly one thing, and that is the whole design.** Host →
+upstream, the health the edge observed, and the last-deploy pointer, in one
+record under the box's own state directory. `cafe box publish` writes it,
+`cafe box rollback` flips it back, and a caller that kept its own host table
+would be a caller that could route a host the edge has already retired — a 404
+nobody can explain. The `current` symlink is the TRUTH and the spec's
+`Current` is the RECORD; `cafe box edge` reports both, because the one state
+where they disagree is a deploy that did not finish and that is worth saying
+out loud rather than resolving silently in either direction.
+
+**A rollback needs no control plane, and that is the point rather than a
+simplification.** The decision is about what is on this disk; it asks nothing
+of anyone and cannot be refused by a network. The plan's sign-off checklist
+asks for "a broken deploy demonstrates rollback", and on the day a deploy is
+broken the control plane is the last thing an operator wants to depend on.
+
+**The proof is the gateway over a real listener, not a unit stub of it.** Seven
+tests in `internal/edge` dial a real loopback TLS listener with real SNI, so
+`api.cafaye.test` and `auth.cafaye.test` answer `/healthz` (the edge's own
+path) and `/readyz` (the app's) and `identity.svc.cafaye.com` answers over a
+minted wildcard; the switch test serves the release directory through the
+`current` symlink and asserts a publish and a rollback change what the customer
+gets with the routing record untouched. `TestARetiredHostIsRefusedAndTheControl
+ProvesIt` carries its own control — the row restored and the same request
+succeeding — because a test that only asserted the 404 would also pass against
+a gateway that refused everything.
+
+`internal/edge` has no dependency beyond the standard library, for the same
+reason `internal/box` and `internal/boxd` hold to it: it sits on the path that
+keeps a box serving, and a dependency graph on that path is a graph that can
+fail to load at exactly the wrong moment. It imports nothing else in this tree
+either — which is what lets it be the first thing a box brings up.
+
 `internal/resolve` is `cafe resolve`, split by the same rule, and it is the
 consumer of W4's two upstream packets — the thing that makes a manifest's
 `dependencies` mean something:
@@ -474,7 +547,11 @@ reclaims after a failed enrollment. `internal/failure` is stdlib plus
 `internal/box` does: the library is checked against the box that reclaims
 after a failure, so the rule set cannot carry a dependency the reclamation
 path would have to fetch. What it imports from `internal/boxd` is the `World`
-seam and nothing that reaches a network.
+seam and nothing that reaches a network. `internal/edge` has none either, and
+it holds to it for the same reason and one more of its own: it sits on the path
+that keeps a box serving, so a dependency graph there is a graph that can fail
+to load at exactly the wrong moment; and because it imports nothing else in
+this tree, it is the first thing a box can bring up.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and

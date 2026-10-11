@@ -22,6 +22,16 @@ type boxDeps struct {
 	// dir is where box.json, the journal and the event log live. Empty means
 	// the resolved default, and a test always sets it.
 	dir string
+	// stateDir is where the box's own state lives: the release directories,
+	// the `current` symlink and the edge's routing record. Empty means the
+	// resolved default, and a test always sets it.
+	//
+	// It is a separate field from dir rather than derived from it, because
+	// the two are different things in different places: ~/.config holds the
+	// operator's non-secret settings and /var/lib holds the machine's state,
+	// and a release directory written into the first would be a deploy that
+	// disappeared with a dotfile cleanup.
+	stateDir string
 	// ring holds the private key. Nil means a file ring under the config
 	// directory, and a test always sets it.
 	ring box.Keyring
@@ -48,6 +58,15 @@ func defaultConfigDir() (string, error) {
 	return filepath.Join(base, "cafe"), nil
 }
 
+// defaultBoxStateDir is where the box's own state lives when nothing names
+// one: the release directories, the `current` symlink and the edge's routing
+// record. It is under /var/lib rather than under the config directory for the
+// reason boxDeps.stateDir gives, and it is a function rather than a constant so
+// a test can see the shape without the path being baked into a comparison.
+func defaultBoxStateDir() string {
+	return filepath.Join(string(os.PathSeparator)+"var", "lib", "cafe")
+}
+
 // boxURLEnv is where the endpoint comes from when no flag names one.
 // An environment variable rather than a flag default, because a flag default
 // baked into the binary is a default that goes stale when box moves and
@@ -59,6 +78,9 @@ func (d boxDeps) withDefaults() boxDeps {
 		if dir, err := defaultConfigDir(); err == nil {
 			d.dir = dir
 		}
+	}
+	if d.stateDir == "" {
+		d.stateDir = defaultBoxStateDir()
 	}
 	if d.url == "" {
 		d.url = os.Getenv(boxURLEnv)
@@ -92,15 +114,20 @@ type boxVerb struct {
 // boxVerbs takes the deps so one injected keyring and one injected control plane
 // reach every verb. The parent hands them down; the router hands the parent the
 // zero value and gets the real wiring.
+//
+// The three edge verbs are appended rather than interleaved: `edge`, `publish`
+// and `rollback` are the deploy path's own words (moon/PLAN-names-urls-rollout.md
+// §4, "what box ships for this phase"), and a reader scanning the list should
+// see the lifecycle verbs together and the deploy verbs together.
 func boxVerbs(deps boxDeps) []boxVerb {
-	return []boxVerb{
+	return append([]boxVerb{
 		{name: "apply", cmd: newBoxApplyCommand(deps)},
 		{name: "enroll", cmd: newBoxEnrollCommand(deps)},
 		{name: "logs", cmd: newBoxLogsCommand(deps)},
 		{name: "plan", cmd: newBoxPlanCommand(deps)},
 		{name: "status", cmd: newBoxStatusCommand(deps)},
 		{name: "verify", cmd: newBoxVerifyCommand(deps)},
-	}
+	}, boxEdgeVerbs(deps)...)
 }
 
 // boxLongHelp is the prose under `cafe box`'s usage line. It is here because a
@@ -126,12 +153,20 @@ capability is presented, the identity is not rewritten. A run that died
 between presenting the capability and writing the identity is finished on the
 next attempt without presenting it again.
 
-WHAT THE LIFECYCLE COMMANDS DO AND DO NOT DO. They own the RECORD — which
-phase the box has reached, when, on what evidence, and what the next handoff
-is. kit's installer performs the phases (W2-P4) and ` + "`cafe boxd`" + ` drives it
-(W2-P7); neither exists yet, and a command that claimed a phase completed when
-nothing ran it would be a command nobody could trust. ` + "`cafe box apply`" + `
-records the phase and prints the handoff that performs it.
+THE EDGE VERBS ARE THE DEPLOY PATH. ` + "`cafe box publish <id> <dir>`" + ` writes a
+release into the box's own state directory and flips ` + "`current`" + ` at it with a
+rename, so the switch is atomic: a request either reaches the old release or
+the new one, never a directory that is half-written. ` + "`cafe box rollback`" + `
+flips it back one release. ` + "`cafe box edge`" + ` reads what the box serves —
+which hostnames, which upstreams, what health the edge last observed, and
+which release is behind ` + "`current`" + `.
+
+None of the three talks to box. They read and write the box's own filesystem,
+which is what makes a rollback work on the day a deploy is broken and the
+network is the problem. There is no ingress, no chart and no namespace in any
+of it: the plan's Phase B answer to kamal's per-box proxy is boxd's embedded
+edge, and a customer who has to learn a Kubernetes word to deploy their app
+has been failed by the product rather than by the code.
 
 THE PRIVATE KEY IS NEVER PRINTED. It lives in the keyring and the only thing
 any of these commands says about it is whether it is there. The non-secrets
@@ -145,8 +180,8 @@ func newBoxCommand(deps boxDeps) *Command {
 	verbs := boxVerbs(deps)
 	c := &Command{
 		Name:     "box",
-		Summary:  "the box lifecycle: enroll, then status, plan, apply, logs and verify",
-		Usage:    "cafe box <enroll|status|plan|apply|logs|verify> [flags] [arguments]",
+		Summary:  "the box lifecycle: enroll, then status, plan, apply, logs, verify — and the edge: publish, edge, rollback",
+		Usage:    "cafe box <enroll|status|plan|apply|logs|verify|publish|edge|rollback> [flags] [arguments]",
 		LongHelp: boxLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {

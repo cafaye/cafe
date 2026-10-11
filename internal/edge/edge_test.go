@@ -434,3 +434,120 @@ func TestAnUnhealthyUpstreamIsAnsweredByTheEdgeNotTheApp(t *testing.T) {
 		t.Errorf("the edge's health answer does not carry the health it observed: %s", body)
 	}
 }
+
+// The switch is atomic, and that is a property of `rename(2)` rather than of
+// this package's care — so the claim is observed rather than asserted. A
+// request that is in flight while the link moves reaches the release it started
+// on, which is the whole of zero downtime: the reader holds the directory it
+// resolved, not a path it re-resolves on every stat.
+func TestTheSwitchIsAtomicForARequestInFlight(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	b := &boxState{dir: dir, upstream: map[string]string{}}
+	b.spec = New("box-01", ModeInternal)
+
+	// A release whose file is served slowly, so the request is guaranteed to
+	// still be in flight when the switch happens.
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/slow" {
+			time.Sleep(120 * time.Millisecond)
+			fmt.Fprintln(w, "started on sample-stack-1")
+			return
+		}
+		if r.URL.Path == "/readyz" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		body, err := os.ReadFile(filepath.Join(dir, "releases", "sample-stack-1", "README"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write(body)
+	}))
+	defer slow.Close()
+	b.upstream["api.cafaye.test"] = strings.TrimPrefix(slow.URL, "http://")
+
+	rel, err := Publish(dir, "sample-stack-1", map[string][]byte{"README": []byte("one\n")})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	b.spec = b.spec.WithHost(Host{Name: "api.cafaye.test", Upstream: b.upstream["api.cafaye.test"]})
+	b.spec.Current = rel.ID
+	if err := Save(dir, b.spec); err != nil {
+		t.Fatalf("write the spec: %v", err)
+	}
+
+	_, addr := b.gateway(t, NewMinted("api.cafaye.test"))
+	client := clientFor(addr, "api.cafaye.test")
+
+	// The request begins, and while it is in flight a whole deploy happens.
+	done := make(chan string, 1)
+	go func() {
+		_, body := get(t, client, addr, "api.cafaye.test", "/slow")
+		done <- body
+	}()
+	time.Sleep(30 * time.Millisecond)
+	if _, err := Publish(dir, "sample-stack-2", map[string][]byte{"README": []byte("two\n")}); err != nil {
+		t.Fatalf("the second publish failed mid-flight: %v", err)
+	}
+	if got, _ := Current(dir); got != "sample-stack-2" {
+		t.Fatalf("current = %q after the second publish, want sample-stack-2", got)
+	}
+
+	body := <-done
+	if !strings.Contains(body, "started on sample-stack-1") {
+		t.Errorf("the in-flight request did not complete on the release it started on: %q", body)
+	}
+}
+
+// A check nobody has watched go red is a check that might not work. This is the
+// negative control over the routing decision: a spec whose host row has been
+// RETIRED — removed from the record while a client still asks for it — must be
+// refused by name, and the control proves the refusal is a decision rather
+// than an accident of ordering.
+func TestARetiredHostIsRefusedAndTheControlProvesIt(t *testing.T) {
+	api := httptest.NewServer(sampleStack{release: "v1"}.handler())
+	defer api.Close()
+
+	box := newBoxState(t, "box-01", ModeOrigin)
+	box.upstream["api.cafaye.test"] = strings.TrimPrefix(api.URL, "http://")
+	box.deploy(t, "sample-stack-1", "api.cafaye.test")
+
+	// The row is dropped from the record — the deploy that retired a hostname
+	// — and the file is re-written as a real retire would leave it.
+	spec, err := Load(box.dir)
+	if err != nil {
+		t.Fatalf("read the spec: %v", err)
+	}
+	spec.Hosts = nil
+	if err := Save(box.dir, spec); err != nil {
+		t.Fatalf("write the retired spec: %v", err)
+	}
+
+	_, addr := box.gateway(t, NewMinted("api.cafaye.test"))
+	client := clientFor(addr, "api.cafaye.test")
+
+	code, body := get(t, client, addr, "api.cafaye.test", "/")
+	if code != http.StatusNotFound {
+		t.Fatalf("a retired host answered %d, want 404 (body: %s)", code, body)
+	}
+	if !strings.Contains(body, "no_route") {
+		t.Errorf("the refusal does not carry its own reason: %s", body)
+	}
+
+	// The control: put the row back and the same request succeeds. A test
+	// that only asserted the 404 would also pass against a gateway that
+	// refused everything.
+	if err := Save(box.dir, func() Spec {
+		s, _ := Load(box.dir)
+		return s.WithHost(Host{Name: "api.cafaye.test", Upstream: box.upstream["api.cafaye.test"]})
+	}()); err != nil {
+		t.Fatalf("restore the row: %v", err)
+	}
+	if code, body = get(t, client, addr, "api.cafaye.test", "/"); code != http.StatusOK {
+		t.Errorf("with the row restored the edge answered %d, want 200 (body: %s)", code, body)
+	}
+}
