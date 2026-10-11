@@ -13,7 +13,7 @@ shared CI and lint configuration comes from `cafaye/kit` — neither lives here.
 ## Layout
 
 ```
-cmd/cafe/main.go     thin entrypoint: build a cli.Options, exit with its code
+cmd/cafe/main.go    thin entrypoint: build a cli.Options, exit with its code
 internal/cli/       router, registry, one file per subcommand
 internal/box/       cafe box: the keypair, the capability redemption, the phases
 internal/run/       the resumable install model: run, steps, events, lease

@@ -137,7 +137,7 @@ as `<command> --help`.
 | 2 | cafe was invoked wrongly: unknown command or flag, wrong argument count |
 
 `cafe doctor` exits 0 unless some row is `fail`, then 1; a `warn` never moves it.
-It used to always exit 0, and that is a change — see [`cafe doctor`](#caf-doctor).
+It used to always exit 0, and that is a change — see [`cafe doctor`](#cafe-doctor).
 `cafe env up` passes its child's exit code through, so a CI job running a suite
 through it cannot read 0 out of a red run. `contract lint` and `contract resolve` print their verdict on stdout and say
 nothing on stderr, so a CI log shows the answer once. `cafe dev` does the same for
