@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -98,6 +99,15 @@ fails, the service runs without it, degraded, and this command says so with a
 warning and still exits 0. A required dependency that fails blocks: the named
 error goes to stderr and the exit code is 1.
 
+THE ARGUMENT IS A PROJECT DIRECTORY, OR ONE ADDRESS. A directory holding a
+cafaye.yml resolves every dependency that manifest declares. An address —
+` + "`<owner>/<name>`" + ` — resolves the one project it names, which is how a community
+project is asked about when its bare name is not enough: the fleet addresses as
+` + "`cafaye/<name>`" + ` and a publisher addresses as ` + "`<owner-slug>/<name>`" + `, and a bare
+name that two owners hold has no unambiguous answer at all. A directory that
+happens to be spelled ` + "`owner/name`" + ` is still a directory; the address form is
+the fallback for a path with no manifest in it.
+
 STDOUT IS THE DOCUMENT, STDERR IS THE SENTENCE. The report is one JSON document
 on stdout; the warnings and the named errors are plain lines on stderr. The
 caller's token is read from the keyring, presented to tier 2 and tier 3, and
@@ -108,7 +118,7 @@ func newResolveCommand(deps resolveDeps) *Command {
 	c := &Command{
 		Name:     "resolve",
 		Summary:  "resolve a project's cafaye.yml dependencies through the catalog's tiers, naming every failure",
-		Usage:    "caf resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project>",
+		Usage:    "caf resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project|owner/name>",
 		LongHelp: resolveLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.account, "account", "", "the caf account the tier-3 entitlement check runs against; required only when a dependency is a paid product")
@@ -152,19 +162,65 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 	}
 	deps = deps.withDefaults()
 
+	token := deps.callerToken(env)
+
+	// An address is not a directory. The split happens here rather than in a
+	// flag because the argument already says which question is being asked:
+	// `alice/widget` is a project addressed, and a directory's manifest is the
+	// other question. Both are one positional argument, and the rule that
+	// separates them is whether a manifest is there to read.
+	if owner, name, ok := addressOf(project); ok {
+		report := resolve.NewResolver(deps.pantry, deps.conductor).ResolveAddress(
+			env.Context, owner, name, token, opts.account)
+		return reportResolve(report, env)
+	}
+
 	manifest, err := readManifest(project)
 	if err != nil {
 		return err
 	}
 
-	token := deps.callerToken(env)
 	report := resolve.NewResolver(deps.pantry, deps.conductor).Resolve(
 		env.Context, project, manifest.Dependencies(), token, opts.account)
+	return reportResolve(report, env)
+}
 
+// addressOf answers whether an argument is a project address rather than a
+// directory: `owner/name` with exactly one slash, both halves in pantry's slug
+// grammar, and no cafaye.yml at the path. The grammar is pantry's own — the
+// same pattern both path segments of `GET /v1/projects/{owner}/{name}` are
+// held to — so an argument that parses here is an argument pantry itself would
+// route. The manifest check is what keeps a real project directory whose path
+// happens to end in `owner/name` a directory: the address form is the fallback
+// for a path with nothing to read, never a rule that swallows a project.
+func addressOf(arg string) (owner, name string, ok bool) {
+	trimmed := strings.TrimSpace(arg)
+	owner, name, found := strings.Cut(trimmed, "/")
+	if !found || owner == "" || name == "" || strings.Contains(name, "/") {
+		return "", "", false
+	}
+	if !slug.MatchString(owner) || !slug.MatchString(name) {
+		return "", "", false
+	}
+	if _, err := os.Stat(filepath.Join(trimmed, contract.ManifestFileName())); err == nil {
+		return "", "", false
+	}
+	return owner, name, true
+}
+
+// slug is the grammar pantry holds both segments of an address to
+// (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`): lowercase, digit-separated, no slash. It is
+// repeated here because a client that accepted anything after the slash would
+// build a path pantry refuses, and the 404 would name an address nobody typed.
+var slug = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
+
+// reportResolve is the split every resolve runs end with: the sentence per
+// dependency on stderr, the document on stdout, the verdict as the exit code.
+func reportResolve(report resolve.Report, env *Env) error {
 	blocked := 0
 	for _, res := range report.Services {
 		if res.Failure == nil {
-			sayResolve(env.Stderr, "%s — resolved (%s)", res.Name, res.Summary())
+			sayResolve(env.Stderr, "%s — resolved (%s)", res.Address(), res.Summary())
 			continue
 		}
 		// The failure is named with the server's own code and detail, and the
@@ -183,11 +239,11 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 		}
 		line += " " + res.Failure.Code + ": " + res.Failure.Message
 		if res.Required {
-			sayResolve(env.Stderr, "%s — BLOCKED: %s", res.Name, line)
+			sayResolve(env.Stderr, "%s — BLOCKED: %s", res.Address(), line)
 			blocked++
 			continue
 		}
-		sayResolve(env.Stderr, "%s — DEGRADED (optional): %s", res.Name, line)
+		sayResolve(env.Stderr, "%s — DEGRADED (optional): %s", res.Address(), line)
 	}
 
 	// ONE write, and its error is returned rather than discarded. A truncated

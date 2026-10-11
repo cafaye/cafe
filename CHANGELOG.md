@@ -25,6 +25,32 @@ All notable changes to caf are recorded here. The format follows
 
 ### Changed
 
+- **`internal/resolve` speaks pantry's 1.7.0 addressing, and `caf resolve`
+  accepts an address.** Every project's address is `<owner_slug>/<name>` —
+  `cafaye/<name>` for the fleet, a publisher's immutable slug otherwise — and
+  `Project` now decodes the `owner_slug` that makes a name addressable.
+  `HTTPPantry.ProjectByAddress` reads `GET /v1/projects/{owner}/{name}` as a
+  second method rather than a parameter on `Project`, because the two reads
+  are two questions and a wrapper that hid the difference could not tell the
+  caller which was answered.
+
+  The resolver's fallback semantics are the point. The bare name is read FIRST
+  — the fast path the fleet uses, and the only thing a manifest dependency can
+  express — and the address read is taken on exactly two signals: a 404 whose
+  detail signals that the bare name is no longer globally unique, and a row
+  whose `owner_slug` is not the address that was asked for. A plain "no such
+  project" 404 stays a 404, and with no owner supplied the address read is
+  never made. `caf resolve <owner>/<name>` supplies one: the slash form is
+  parsed for a path with no manifest in it, so a directory spelled
+  `owner/name` is still a directory, and the report's resolution carries the
+  owner beside the name so a machine reading it can tell an addressed
+  resolution from a bare one.
+
+  `caf publish`'s report and its stderr sentence now name the address the
+  project registered under — the 201 body's `owner_slug` and its name — which
+  is the one fact about a community project its publisher cannot derive for
+  themselves.
+
 - **`caf publish` is non-interactive by default.** Per the user's ruling of
   2026-10-11 — "for cafaye i think we should make everything non interactive
   by default as it shall mostly be used by agents" — the interactive

@@ -172,6 +172,66 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 	}
 }
 
+// Tier 1's second route: one project by its full `owner/name` address, the
+// shape pantry 1.7.0 added. The path is asserted segment by segment because a
+// client that built `/v1/projects/alice-widget` — or `/v1/projects/alice%2Fwidget`
+// — would be asking the bare-name route a question it cannot answer, and the
+// 404 would name a name the caller never typed.
+func TestHTTPPantryProjectByAddressServesTheProject(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/projects/cafaye/identity" {
+			t.Errorf("path = %q, want /v1/projects/cafaye/identity", r.URL.Path)
+		}
+		if r.URL.RawQuery != "" {
+			t.Errorf("query = %q, want none — the address is the path", r.URL.RawQuery)
+		}
+		if r.Header.Get("Authorization") != "" {
+			t.Errorf("tier 1 is anonymous but a bearer was presented")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go","repository":{"visibility":"private"},"owner_slug":"cafaye","owner":{"team":"identity"}}`))
+	}))
+	defer srv.Close()
+
+	p := HTTPPantry{BaseURL: srv.URL}
+	proj, err := p.ProjectByAddress(context.Background(), "cafaye", "identity")
+	if err != nil {
+		t.Fatalf("project by address: %v", err)
+	}
+	if proj.OwnerSlug != "cafaye" {
+		t.Errorf("owner_slug = %q, want cafaye — the field that makes the name addressable", proj.OwnerSlug)
+	}
+	if proj.Name != "identity" {
+		t.Errorf("name = %q", proj.Name)
+	}
+}
+
+// The address route's 404 names the address that was asked for, which is the
+// sentence that distinguishes "no such project" from "no project at THAT
+// address" — the wrong-owner case, where the bare name exists and the address
+// does not.
+func TestHTTPPantryProjectByAddressNotFoundNamesTheAddress(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/not_found","title":"Not found","status":404,"detail":"no official cafaye project is registered under the address alice/widget","instance":"/v1/projects/alice/widget","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+	}))
+	defer srv.Close()
+
+	p := HTTPPantry{BaseURL: srv.URL}
+	_, err := p.ProjectByAddress(context.Background(), "alice", "widget")
+	pe, ok := err.(*PantryError)
+	if !ok {
+		t.Fatalf("error = %T, want *PantryError", err)
+	}
+	if pe.Code != "not_found" || pe.Status != http.StatusNotFound {
+		t.Errorf("code/status = %q/%d, want not_found/404", pe.Code, pe.Status)
+	}
+	if !strings.Contains(pe.Detail, "alice/widget") {
+		t.Errorf("detail = %q, want the address in it", pe.Detail)
+	}
+}
+
 // A client with no endpoint refuses rather than GETting a relative path.
 func TestHTTPPantryWithoutBaseURLRefuses(t *testing.T) {
 	p := HTTPPantry{}

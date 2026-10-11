@@ -87,7 +87,7 @@ func (f *fakePublishPublisher) Register(_ context.Context, token string, reg pub
 	f.calls = append(f.calls, publish.OpRegister)
 	f.token = token
 	f.reg = reg
-	return publish.Registered{Name: reg.Name}, f.registerErr
+	return publish.Registered{Name: reg.Name, OwnerSlug: "cafaye"}, f.registerErr
 }
 
 func (f *fakePublishPublisher) PublishVersion(_ context.Context, token, name, tag string) (publish.Published, error) {
@@ -652,5 +652,32 @@ func TestPublishIsWiredInTheRegistry(t *testing.T) {
 	}
 	if !strings.Contains(c.Usage, "--yes") {
 		t.Errorf("the usage line does not name --yes:\n%s", c.Usage)
+	}
+}
+
+// The publish output names the ADDRESS the project registered under: the 201
+// body's owner_slug and the name. A name alone leaves a publisher of a
+// community project unable to say where it is addressable from, which is the
+// one fact the derived namespace exists to publish.
+func TestThePublishOutputNamesTheAddress(t *testing.T) {
+	pub := &fakePublishPublisher{}
+	deps := publishTestEnv(t, pub)
+	project := publishTestProject(t, publishFullManifest)
+
+	// The sentence half: stderr names the address the 201 body carried.
+	code, _, stderr := runPublishCLI(t, deps, project)
+	if code != exitSuccess {
+		t.Fatalf("exit code = %d, want %d\nstderr:\n%s", code, exitSuccess, stderr)
+	}
+	if !strings.Contains(stderr, "cafaye/app") {
+		t.Errorf("stderr does not name the address:\n%s", stderr)
+	}
+
+	// The document half: the same fact is in the report, so a machine that
+	// piped stdout into a parser learns it too.
+	_, stdout, _ := runPublishCLI(t, deps, "--json", project)
+	report := decodePublishReport(t, stdout)
+	if report.Address != "cafaye/app" {
+		t.Errorf("the document's address = %q, want cafaye/app", report.Address)
 	}
 }

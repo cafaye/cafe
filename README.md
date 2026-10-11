@@ -114,7 +114,7 @@ a run in which they passed.
 | `caf doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
 | `caf reclaim` | reclaim what a caf session left behind, containers before volumes | **works** |
 | `caf env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
-| `caf resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project>` | resolve a project's `cafaye.yml` dependencies through the catalog's tiers — tier 1 listing, tier 2 coordinates, tier 3 the entitlement check and the fetch grant — naming every failure and degrading `required: false` | **works** |
+| `caf resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project\|owner/name>` | resolve a project's `cafaye.yml` dependencies through the catalog's tiers — tier 1 listing, tier 2 coordinates, tier 3 the entitlement check and the fetch grant — naming every failure and degrading `required: false`; `<owner>/<name>` resolves the one project that address names | **works** |
 | `caf publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api\|worker\|both\|cli>] [--json] [--pantry <url>] <project>` | publish a project to the cafaye catalog — non-interactive by default: the manifest is validated, the proposal (registration, version tag, dependency edges) is printed, and the three writes run; `--dry-run` is the proposal mode that writes nothing, `--yes` is an accepted no-op kept for compatibility, and every outcome is one JSON document | **works** |
 | `caf secret inventory [--box <id>]` | every secret the box holds, classified rotatable / conditional / not-rotatable with the reason and the file:line it comes from — one JSON document | **works** |
 | `caf secret rotate [<name>] [--dry-run] [--yes] [--all]` | rotate the rotatable class on the schedule recorded in the state file, and name every entry it refuses to touch — no silent skips | **works** |
@@ -1299,6 +1299,7 @@ internal/ports/     the port block, the reservation that holds a port, the probe
 internal/resolve/   the tiered catalog's consumer: resolve a manifest's deps, name failures
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
 internal/ryuk/      the reaper lease client, for testcontainers' Ryuk
+internal/publish/   the write half of the same client: register a project, publish a version, declare an edge
 ```
 
 `internal/dev` is the only place that knows what a local stack is. `Plan` is a

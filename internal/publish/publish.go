@@ -145,11 +145,33 @@ type Requirement struct {
 	Dependency   string `json:"dependency,omitempty"`
 }
 
-// Registered is what pantry answered for the registration: the name echoed
-// back. The rest of the answer is tier 1's listing entry, which a publish has
-// no use for — the writes that follow name the project by the path.
+// Registered is what pantry answered for the register: the project's name. It
+// is a small struct because the 201 body is large — the whole Project — and the
+// steps that follow need one field off it. Since 1.7.0 that body carries the
+// derived `owner_slug`, which is the one fact from it a publisher cannot
+// derive for themselves.
 type Registered struct {
 	Name string `json:"name"`
+	// OwnerSlug is the derived namespace of the project's address, read from
+	// the 201 body. A publisher does not choose it — it is minted with the
+	// publisher row — so the only way to learn "my project is addressable as
+	// alice/widget" is to be told. An absent slug is an empty string and the
+	// report then names no address rather than guessing one.
+	OwnerSlug string `json:"owner_slug"`
+}
+
+// address is `<owner_slug>/<name>`, or "" when the 201 body carried no slug.
+// The fallback name is the proposal's: a body that echoed nothing is a body
+// from a pantry older than 1.7.0, and the name is the half of the address the
+// caller already knew.
+func (r Registered) address(name string) string {
+	if strings.TrimSpace(r.OwnerSlug) == "" {
+		return ""
+	}
+	if strings.TrimSpace(r.Name) == "" {
+		return strings.TrimSpace(r.OwnerSlug) + "/" + name
+	}
+	return strings.TrimSpace(r.OwnerSlug) + "/" + strings.TrimSpace(r.Name)
 }
 
 // Published is what pantry answered for the version: the tag verbatim, the
@@ -200,6 +222,12 @@ type Report struct {
 	Steps     []Step   `json:"steps"`
 	Published bool     `json:"published"`
 	Refusal   string   `json:"refusal,omitempty"`
+	// Address is what the project is addressable as — the 201 body's
+	// `owner_slug` and its name — and empty when pantry answered no 201: an
+	// idempotent 409 says the write already happened without saying where, and
+	// a report that filled the field in from the name alone would be naming an
+	// address the server never confirmed.
+	Address string `json:"address,omitempty"`
 }
 
 // ProposalFor builds the proposal from a validated manifest. It is the pure
@@ -356,7 +384,7 @@ func Run(ctx context.Context, p Publisher, token string, proposal Proposal) Repo
 
 	name := proposal.Registration.Name
 
-	_, err := p.Register(ctx, token, proposal.Registration)
+	registered, err := p.Register(ctx, token, proposal.Registration)
 	if err != nil {
 		if idempotent(err, idempotentRegistered) {
 			report.Steps = append(report.Steps, Step{OpRegister, name, StatusAlreadyExists, err.Error()})
@@ -366,6 +394,11 @@ func Run(ctx context.Context, p Publisher, token string, proposal Proposal) Repo
 		}
 	} else {
 		report.Steps = append(report.Steps, Step{OpRegister, name, StatusCreated, ""})
+		// The 201 is pantry's own Project read back, and since 1.7.0 it names
+		// the namespace the project was addressed under. That is the one
+		// thing a publisher cannot derive: the slug was minted with their
+		// publisher row and they have never seen it.
+		report.Address = registered.address(name)
 	}
 
 	if _, err := p.PublishVersion(ctx, token, name, proposal.Tag); err != nil {

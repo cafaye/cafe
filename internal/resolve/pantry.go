@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -16,14 +17,15 @@ import (
 // and it deliberately carries no repository coordinates. Those are tier 2's,
 // and the line between them is the whole of the tiered catalog's design.
 //
-// The shape is pantry's wire shape, and pantry publishes exactly FOUR
-// advertising facts: name, description, language and `repository.visibility`.
-// `visibility` is NESTED under `repository`, and it is the field that lets a
-// caller tell a public project from a private one before it asks for
-// coordinates it may not get — it stays on tier 1 because whether a repository
-// is public is itself an advertising fact. A client that spelled it as a
-// top-level `visibility` would be reading a key pantry never sends, which is
-// the hole a hand-written struct gives you when the document is the contract.
+// The shape is pantry's wire shape, and pantry publishes exactly FIVE
+// advertising facts: name, description, language, `repository.visibility` and
+// — since 1.7.0 — `owner_slug`. `visibility` is NESTED under `repository`, and
+// it is the field that lets a caller tell a public project from a private one
+// before it asks for coordinates it may not get — it stays on tier 1 because
+// whether a repository is public is itself an advertising fact. A client that
+// spelled it as a top-level `visibility` would be reading a key pantry never
+// sends, which is the hole a hand-written struct gives you when the document
+// is the contract.
 //
 // W3 renamed pantry's catalog schema from `Service` to `Project`, and its
 // routes from the `services` family to the `projects` family; this type is
@@ -32,11 +34,24 @@ import (
 // pantry's schema and are not decoded here, because caf asks tier 1 for one
 // thing only (does this name exist, and is it public) and a struct that
 // carried the whole schema would be a second copy of it.
+//
+// THE ONE EXCEPTION IS owner_slug, AND IT IS DERIVED. Every project's address
+// is `<owner_slug>/<name>` — `cafaye` for the fleet, a publisher's immutable
+// slug otherwise — and the slug is what makes a name addressable rather than
+// merely findable. It is decoded here for one reason: it is the field that
+// tells a caller who asked for `alice/widget` and received a row from the
+// bare-name fast path that the row is NOT at that address. Without it a
+// resolver would answer the wrong publisher's project and call it a success.
 type Project struct {
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
 	Language    string     `json:"language,omitempty"`
 	Repository  PublicRepo `json:"repository"`
+	// OwnerSlug is the derived namespace of the project's address, always
+	// present since 1.7.0. It is NOT the manifest's `owner` object (the
+	// accountable team), which is deliberately not decoded here: one is where
+	// a project is addressed from, the other is who is accountable for it.
+	OwnerSlug string `json:"owner_slug"`
 }
 
 // PublicRepo is what tier 1 says about a project's repository — one field and
@@ -105,6 +120,34 @@ func (c HTTPPantry) client() *http.Client {
 func (c HTTPPantry) Project(ctx context.Context, name string) (*Project, error) {
 	var proj Project
 	if err := c.get(ctx, nil, "/v1/projects/"+name, &proj); err != nil {
+		return nil, err
+	}
+	return &proj, nil
+}
+
+// ProjectByAddress is tier 1's ADDRESS read: `GET /v1/projects/{owner}/{name}`,
+// the route 1.7.0 added. It answers exactly when the row's bare name AND its
+// derived owner both match the two segments, and its 404 names the address that
+// was asked for — which is how a caller tells "no such project" from "no
+// project at THAT address", the case where the bare name exists and belongs to
+// somebody else.
+//
+// It is a SECOND method rather than a parameter on Project, because the two
+// reads are two questions: "does this bare name exist" is what the fleet asks
+// and what a manifest can express, and "does this address exist" is what an
+// owner-qualified caller asks. A wrapper that hid the difference would be a
+// wrapper that could not tell the caller which question was answered.
+//
+// The path is built with both segments escaped. Neither the owner grammar
+// (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`) nor the project-name grammar admits a
+// slash, so escaping is a no-op for anything this client accepts; it is done
+// anyway because a caller that passed a slash through would otherwise be
+// asking the bare-name route a question it cannot answer, with a 404 naming a
+// name nobody typed.
+func (c HTTPPantry) ProjectByAddress(ctx context.Context, owner, name string) (*Project, error) {
+	var proj Project
+	path := "/v1/projects/" + url.PathEscape(owner) + "/" + url.PathEscape(name)
+	if err := c.get(ctx, nil, path, &proj); err != nil {
 		return nil, err
 	}
 	return &proj, nil

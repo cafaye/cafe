@@ -121,6 +121,12 @@ type Failure struct {
 type Resolution struct {
 	// Name is the dependency's cafaye namespace name.
 	Name string `json:"name"`
+	// Owner is the derived namespace the dependency was ADDRESSED under, and
+	// empty when it was named by bare name alone. It is carried because the
+	// question "what did you resolve" is answered by an address once a caller
+	// has asked for one: `alice/widget` and `widget` are two requests, and a
+	// report that flattened them into one name could not say which was made.
+	Owner string `json:"owner,omitempty"`
 	// Version is the constraint on the dependency's own contract version, as
 	// the manifest declared it. Empty means the manifest declared no
 	// constraint, which the schema permits.
@@ -137,6 +143,17 @@ type Resolution struct {
 	Fetch *FetchGrant `json:"fetch,omitempty"`
 	// Failure is the named failure, or nil if the dependency resolved.
 	Failure *Failure `json:"failure,omitempty"`
+}
+
+// Address is the dependency as it was addressed: `owner/name` when a caller
+// named an owner, the bare name otherwise. It is what a sentence about the
+// dependency should say, because "widget" and "alice/widget" are two different
+// requests and only one of them is the question that was asked.
+func (r Resolution) Address() string {
+	if r.Owner == "" {
+		return r.Name
+	}
+	return r.Owner + "/" + r.Name
 }
 
 // Summary is the human half of a resolved dependency: which tiers answered,
@@ -174,6 +191,11 @@ type Pantry interface {
 	// Project is tier 1: one project's listing entry, anonymous. A 404 is
 	// an error carrying the not_found code.
 	Project(ctx context.Context, name string) (*Project, error)
+	// ProjectByAddress is tier 1's second read (pantry 1.7.0): one project by
+	// its `owner/name` address, anonymous. A 404 is an error carrying the
+	// not_found code AND the address in the detail, which is what tells a
+	// caller "no such project" from "no project at that address".
+	ProjectByAddress(ctx context.Context, owner, name string) (*Project, error)
 	// Coordinates is tier 2: one project's repository coordinates, gated on
 	// the caller's caf token. The token is presented, never stored.
 	Coordinates(ctx context.Context, name, token string) (*Coordinates, error)
@@ -226,9 +248,56 @@ func NewResolver(pantry Pantry, conductor Conductor) *Resolver {
 func (r *Resolver) Resolve(ctx context.Context, project string, deps []contract.Dependency, token, accountID string) Report {
 	report := Report{Project: project, Services: make([]Resolution, 0, len(deps))}
 	for _, dep := range deps {
-		report.Services = append(report.Services, r.resolveOne(ctx, dep, token, accountID))
+		report.Services = append(report.Services, r.resolveOne(ctx, dep, "", token, accountID))
 	}
 	return report
+}
+
+// ResolveAddress resolves ONE project addressed as `owner/name`, which is what
+// `caf resolve alice/widget` runs. It is a separate entry point rather than a
+// dependency list of one because the address is the whole question: there is
+// no manifest behind it, no version constraint unless the caller brings one,
+// and nothing to degrade — a community project whose bare name another
+// publisher also holds is resolvable this way and no other.
+//
+// The report's Project is the address as the caller wrote it, and the single
+// Resolution carries the owner beside the name so a machine reading the
+// document can tell an addressed resolution from a bare one.
+func (r *Resolver) ResolveAddress(ctx context.Context, owner, name, token, accountID string) Report {
+	report := Report{Project: owner + "/" + name, Services: make([]Resolution, 0, 1)}
+	dep := contract.Dependency{Name: name, Required: true}
+	report.Services = append(report.Services, r.resolveOne(ctx, dep, owner, token, accountID))
+	return report
+}
+
+// ambiguousName asks whether a tier-1 error is pantry's "the bare name is not
+// globally unique" answer, as opposed to its plain "no such project" one.
+//
+// THE SIGNAL IS A PROVISIONAL CONTRACT, AND THAT IS STATED RATHER THAN HIDDEN.
+// Today the state is unreachable — `projects_name_key` makes bare names unique,
+// so no such 404 can be produced — and pantry's document promises that when the
+// key is relaxed the collision answers 404 "naming the addresses". So there is
+// no code to match on yet and no sentence either, because the sentence will be
+// reworded. What is matched is the two spellings that say the thing: `ambigu`
+// in the problem's code OR in its detail, and `more than one owner`, which is
+// the fact itself. Both drift risks are named and both are the SAFE direction:
+//
+//   - a false NEGATIVE stays a plain 404 — the caller gets the bare name's
+//     sentence and no extra read, which is exactly the brief's requirement.
+//   - a false POSITIVE costs one address read that 404s, and its own 404 names
+//     the address, so the reader learns which address was tried.
+//
+// The alternative — waiting for pantry to publish a code — would mean a client
+// that silently stops retrying the day the state becomes reachable, which is
+// the failure this resolver exists to prevent.
+func ambiguousName(err error) bool {
+	var pe *PantryError
+	if !errors.As(err, &pe) {
+		return false
+	}
+	haystack := strings.ToLower(pe.Detail + " " + pe.Code)
+	return strings.Contains(haystack, "ambigu") ||
+		strings.Contains(haystack, "more than one owner")
 }
 
 // resolveOne walks one dependency through the tiers in order and stops at the
@@ -236,19 +305,75 @@ func (r *Resolver) Resolve(ctx context.Context, project string, deps []contract.
 // coordinates to fetch and no entitlement to check, so a tier-1 failure ends
 // the walk; a caller with no credential cannot read coordinates, so a tier-2
 // failure ends the walk before tier 3.
-func (r *Resolver) resolveOne(ctx context.Context, dep contract.Dependency, token, accountID string) Resolution {
-	res := Resolution{Name: dep.Name, Version: dep.Version, Required: dep.Required}
+//
+// OWNER is the namespace the caller addressed this dependency under, and empty
+// is the common case: a manifest's dependency is a bare name, because core's
+// serviceName grammar has no slash in it and a manifest that carried one
+// would not validate. An owner therefore arrives from the caller — `caf
+// resolve alice/widget` — and it changes exactly two things at tier 1, both of
+// them about telling two 404s apart.
+func (r *Resolver) resolveOne(ctx context.Context, dep contract.Dependency, owner, token, accountID string) Resolution {
+	res := Resolution{Name: dep.Name, Owner: owner, Version: dep.Version, Required: dep.Required}
 
 	// Tier 1: the name exists. Anonymous — advertising is free (D5).
+	//
+	// The bare name is read FIRST even when an owner is known, because that is
+	// the fast path the fleet uses and pantry guarantees a bare name resolves
+	// at most one row (`projects_name_key`). The address read is the fallback,
+	// and there are exactly two things that send the resolver down it.
 	if r.pantry == nil {
 		res.Failure = &Failure{Tier: 1, Code: "no_catalog", Message: "no pantry is configured, so the catalog cannot be read"}
 		return res
 	}
-	if _, err := r.pantry.Project(ctx, dep.Name); err != nil {
+	proj, err := r.pantry.Project(ctx, dep.Name)
+	switch {
+	case err == nil && owner != "" && proj.OwnerSlug != "" && proj.OwnerSlug != owner:
+		// The right-hand fallback: the name resolved, but it resolved to a
+		// row that is NOT at the address that was asked for. Answering it
+		// would be serving a project at an address that is not its own —
+		// the thing pantry's own handler refuses to do — so the address is
+		// asked and its 404 (which names the address) is the failure.
+		//
+		// The `OwnerSlug != ""` guard is the safe direction against a pantry
+		// older than 1.7.0, which sends no owner_slug at all: an absent slug
+		// is not evidence of a mismatch, and a resolver that treated it as
+		// one would fail every addressed resolution on a stale deployment.
+		return r.resolveByAddress(ctx, res, owner, token, accountID)
+	case err != nil && owner != "" && ambiguousName(err):
+		// The left-hand fallback: the bare name is no longer globally unique
+		// (the state `projects_name_key` forbids today, and the day it is
+		// relaxed pantry's document promises a 404 naming the addresses).
+		// With an owner known, the addresses are disambiguated by asking the
+		// one that was meant.
+		return r.resolveByAddress(ctx, res, owner, token, accountID)
+	case err != nil:
 		res.Failure = failureFrom(1, err)
 		return res
 	}
 
+	// Tier 2 and tier 3 are the same walk whichever tier-1 read answered.
+	return r.resolveFrom(ctx, res, dep, token, accountID)
+}
+
+// resolveByAddress is tier 1's second read, reached from resolveOne by exactly
+// the two paths its comment names. It replaces the resolution's tier-1 answer
+// with the address's: on success the walk continues from the addressed row, and
+// on failure the address's own 404 — which names the address — is the failure,
+// never the bare name's sentence, which would send a reader looking for a
+// project that exists.
+func (r *Resolver) resolveByAddress(ctx context.Context, res Resolution, owner, token, accountID string) Resolution {
+	if _, err := r.pantry.ProjectByAddress(ctx, owner, res.Name); err != nil {
+		res.Failure = failureFrom(1, err)
+		return res
+	}
+	return r.resolveFrom(ctx, res, contract.Dependency{Name: res.Name, Version: res.Version, Required: res.Required}, token, accountID)
+}
+
+// resolveFrom is tiers 2 and 3, written once because they are one walk: the
+// coordinates for a caller presenting a token, then the entitlement check for
+// a paid product. The tier-1 read that reached here is not a question these
+// tiers ask — a row the address resolved is a row that exists.
+func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract.Dependency, token, accountID string) Resolution {
 	// Tier 2: the coordinates, for a caller presenting a caf token.
 	coords, err := r.pantry.Coordinates(ctx, dep.Name, token)
 	if err != nil {

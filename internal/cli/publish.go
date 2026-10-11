@@ -247,6 +247,11 @@ func printSteps(w io.Writer, report publish.Report) {
 		sayPublish(w, "%s", renderStep(step))
 	}
 	if report.Published {
+		if report.Address != "" {
+			sayPublish(w, "%s is in the catalog, addressable as %s",
+				report.Proposal.Registration.Name, report.Address)
+			return
+		}
 		sayPublish(w, "%s is in the catalog", report.Proposal.Registration.Name)
 	}
 }
