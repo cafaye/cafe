@@ -84,6 +84,7 @@ a run in which they passed.
 | `cafe backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
 | `cafe backup drill <service>` | the same cycle unattended, with the outcome recorded and `--json` for a machine | **works** |
 | `cafe box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
+| `cafe box setup <host>` | the one command: SSH in, bootstrap Docker the kamal way, install cafe, enroll the box ON THE HOST, write the daemon's identity and unit, start boxd and verify it answers an observe.report — safe to re-run, and the controller holds no keypair | **works** |
 | `cafe agent register --name "Noel"` | ask identity for an unclaimed agent, store its token in the OS keyring, print the claim URL on stderr | **works** |
 | `cafe agent login` / `whoami` | make one saved agent session active, and ask identity who this machine is | **works** |
 | `cafe agent token show [<name>]` | list the agent's tokens — or the one live token with a name; never the values | **works** |
@@ -1294,6 +1295,7 @@ internal/telemetry/ GENERATED: cafe's own copy of `cafe gen telemetry`'s output
 internal/emitter/    the OTel wiring: one root span per invocation, and the no-op
 internal/mcp/       the MCP server: transports, the served table, the seam
 internal/boxd/      the box daemon: the whitelisted route table, the outbound mTLS channel
+internal/setup/     cafe box setup: the host bootstrap plan, its walk, and the SSH seam
 internal/ledger/    the reclamation ledger: what cafe created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/resolve/   the tiered catalog's consumer: resolve a manifest's deps, name failures

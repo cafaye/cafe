@@ -29,6 +29,8 @@ internal/telemetry/ GENERATED, and compiled: cafe's own copy of `cafe gen teleme
 internal/mcp/       the MCP server: transports, the served table, the SDK seam
 internal/boxd/      the box daemon: the whitelisted route table, the Seam-ed world,
                      and the outbound-only mTLS channel to box
+internal/setup/     cafe box setup: the host bootstrap plan, its walk, and the SSH
+                     transport behind the Host seam
 internal/ledger/    the reclamation ledger: what cafe created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/provider/  cafe provider: the client half of boundary 6 — the envelope sealed to the box's public key, the control-plane seam
@@ -275,6 +277,40 @@ every document every command produces AND over both streams, with the control
 half being that the public key IS printed — a build that redacted everything
 would pass by leaking nothing at all.
 
+`internal/setup` is `cafe box setup`, split by the same rule, and it is the
+command between a host nobody has touched and a box that answers. It is kamal
+`setup` parity for the box side, and the precedence is kamal's precedence —
+`superuser?`, `installed?`, `in_docker_group?`, in the order
+`kamal/cli/server.rb`'s bootstrap runs them, spelled the way kamal's own command
+test pins them:
+
+- `doc.go` — what the command is, the four rules, and why the transport is the
+  operator's own `ssh` rather than an SSH client library.
+- `host.go` — the `Host` seam and `Output`, where a non-zero exit code is an
+  ANSWER rather than an error, because a check is a command whose exit status
+  says whether the thing is already done.
+- `plan.go` — the nine steps as data, the two documents the host gets, and the
+  three actions a step can conclude.
+- `setup.go` — the three phases: probe, walk, verify.
+- `ssh.go` — `SSHHost`, the real `Host`: the local `ssh` binary under `os/exec`,
+  and the askpass helper that carries a password on a pipe so it reaches
+  neither argv, an environment variable nor a file.
+
+**A step is a check and an apply, and the check runs first every time.** That is
+the whole idempotence claim and it is not satisfied by an apply that happens to
+work: `docker -v` is asked before `curl … | sh` is reached, the binary is
+compared by sha256 of the bytes rather than by a version string, and the
+enrollment's own `box.json` is asked about before any capability is presented. A
+second `cafe box setup` on a host that has had one runs nine read-only commands
+and applies nothing.
+
+**The controller holds no keypair, and that is a property of the seam rather
+than of a comment.** The keypair is generated on the host by the host's own
+`cafe box enroll`; what crosses back is three non-secret strings read out of the
+host's box.json. `Host` has two methods — run a command, write a file — and
+neither can return a credential. The test asserts the controller's keyring is
+empty after a full setup and after a second one.
+
 **The capability is presented once, and the count is what proves it.** Box
 enforces single-use in its own database, so a second redemption is always
 refused server-side and a test that asserted "the retry failed" would pass
@@ -475,6 +511,17 @@ reclaims after a failed enrollment. `internal/failure` is stdlib plus
 after a failure, so the rule set cannot carry a dependency the reclamation
 path would have to fetch. What it imports from `internal/boxd` is the `World`
 seam and nothing that reaches a network.
+
+`internal/setup` has none either, and it is the clearest case of the argument the
+paragraph above makes: the walk runs on the path that reclaims after a failed
+bootstrap, and a setup that needed a library to reach a host would be a setup
+that could not be rebuilt from a release tarball on a machine with nothing on
+it. What it imports from `internal/boxd` is ONE type — `Observation`, the
+document the heartbeat step parses — and that import is stdlib-to-stdlib, so
+nothing that reaches a network comes with it. The transport is the operator's
+own `ssh` under `os/exec` for the same reason: a fourth direct dependency for a
+transport the operator already has, with their agent, their known_hosts and
+their ProxyJump, is a poor trade.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and
