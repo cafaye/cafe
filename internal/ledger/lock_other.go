@@ -11,7 +11,7 @@ import (
 )
 
 // The standard library exposes flock on the unix systems and not on Windows, and
-// caf ships a Windows binary (.goreleaser.yml lists goos: windows). Rather than
+// cafe ships a Windows binary (.goreleaser.yml lists goos: windows). Rather than
 // add a module to go.mod for one syscall, this file uses the atomic exclusive
 // create that every platform provides.
 //
@@ -45,7 +45,7 @@ func (l *Ledger) Lock(name string) (*Lock, error) {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o644)
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
-			return nil, fmt.Errorf("%w: %s is locked by another caf, and on this platform a lock left behind by a killed caf has to be removed by hand (rm %s)", ErrHeld, name, path)
+			return nil, fmt.Errorf("%w: %s is locked by another cafe, and on this platform a lock left behind by a killed cafe has to be removed by hand (rm %s)", ErrHeld, name, path)
 		}
 		return nil, fmt.Errorf("%w: take the %s lock: %w", ErrNoLedger, name, err)
 	}

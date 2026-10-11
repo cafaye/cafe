@@ -1,4 +1,4 @@
-module github.com/cafaye/caf
+module github.com/cafaye/cafe
 
 go 1.25.0
 

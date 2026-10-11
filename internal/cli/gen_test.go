@@ -7,21 +7,21 @@ import (
 	"testing"
 )
 
-// Tests for `caf gen telemetry`.
+// Tests for `cafe gen telemetry`.
 //
 // The command is thin on purpose — read a project, generate into memory, write what
 // is missing, print it — so these are about the four things the thinness can still
 // get wrong: what it writes, what it refuses, what it prints, and the exit code a
 // CI job reads.
 //
-// The generated files' own contents are tested in `internal/gen`, and caf's own
+// The generated files' own contents are tested in `internal/gen`, and cafe's own
 // copy of them is compiled and run by this tree's ordinary gate. Nothing here
 // re-asserts a list core owns.
 
 // genProject is a minimal cafaye.yml for a directory a test owns.
 //
 // Written as a literal rather than read from this repository's manifest, so a
-// change to caf's own `cafaye.yml` cannot move every table in this file.
+// change to cafe's own `cafaye.yml` cannot move every table in this file.
 const genProject = `name: courier
 description: Transactional email and push delivery.
 language: go
@@ -42,9 +42,9 @@ owner:
 `
 
 // inProject creates a project directory holding a manifest and makes it the
-// working directory, because `caf gen telemetry` reads the current directory the
-// way `caf dev` does — there is no path argument, so a test that did not chdir
-// would be generating into caf's own tree.
+// working directory, because `cafe gen telemetry` reads the current directory the
+// way `cafe dev` does — there is no path argument, so a test that did not chdir
+// would be generating into cafe's own tree.
 func inProject(t *testing.T, manifest string) string {
 	t.Helper()
 
@@ -86,7 +86,7 @@ func TestGenTelemetryWritesItsFilesAndPrintsThemInFull(t *testing.T) {
 		}
 		// In full, not a summary: the header line plus the whole body has to
 		// appear on stdout, so a reader never has to open the file to know what
-		// caf wrote into their tree.
+		// cafe wrote into their tree.
 		if !strings.Contains(stdout, "===== "+path+" =====") {
 			t.Errorf("%s is not announced in the report", path)
 		}
@@ -146,7 +146,7 @@ func TestGenTelemetryRefusesAnExistingFileAndForceOverwritesIt(t *testing.T) {
 	// Something nobody generated, under a generated name. Overwriting this
 	// silently would destroy work, which is why the flag exists.
 	const target = "internal/telemetry/telemetry.go"
-	const handWritten = "package telemetry\n\n// written by a person, not by caf\n"
+	const handWritten = "package telemetry\n\n// written by a person, not by cafe\n"
 	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(target)), []byte(handWritten), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -163,8 +163,8 @@ func TestGenTelemetryRefusesAnExistingFileAndForceOverwritesIt(t *testing.T) {
 	if !strings.Contains(stderr, "-force") {
 		t.Errorf("the refusal does not say how to get past it:\n%s", stderr)
 	}
-	if strings.Contains(stderr, "caf contract lint") {
-		t.Error("the refusal mentions caf contract lint, which has nothing to do with an existing file")
+	if strings.Contains(stderr, "cafe contract lint") {
+		t.Error("the refusal mentions cafe contract lint, which has nothing to do with an existing file")
 	}
 	if stdout != "" {
 		t.Errorf("a refusal must not print the files it did not write, got:\n%s", stdout)
@@ -248,8 +248,8 @@ func TestGenTelemetryOutChoosesTheDirectory(t *testing.T) {
 	}
 }
 
-// Bare `caf gen` answers rather than exiting 2, and an unknown target names the
-// ones that exist. Both are the `caf contract` behaviour, and both are here
+// Bare `cafe gen` answers rather than exiting 2, and an unknown target names the
+// ones that exist. Both are the `cafe contract` behaviour, and both are here
 // because a verb group that guessed wrong about which it is would be a worse
 // inconsistency than either choice.
 func TestGenAsAVerbGroup(t *testing.T) {
@@ -264,7 +264,7 @@ func TestGenAsAVerbGroup(t *testing.T) {
 			name:     "bare gen answers",
 			args:     []string{"gen"},
 			wantCode: exitSuccess,
-			wantOut:  []string{"caf gen", "Targets:", "gen chart", "gen telemetry", "-force"},
+			wantOut:  []string{"cafe gen", "Targets:", "gen chart", "gen telemetry", "-force"},
 		},
 		{
 			name:     "help gen answers",
@@ -276,19 +276,19 @@ func TestGenAsAVerbGroup(t *testing.T) {
 			name:     "an unknown target is a usage mistake",
 			args:     []string{"gen", "protobuf"},
 			wantCode: exitUsage,
-			wantErr:  "unknown caf gen target \"protobuf\"",
+			wantErr:  "unknown cafe gen target \"protobuf\"",
 		},
 		{
 			name:     "an unknown target names the ones that exist",
 			args:     []string{"gen", "sdk"},
 			wantCode: exitUsage,
-			wantErr:  "caf gen <chart|telemetry>",
+			wantErr:  "cafe gen <chart|telemetry>",
 		},
 		{
 			name:     "a positional argument to a flag-only verb is a usage mistake",
 			args:     []string{"gen", "telemetry", "extra"},
 			wantCode: exitUsage,
-			wantErr:  "caf gen telemetry wants 0 arguments",
+			wantErr:  "cafe gen telemetry wants 0 arguments",
 		},
 		{
 			name:     "an undeclared flag is a usage mistake",
@@ -318,9 +318,9 @@ func TestGenAsAVerbGroup(t *testing.T) {
 // Refusals from the generator reach the person with their sentences intact.
 //
 // The wrapping is the thing being tested: `runGenTelemetry` rewraps with
-// "caf gen telemetry:" and the sentence underneath has to survive, because it is
+// "cafe gen telemetry:" and the sentence underneath has to survive, because it is
 // the sentence that names what is wrong. A wrapper that replaced it with
-// "caf gen: failed" would leave a person with a stack of nothing.
+// "cafe gen: failed" would leave a person with a stack of nothing.
 func TestRefusalsFromTheGeneratorSurviveToTheTerminal(t *testing.T) {
 	for _, row := range []struct {
 		name     string
@@ -328,14 +328,14 @@ func TestRefusalsFromTheGeneratorSurviveToTheTerminal(t *testing.T) {
 		want     []string
 	}{
 		{
-			name:     "a language caf generates nothing for",
+			name:     "a language cafe generates nothing for",
 			manifest: strings.Replace(genProject, "language: go", "language: ruby", 1),
-			want:     []string{"caf gen telemetry", "ruby", "templates/otel/"},
+			want:     []string{"cafe gen telemetry", "ruby", "templates/otel/"},
 		},
 		{
 			name:     "a repository that holds specifications",
 			manifest: strings.Replace(genProject, "language: go", "language: spec", 1),
-			want:     []string{"caf gen telemetry", "spec"},
+			want:     []string{"cafe gen telemetry", "spec"},
 		},
 	} {
 		t.Run(row.name, func(t *testing.T) {
@@ -344,7 +344,7 @@ func TestRefusalsFromTheGeneratorSurviveToTheTerminal(t *testing.T) {
 			code, stdout, stderr := runCLI(t, testVersion, "gen", "telemetry")
 
 			if code != exitFailure {
-				t.Errorf("exit code = %d, want %d. A project caf cannot generate for is the command ran and "+
+				t.Errorf("exit code = %d, want %d. A project cafe cannot generate for is the command ran and "+
 					"failed, not a usage mistake.", code, exitFailure)
 			}
 			if stdout != "" {
@@ -362,7 +362,7 @@ func TestRefusalsFromTheGeneratorSurviveToTheTerminal(t *testing.T) {
 	}
 }
 
-// chartProject is genProject with the one field `caf gen chart` needs and
+// chartProject is genProject with the one field `cafe gen chart` needs and
 // `gen telemetry` does not care about: an HTTP surface. Without `exposes.api`
 // the chart target refuses — there is nothing to put behind a Service and a
 // /readyz probe — so the happy path and the refusal are two different fixtures.
@@ -467,7 +467,7 @@ func readChartFile(t *testing.T, path string) string {
 }
 
 // -env is how a service's environment reaches the chart, because the manifest
-// carries no env and caf will not guess it. A pair with no `=` is a usage
+// carries no env and cafe will not guess it. A pair with no `=` is a usage
 // mistake — exit 2, not a generation failure — and the two have different
 // remedies.
 func TestGenChartTakesEnvFlagsAndRefusesABadOne(t *testing.T) {
@@ -496,22 +496,22 @@ func TestGenChartTakesEnvFlagsAndRefusesABadOne(t *testing.T) {
 	}
 }
 
-// A manifest with no HTTP surface is refused with the sentence intact: caf is
+// A manifest with no HTTP surface is refused with the sentence intact: cafe is
 // a binary, not a service, and its own tree is in this state — which is also
-// why `caf lock` skips the chart target rather than failing on it.
+// why `cafe lock` skips the chart target rather than failing on it.
 func TestGenChartRefusesAManifestWithNoHTTPSurface(t *testing.T) {
 	inProject(t, genProject)
 
 	code, stdout, stderr := runCLI(t, testVersion, "gen", "chart")
 
 	if code != exitFailure {
-		t.Errorf("exit code = %d, want %d. A project caf cannot generate for is the command ran and "+
+		t.Errorf("exit code = %d, want %d. A project cafe cannot generate for is the command ran and "+
 			"failed, not a usage mistake.", code, exitFailure)
 	}
 	if stdout != "" {
 		t.Errorf("a refusal must not print files it did not write, got:\n%s", stdout)
 	}
-	for _, want := range []string{"caf gen chart", "exposes"} {
+	for _, want := range []string{"cafe gen chart", "exposes"} {
 		if !strings.Contains(stderr, want) {
 			t.Errorf("stderr does not contain %q:\n%s", want, stderr)
 		}
@@ -534,7 +534,7 @@ func TestGenTelemetryRefusesADirectoryItCannotReadAProjectFrom(t *testing.T) {
 		{
 			name:    "no manifest at all",
 			prepare: func(t *testing.T) { t.Chdir(t.TempDir()) },
-			want:    []string{"no cafaye.yml", "caf init"},
+			want:    []string{"no cafaye.yml", "cafe init"},
 		},
 		{
 			name: "an invalid manifest",

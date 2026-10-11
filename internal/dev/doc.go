@@ -8,7 +8,7 @@
 // Plan is the whole decision, and it is pure: a manifest, a registry and a
 // handful of options in, a rendered compose document and a start order out. It
 // touches no filesystem, opens no socket and runs no command, which is why
-// every interesting behaviour of `caf dev` — what the document says, that a
+// every interesting behaviour of `cafe dev` — what the document says, that a
 // dependency cycle is refused with the cycle in the message, that two services
 // cannot share a published port, that the same manifest renders byte-identical
 // bytes twice running — is covered by tests that start nothing at all.
@@ -19,11 +19,11 @@
 //	Runtime    what a container runtime can be told to do
 //
 // Both are interfaces with one real implementation each, and a fake is a dozen
-// lines. That is the whole reason a test can drive a full `caf dev` — up, wait,
+// lines. That is the whole reason a test can drive a full `cafe dev` — up, wait,
 // report, tear down — without Docker, and it is also why swapping compose for
 // something else is a change to one file.
 //
-// # The pantry seam, and the shape caf expects
+// # The pantry seam, and the shape cafe expects
 //
 // A manifest declares its dependencies by service name and nothing else: it
 // says `dependencies: [{name: identity, version: ^0.1.0}]` and cannot say how
@@ -32,7 +32,7 @@
 // the question. The document behind it is one JSON object keyed by service
 // name, and it is the same document whether it is read from a local file or
 // served over HTTP — so a pantry response and a hand-written catalog are the
-// same bytes, and neither caf nor the developer has to know which:
+// same bytes, and neither cafe nor the developer has to know which:
 //
 //	{
 //	  "identity": {
@@ -54,21 +54,21 @@
 // Every field is optional except `name` and an image or a build. `port` is the
 // container port; `publish` says whether the host gets it too, which is how a
 // dependency that is only worth curling directly is marked. `dependencies` are
-// service names resolved through the same registry, so the closure caf walks is
+// service names resolved through the same registry, so the closure cafe walks is
 // the registry's own graph and a cycle in it is a cycle in pantry, reported
 // with its path rather than as a container that never starts.
 //
 // A key no field above is called is REFUSED, naming the service it is in, the
 // key, and the keys that would have been right. That is the opposite of what a
 // JSON decoder does with one, and it is deliberate: this is the only document
-// caf reads that a person wrote by hand, so a key that does not parse is a
+// cafe reads that a person wrote by hand, so a key that does not parse is a
 // typo rather than a version skew, and the honest answer to a typo is to say
 // so. The escape hatch for everything else is a key prefixed `x-`, which is
 // dropped on purpose — the difference between ignoring a key and ignoring it on
 // instruction. `name` may be left out, because it defaults to the key the entry
 // is filed under; if it is present it has to agree with that key.
 //
-// caf ships no catalog. There is no table of images here, because an image
+// cafe ships no catalog. There is no table of images here, because an image
 // reference guessed by a CLI is a reference that pulls the wrong thing, and
 // guessing is what "invent endpoints that do not exist" looks like in a config
 // file. Until pantry serves one, a project with declared dependencies is told
@@ -80,7 +80,7 @@
 // No TUI. AGENTS.md holds the TUI for a later packet and says it uses
 // refs/bubbletea/examples; introducing a TUI framework now would mean a
 // dependency nobody asked for and a second rendering of the same state. The
-// progress `caf dev` prints is plain, ordered and greppable.
+// progress `cafe dev` prints is plain, ordered and greppable.
 //
 // No tilt. The compose document is written to disk and printed, so a developer
 // who wants tilt can point it at the file this package produced, and the

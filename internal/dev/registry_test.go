@@ -11,9 +11,9 @@ import (
 	"testing"
 )
 
-// The registry is the seam `caf dev` and `caf deploy` share and the one place a
+// The registry is the seam `cafe dev` and `cafe deploy` share and the one place a
 // service catalog can arrive from outside this binary. pantry-01 owns the real
-// answer; caf owns the question. These tests pin the question — the shape of
+// answer; cafe owns the question. These tests pin the question — the shape of
 // the document and the behaviour of the catalog — so that when pantry serves it
 // the only thing left is a transport.
 func TestCatalogResolvesTheServicesItHolds(t *testing.T) {
@@ -32,7 +32,7 @@ func TestCatalogResolvesTheServicesItHolds(t *testing.T) {
 }
 
 // A catalog document is the same JSON a registry serves, so a file written by
-// `caf dev -registry-dump` and a response fetched from a registry are the same
+// `cafe dev -registry-dump` and a response fetched from a registry are the same
 // bytes. That is the whole contract between this package and pantry, and it is
 // worth a round trip.
 func TestCatalogRoundTripsThroughJSON(t *testing.T) {
@@ -70,7 +70,7 @@ func TestCatalogRoundTripsThroughJSON(t *testing.T) {
 	}
 }
 
-// The catalog document is read by a person as often as by caf, so its keys are
+// The catalog document is read by a person as often as by cafe, so its keys are
 // the ones a registry would use. This test pins the wire shape: a pantry
 // response that used `health_check` or `env` would be silently read as a
 // service with no healthcheck and no environment, which is the kind of quiet
@@ -177,7 +177,7 @@ func TestReadCatalogRejectsAnEntryThatNamesAnotherService(t *testing.T) {
 }
 
 // A catalog file is a developer-facing input, so a missing one is a sentence
-// about where caf looked and what to do, not a bare ENOENT.
+// about where cafe looked and what to do, not a bare ENOENT.
 func TestReadCatalogFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "catalog.json")
@@ -196,7 +196,7 @@ func TestReadCatalogFile(t *testing.T) {
 	}
 }
 
-// An empty catalog is a legitimate value — it is what `caf dev` has before
+// An empty catalog is a legitimate value — it is what `cafe dev` has before
 // pantry ships one — so it reads without complaint and plans nothing extra.
 func TestReadCatalogAcceptsAnEmptyDocument(t *testing.T) {
 	catalog, err := ReadCatalog(strings.NewReader("{}"))
@@ -238,7 +238,7 @@ func writeFile(t *testing.T, path, contents string) {
 
 // The defect this whole block exists for, reproduced rather than described.
 //
-// A catalog is the one caf input a person writes by hand, and encoding/json
+// A catalog is the one cafe input a person writes by hand, and encoding/json
 // drops a key it does not recognise without a sound. So `imag` — a typo, one
 // character from the real key — left the entry with no image, and the catalog
 // was accepted. The developer was not shown that. They were shown, three layers
@@ -282,7 +282,7 @@ func TestReadCatalogNamesTheServiceAndTheKeysThatWouldHaveWorked(t *testing.T) {
 }
 
 // A catalog holding nine services has typos that come from one mistake, so it
-// reports them together. Fixing them one `caf dev` at a time is one run per
+// reports them together. Fixing them one `cafe dev` at a time is one run per
 // typo, and the second run's message is about a file the first run already said
 // was wrong.
 func TestReadCatalogReportsEveryMisspelledKeyAtOnce(t *testing.T) {
@@ -322,14 +322,14 @@ func TestReadCatalogRefusesAMisspelledHealthcheckKey(t *testing.T) {
 
 // The escape hatch, and the reason refusing unknown keys is safe to do at all.
 //
-// Without a way to say something caf does not model, "refuse what you do not
+// Without a way to say something cafe does not model, "refuse what you do not
 // know" and "let the document grow" are the same decision, and the first one
 // wins by accident: the next person to add a field they need has to work around
-// caf instead of adding to it. An `x-` key is dropped on purpose, and the
+// cafe instead of adding to it. An `x-` key is dropped on purpose, and the
 // difference between that and a typo is one prefix a human chose to type.
 func TestReadCatalogDropsAnExtensionKey(t *testing.T) {
 	catalog, err := ReadCatalog(strings.NewReader(
-		`{"identity": {"name": "identity", "image": "cafaye/identity:dev", "x-maintainer": "caf"}}`))
+		`{"identity": {"name": "identity", "image": "cafaye/identity:dev", "x-maintainer": "cafe"}}`))
 
 	if err != nil {
 		t.Fatalf("ReadCatalog: %v", err)
@@ -416,14 +416,14 @@ func TestTheKeyListNamesEveryFieldTheStructActuallyHas(t *testing.T) {
 // a catalog can get that wrong without anything complaining.
 // ---------------------------------------------------------------------------
 
-// A declaration caf cannot act on is REFUSED, not ignored.
+// A declaration cafe cannot act on is REFUSED, not ignored.
 //
 // It is a map, so a misspelled key is silent by construction: nothing in the
 // decoder complains about a map key it does not recognise. `{"postgresql": …}`
-// decodes into a perfectly good entry and caf then hands the service the
+// decodes into a perfectly good entry and cafe then hands the service the
 // conventional `DATABASE_URL` — the exact defect the declaration was added to
 // remove, back again, in a catalog that reads as though it were fixed. A key
-// that changes nothing and says it is load-bearing is worse than a key caf
+// that changes nothing and says it is load-bearing is worse than a key cafe
 // refused, because the catalog is the file somebody opens to check.
 //
 // The names are derived from `infra` rather than written out here, so a third
@@ -437,7 +437,7 @@ func TestReadCatalogRefusesAConnectionsKeyThatNamesNoInfrastructure(t *testing.T
 
 	// Every real name is accepted, and a name one edit away from a real one is
 	// not. The pairs below are derived from the table rather than listed, so the
-	// test cannot rot into asserting about infrastructure caf has removed.
+	// test cannot rot into asserting about infrastructure cafe has removed.
 	for _, name := range names {
 		document := `{"pantry": {"name": "pantry", "image": "x:1", "connections": {` + quote(name) + `: "P_DATABASE_URL"}}}`
 		if _, err := ReadCatalog(strings.NewReader(document)); err != nil {
@@ -482,7 +482,7 @@ func TestReadCatalogRefusesAConnectionsValueThatIsNotAVariableName(t *testing.T)
 }
 
 // The refusal names the service and every mistake in one sentence, and it says
-// what caf would have done instead — because "nothing" is the sentence that
+// what cafe would have done instead — because "nothing" is the sentence that
 // sends a developer looking for the bug somewhere else.
 func TestTheConnectionsErrorNamesTheServiceAndEveryMistake(t *testing.T) {
 	_, err := ReadCatalog(strings.NewReader(`{"pantry": {"name": "pantry", "image": "x:1", "connections": {"postgresql": "A_URL", "postgres": "postgres://x/y"}}}`))
@@ -508,16 +508,16 @@ func TestTheConnectionsErrorReadsAsASentenceAtEveryCount(t *testing.T) {
 	if oneErr == nil || twoErr == nil {
 		t.Fatalf("ReadCatalog errors = %v and %v, want both to be refusals", oneErr, twoErr)
 	}
-	if !strings.Contains(oneErr.Error(), "carries 1 entry caf") {
-		t.Errorf("one offender reads %q, want \"carries 1 entry caf\"", oneErr)
+	if !strings.Contains(oneErr.Error(), "carries 1 entry cafe") {
+		t.Errorf("one offender reads %q, want \"carries 1 entry cafe\"", oneErr)
 	}
-	if !strings.Contains(twoErr.Error(), "carries 2 entries caf") {
-		t.Errorf("two offenders reads %q, want \"carries 2 entries caf\"", twoErr)
+	if !strings.Contains(twoErr.Error(), "carries 2 entries cafe") {
+		t.Errorf("two offenders reads %q, want \"carries 2 entries cafe\"", twoErr)
 	}
-	if strings.Contains(oneErr.Error(), "caf would have ignored them") {
+	if strings.Contains(oneErr.Error(), "cafe would have ignored them") {
 		t.Errorf("one offender reads %q, want \"ignored it\": a pronoun must not take a count", oneErr)
 	}
-	if !strings.Contains(twoErr.Error(), "caf would have ignored them") {
+	if !strings.Contains(twoErr.Error(), "cafe would have ignored them") {
 		t.Errorf("two offenders read %q, want \"ignored them\"", twoErr)
 	}
 }
@@ -568,10 +568,10 @@ func keysOffered(t *testing.T, message, after, before string) []string {
 // Read at one typo and at three, because the message is built by counting and
 // every count-dependent message is wrong at one count or the other.
 //
-// This test exists because the message WAS wrong at both. It read "caf would
+// This test exists because the message WAS wrong at both. It read "cafe would
 // have dropped 1 it" — a counted pronoun, which is a sentence about nothing —
 // and then, once that was fixed by routing the pronoun through a format string,
-// it read "caf would have dropped them%!(EXTRA int=3)". Nothing caught either
+// it read "cafe would have dropped them%!(EXTRA int=3)". Nothing caught either
 // one: the other assertions here look for substrings, and both defects are in
 // the parts of the sentence around the substrings. So the whole message is
 // matched, at both counts, against text written out in full.
@@ -587,7 +587,7 @@ func TestTheCatalogErrorReadsAsASentenceAtEveryCount(t *testing.T) {
 			document: `{"identity": {"name": "identity", "imag": "x"}}`,
 			want: []string{
 				"1 key no entry has:",
-				"caf would have dropped it without saying so.",
+				"cafe would have dropped it without saying so.",
 			},
 			notWant: []string{"1 it", "%!", "keys"},
 		},
@@ -596,7 +596,7 @@ func TestTheCatalogErrorReadsAsASentenceAtEveryCount(t *testing.T) {
 			document: `{"identity": {"name": "identity", "imag": "x", "prot": 1, "volums": []}}`,
 			want: []string{
 				"3 keys no entry has:",
-				"caf would have dropped them without saying so.",
+				"cafe would have dropped them without saying so.",
 			},
 			notWant: []string{"1 key", "%!", "3 them"},
 		},

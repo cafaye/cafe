@@ -16,9 +16,9 @@ import (
 // ServerName is what an agent is told this server is called. It is the one
 // string in the handshake, and an agent showing a user a list of servers shows
 // this.
-const ServerName = "caf"
+const ServerName = "cafe"
 
-// ErrNoTransport is a transport name that is not one caf serves. It is a usage
+// ErrNoTransport is a transport name that is not one cafe serves. It is a usage
 // error rather than a failure: the person typed a word the flag does not take.
 var ErrNoTransport = errors.New("no such transport")
 
@@ -44,14 +44,14 @@ func ParseTransport(name string) (Transport, error) {
 	case HTTP:
 		return HTTP, nil
 	default:
-		return "", fmt.Errorf("%w: %q (caf serves %s and %s)", ErrNoTransport, name, Stdio, HTTP)
+		return "", fmt.Errorf("%w: %q (cafe serves %s and %s)", ErrNoTransport, name, Stdio, HTTP)
 	}
 }
 
 // Options are the decisions made before a server exists.
 type Options struct {
-	// Version is the caf build identity, reported to the client so an agent
-	// log can say which caf answered.
+	// Version is the cafe build identity, reported to the client so an agent
+	// log can say which cafe answered.
 	Version string
 	// Logger receives the server's diagnostics. It is nil for a discarder,
 	// because a server with nowhere to log must still run. Nothing here writes
@@ -64,7 +64,7 @@ type Options struct {
 	// verifies; the real implementation forwards the bearer to identity.
 	Authority Authority
 	// Standing is the principal a process serves as when the transport does not
-	// name one. It exists for stdio — a `caf mcp` child process spawned by an
+	// name one. It exists for stdio — a `cafe mcp` child process spawned by an
 	// agent host, whose caller is the machine's own session. It is deliberately
 	// NOT consulted when a request carries its own token info, so an
 	// authenticated remote caller can never inherit the standing principal's
@@ -84,7 +84,7 @@ func (o Options) logger() *slog.Logger {
 
 // Server is one MCP server and the tools it serves.
 //
-// The tool table is caf's, not the SDK's: the names, the descriptions and the
+// The tool table is cafe's, not the SDK's: the names, the descriptions and the
 // handlers are values in this package, and the SDK is what carries them on the
 // wire. Nothing above this package imports it, so a tool is an ordinary Go
 // function and an agent-facing description is an ordinary Go string — both of
@@ -94,7 +94,7 @@ type Server struct {
 	log  *slog.Logger
 	// names is the served table, in registration order, so the tools can be
 	// listed and checked without a protocol round trip. The SDK sorts by name
-	// on the wire; this keeps the order caf chose, which is the order a reader
+	// on the wire; this keeps the order cafe chose, which is the order a reader
 	// of the source expects.
 	names []string
 	// authority, standing and skew are the auth substrate: who a caller is,
@@ -144,7 +144,7 @@ type Tool[In, Out any] struct {
 	// schema, so a field's doc comment is the schema's description and there is
 	// no second copy of it to fall out of date.
 	Input In
-	// ReadOnly marks a tool that changes nothing. Every tool in caf's table
+	// ReadOnly marks a tool that changes nothing. Every tool in cafe's table
 	// that is not `caf_dev_up` or `caf_dev_down` is one.
 	ReadOnly bool
 	// Destructive marks a tool whose effect cannot be undone by calling it
@@ -165,7 +165,7 @@ type Tool[In, Out any] struct {
 // Add registers a tool.
 //
 // An empty description panics rather than being served: it is a programming
-// error in caf, found the first time the server starts, and a server that
+// error in cafe, found the first time the server starts, and a server that
 // silently serves a tool no agent will ever call is the failure this refuses.
 // The panic message names the tool, because a table of six descriptions is not
 // something a stack trace reads on its own.
@@ -189,7 +189,7 @@ func Add[In, Out any](s *Server, tool Tool[In, Out]) {
 			// stay); `caf_dev_up` starts them, which is additive.
 			DestructiveHint: boolPtr(tool.Destructive || !tool.ReadOnly),
 			IdempotentHint:  tool.Idempotent,
-			// Every tool here answers from the machine caf is running on. None
+			// Every tool here answers from the machine cafe is running on. None
 			// of them reaches a third-party system, so the world they act on is
 			// closed and a host may use that to decide it needs no egress rules.
 			OpenWorldHint: boolPtr(false),
@@ -203,9 +203,9 @@ func Add[In, Out any](s *Server, tool Tool[In, Out]) {
 		if gateErr := s.checkScope(tool.Name, req); gateErr != nil {
 			var zero Out
 			if caller := principalFor(req, s.standing); caller != nil {
-				s.log.Warn("a caf mcp tool call was refused", "tool", tool.Name, "principal", caller.UserID, "error", gateErr)
+				s.log.Warn("a cafe mcp tool call was refused", "tool", tool.Name, "principal", caller.UserID, "error", gateErr)
 			} else {
-				s.log.Warn("a caf mcp tool call was refused", "tool", tool.Name, "error", gateErr)
+				s.log.Warn("a cafe mcp tool call was refused", "tool", tool.Name, "error", gateErr)
 			}
 			// The zero value and not a partially built answer: a refusal is a
 			// thing that did not happen, and a caller reading a half-populated
@@ -222,8 +222,8 @@ func Add[In, Out any](s *Server, tool Tool[In, Out]) {
 			if recovered == nil {
 				return
 			}
-			s.log.Error("a caf mcp tool panicked", "tool", tool.Name, "panic", fmt.Sprint(recovered))
-			err = fmt.Errorf("caf %s panicked: %v", tool.Name, recovered)
+			s.log.Error("a cafe mcp tool panicked", "tool", tool.Name, "panic", fmt.Sprint(recovered))
+			err = fmt.Errorf("cafe %s panicked: %v", tool.Name, recovered)
 		}()
 		out, err = tool.Handler(ctx, in)
 		return nil, out, err
@@ -279,14 +279,14 @@ func (s *Server) ServeHTTP(ctx context.Context, addr string, ready func(addr str
 		addr = "127.0.0.1:0"
 	}
 	if host, _, err := net.SplitHostPort(addr); err != nil {
-		return fmt.Errorf("caf mcp: -port needs a host:port address, got %q: %w", addr, err)
+		return fmt.Errorf("cafe mcp: -port needs a host:port address, got %q: %w", addr, err)
 	} else if !isLoopback(host) && s.authority == nil {
-		return fmt.Errorf("caf mcp: %s is not a loopback address; this server runs containers, so it only listens on 127.0.0.1 or ::1 unless an authority authenticates remote callers", addr)
+		return fmt.Errorf("cafe mcp: %s is not a loopback address; this server runs containers, so it only listens on 127.0.0.1 or ::1 unless an authority authenticates remote callers", addr)
 	}
 
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return fmt.Errorf("caf mcp: listen on %s: %w", addr, err)
+		return fmt.Errorf("cafe mcp: listen on %s: %w", addr, err)
 	}
 	defer listener.Close()
 
@@ -335,8 +335,8 @@ func CheckLoopbackAddr(addr string) error {
 
 // isLoopback reports whether a host is one of the loopback addresses. An empty
 // host is loopback too, because that is what `net.Listen` binds when a listener
-// is opened without one — but the default caf asks for is written out, so the
-// empty case here is a caller being explicit about it rather than caf guessing.
+// is opened without one — but the default cafe asks for is written out, so the
+// empty case here is a caller being explicit about it rather than cafe guessing.
 func isLoopback(host string) bool {
 	switch host {
 	case "", "localhost":
@@ -346,10 +346,10 @@ func isLoopback(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// readCloser and writeCloser adapt the two streams caf serves the protocol over.
+// readCloser and writeCloser adapt the two streams cafe serves the protocol over.
 // The SDK takes closers because it closes the connection when the session ends,
 // and closing a caller's reader that it did not open would be a surprise — so
-// both wrappers report a close as success and close nothing. caf owns the
+// both wrappers report a close as success and close nothing. cafe owns the
 // process's stdin and stdout and closing them is the process's business, not
 // the server's.
 type nopCloser struct{ io.Reader }

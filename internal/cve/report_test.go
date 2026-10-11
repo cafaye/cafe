@@ -50,7 +50,7 @@ func TestTheScheduleAcceptsBothSpellings(t *testing.T) {
 }
 
 // TestTheScheduleStringRoundTrips keeps what the caller wrote rather than what
-// caf parsed: a report that printed "24h0m0s" for a schedule somebody wrote as
+// cafe parsed: a report that printed "24h0m0s" for a schedule somebody wrote as
 // "1d" would be a report about a different setting than the one configured.
 func TestTheScheduleStringRoundTrips(t *testing.T) {
 	for _, in := range []string{"1d", "7d", "6h", "90m"} {
@@ -102,7 +102,7 @@ func TestDueDistinguishesNeverScannedFromNotYetDue(t *testing.T) {
 // inside.
 //
 // The line is printed for an operator to install, not written into a
-// crontab: a caf that edited root's crontab would be a caf that changed how a
+// crontab: a cafe that edited root's crontab would be a cafe that changed how a
 // box behaves without being asked, which is the same property the Attended
 // tier promises in the other direction — recommendations the customer
 // applies.
@@ -112,17 +112,17 @@ func TestTheCronLineIsRenderedNotInstalled(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseSchedule(%q): %v", in, err)
 		}
-		line := CronLine(s, "/usr/local/bin/caf")
+		line := CronLine(s, "/usr/local/bin/cafe")
 		if !strings.HasPrefix(line, "0") && !strings.HasPrefix(line, "*/") {
 			t.Errorf("CronLine(%q) = %q, want a cron schedule field first", in, line)
 		}
-		if !strings.Contains(line, "caf cve scan") {
+		if !strings.Contains(line, "cafe cve scan") {
 			t.Errorf("CronLine(%q) = %q, want it to name the command it runs", in, line)
 		}
 	}
 	// The fleet-wide reason the hour is not pinned: a fixed minute would put
 	// every box on the advisory feed in the same second.
-	line := CronLine(mustSchedule(t, "1d"), "/usr/local/bin/caf")
+	line := CronLine(mustSchedule(t, "1d"), "/usr/local/bin/cafe")
 	if strings.HasPrefix(line, "0 0 ") {
 		t.Errorf("a daily schedule pins midnight (%q), which collides every box in the fleet on the feed at once", line)
 	}

@@ -10,7 +10,7 @@ import (
 // # The remote tools, and the world they read
 //
 // `internal/cli/mcp.go` serves the six local tools: what a machine and a
-// project look like from where the command runs. They are reads over caf's own
+// project look like from where the command runs. They are reads over cafe's own
 // files and two of them start containers, which is why that server was
 // loopback-only.
 //
@@ -364,11 +364,11 @@ func (t *remoteTools) runRollout(ctx context.Context, _ NoArgs) (Rollout, error)
 // status — the box, as one value
 // ---------------------------------------------------------------------------
 
-// statusFacts is `caf box status` as a value: the enrolled identity's
+// statusFacts is `cafe box status` as a value: the enrolled identity's
 // non-secrets, the phase reached and what the plan would do next. Every field is
 // a non-secret, for the reason `internal/box.Identity` holds none.
 type statusFacts struct {
-	// Enrolled is whether a human has run `caf box enroll` on this box.
+	// Enrolled is whether a human has run `cafe box enroll` on this box.
 	Enrolled bool `json:"enrolled"`
 	// BoxRef is conductor's reference for this box, which is how a human names
 	// it in the website's `/boxes` screen.
@@ -581,9 +581,9 @@ type Error struct {
 
 func (e *Error) Error() string {
 	if e.Usage {
-		return "caf " + e.Tool + ": " + e.Reason
+		return "cafe " + e.Tool + ": " + e.Reason
 	}
-	return "caf " + e.Tool + " could not answer: " + e.Reason
+	return "cafe " + e.Tool + " could not answer: " + e.Reason
 }
 
 // NoArgs is the input of a tool that takes nothing. The SDK needs a type, and a

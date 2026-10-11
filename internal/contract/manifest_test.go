@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// `caf dev` builds a local stack from a manifest, so it needs three facts the
+// `cafe dev` builds a local stack from a manifest, so it needs three facts the
 // linter never reads: the implementation language (which decides the container
 // port and the toolchain), the one-line description (which becomes the compose
 // project description), and the declared service dependencies (which become
@@ -156,9 +156,9 @@ owner:
 	}
 }
 
-// `caf dev` reads the project's manifest and gets the linter's answer without
+// `cafe dev` reads the project's manifest and gets the linter's answer without
 // reading the file twice, so the two paths cannot drift: a command that checked
-// with its own copy of the rules would accept a manifest `caf contract lint`
+// with its own copy of the rules would accept a manifest `cafe contract lint`
 // rejects, which is the one divergence the CLI cannot have.
 func TestCheckDataIsLintOnTheSameBytes(t *testing.T) {
 	dir := t.TempDir()
@@ -187,7 +187,7 @@ func TestCheckDataIsLintOnTheSameBytes(t *testing.T) {
 // A document that is not YAML cannot be validated. CheckData says so as a
 // violation, exactly as Lint does, so a caller can print one line either way.
 func TestCheckDataReportsUnparseableBytes(t *testing.T) {
-	_, finding := CheckData("broken.yml", []byte("name: caf\n\tnope"))
+	_, finding := CheckData("broken.yml", []byte("name: cafe\n\tnope"))
 
 	if finding.OK() {
 		t.Fatal("CheckData = OK, want a parse violation")

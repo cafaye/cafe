@@ -8,21 +8,21 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/caf/internal/agent"
+	"github.com/cafaye/cafe/internal/agent"
 )
 
-// The one interactive thing caf does, shared by the commands that ask.
+// The one interactive thing cafe does, shared by the commands that ask.
 //
 // It is here rather than in deploy.go because the subtle part is not the prompt
 // text — it is that a closed or empty stdin must answer "no" rather than block.
-// `caf deploy` in a CI job with no terminal and no --yes has to fail with a
+// `cafe deploy` in a CI job with no terminal and no --yes has to fail with a
 // sentence naming the missing flag and must not sit there holding a deploy lock,
-// and `caf backup` has to fail the same way rather than half-booting an
+// and `cafe backup` has to fail the same way rather than half-booting an
 // accessory. Two copies of that behaviour is two places to get it wrong, and the
 // second one would be the one nobody reads.
 //
 // The command name is a parameter because the message has to read as the words
-// the user typed, and `caf deploy`'s error naming `caf backup`'s flag would send
+// the user typed, and `cafe deploy`'s error naming `cafe backup`'s flag would send
 // somebody to the wrong help.
 
 // errNoPrompt is the sentinel for "there was nobody to ask". It is a sentinel so
@@ -31,7 +31,7 @@ import (
 var errNoPrompt = errors.New("no terminal to confirm on")
 
 // confirmOnStdin reads one line from the process's own input.
-func confirmOnStdin(prompt string) (bool, error) { return askOnStdin("caf deploy", prompt) }
+func confirmOnStdin(prompt string) (bool, error) { return askOnStdin("cafe deploy", prompt) }
 
 func askOnStdin(command, prompt string) (bool, error) {
 	if prompt == "" {
@@ -44,7 +44,7 @@ func askOnStdin(command, prompt string) (bool, error) {
 	// of a line. The two together put the marker after the prompt text, and
 	// `bin/prime` counts those lines to report the suite — so one command that
 	// asked a question without a newline was a test the gate could not see. The
-	// interactive reading is the same defect one layer down: after `caf backup`
+	// interactive reading is the same defect one layer down: after `cafe backup`
 	// asked and exited, the shell's own prompt appeared beside the question.
 	fmt.Fprintln(os.Stderr, prompt)
 	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -66,7 +66,7 @@ func askOnStdin(command, prompt string) (bool, error) {
 // token is read, presented to the server, and kept nowhere — never printed,
 // never logged, never put in a document.
 //
-// It is shared by the commands that present a caf credential to a server
+// It is shared by the commands that present a cafe credential to a server
 // (resolve, publish) because the subtle part is not the reading — it is that a
 // machine with no token is not a fact to hide. The server's named refusal is
 // the honest answer to a caller with no credential, and the warning says so
@@ -81,7 +81,7 @@ func callerToken(command, dir string, ring agent.Keyring, env *Env) string {
 	if err != nil {
 		if errors.Is(err, agent.ErrNotRegistered) {
 			fmt.Fprintf(errOrDiscard(env), "%s: no agent session is registered, so the server will answer unauthorized; "+
-				"run `caf agent register` and have a human claim it\n", command)
+				"run `cafe agent register` and have a human claim it\n", command)
 			return ""
 		}
 		fmt.Fprintf(errOrDiscard(env), "%s: could not select the agent session: %v\n", command, err)
@@ -90,7 +90,7 @@ func callerToken(command, dir string, ring agent.Keyring, env *Env) string {
 	token, err := ring.Get(agent.KeyringService, sess.TokenRef)
 	if err != nil || strings.TrimSpace(token) == "" {
 		fmt.Fprintf(errOrDiscard(env), "%s: no token in the keyring for session %s, so the server will answer unauthorized; "+
-			"run `caf agent register`\n", command, sess.Name)
+			"run `cafe agent register`\n", command, sess.Name)
 		return ""
 	}
 	return token

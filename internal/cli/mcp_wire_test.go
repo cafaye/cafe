@@ -17,10 +17,10 @@ import (
 	"time"
 )
 
-// This file drives `caf mcp` the way a client does: the binary is built, run as
+// This file drives `cafe mcp` the way a client does: the binary is built, run as
 // a child process, and spoken to over its stdin and stdout with JSON-RPC
 // frames. Nothing here calls a tool function directly, because the question
-// this packet answers is whether caf speaks MCP — and a test that calls the
+// this packet answers is whether cafe speaks MCP — and a test that calls the
 // functions underneath the protocol has proved nothing about the protocol.
 //
 // Three consequences shape the whole file:
@@ -35,21 +35,21 @@ import (
 //     a deployment are exercised through their failure path, which is the path
 //     that has to work anyway.
 //
-// cafBinary is built once by TestMain. `go build` is a second of work and
+// cafeBinary is built once by TestMain. `go build` is a second of work and
 // paying it per test would make the suite slow rather than thorough.
-var cafBinary string
+var cafeBinary string
 
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "caf-wire")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "caf wire tests: %v\n", err)
+		fmt.Fprintf(os.Stderr, "cafe wire tests: %v\n", err)
 		os.Exit(1)
 	}
-	cafBinary = filepath.Join(dir, "caf")
-	build := exec.Command("go", "build", "-o", cafBinary, "./cmd/caf")
+	cafeBinary = filepath.Join(dir, "cafe")
+	build := exec.Command("go", "build", "-o", cafeBinary, "./cmd/cafe")
 	build.Dir = repoRootForTest()
 	if out, err := build.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "caf wire tests: build caf: %v\n%s\n", err, out)
+		fmt.Fprintf(os.Stderr, "cafe wire tests: build cafe: %v\n%s\n", err, out)
 		os.RemoveAll(dir)
 		os.Exit(1)
 	}
@@ -60,7 +60,7 @@ func TestMain(m *testing.M) {
 
 // repoRootForTest is the repository root, from this file's own path rather than
 // from the working directory: `go test` runs a package's tests in the package
-// directory, and a test that resolves `./cmd/caf` from wherever it was invoked
+// directory, and a test that resolves `./cmd/cafe` from wherever it was invoked
 // from passes for the wrong reason somewhere.
 func repoRootForTest() string {
 	_, file, _, ok := runtime.Caller(0)
@@ -76,9 +76,9 @@ func repoRootForTest() string {
 // every crash as a flake.
 var (
 	// errServerExited: the child is gone. It never answered, and it will not.
-	errServerExited = errors.New("caf mcp exited before answering")
+	errServerExited = errors.New("cafe mcp exited before answering")
 	// errServerSilent: the child is alive, and has said nothing at all.
-	errServerSilent = errors.New("caf mcp is running and has said nothing")
+	errServerSilent = errors.New("cafe mcp is running and has said nothing")
 	// errNotAFrame: a line arrived that is not a JSON-RPC message. On stdout
 	// that is worse than a wrong answer: a print in the middle of the protocol
 	// stream is a corrupt stream, and a client cannot recover from it.
@@ -151,7 +151,7 @@ func (r callToolResult) text() string {
 	return strings.Join(parts, "\n")
 }
 
-// wireSession is one running `caf mcp` and the frames on its stdout.
+// wireSession is one running `cafe mcp` and the frames on its stdout.
 type wireSession struct {
 	t       *testing.T
 	cmd     *exec.Cmd
@@ -166,7 +166,7 @@ type wireSession struct {
 }
 
 // lockedBuffer collects the server's stderr so a failure can print it. stderr is
-// where caf writes everything that is not protocol, which is why a tool's
+// where cafe writes everything that is not protocol, which is why a tool's
 // progress belongs there and never on stdout.
 type lockedBuffer struct {
 	mu   sync.Mutex
@@ -186,11 +186,11 @@ func (b *lockedBuffer) String() string {
 	return string(b.data)
 }
 
-// startServer runs `caf mcp` in dir. args are the flags after `mcp`.
+// startServer runs `cafe mcp` in dir. args are the flags after `mcp`.
 func startServer(t *testing.T, dir string, args ...string) *wireSession {
 	t.Helper()
 
-	cmd := exec.Command(cafBinary, append([]string{"mcp"}, args...)...)
+	cmd := exec.Command(cafeBinary, append([]string{"mcp"}, args...)...)
 	cmd.Dir = dir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -205,7 +205,7 @@ func startServer(t *testing.T, dir string, args ...string) *wireSession {
 		t.Fatalf("stderr pipe: %v", err)
 	}
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("start caf mcp: %v", err)
+		t.Fatalf("start cafe mcp: %v", err)
 	}
 
 	s := &wireSession{
@@ -232,7 +232,7 @@ func copyTo(dst io.Writer, src io.Reader) {
 
 // readFrames turns stdout into a queue of lines. One JSON-RPC message per line
 // is the stdio framing; a reader that split on anything else would be reading a
-// protocol caf does not serve.
+// protocol cafe does not serve.
 func (s *wireSession) readFrames(r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
@@ -300,7 +300,7 @@ func (s *wireSession) awaitExit(within time.Duration) bool {
 //
 // It exists because a 250ms wall-clock budget was standing in for this event,
 // and a wall-clock budget is a measurement of the machine rather than of the
-// code. Measured on a loaded machine, the cold first spawn of `caf mcp` was
+// code. Measured on a loaded machine, the cold first spawn of `cafe mcp` was
 // observed exiting in 476ms — nearly twice the budget — while the median was
 // 13ms. So the budget was generous on a good day and a coin flip on a bad one,
 // and the assertion it carried ("the harness reports an exit as an exit") is
@@ -315,7 +315,7 @@ func (s *wireSession) awaitExit(within time.Duration) bool {
 func (s *wireSession) waitForExit(t *testing.T) {
 	t.Helper()
 	if !s.awaitExit(wireTimeout) {
-		t.Fatalf("caf mcp did not exit within %s of its stdin being closed, and a server is entitled to exit when its client hangs up; stderr: %s",
+		t.Fatalf("cafe mcp did not exit within %s of its stdin being closed, and a server is entitled to exit when its client hangs up; stderr: %s",
 			wireTimeout, s.stderr.String())
 	}
 }
@@ -511,9 +511,9 @@ func servedProject(t *testing.T) string {
 }
 
 // servedTools are the tools this packet serves, in the order the protocol lists
-// them — which is by name, not by the order caf registers them, because the
+// them — which is by name, not by the order cafe registers them, because the
 // sorting belongs to the SDK and a wire test cannot pretend otherwise. Every
-// one of them is a read over work caf already does; the set is pinned so that a
+// one of them is a read over work cafe already does; the set is pinned so that a
 // tool cannot be added or dropped without a test saying so.
 //
 // Twelve since W5-P3: the six local ones unchanged and in their places, then
@@ -748,8 +748,8 @@ func TestAnUnknownToolIsAProtocolError(t *testing.T) {
 }
 
 // The protocol stream is stdout and nothing else is. Every tool in this server
-// prints something a person would want to read — `caf doctor` renders two
-// tables, `caf dev` renders a compose document — and every one of those writes
+// prints something a person would want to read — `cafe doctor` renders two
+// tables, `cafe dev` renders a compose document — and every one of those writes
 // has to land on stderr. A stray line in the middle of the stream is not a
 // cosmetic problem: it is a corrupt stream, and a client cannot recover from
 // one.
@@ -899,8 +899,8 @@ func TestTheRegistryToolRedactsServiceEnvironment(t *testing.T) {
 	}
 }
 
-// The plan is the document `caf dev` would write, and the document carries the
-// environment caf gave every service — including a database URL with a
+// The plan is the document `cafe dev` would write, and the document carries the
+// environment cafe gave every service — including a database URL with a
 // password in it. So the plan tool reports the structure of the stack and the
 // names of the variables, and the document itself stays on disk.
 func TestThePlanToolReportsTheStackAndNotTheDocumentsConfiguration(t *testing.T) {

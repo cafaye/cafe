@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
-// `caf dev` is run in a directory, and the first thing it has to establish is
+// `cafe dev` is run in a directory, and the first thing it has to establish is
 // whether that directory is a project. A developer who typed it in the wrong
 // place should be told that in one sentence, with the two ways out, and not
 // given a stack of nothing.
@@ -23,15 +23,15 @@ func TestLoadWithoutAManifest(t *testing.T) {
 		t.Fatalf("err = %v, want it to wrap ErrNoManifest", err)
 	}
 	want := `no manifest: no cafaye.yml in ` + dir +
-		`; a project declares its service in one (run "caf init" to create it, or pass the project directory as the argument)`
+		`; a project declares its service in one (run "cafe init" to create it, or pass the project directory as the argument)`
 	if err.Error() != want {
 		t.Errorf("err = %q\nwant %q", err, want)
 	}
 }
 
 // A manifest that breaks the contract is reported by the linter that owns the
-// rules, in the linter's own words. `caf dev` has no opinion about what a valid
-// manifest is, and a second validator that disagreed with `caf contract lint`
+// rules, in the linter's own words. `cafe dev` has no opinion about what a valid
+// manifest is, and a second validator that disagreed with `cafe contract lint`
 // would be a CLI that says two different things about one file.
 func TestLoadWithAnInvalidManifestPropagatesTheContractFinding(t *testing.T) {
 	dir := t.TempDir()
@@ -52,7 +52,7 @@ func TestLoadWithAnInvalidManifestPropagatesTheContractFinding(t *testing.T) {
 	}
 
 	// The whole line is the linter's, byte for byte: the same thing
-	// `caf contract lint <path>` prints for the same file.
+	// `cafe contract lint <path>` prints for the same file.
 	report, lintErr := contract.Lint(path)
 	if lintErr != nil {
 		t.Fatalf("contract.Lint: %v", lintErr)
@@ -66,7 +66,7 @@ func TestLoadWithAnInvalidManifestPropagatesTheContractFinding(t *testing.T) {
 // parse error, and no plan.
 func TestLoadWithAnUnparseableManifest(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "cafaye.yml"), "name: caf\n\tnope")
+	writeFile(t, filepath.Join(dir, "cafaye.yml"), "name: cafe\n\tnope")
 
 	_, err := Load(dir)
 
@@ -92,7 +92,7 @@ func TestLoadResolvesTheDockerfile(t *testing.T) {
 	}{
 		{
 			name:           "no dockerfile at all",
-			files:          []string{"go.mod", "cmd/caf/main.go"},
+			files:          []string{"go.mod", "cmd/cafe/main.go"},
 			wantDockerfile: "",
 		},
 		{
@@ -112,15 +112,15 @@ func TestLoadResolvesTheDockerfile(t *testing.T) {
 		},
 		{
 			name:           "the service name is passed as a build arg",
-			files:          []string{"docker/Dockerfile", "cmd/caf/main.go"},
+			files:          []string{"docker/Dockerfile", "cmd/cafe/main.go"},
 			wantDockerfile: "docker/Dockerfile",
-			wantArgs:       []Env{{Name: "SERVICE_NAME", Value: "caf"}},
+			wantArgs:       []Env{{Name: "SERVICE_NAME", Value: "cafe"}},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := writeProject(t, "caf", "go", tt.files...)
+			dir := writeProject(t, "cafe", "go", tt.files...)
 
 			project, err := Load(dir)
 			if err != nil {

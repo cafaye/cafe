@@ -28,8 +28,8 @@
 // pins — kit/templates/substrate/install.sh and the manifests it applies —
 // and every entry carries the file and line it was read from. It is a copy,
 // and a copy can drift; the answer to that is not a fetch (cafaye/kit is a
-// different repository, and a caf that reached across to it at run time would
-// be a caf whose answer changed with someone else's checkout) but a
+// different repository, and a cafe that reached across to it at run time would
+// be a cafe whose answer changed with someone else's checkout) but a
 // comparison: the catalogue is what a substrate box is EXPECTED to be
 // running, the observation is what it IS running, and the inventory reports
 // the two side by side and names every divergence. A pinned version nobody
@@ -58,14 +58,14 @@
 //
 // It is not a scanner for application dependencies. The customer's own
 // repository has lockfiles and their CI already has osv-scanner, govet and a
-// dependency audit in it; a second, weaker copy of that inside caf would
+// dependency audit in it; a second, weaker copy of that inside cafe would
 // disagree with the first about what a vulnerable dependency is. The subject
 // here is the box.
 //
 // It is not a fixer. Every advisory in the report is answered with what
 // applying the fix would TOUCH, never with a command run: the Attended tier's
-// promise is upgrade *recommendations* the customer applies, and a caf that
-// applied them would be a caf that rolled a node agent without being asked.
+// promise is upgrade *recommendations* the customer applies, and a cafe that
+// applied them would be a cafe that rolled a node agent without being asked.
 //
 // It is not a vulnerability database. The database is the other side of a
 // network call; this package is the matching, the classification and the

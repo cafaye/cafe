@@ -107,7 +107,7 @@ func InspectResolved(resolved, configFile string) ([]AccessoryExposure, error) {
 		// `kamal config` and of nothing else: the top level is
 		// `Kamal::Configuration#to_h`, a Ruby hash with symbol keys, so every
 		// top-level key is written with a leading colon.
-		return nil, fmt.Errorf("kamal's output is not a resolved configuration, so caf cannot check the " +
+		return nil, fmt.Errorf("kamal's output is not a resolved configuration, so cafe cannot check the " +
 			"deployment for exposed ports; run `kamal config` yourself and read it")
 	}
 	accessories, ok := doc[":accessories"]
@@ -125,10 +125,10 @@ func InspectResolved(resolved, configFile string) ([]AccessoryExposure, error) {
 	}
 	accessoryMap, ok := accessories.(map[string]any)
 	if !ok {
-		// A shape caf does not understand must not read as "clean", because that
+		// A shape cafe does not understand must not read as "clean", because that
 		// is how an exposure passes unnoticed. Say what was found instead.
 		return nil, fmt.Errorf("kamal's resolved configuration has an :accessories block that is not a " +
-			"mapping of accessory names, so caf cannot check it; run `kamal config` yourself and read it")
+			"mapping of accessory names, so cafe cannot check it; run `kamal config` yourself and read it")
 	}
 
 	var exposures []AccessoryExposure
@@ -218,7 +218,7 @@ func accessoryPort(body map[string]any) (string, bool) {
 // accessoryService is the name app containers use to reach the accessory.
 //
 // Kamal's own default is "<service>-<accessory>" (Accessory#service_name), so a
-// name caf cannot read is a name caf must not invent: it falls back to the
+// name cafe cannot read is a name cafe must not invent: it falls back to the
 // accessory key, which is the part of the default that is knowable here.
 func accessoryService(name string, body map[string]any) string {
 	for _, key := range []string{"service", ":service"} {
@@ -267,7 +267,7 @@ func loopbackPublish(published string) string {
 // expandPort is Kamal's own rule (Kamal::Configuration::Accessory#port): a
 // value with no colon becomes "N:N". It is spelled out here rather than
 // imported because the refusal quotes the command kamal runs, and a refusal that
-// quotes a command caf re-derived differently is a refusal nobody can check.
+// quotes a command cafe re-derived differently is a refusal nobody can check.
 func expandPort(published string) string {
 	if strings.Contains(published, ":") {
 		return "--publish " + published
@@ -288,7 +288,7 @@ func Refusals(exposures []AccessoryExposure) string {
 }
 
 // scalar renders the YAML scalars Kamal prints. A value that is not a scalar is
-// rendered as its kind rather than skipped, so a shape caf does not understand
+// rendered as its kind rather than skipped, so a shape cafe does not understand
 // is visible in the refusal instead of passing silently.
 func scalar(v any) string {
 	switch value := v.(type) {

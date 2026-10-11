@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/report"
+	"github.com/cafaye/cafe/internal/report"
 )
 
 // runReport drives the whole path: a document a test writes, the verb over it,
@@ -16,7 +16,7 @@ import (
 // exercised without a terminal.
 func runReport(t *testing.T, deps reportDeps, args ...string) (string, string, error) {
 	t.Helper()
-	// A scratch state directory, so no test on any machine reads the caf state
+	// A scratch state directory, so no test on any machine reads the cafe state
 	// that machine happens to have. A test that filled its gaps from the
 	// developer's own drill history would be green on one laptop and red on
 	// the next.
@@ -82,7 +82,7 @@ func TestReportRenderWritesTheWholePage(t *testing.T) {
 
 	out, _, err := runReport(t, reportDeps{stdin: strings.NewReader("")}, path)
 	if err != nil {
-		t.Fatalf("caf report render: %v", err)
+		t.Fatalf("cafe report render: %v", err)
 	}
 
 	for _, want := range []string{
@@ -127,7 +127,7 @@ func TestReportRenderWritesOneJSONDocument(t *testing.T) {
 
 	out, _, err := runReport(t, reportDeps{stdin: strings.NewReader("")}, "--json", path)
 	if err != nil {
-		t.Fatalf("caf report render --json: %v", err)
+		t.Fatalf("cafe report render --json: %v", err)
 	}
 
 	dec := json.NewDecoder(strings.NewReader(out))
@@ -165,7 +165,7 @@ func TestReportRenderSaysNothingFalseOnStdoutAboutItsGaps(t *testing.T) {
 
 	stdout, stderr, err := runReport(t, reportDeps{stdin: strings.NewReader("")}, "--json", path)
 	if err != nil {
-		t.Fatalf("caf report render --json: %v", err)
+		t.Fatalf("cafe report render --json: %v", err)
 	}
 	if !strings.Contains(stderr, "section(s) could not be filled") {
 		t.Errorf("stderr does not report the gaps it named in the JSON:\n%s", stderr)
@@ -188,7 +188,7 @@ func TestReportRenderWithNoDocumentIsAPageOfGaps(t *testing.T) {
 
 	out, _, err := runReport(t, reportDeps{stdin: strings.NewReader("")}, "--period", "2026-09", path)
 	if err != nil {
-		t.Fatalf("caf report render over an empty document: %v", err)
+		t.Fatalf("cafe report render over an empty document: %v", err)
 	}
 	for _, want := range []string{
 		"No availability data",
@@ -233,7 +233,7 @@ func TestReportRenderFillsTheDrillSectionFromTheLocalStore(t *testing.T) {
 		secretStateDir: filepath.Join(t.TempDir(), "secrets"),
 	}).Execute(env, append([]string{"render"}, input))
 	if err != nil {
-		t.Fatalf("caf report render: %v", err)
+		t.Fatalf("cafe report render: %v", err)
 	}
 	out := written(t, env.Stdout)
 	if !strings.Contains(out, "courier") {
@@ -288,15 +288,15 @@ func TestReportPeriodParsing(t *testing.T) {
 	}
 }
 
-// The verb is the only one of its group, so bare `caf report` is a question
+// The verb is the only one of its group, so bare `cafe report` is a question
 // ("what can this do?") and answers with its help, and an unknown verb is a
-// usage error — the same two calls `caf failure` makes.
+// usage error — the same two calls `cafe failure` makes.
 func TestReportGroupsItsVerb(t *testing.T) {
 	env := newTestEnv()
 	if err := newReportCommand(reportDeps{}).Execute(env, nil); err != nil {
-		t.Fatalf("bare `caf report` must answer, not fail: %v", err)
+		t.Fatalf("bare `cafe report` must answer, not fail: %v", err)
 	}
-	if out := written(t, env.Stdout); !strings.Contains(out, "caf report render") {
+	if out := written(t, env.Stdout); !strings.Contains(out, "cafe report render") {
 		t.Errorf("the help does not show the verb:\n%s", out)
 	}
 
@@ -305,7 +305,7 @@ func TestReportGroupsItsVerb(t *testing.T) {
 	if err == nil {
 		t.Fatal("an unknown verb must be a usage error")
 	}
-	if !strings.Contains(err.Error(), "unknown caf report verb") {
+	if !strings.Contains(err.Error(), "unknown cafe report verb") {
 		t.Errorf("err = %v, want it to name the verb the user typed", err)
 	}
 }

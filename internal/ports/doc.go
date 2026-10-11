@@ -1,4 +1,4 @@
-// Package ports is caf's port registry: the block it publishes from, the
+// Package ports is cafe's port registry: the block it publishes from, the
 // reservation that holds a port for the life of a session, and the prober that
 // finds out whether something already has it.
 //
@@ -33,14 +33,14 @@
 //
 // What the hold does *not* close is stated in the report rather than hidden: a
 // non-caf process that grabs a port between the probe and `up` is caught by the
-// daemon on Linux and not caught on OrbStack. Holding the port with a caf lock
-// keeps the caf fleet correct; it cannot make the daemon arbiter honest.
+// daemon on Linux and not caught on OrbStack. Holding the port with a cafe lock
+// keeps the cafe fleet correct; it cannot make the daemon arbiter honest.
 //
 // # One block, one lock per port
 //
 // The block is 15000-15999, which is the range a parallel fleet of workers can
 // all look at and recognise as ours. Each port in it has its own advisory lock in
 // the ledger, so a hundred reservations are a hundred locks and not one queue —
-// and so a crashed caf strands nothing, because flock is owned by the open file
+// and so a crashed cafe strands nothing, because flock is owned by the open file
 // description and the kernel drops it when the process dies.
 package ports

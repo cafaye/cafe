@@ -11,7 +11,7 @@
 // backup engine that can disagree with the first about what a backup is, and the
 // disagreement would be found in a restore nobody rehearsed.
 //
-// So caf runs kamal's and kamal-backup's own commands and owns the part on
+// So cafe runs kamal's and kamal-backup's own commands and owns the part on
 // either side of them: the refusal that should happen before the first one, and
 // the report that has to be true after the last.
 //
@@ -22,7 +22,7 @@
 // and the scheduler is a foreground loop inside that container. A service whose
 // accessory has never run has a specification and no snapshot, which is the
 // state every service in the fleet was in before this command existed.
-// `caf backup` is the thing that turns the specification into a snapshot and
+// `cafe backup` is the thing that turns the specification into a snapshot and
 // then throws the snapshot away, having proven it could be had.
 //
 // # One pure function, one seam
@@ -40,7 +40,7 @@
 // command with a different set of claims. The seam is one method wide on purpose
 // — every method on it is a thing a test has to be able to make fail.
 //
-// # What the connection preamble is, and why caf cannot read the values
+// # What the connection preamble is, and why cafe cannot read the values
 //
 // The accessory's environment has `DATABASE_URL` and `DATABASE_PASSWORD` and no
 // PG* variables — measured against that image — and libpq reads PG* from the
@@ -51,36 +51,36 @@
 // argv is a credential on the machine.
 //
 // The split is written out in shell rather than done in Go because the accessory's
-// environment is not something caf can read. caf never opens a secret's value, and a
-// caf that could would be a caf one bug away from printing one.
+// environment is not something cafe can read. cafe never opens a secret's value, and a
+// cafe that could would be a cafe one bug away from printing one.
 //
 // # What the restore proof is, and whose it is
 //
 // The restore is kamal-backup's: `kamal-backup drill production --database
 // SCRATCH --check <assertion>` restores the snapshot into a scratch database and
 // then runs the check, and the gem's own verdict is the check's exit status.
-// caf supplies three things around it, and says which is which:
+// cafe supplies three things around it, and says which is which:
 //
 //   - the scratch database's lifecycle. kamal-backup does not create the scratch
 //     database and does not drop it — `restore_to_scratch` is validate-then-
 //     restore and returns, and the only `DROP SCHEMA` in the gem is
 //     `reset_current_schema`, which runs on a restore into the LIVE database.
-//     So a drill through the gem alone leaves a database behind, and caf creates
+//     So a drill through the gem alone leaves a database behind, and cafe creates
 //     and drops it on every path including the failing one.
 //   - the assertion, because `psql -tAc "SELECT count(*) FROM t"` exits 0 whether
 //     the count is 4,000 or 0. This is cafaye/kit's
 //     `templates/kamal/drill.sh`'s reason for building a check whose exit status
-//     is the assertion, and it is the reason caf builds one here too.
-//   - the production-name refusal, which caf does NOT own. It is
+//     is the assertion, and it is the reason cafe builds one here too.
+//   - the production-name refusal, which cafe does NOT own. It is
 //     kamal-backup's (`Config#production_like_target?` in 0.5.2, which refuses a
 //     target containing "production" or delimited by prod/live, and a target
 //     equal to the current database), and in operator form it is kit's
-//     `drill.sh`. caf hands the gem a scratch name and reports what the gem said;
+//     `drill.sh`. cafe hands the gem a scratch name and reports what the gem said;
 //     it carries no copy of the rule, because a second copy of a rule about which
 //     database gets dropped is a second opinion about the one thing that must
 //     not be in doubt.
 //
-// # Why caf does not run kit's drill.sh
+// # Why cafe does not run kit's drill.sh
 //
 // Measured, and it is the reason this paragraph exists. `drill.sh` reaches the
 // accessory with `kamal accessory exec --interactive --reuse backup …`, and
@@ -89,7 +89,7 @@
 // #run_over_ssh). Two things then follow, both measured on this machine against
 // a real accessory:
 //
-//  1. `docker exec -it` needs a pseudo-terminal on both ends. caf runs commands
+//  1. `docker exec -it` needs a pseudo-terminal on both ends. cafe runs commands
 //     with a pipe, so sshd is asked for a pty it cannot give, the inner
 //     `docker exec -it` fails, and the drill dies with a transport error that
 //     says nothing about backups.
@@ -97,7 +97,7 @@
 //     it does not read a scratch `known_hosts` and stops on an interactive host
 //     key prompt — a hang, in a pipeline with nobody to answer it.
 //
-// So caf invokes the same kamal-backup command without `--interactive`, and keeps
+// So cafe invokes the same kamal-backup command without `--interactive`, and keeps
 // the two things the script adds (the asserting check, the drop on every exit
 // path) with kit named as their source. It does not re-implement the script's
 // refusals, which is the part that matters.
@@ -105,7 +105,7 @@
 // # The race the boot creates, and the two places the lock is looked for
 //
 // Booting the backup accessory starts its scheduler, and `Scheduler#run` takes a
-// backup immediately and then sleeps for the whole schedule. So `caf backup` — which
+// backup immediately and then sleeps for the whole schedule. So `cafe backup` — which
 // boots the accessory and then wants the repository — is racing a cycle the boot
 // itself caused, and the symptoms are all measured against
 // ghcr.io/crmne/kamal-backup:0.5.2:
@@ -136,13 +136,13 @@
 // joins the arguments with plain spaces (Kamal::Utils.join_commands) and SSHKit
 // sends the result to the *remote shell*, which splits it again. Measured: a
 // `--check` carrying a space arrives as several arguments, and `--yes` was
-// swallowed into the check. So every argument caf hands to `accessory exec` is
+// swallowed into the check. So every argument cafe hands to `accessory exec` is
 // escaped first, exactly as kamal-backup's KamalBridge does
 // (`kamal_remote_command_argv` → `Shellwords.escape`).
 //
 // And because `Shellwords.escape` does not escape a newline, a script containing
 // one becomes two remote commands: the first ran and the second was a command
-// nobody wrote. caf therefore refuses to build a check that contains a newline,
+// nobody wrote. cafe therefore refuses to build a check that contains a newline,
 // and the refusal is in PlanFor rather than in a comment.
 //
 // # Two engines, one seam
@@ -154,6 +154,6 @@
 // The two share this package's orchestration — preflight, the plan, the drop
 // on both paths, the report — and neither the commands nor the sentences about
 // them, so each engine owns its own plan (PlanFor and PlanForCNPG, both pure)
-// and its own cycle. `caf backup --engine` selects one; see runner.go for why
+// and its own cycle. `cafe backup --engine` selects one; see runner.go for why
 // the plan belongs to the engine and not to the caller.
 package backup

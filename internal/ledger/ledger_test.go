@@ -57,7 +57,7 @@ func TestReserveRecordsEveryField(t *testing.T) {
 	}
 }
 
-// The whole design rests on this: the entry is written first, so a caf that dies
+// The whole design rests on this: the entry is written first, so a cafe that dies
 // between the record and the resource leaves a ledger entry naming something
 // that does not exist, which is `:missing` and is harmless. The reverse order
 // leaves a container no ledger entry names, which is the 7.4 GiB leak.
@@ -329,7 +329,7 @@ func TestNewSessionIsUnique(t *testing.T) {
 	}
 }
 
-// The ledger has to be somewhere a second caf finds without being told, and it
+// The ledger has to be somewhere a second cafe finds without being told, and it
 // has to be somewhere a user can delete.
 func TestDefaultDirHonoursTheEnvironment(t *testing.T) {
 	t.Setenv("CAF_LEDGER_DIR", "/tmp/caf-ledger-from-env")
@@ -355,7 +355,7 @@ func TestDefaultDirFallsBackToTheUserStateDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join("/tmp/xdg-state", "caf", "ledger"); got != want {
+	if want := filepath.Join("/tmp/xdg-state", "cafe", "ledger"); got != want {
 		t.Errorf("DefaultDir = %q, want %q", got, want)
 	}
 	_ = home

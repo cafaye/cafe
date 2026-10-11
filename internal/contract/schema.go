@@ -21,7 +21,7 @@ var manifestSchemaJSON []byte
 
 // manifestSchemaPin is the sha256 of the vendored copy as of core commit
 // 3340e0f (core-02, spec version 0.2). It exists so a hand edit fails the
-// suite: changing the contract caf validates against is a refresh procedure
+// suite: changing the contract cafe validates against is a refresh procedure
 // with a core bump attached, never a patch.
 //
 //go:generate sh -c "shasum -a 256 internal/contract/schemas/manifest-0.2.json"
@@ -58,7 +58,7 @@ var manifestSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 
 // schemaViolations validates the document against core's schema and flattens
 // the error tree into the fields a person has to fix, in the order the fields
-// appear in the manifest. The order is part of the contract: `caf contract
+// appear in the manifest. The order is part of the contract: `cafe contract
 // lint` prints the first one, and a linter whose headline error changes
 // between runs is a linter nobody trusts.
 func (m Manifest) schemaViolations() ([]Violation, error) {
@@ -103,7 +103,7 @@ func flattenSchemaErrors(root *jsonschema.ValidationError) []Violation {
 //
 // The sort is not decoration. The validator walks the instance's Go map, so
 // the order it reports violations in is whatever the map iteration gave it
-// this run: `caf contract lint` on the same file would print a different first
+// this run: `cafe contract lint` on the same file would print a different first
 // error every time, and a CI log would be a slot machine. Document order is
 // the one order a person can predict, and it is already in the bytes.
 //

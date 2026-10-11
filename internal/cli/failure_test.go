@@ -33,7 +33,7 @@ func TestFailureCheckEvaluatesTheLibraryAgainstADocument(t *testing.T) {
 
 	out, err := runFailureCheck(t, []string{path})
 	if err != nil {
-		t.Fatalf("caf failure check: %v", err)
+		t.Fatalf("cafe failure check: %v", err)
 	}
 
 	for _, want := range []string{
@@ -66,13 +66,13 @@ func TestFailureCheckEvaluatesTheLibraryAgainstADocument(t *testing.T) {
 	if !strings.Contains(out, "10 rule(s) evaluated") {
 		t.Errorf("the report does not say how many rules it evaluated:\n%s", out)
 	}
-	if !strings.Contains(out, "caf failure: 10 rule(s), 9 condition(s) hold, 0 unknown") {
+	if !strings.Contains(out, "cafe failure: 10 rule(s), 9 condition(s) hold, 0 unknown") {
 		t.Errorf("the summary line is not the count the report produced:\n%s", out)
 	}
 }
 
 // Stdin is the default input, so the verb composes with the box-side half that
-// does not exist yet: `caf box observe | caf failure check` is the shape the
+// does not exist yet: `cafe box observe | cafe failure check` is the shape the
 // substrate packet completes. The reader is a seam parameter for the reason
 // deployDeps.confirm is — a test that read os.Stdin would hang.
 func TestFailureCheckReadsStdinByDefault(t *testing.T) {
@@ -81,7 +81,7 @@ func TestFailureCheckReadsStdinByDefault(t *testing.T) {
 	env := newTestEnv()
 	c := newFailureCommand(failureDeps{stdin: strings.NewReader(doc)})
 	if err := c.Execute(env, []string{"check", "-"}); err != nil {
-		t.Fatalf("caf failure check -: %v", err)
+		t.Fatalf("cafe failure check -: %v", err)
 	}
 	out := written(t, env.Stdout)
 	if !strings.Contains(out, "gateway-sessions-per-process") {
@@ -110,20 +110,20 @@ func TestFailureCheckRefusesWhatItCannotRead(t *testing.T) {
 	}
 }
 
-// Bare `caf failure` answers rather than exiting 2, and an unknown verb names
+// Bare `cafe failure` answers rather than exiting 2, and an unknown verb names
 // the one that exists. A parent with no verbs a reader can discover is a
 // parent nobody uses.
 func TestFailureAnswersItsOwnHelpAndNamesItsVerb(t *testing.T) {
 	env := newTestEnv()
 	if err := newFailureCommand(failureDeps{}).Execute(env, nil); err != nil {
-		t.Fatalf("bare caf failure: %v", err)
+		t.Fatalf("bare cafe failure: %v", err)
 	}
-	if out := written(t, env.Stdout); !strings.Contains(out, "caf failure check") {
-		t.Errorf("bare `caf failure` did not print the verb:\n%s", out)
+	if out := written(t, env.Stdout); !strings.Contains(out, "cafe failure check") {
+		t.Errorf("bare `cafe failure` did not print the verb:\n%s", out)
 	}
 
 	err := newFailureCommand(failureDeps{}).Execute(newTestEnv(), []string{"lint", "-"})
-	if err == nil || !strings.Contains(err.Error(), "unknown caf failure verb") {
+	if err == nil || !strings.Contains(err.Error(), "unknown cafe failure verb") {
 		t.Errorf("err = %v, want it to name the verb that does not exist", err)
 	}
 }

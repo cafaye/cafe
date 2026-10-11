@@ -229,8 +229,8 @@ func TestDoctorSummary(t *testing.T) {
 	}
 }
 
-// doctor takes an optional project directory: `caf doctor` alone checks this
-// one, `caf doctor ../billing` checks that one. Two paths is a usage error —
+// doctor takes an optional project directory: `cafe doctor` alone checks this
+// one, `cafe doctor ../billing` checks that one. Two paths is a usage error —
 // there is one project per report.
 func TestDoctorArgumentCount(t *testing.T) {
 	// The exit codes here are the *router's*, not the report's: a report that

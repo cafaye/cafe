@@ -102,7 +102,7 @@ func TestALabelWithAnEmptyValueIsRefused(t *testing.T) {
 		name  string
 		label Label
 	}{
-		{name: "no value", label: Label{Key: LabelBase + ".caf.session"}},
+		{name: "no value", label: Label{Key: LabelBase + ".cafe.session"}},
 		{name: "no key", label: Label{Value: "abc"}},
 		{name: "a newline in the value", label: Label{Key: "k", Value: "a\nlabel=other"}},
 		{name: "a newline in the key", label: Label{Key: "a\nb", Value: "v"}},
@@ -142,7 +142,7 @@ func TestTheFilterGoesOnTheWireAsOneJoinedLine(t *testing.T) {
 	client, err := Dial(context.Background(), ConfigWithSession(reaper.address(), "sess-1"), Filter{
 		Labels: []Label{
 			SessionLabel("sess-1"),
-			{Key: LabelBase + ".caf.repo", Value: "identity"},
+			{Key: LabelBase + ".cafe.repo", Value: "identity"},
 		},
 	})
 	if err != nil {
@@ -158,13 +158,13 @@ func TestTheFilterGoesOnTheWireAsOneJoinedLine(t *testing.T) {
 	if len(parts) != 2 {
 		t.Fatalf("the line is not a joined set: %q", line)
 	}
-	for _, want := range []string{"label=" + LabelBase + ".caf.repo=identity", "label=" + LabelBase + ".caf.session=sess-1"} {
+	for _, want := range []string{"label=" + LabelBase + ".cafe.repo=identity", "label=" + LabelBase + ".cafe.session=sess-1"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("the line does not carry %q: %q", want, line)
 		}
 	}
 	// Sorted, so two runs of one configuration send the same bytes.
-	if !strings.HasPrefix(line, "label="+LabelBase+".caf.repo=") {
+	if !strings.HasPrefix(line, "label="+LabelBase+".cafe.repo=") {
 		t.Errorf("the labels are not in a stable order: %q", line)
 	}
 }
@@ -257,7 +257,7 @@ func TestEachSessionGetsItsOwnLabel(t *testing.T) {
 	if first[0] == second[0] {
 		t.Errorf("two sessions produced the same filter %q; a sweeper could name the other one's resources", first[0])
 	}
-	if !strings.Contains(first[0], LabelBase+".caf.session=a") {
+	if !strings.Contains(first[0], LabelBase+".cafe.session=a") {
 		t.Errorf("the session is not in the label: %q", first[0])
 	}
 }
@@ -314,12 +314,12 @@ func TestNoSettleWindowIsClaimedOrConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(source), "liveness guess") {
-		t.Error("client.go does not say that the reaper is a liveness guess; the package doc must state what caf actually gets")
+		t.Error("client.go does not say that the reaper is a liveness guess; the package doc must state what cafe actually gets")
 	}
 }
 
 // What the client actually configures is the variables the reaper reads, and
-// nothing else. This is the load-bearing half of the claim above: if caf reads
+// nothing else. This is the load-bearing half of the claim above: if cafe reads
 // an environment variable `moby-ryuk` does not read, then setting it configures
 // nothing and looks like it works.
 //
@@ -349,9 +349,9 @@ func TestTheConfiguredEnvironmentIsExactlyWhatTheReaperReads(t *testing.T) {
 	t.Logf("%s is set to -1s and no field of Config reflects it, because moby-ryuk does not read it", retired)
 }
 
-// The environment is the reaper's own, with the reaper's defaults, so a caf
+// The environment is the reaper's own, with the reaper's defaults, so a cafe
 // session and a testcontainers session in one shell agree about where the
-// reaper is. A caf that invented different names would take a second lease from
+// reaper is. A cafe that invented different names would take a second lease from
 // a second reaper, and the first would prune.
 func TestConfigComesFromTheReapersOwnEnvironment(t *testing.T) {
 	tests := []struct {
@@ -461,7 +461,7 @@ func TestTheLeaseReportsWhatItAskedFor(t *testing.T) {
 func TestEveryLabelMustMatch(t *testing.T) {
 	lines, err := Filter{Labels: []Label{
 		SessionLabel("mine"),
-		{Key: LabelBase + ".caf.repo", Value: "identity"},
+		{Key: LabelBase + ".cafe.repo", Value: "identity"},
 	}}.Lines()
 	if err != nil {
 		t.Fatal(err)

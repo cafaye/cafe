@@ -16,7 +16,7 @@ import (
 // The command's whole reason for existing, driven through the one seam, with no
 // kamal, no container runtime, no restic repository and no SSH connection.
 //
-// Every claim `caf backup` makes about the world is a claim about the argv it
+// Every claim `cafe backup` makes about the world is a claim about the argv it
 // hands the Runner, so a fake that records argv is enough to assert all of them.
 
 // fakeRunner records the argv it was handed and answers with whatever the case
@@ -131,14 +131,14 @@ func (f *fakeRunner) Run(ctx context.Context, dir string, step Step, stdout, std
 	case Settle:
 		// The real shape of the answer: kamal's own banner, then one bare
 		// 64-character hex id per held lock, and nothing at all when none is held.
-		// A fake that printed a word of prose would be a test of a parser caf does
+		// A fake that printed a word of prose would be a test of a parser cafe does
 		// not have.
 		//
 		// A held lock is reported either because a case planted one (`locked`) or
 		// because a snapshot has just collided with the cycle the boot started
 		// (`locksAfterCollision`, set by the snapshot case). The second is the shape
 		// of the race rather than a counter pretending to be one: the cycle the boot
-		// started is still running, and caf's next look sees its lock. Before the
+		// started is still running, and cafe's next look sees its lock. Before the
 		// first snapshot there is nothing to collide with, so the repository reads
 		// free — exactly as it does in production.
 		if f.locksAfterCollision > 0 {
@@ -191,7 +191,7 @@ func (f *fakeRunner) transcriptForSnapshot() string {
 	return gemWrongPasswordTranscript
 }
 
-// gemLockedRepositoryTranscript is what kamal-backup ACTUALLY prints when caf's
+// gemLockedRepositoryTranscript is what kamal-backup ACTUALLY prints when cafe's
 // forced backup collides with the cycle its own boot started, copied from a run of
 // the live tier on this machine with every credential replaced by [REDACTED].
 //
@@ -624,7 +624,7 @@ func TestACNPGDryRunExecutesNothing(t *testing.T) {
 
 // --env is a Kamal destination and the CNPG engine has no destination: the
 // cluster is a fact about the Kubernetes namespace, not a rendered overlay.
-// The refusal is a usage error, so it exits 2 — the operator invoked caf
+// The refusal is a usage error, so it exits 2 — the operator invoked cafe
 // wrongly, and nothing ran.
 func TestTheCNPGEngineRefusesAnEnvironment(t *testing.T) {
 	dir := fixtureProject(t)
@@ -689,7 +689,7 @@ func TestTheCNPGEngineHasNoTwoFileContractToCheck(t *testing.T) {
 // scheduler, the scheduler's first cycle takes the restic repository lock
 // immediately, and a forced backup issued a second later collides with it — restic
 // exit 11, "repository is already locked", which the gem's wrapper reports as
-// "command failed (1)". A caf that retried on a timer would be a caf guessing.
+// "command failed (1)". A cafe that retried on a timer would be a cafe guessing.
 func TestTheLockWaitPollsUntilTheRepositoryIsFree(t *testing.T) {
 	dir := fixtureProject(t)
 	f := newFakeRunner(t)
@@ -791,17 +791,17 @@ func temporaryPollInterval(t *testing.T, d time.Duration) {
 //     one that fixed the live tier: the accessory's first cycle on a rehearsal
 //     database finishes in well under a second, so a second reading of the
 //     repository afterwards can already say free. Measured: the settle step reported
-//     free, the snapshot came back exit 11, the re-read said free again, and caf gave
+//     free, the snapshot came back exit 11, the re-read said free again, and cafe gave
 //     up on a snapshot the accessory had taken for itself.
 //   - A FRESH READING OF THE LOCK, which is what catches a collision whose
-//     transcript caf could not read — a command whose output went somewhere else, or
+//     transcript cafe could not read — a command whose output went somewhere else, or
 //     a future gem that stops echoing restic's status.
 //
 // Each direction is asserted, and so is the fault that must not be retried at all.
 func TestASnapshotThatLostTheRaceIsRetriedOnlyWhileALockIsHeld(t *testing.T) {
 	t.Run("the transcript names the lock, so the snapshot is tried again", func(t *testing.T) {
 		// THE SHAPE THE LIVE TIER PRODUCED: the collision was real and the cycle is
-		// already over, so the repository reads free every time caf looks at it. This
+		// already over, so the repository reads free every time cafe looks at it. This
 		// is the case that used to give up.
 		dir := fixtureProject(t)
 		f := newFakeRunner(t)
@@ -833,7 +833,7 @@ func TestASnapshotThatLostTheRaceIsRetriedOnlyWhileALockIsHeld(t *testing.T) {
 		// this one.
 		f := newFakeRunner(t)
 		f.snapshotFailures = 1
-		f.snapshotStderr = "Fatal: something caf cannot classify\n"
+		f.snapshotStderr = "Fatal: something cafe cannot classify\n"
 
 		var out strings.Builder
 		if err := Run(context.Background(), f, cycleRequest(dir), &out, io.Discard); err != nil {
@@ -1155,7 +1155,7 @@ func TestNoCredentialReachesAnyOutput(t *testing.T) {
 	}
 }
 
-// The environment is an overlay and the credentials are Kamal's, not caf's. The
+// The environment is an overlay and the credentials are Kamal's, not cafe's. The
 // case that matters is a destination: Kamal reads .kamal/secrets-common and
 // .kamal/secrets.<env> and NOT .kamal/secrets, so a report that said
 // ".kamal/secrets" would send an operator to a file kamal will not open.
@@ -1249,12 +1249,12 @@ func TestAProjectWithNoDeployConfigIsRefused(t *testing.T) {
 	if !strings.Contains(err.Error(), "deploy.yml") {
 		t.Errorf("the error does not name the missing file: %v", err)
 	}
-	if !strings.Contains(err.Error(), "caf deploy") {
+	if !strings.Contains(err.Error(), "cafe deploy") {
 		t.Errorf("the error does not say what to do first: %v", err)
 	}
 }
 
-// The refusal is printed ONCE. It is the report, and a `caf: ...` line on stderr
+// The refusal is printed ONCE. It is the report, and a `cafe: ...` line on stderr
 // repeating the cause puts a truncated copy where a CI log greps — and the
 // truncated copy is the one without the advice in it. The command layer is what
 // makes that true, and this is the package half of the contract: it returns the
@@ -1280,7 +1280,7 @@ func TestARefusalIsPrintedOnStdoutAndReturnedAsASentinel(t *testing.T) {
 
 // Every step the cycle runs goes through the deadline, and a context that is
 // already done must not start a new command — which is the only way a cancelled
-// `caf backup` can be a cancellation rather than a partially booted accessory.
+// `cafe backup` can be a cancellation rather than a partially booted accessory.
 func TestACancelledContextStopsTheCycleBeforeItBoots(t *testing.T) {
 	dir := fixtureProject(t)
 	f := newFakeRunner(t)
@@ -1296,7 +1296,7 @@ func TestACancelledContextStopsTheCycleBeforeItBoots(t *testing.T) {
 	}
 	// Nothing ran at all, because the read-only steps go through the Runner too and
 	// the Runner is what honours the context. Asserting only on Boot would pass for a
-	// caf that booted the accessory and then failed — which is the accident a
+	// cafe that booted the accessory and then failed — which is the accident a
 	// Ctrl-C in the wrong half-second causes.
 	if got := f.steps(); len(got) != 0 {
 		t.Errorf("a cancelled cycle still ran %v", got)

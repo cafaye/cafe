@@ -85,7 +85,7 @@ func TestServeStdioReturnsWhenTheClientClosesTheConnection(t *testing.T) {
 
 // A cancelled context stops the server, and stopping is not failing. This is
 // the difference that matters to a host: a server that exits 1 and prints
-// `caf: context canceled` because somebody sent it a signal turns every clean
+// `cafe: context canceled` because somebody sent it a signal turns every clean
 // shutdown into something that looks like a crash in the host's logs.
 func TestServeStdioTreatsCancellationAsAStopRatherThanAFailure(t *testing.T) {
 	pair := pipes()
@@ -209,7 +209,7 @@ func stdioExchange(t *testing.T, pair pipePair, frame string) ([]byte, error) {
 	}
 }
 
-// The streams are adapted, not required to be closers: caf serves the process's
+// The streams are adapted, not required to be closers: cafe serves the process's
 // own stdin and stdout, and closing either of those is the process's business.
 // A wrapper that closed them would end the process's own IO on a session that
 // merely ended, so an adapted stream reports a close as success and closes

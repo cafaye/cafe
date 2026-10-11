@@ -22,7 +22,7 @@ const maxRegisterAttempts = 6
 // authenticated client on the Store would be a token on the Store.
 type Store struct {
 	// Dir is where config.json lives. It is the operator's config directory
-	// (~/.config/caf), never a temp directory: a registration is durable state
+	// (~/.config/cafe), never a temp directory: a registration is durable state
 	// and a temp directory is not.
 	Dir string
 	// Ring holds the token. See ring.go.
@@ -37,7 +37,7 @@ type Store struct {
 
 // NewStore defaults the clock and the dial, and nothing else. A store with no
 // ring is refused at the moment it is used rather than at construction, so a
-// caller that only reads state (`caf agent whoami` against an existing session)
+// caller that only reads state (`cafe agent whoami` against an existing session)
 // does not need anything configured.
 func NewStore(dir string, ring Keyring, dial Dial) *Store {
 	return &Store{Dir: dir, Ring: ring, Dial: dial, now: time.Now}
@@ -62,7 +62,7 @@ func (s *Store) endpoint(baseURL, token string) Endpoint {
 
 // --- register -------------------------------------------------------------
 
-// RegisterOptions is what `caf agent register` was asked for.
+// RegisterOptions is what `cafe agent register` was asked for.
 type RegisterOptions struct {
 	BaseURL  string
 	Name     string
@@ -118,10 +118,10 @@ func (s *Store) Register(ctx context.Context, opts RegisterOptions) (*Registrati
 	}
 	name := strings.TrimSpace(opts.Name)
 	if name == "" {
-		return nil, fmt.Errorf("caf agent register: a display name is required; pass --name <name>")
+		return nil, fmt.Errorf("cafe agent register: a display name is required; pass --name <name>")
 	}
 	if s.Ring == nil {
-		return nil, fmt.Errorf("caf agent register: no keyring is configured; the token has nowhere to go")
+		return nil, fmt.Errorf("cafe agent register: no keyring is configured; the token has nowhere to go")
 	}
 
 	username := strings.TrimSpace(opts.Username)
@@ -134,7 +134,7 @@ func (s *Store) Register(ctx context.Context, opts RegisterOptions) (*Registrati
 	username = result.Agent.Username
 	session := sessionName(username, opts.BaseURL)
 	if err := s.Ring.Set(KeyringService, ringAccount(session), result.Token); err != nil {
-		return nil, fmt.Errorf("caf agent register: store the token in the keyring: %w", err)
+		return nil, fmt.Errorf("cafe agent register: store the token in the keyring: %w", err)
 	}
 
 	cfg, err := LoadConfig(s.Dir)
@@ -188,17 +188,17 @@ func (s *Store) registerWithRetry(ctx context.Context, baseURL, name, username s
 			return result, nil
 		}
 		if !generated || !isUsernameTaken(err) || attempt == maxRegisterAttempts-1 {
-			return nil, fmt.Errorf("caf agent register: %w", err)
+			return nil, fmt.Errorf("cafe agent register: %w", err)
 		}
 	}
 	// Unreachable: the loop either returns or returns inside its last attempt.
-	return nil, fmt.Errorf("caf agent register: could not find a free username after %d attempts", maxRegisterAttempts)
+	return nil, fmt.Errorf("cafe agent register: could not find a free username after %d attempts", maxRegisterAttempts)
 }
 
 // --- login ----------------------------------------------------------------
 
 // LoginResult is what one login concluded. It is a local decision — which
-// session is active — and it deliberately makes no network call: `caf agent
+// session is active — and it deliberately makes no network call: `cafe agent
 // whoami` is the verb that proves a token works, and a login that needed the
 // network to succeed would be a login that fails on a plane.
 type LoginResult struct {
@@ -221,11 +221,11 @@ func (s *Store) Login(agentUsername, baseURL string) (*LoginResult, error) {
 	}
 	sess, err := cfg.Select(agentUsername, baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("caf agent login: %w", err)
+		return nil, fmt.Errorf("cafe agent login: %w", err)
 	}
 	stored, err := s.token(sess)
 	if err != nil {
-		return nil, fmt.Errorf("caf agent login: %w", err)
+		return nil, fmt.Errorf("cafe agent login: %w", err)
 	}
 	_ = stored // read to prove it is there; never returned, never printed
 	cfg.ActiveAgentSession = sess.Name
@@ -266,11 +266,11 @@ func (s *Store) WhoAmI(ctx context.Context, agentUsername, baseURL string) (*Who
 	}
 	sess, err := cfg.Select(agentUsername, baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("caf agent whoami: %w", err)
+		return nil, fmt.Errorf("cafe agent whoami: %w", err)
 	}
 	token, err := s.token(sess)
 	if err != nil {
-		return nil, fmt.Errorf("caf agent whoami: %w", err)
+		return nil, fmt.Errorf("cafe agent whoami: %w", err)
 	}
 	home, err := s.endpoint(sess.BaseURL, token).Home(ctx)
 	if err != nil {
@@ -338,7 +338,7 @@ func (s *Store) TokenShow(ctx context.Context, agentUsername, baseURL, name stri
 			}
 		}
 		if len(selected) == 0 {
-			return nil, fmt.Errorf("caf agent token show: no live token named %q for session %s; `caf agent token show` lists them", name, sess.Name)
+			return nil, fmt.Errorf("cafe agent token show: no live token named %q for session %s; `cafe agent token show` lists them", name, sess.Name)
 		}
 		keys = selected
 	}
@@ -364,7 +364,7 @@ func (s *Store) TokenCreate(ctx context.Context, agentUsername, baseURL, name st
 		return nil, err
 	}
 	if err := s.Ring.Set(KeyringService, ringAccount(sess.Name), fresh.Token); err != nil {
-		return nil, fmt.Errorf("caf agent token create: the new token was minted but could not be stored: %w", err)
+		return nil, fmt.Errorf("cafe agent token create: the new token was minted but could not be stored: %w", err)
 	}
 	// The session's token is now the fresh one: the keyring holds it, so the
 	// id that names it moves with it.
@@ -394,7 +394,7 @@ func (s *Store) TokenRotate(ctx context.Context, agentUsername, baseURL, tokenID
 		tokenID = sess.AgentKeyID
 	}
 	if strings.TrimSpace(tokenID) == "" {
-		return nil, fmt.Errorf("caf agent token rotate: pass a token id (`caf agent token show` lists them)")
+		return nil, fmt.Errorf("cafe agent token rotate: pass a token id (`cafe agent token show` lists them)")
 	}
 	fresh, err := s.endpoint(sess.BaseURL, token).RotateToken(ctx, tokenID)
 	if err != nil {
@@ -403,7 +403,7 @@ func (s *Store) TokenRotate(ctx context.Context, agentUsername, baseURL, tokenID
 	message := "the token was rotated; the old one no longer works"
 	if tokenID == sess.AgentKeyID {
 		if err := s.Ring.Set(KeyringService, ringAccount(sess.Name), fresh.Token); err != nil {
-			return nil, fmt.Errorf("caf agent token rotate: the new token was minted but could not be stored: %w", err)
+			return nil, fmt.Errorf("cafe agent token rotate: the new token was minted but could not be stored: %w", err)
 		}
 		if err := s.saveSessionKeyID(sess, fresh.ID); err != nil {
 			return nil, err
@@ -430,7 +430,7 @@ func (s *Store) TokenRevoke(ctx context.Context, agentUsername, baseURL, tokenID
 		tokenID = sess.AgentKeyID
 	}
 	if strings.TrimSpace(tokenID) == "" {
-		return nil, fmt.Errorf("caf agent token revoke: pass a token id (`caf agent token show` lists them)")
+		return nil, fmt.Errorf("cafe agent token revoke: pass a token id (`cafe agent token show` lists them)")
 	}
 	if err := s.endpoint(sess.BaseURL, token).RevokeToken(ctx, tokenID); err != nil {
 		return nil, err
@@ -439,7 +439,7 @@ func (s *Store) TokenRevoke(ctx context.Context, agentUsername, baseURL, tokenID
 	message := "the token was revoked on identity; it no longer authenticates"
 	if tokenID == sess.AgentKeyID {
 		if err := s.Ring.Delete(KeyringService, ringAccount(sess.Name)); err != nil {
-			return nil, fmt.Errorf("caf agent token revoke: the token was revoked on identity but is still in the keyring: %w", err)
+			return nil, fmt.Errorf("cafe agent token revoke: the token was revoked on identity but is still in the keyring: %w", err)
 		}
 		if err := s.saveSessionKeyID(sess, ""); err != nil {
 			return nil, err
@@ -481,11 +481,11 @@ func (s *Store) sessionToken(agentUsername, baseURL string) (Session, string, er
 	}
 	sess, err := cfg.Select(agentUsername, baseURL)
 	if err != nil {
-		return Session{}, "", fmt.Errorf("caf agent: %w", err)
+		return Session{}, "", fmt.Errorf("cafe agent: %w", err)
 	}
 	token, err := s.token(sess)
 	if err != nil {
-		return Session{}, "", fmt.Errorf("caf agent: %w", err)
+		return Session{}, "", fmt.Errorf("cafe agent: %w", err)
 	}
 	return sess, token, nil
 }

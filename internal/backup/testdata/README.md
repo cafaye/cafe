@@ -7,7 +7,7 @@ nothing else**. So a secret named in one file and missing from the other is two
 files that each parse, each read correctly in review, and a pair that deploys and
 then fails validation.
 
-`caf backup` refuses that pair before it boots anything. The fixtures here are
+`cafe backup` refuses that pair before it boots anything. The fixtures here are
 what it refuses against.
 
 ## `identity/` — the real files, byte-identical
@@ -16,7 +16,7 @@ what it refuses against.
 identity `a20be0f` (`Merge identity-23: identity had no backup configuration`).
 They are copies rather than synthetic fixtures because the property under test is
 a property of a real file: the comments carry the reasons, and a hand-written
-minimal fixture would agree with caf by construction — which is how a reader
+minimal fixture would agree with cafe by construction — which is how a reader
 that reads the wrong key passes every case it was written for.
 
 | file | sha256 |
@@ -75,13 +75,13 @@ so nothing in the config has to name them — and the accessory has to declare t
 or the S3 repository is unreachable. An extra entry costs the container one
 variable; a missing one fails validation.
 
-This is recorded here because it is the direction a caf gets wrong by accident.
+This is recorded here because it is the direction a cafe gets wrong by accident.
 The first version of the negative fixture removed `AWS_SECRET_ACCESS_KEY`, and
 `Check` reported **zero** violations — correctly. The test that read that fixture
 had asserted the check should fire, so the test reported the check as broken. The
 test was wrong; the fixture has been corrected to remove `RESTIC_REPOSITORY`,
 which the config does name. `TestAnAccessoryMayDeclareASecretTheConfigDoesNotUse`
-now holds the other direction deliberately, so a caf that compares the two lists
+now holds the other direction deliberately, so a cafe that compares the two lists
 as sets is caught rather than shipped.
 
 ## The negative fixtures in `kamal-backup.yml.negatives.yml`
@@ -97,5 +97,5 @@ No `paths:` fixture. identity's config has none, and the reason is written out a
 the bottom of the file that has it: a backup of a database is not a backup of a
 service, and identity writes nothing to disk to snapshot. A fixture with `paths:`
 would test a second contract — the suspicious-path refusal, which is
-kamal-backup's and not caf's — and adding it to this set would make the file that
+kamal-backup's and not cafe's — and adding it to this set would make the file that
 is one contract a file that is two.

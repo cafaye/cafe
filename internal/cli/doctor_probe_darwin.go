@@ -11,7 +11,7 @@ import (
 // sysctlByName reads one uint64 sysctl by asking `sysctl`, because the standard
 // library's syscall package has no uint64 getter for a name and adding a
 // dependency for it would be a third module in go.mod for one number in a
-// report. It is a subprocess, so it is the second thing in `caf doctor` that
+// report. It is a subprocess, so it is the second thing in `cafe doctor` that
 // runs a command after the container runtime probe, and both are bounded.
 func sysctlByName(name string) (uint64, error) {
 	out, err := exec.Command("sysctl", "-n", name).Output()

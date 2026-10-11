@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // ErrNoManifest is a directory that is not a project: no `cafaye.yml` in it.
@@ -28,8 +28,8 @@ const manifestFileName = "cafaye.yml"
 const dockerfileLocation = "docker/Dockerfile"
 
 // InvalidManifestError carries the contract linter's Finding unchanged, so
-// `caf dev` reports a broken manifest in exactly the words `caf contract lint`
-// reports it in. caf has no second opinion about what a valid manifest is: a
+// `cafe dev` reports a broken manifest in exactly the words `cafe contract lint`
+// reports it in. cafe has no second opinion about what a valid manifest is: a
 // command that validated with its own copy of the rules would eventually
 // disagree with the linter about one file, and that is the one divergence a
 // single CLI cannot have.
@@ -46,7 +46,7 @@ func (e *InvalidManifestError) Unwrap() error { return ErrInvalidManifest }
 // from "this project is broken" without reading the sentence.
 var ErrInvalidManifest = errors.New("invalid manifest")
 
-// Project is everything `caf dev` resolves about a directory before it plans
+// Project is everything `cafe dev` resolves about a directory before it plans
 // anything: the manifest itself, where it is, and how the project builds.
 //
 // The facts are resolved once. Reading the directory again after the plan would
@@ -68,7 +68,7 @@ type Project struct {
 // Load reads a project directory.
 //
 // A directory with no manifest is refused in one sentence with the two ways out,
-// because `caf dev` typed in the wrong place should say that rather than start
+// because `cafe dev` typed in the wrong place should say that rather than start
 // an empty stack and report success. A manifest that breaks the contract is
 // refused with the linter's own line.
 func Load(dir string) (Project, error) {
@@ -77,7 +77,7 @@ func Load(dir string) (Project, error) {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return Project{}, fmt.Errorf("%w: no %s in %s; a project declares its service in one (run %q to create it, or pass the project directory as the argument)",
-				ErrNoManifest, manifestFileName, dir, "caf init")
+				ErrNoManifest, manifestFileName, dir, "cafe init")
 		}
 		return Project{}, fmt.Errorf("read %s: %w", path, err)
 	}

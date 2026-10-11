@@ -19,7 +19,7 @@ import (
 // So a secret named in the backup config and missing from the accessory is a pair
 // that parses, reads correctly in review, deploys, and then fails validation.
 //
-// # WHY caf REFUSES IT RATHER THAN RUNNING `kamal-backup validate`
+// # WHY cafe REFUSES IT RATHER THAN RUNNING `kamal-backup validate`
 //
 // Because `validate` runs INSIDE the backup accessory, which means it runs after
 // the boot — and a pair whose accessory does not exist is a pair no validation
@@ -77,7 +77,7 @@ func TestTheContractHoldsForIdentitysRealPair(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("Check reported %d violation(s) for identity's real, unmodified pair:\n%s\n"+
 			"  Both files are the ones identity ships and both are internally consistent, so this is "+
-			"either a caf reading the resolved document wrongly or identity's pair being wrong.",
+			"either a cafe reading the resolved document wrongly or identity's pair being wrong.",
 			len(got), Violations(got))
 	}
 }
@@ -183,7 +183,7 @@ func TestTheContractCheckFailsOnAnInjectedPair(t *testing.T) {
 }
 
 // TestAnAccessoryMayDeclareASecretTheConfigDoesNotUse is the direction that is
-// NOT a failure, and it is here because a caf that compared the two lists as sets
+// NOT a failure, and it is here because a cafe that compared the two lists as sets
 // would be wrong in a way that reads as a defect in the fleet.
 //
 // identity's pair is exactly this case: the accessory declares six `env.secret`
@@ -326,7 +326,7 @@ func TestInspectResolvedRefusesOutputThatIsNotKamalConfig(t *testing.T) {
 }
 
 // An `:accessories:` block that is not a mapping of names must not read as "no
-// accessories", for the same reason: a shape caf cannot understand is not a shape
+// accessories", for the same reason: a shape cafe cannot understand is not a shape
 // with nothing in it.
 func TestInspectResolvedRefusesAnAccessoriesBlockItCannotRead(t *testing.T) {
 	out := "---\n:roles:\n- web\n:accessories:\n- just\n- a list\n"
@@ -348,7 +348,7 @@ func TestInspectResolvedRefusesAnEnvSecretThatIsNotAList(t *testing.T) {
 
 // An accessory with no `env.secret` at all comes back with an empty list, and the
 // CONTRACT check is what turns that into a refusal. It is not refused here,
-// because an accessory that genuinely declares no secrets is a fact caf should be
+// because an accessory that genuinely declares no secrets is a fact cafe should be
 // able to read and report on rather than a parse failure.
 func TestAnAccessoryWithNoSecretsComesBackEmptyAndIsCaughtByTheContract(t *testing.T) {
 	out := "---\n:roles:\n- web\n:accessories:\n  backup:\n    image: x\n"

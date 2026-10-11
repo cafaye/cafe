@@ -1,11 +1,11 @@
-// Package ledger is the reclamation ledger: the record of what caf created, so
+// Package ledger is the reclamation ledger: the record of what cafe created, so
 // that cleanup is something the tool does rather than something a person
 // remembers to do.
 //
 // # The problem it solves
 //
 // A local stack is four containers and two named volumes. Stopping it leaves
-// the volumes, because they are the developer's data. Killing a caf mid-run
+// the volumes, because they are the developer's data. Killing a cafe mid-run
 // leaves the containers, and — this is the measured mechanism, not a guess — a
 // single leaked *stopped* container pins its named volume forever, because
 // Docker will not remove a volume a container still references. A local stack
@@ -16,7 +16,7 @@
 // # Write the entry first
 //
 // The one ordering rule in this package: an entry is written **before** the
-// resource it names is created. A caf that dies between the record and the
+// resource it names is created. A cafe that dies between the record and the
 // resource leaves an entry naming something that does not exist, which is
 // `:missing` on the next sweep and costs nothing. The reverse order leaves a
 // container that no entry names, which is the leak. The reverse is recoverable
@@ -49,6 +49,6 @@
 // The whole package serialises on one advisory `flock` in the ledger
 // directory. It is advisory, so it only works because every writer takes it, and
 // the kernel releases it when the holder dies — which is what makes a crashed
-// caf's generation counter and port reservations recoverable without a janitor
+// cafe's generation counter and port reservations recoverable without a janitor
 // process deciding whose locks are stale.
 package ledger

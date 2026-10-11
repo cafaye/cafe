@@ -11,11 +11,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/provider"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/provider"
 )
 
-// providerDeps is what `caf provider` needs from the world, and it is a struct
+// providerDeps is what `cafe provider` needs from the world, and it is a struct
 // of parameters for the reason boxDeps is: a test can hand the command a
 // keyring it owns, a conductor that counts and a directory it controls, and
 // drive a whole connect without a network, a keychain or a real box.
@@ -64,8 +64,8 @@ func (d providerDeps) store() *box.Store {
 	return box.NewStore(d.dir, d.ring, nil)
 }
 
-// providerVerb is one word under `caf provider`, paired with the command that
-// runs it. The same shape `caf box` uses.
+// providerVerb is one word under `cafe provider`, paired with the command that
+// runs it. The same shape `cafe box` uses.
 type providerVerb struct {
 	name string
 	cmd  *Command
@@ -78,9 +78,9 @@ func providerVerbs(deps providerDeps) []providerVerb {
 	}
 }
 
-// providerLongHelp is the prose under `caf provider`'s usage line.
+// providerLongHelp is the prose under `cafe provider`'s usage line.
 const providerLongHelp = `A provider connection is a credential SEALED TO THE BOX. The agent
-that runs ` + "`caf provider connect`" + ` is a courier of the envelope and never a
+that runs ` + "`cafe provider connect`" + ` is a courier of the envelope and never a
 holder of the value: the credential is sealed to the box's public key in
 memory at the moment it is read, and the envelope — ciphertext conductor
 cannot open — is the only thing that crosses the wire. The credential is never
@@ -91,7 +91,7 @@ half of its keypair, is the only thing that can. That is boundary 6, and it is
 why the agent's transcript — which is a log, stored by the agent host and
 replayed into model providers — never carries a provider secret.
 
-` + "`caf provider status`" + ` reports what conductor holds and opens nothing: the
+` + "`cafe provider status`" + ` reports what conductor holds and opens nothing: the
 envelopes come back as opaque JSON and are passed through untouched.
 
 stdout carries the document, stderr carries the sentence. Neither carries a
@@ -102,7 +102,7 @@ func newProviderCommand(deps providerDeps) *Command {
 	c := &Command{
 		Name:     "provider",
 		Summary:  "connect an email provider to this box, sealed to the box's key, or report the connection state",
-		Usage:    "caf provider <connect|status> [flags] [arguments]",
+		Usage:    "cafe provider <connect|status> [flags] [arguments]",
 		LongHelp: providerLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -133,12 +133,12 @@ func unknownProviderVerb(name string, verbs []providerVerb) error {
 	for i, v := range verbs {
 		names[i] = v.name
 	}
-	return fmt.Errorf("%w: caf provider %q is not a command; the verbs are %s", errUsage, name, strings.Join(names, ", "))
+	return fmt.Errorf("%w: cafe provider %q is not a command; the verbs are %s", errUsage, name, strings.Join(names, ", "))
 }
 
 // --- connect ----------------------------------------------------------------
 
-// providerConnectOptions is `caf provider connect`'s flag state.
+// providerConnectOptions is `cafe provider connect`'s flag state.
 type providerConnectOptions struct {
 	account    string
 	credential string
@@ -185,7 +185,7 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 	c := &Command{
 		Name:    "provider connect",
 		Summary: "seal a provider credential to the box's public key and post the envelope to conductor",
-		Usage:   "caf provider connect --account <id> [--credential <secret> | stdin] [--config key=value]… <provider>",
+		Usage:   "cafe provider connect --account <id> [--credential <secret> | stdin] [--config key=value]… <provider>",
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.account, "account", "", "the provider-side account identifier (an email address, a zone id, …)")
 			fs.StringVar(&opts.credential, "credential", "", "the provider secret; sealed to the box and never printed. Read from stdin when omitted")
@@ -199,10 +199,10 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 		}
 		prov := strings.TrimSpace(args[0])
 		if !knownProvider(prov) {
-			return fmt.Errorf("%w: caf provider connect %q is not a provider; the providers are %s", errUsage, prov, strings.Join(provider.Providers, ", "))
+			return fmt.Errorf("%w: cafe provider connect %q is not a provider; the providers are %s", errUsage, prov, strings.Join(provider.Providers, ", "))
 		}
 		if strings.TrimSpace(opts.account) == "" {
-			return fmt.Errorf("%w: caf provider connect wants --account <id>, the provider-side account identifier (usage: %s)", errUsage, c.Usage)
+			return fmt.Errorf("%w: cafe provider connect wants --account <id>, the provider-side account identifier (usage: %s)", errUsage, c.Usage)
 		}
 
 		credential, err := opts.credentialValue(env)
@@ -217,7 +217,7 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 			// there is no key to seal to, and an envelope sealed to nobody is
 			// a credential posted in the open.
 			if errors.Is(err, box.ErrNotEnrolled) {
-				return fmt.Errorf("%w: this box is not enrolled; run `caf box enroll --token …` first so there is a key to seal to", err)
+				return fmt.Errorf("%w: this box is not enrolled; run `cafe box enroll --token …` first so there is a key to seal to", err)
 			}
 			return err
 		}
@@ -255,8 +255,8 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 			BoxPublic:  public,
 		})
 		if err != nil {
-			fmt.Fprintf(env.Stderr, "caf provider connect: %v\n", err)
-			fmt.Fprintf(env.Stderr, "caf provider connect: the credential was NOT posted in plaintext and nothing was stored\n")
+			fmt.Fprintf(env.Stderr, "cafe provider connect: %v\n", err)
+			fmt.Fprintf(env.Stderr, "cafe provider connect: the credential was NOT posted in plaintext and nothing was stored\n")
 			return errReported
 		}
 
@@ -286,11 +286,11 @@ func (o *providerConnectOptions) credentialValue(env *Env) (string, error) {
 	// terminal means a person is at the keyboard and the command is waiting on
 	// them; refusing with the flag's name is a better answer than a hang.
 	if stdinIsTerminal() {
-		return "", fmt.Errorf("%w: caf provider connect wants --credential <secret>, or pipe it on stdin (usage: %s)", errUsage, "caf provider connect --account <id> --credential <secret> <provider>")
+		return "", fmt.Errorf("%w: cafe provider connect wants --credential <secret>, or pipe it on stdin (usage: %s)", errUsage, "cafe provider connect --account <id> --credential <secret> <provider>")
 	}
 	raw, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		return "", fmt.Errorf("caf provider connect: read the credential from stdin: %w", err)
+		return "", fmt.Errorf("cafe provider connect: read the credential from stdin: %w", err)
 	}
 	return strings.TrimSpace(string(raw)), nil
 }
@@ -329,7 +329,7 @@ func knownProvider(name string) bool {
 	return false
 }
 
-// ConnectResult is what `caf provider connect` reports. It carries every fact
+// ConnectResult is what `cafe provider connect` reports. It carries every fact
 // about the connection that is not a secret — which is all of them: the
 // credential is inside the envelope conductor holds, and this document holds
 // only the envelope's shadow.
@@ -344,7 +344,7 @@ type ConnectResult struct {
 
 // --- status -----------------------------------------------------------------
 
-// providerStatusOptions is `caf provider status`'s flag state.
+// providerStatusOptions is `cafe provider status`'s flag state.
 type providerStatusOptions struct {
 	json      bool
 	conductor string
@@ -355,7 +355,7 @@ func newProviderStatusCommand(deps providerDeps) *Command {
 	c := &Command{
 		Name:    "provider status",
 		Summary: "which providers this box is connected to, as conductor reports it",
-		Usage:   "caf provider status [--json] [--conductor <url>]",
+		Usage:   "cafe provider status [--json] [--conductor <url>]",
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.json, "json", false, "print the machine document on stdout instead of the human one")
 			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, the box identity's conductor or "+conductorURLEnv+" is used")
@@ -371,7 +371,7 @@ func newProviderStatusCommand(deps providerDeps) *Command {
 			if errors.Is(err, box.ErrNotEnrolled) {
 				// An unenrolled box has no connections, and that is the honest
 				// answer — not a failure. The remedy is named.
-				say(env.Stderr, "this box is not enrolled, so it has no provider connections; run `caf box enroll --token …` first")
+				say(env.Stderr, "this box is not enrolled, so it has no provider connections; run `cafe box enroll --token …` first")
 				return writeJSONDoc(env.Stdout, &StatusResult{Connections: []ConnectionSummary{}})
 			}
 			return err
@@ -390,7 +390,7 @@ func newProviderStatusCommand(deps providerDeps) *Command {
 
 		conns, err := provider.Status(env.Context, deps.cond, id.BoxID)
 		if err != nil {
-			fmt.Fprintf(env.Stderr, "caf provider status: %v\n", err)
+			fmt.Fprintf(env.Stderr, "cafe provider status: %v\n", err)
 			return errReported
 		}
 
@@ -413,7 +413,7 @@ func newProviderStatusCommand(deps providerDeps) *Command {
 	return c
 }
 
-// StatusResult is what `caf provider status` reports. It opens no envelope and
+// StatusResult is what `cafe provider status` reports. It opens no envelope and
 // carries no credential: the connections are reported as the provider/account
 // pairs they are, and the envelopes conductor holds stay opaque.
 type StatusResult struct {

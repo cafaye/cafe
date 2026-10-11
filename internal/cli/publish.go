@@ -10,12 +10,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/publish"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/publish"
 )
 
-// publishDeps is what `caf publish` needs from the world, and it is a struct of
+// publishDeps is what `cafe publish` needs from the world, and it is a struct of
 // parameters for the reason resolveDeps and deployDeps are: a test can hand
 // the command a publisher that records calls and answers without a network, a
 // tag derivation that does not need a git repository, and a directory it owns
@@ -31,7 +31,7 @@ type publishDeps struct {
 	// dir is where config.json and the keyring live. Empty means the resolved
 	// default, and a test always sets it.
 	dir string
-	// ring holds the caller's caf token. Nil means a file ring under the
+	// ring holds the caller's cafe token. Nil means a file ring under the
 	// config directory, and a test always sets it.
 	ring agent.Keyring
 	// publisher is pantry's write surface. Nil means a real HTTP client,
@@ -72,7 +72,7 @@ func (d publishDeps) withDefaults() publishDeps {
 	return d
 }
 
-// publishOptions is `caf publish`'s flag state. yes is parsed and ignored:
+// publishOptions is `cafe publish`'s flag state. yes is parsed and ignored:
 // publishing is non-interactive by default since the 2026-10-11 ruling, and
 // the flag is retained as an accepted no-op so scripts written while it was
 // the escape hatch keep working.
@@ -85,13 +85,13 @@ type publishOptions struct {
 	pantry string
 }
 
-// publishLongHelp is the prose under `caf publish`'s usage line. It is the
+// publishLongHelp is the prose under `cafe publish`'s usage line. It is the
 // answer to "what do I type", written down where a person reads it before
 // running a command that writes to a public catalog.
 const publishLongHelp = `Publishes a project to the cafaye catalog. Publishing is non-interactive
-by default: an agent runs caf publish, it publishes. That shape is the
+by default: an agent runs cafe publish, it publishes. That shape is the
 user's ruling of 2026-10-11 — everything non-interactive by default, since
-caf is mostly used by agents — and it is OPS-D7's boundary at the level of
+cafe is mostly used by agents — and it is OPS-D7's boundary at the level of
 a command: the customer's own agent reads, proposes and mints freely, and
 reviewability is after the fact, in pantry's audit trail (the publisher.minted
 companion packet). The proposal — the registration, the version tag, the
@@ -127,7 +127,7 @@ func newPublishCommand(deps publishDeps) *Command {
 	c := &Command{
 		Name:     "publish",
 		Summary:  "publish a project to the cafaye catalog: propose the registration, then publish the three writes — non-interactive by default",
-		Usage:    "caf publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api|worker|both|cli>] [--json] [--pantry <url>] <project>",
+		Usage:    "cafe publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api|worker|both|cli>] [--json] [--pantry <url>] <project>",
 		LongHelp: publishLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.dryRun, "dry-run", false, "print the proposal and write nothing")
@@ -175,13 +175,13 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 		// has no tags yet, and the refusal names --tag rather than guessing.
 		tag, err = deps.tags(project)
 		if err != nil {
-			return fmt.Errorf("caf publish: %w", err)
+			return fmt.Errorf("cafe publish: %w", err)
 		}
 	}
 
 	proposal, err := publish.ProposalFor(manifest, tag, opts.kind)
 	if err != nil {
-		return fmt.Errorf("caf publish: %w", err)
+		return fmt.Errorf("cafe publish: %w", err)
 	}
 
 	// The proposal is printed before anything is written: the mint is never
@@ -202,7 +202,7 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 		return nil
 	}
 
-	token := callerToken("caf publish", deps.dir, deps.ring, env)
+	token := callerToken("cafe publish", deps.dir, deps.ring, env)
 
 	report := publish.Run(env.Context, deps.publisher, token, proposal)
 
@@ -215,8 +215,8 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 	}
 	if !report.Published {
 		// The report already names the failed step and the server's own
-		// detail; the exit code is the verdict — the same rule `caf resolve`
-		// and `caf contract lint` follow.
+		// detail; the exit code is the verdict — the same rule `cafe resolve`
+		// and `cafe contract lint` follow.
 		return errReported
 	}
 	return nil
@@ -228,7 +228,7 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 // will happen after.
 func printProposal(w io.Writer, proposal publish.Proposal) {
 	reg := proposal.Registration
-	fmt.Fprintf(w, "caf publish: proposal for `%s`\n", reg.Name)
+	fmt.Fprintf(w, "cafe publish: proposal for `%s`\n", reg.Name)
 	fmt.Fprintf(w, "  register     %s (%s, %s) — manifest sha256 %s…\n",
 		reg.Name, reg.Language, reg.Kind, reg.ManifestSHA256[:12])
 	fmt.Fprintf(w, "  version      %s\n", proposal.Tag)
@@ -281,7 +281,7 @@ func renderStep(step publish.Step) string {
 // sayPublish is the stderr half of the split: one sentence per event, for a
 // person.
 func sayPublish(w io.Writer, format string, args ...any) {
-	fmt.Fprintf(w, "caf publish: "+format+"\n", args...)
+	fmt.Fprintf(w, "cafe publish: "+format+"\n", args...)
 }
 
 // semverTag is the shape of a tag the derivation accepts: an optional leading
@@ -294,13 +294,13 @@ var semverTag = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
 // latestSemverTag derives the tag from the repository's own tags: the highest
 // semver tag git knows, verbatim. The derivation is a convenience for a
 // re-publish; a first publish has no tags yet, and the refusal names --tag
-// rather than guessing. caf does not create tags: the tag is the publisher's
-// act, and a tag caf minted would be a tag the publisher never made.
+// rather than guessing. cafe does not create tags: the tag is the publisher's
+// act, and a tag cafe minted would be a tag the publisher never made.
 func latestSemverTag(dir string) (string, error) {
 	out, err := gitOutput(dir, "tag", "--list", "--sort=-v:refname")
 	if err != nil {
 		return "", fmt.Errorf("read the git tags in %s: %w\n"+
-			"  Pass --tag with the tag to publish — caf does not create tags", dir, err)
+			"  Pass --tag with the tag to publish — cafe does not create tags", dir, err)
 	}
 	for _, line := range strings.Split(out, "\n") {
 		tag := strings.TrimSpace(line)

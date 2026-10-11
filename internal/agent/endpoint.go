@@ -133,7 +133,7 @@ type Endpoint interface {
 	// Register is the one UNAUTHENTICATED call: an agent that has no token yet
 	// asks for one.
 	Register(ctx context.Context, in RegisterInput) (*RegisterResult, error)
-	// Home answers who this token is, and is what `caf agent whoami` reads.
+	// Home answers who this token is, and is what `cafe agent whoami` reads.
 	Home(ctx context.Context) (*Home, error)
 	// Tokens lists the agent's credentials, newest first, revoked included.
 	// It is the mounted shape of the token surface: an array, not one key.
@@ -233,10 +233,10 @@ func (e *HTTPEndpoint) Register(ctx context.Context, in RegisterInput) (*Registe
 		} `json:"claim"`
 	}
 	if err := decode(resp.Body, &payload); err != nil {
-		return nil, fmt.Errorf("caf agent register: the answer was not the document this CLI expects: %w", err)
+		return nil, fmt.Errorf("cafe agent register: the answer was not the document this CLI expects: %w", err)
 	}
 	if strings.TrimSpace(payload.APIKey.Token) == "" {
-		return nil, fmt.Errorf("caf agent register: the answer carried no api_key.token; identity is not answering the mounted shape")
+		return nil, fmt.Errorf("cafe agent register: the answer carried no api_key.token; identity is not answering the mounted shape")
 	}
 	return &RegisterResult{
 		Agent: Agent{
@@ -257,7 +257,7 @@ func (e *HTTPEndpoint) Home(ctx context.Context) (*Home, error) {
 	}
 	var home Home
 	if err := decode(resp.Body, &home); err != nil {
-		return nil, fmt.Errorf("caf agent whoami: the answer was not a JSON document: %w", err)
+		return nil, fmt.Errorf("cafe agent whoami: the answer was not a JSON document: %w", err)
 	}
 	return &home, nil
 }
@@ -269,7 +269,7 @@ func (e *HTTPEndpoint) Tokens(ctx context.Context) ([]KeyInfo, error) {
 	}
 	var keys []KeyInfo
 	if err := decode(resp.Body, &keys); err != nil {
-		return nil, fmt.Errorf("caf agent token show: the answer was not the document this CLI expects: %w", err)
+		return nil, fmt.Errorf("cafe agent token show: the answer was not the document this CLI expects: %w", err)
 	}
 	return keys, nil
 }
@@ -279,7 +279,7 @@ func (e *HTTPEndpoint) CreateToken(ctx context.Context, name string) (*NewKey, e
 	if err != nil {
 		return nil, err
 	}
-	return decodeNewKey("caf agent token create", resp.Body)
+	return decodeNewKey("cafe agent token create", resp.Body)
 }
 
 func (e *HTTPEndpoint) RotateToken(ctx context.Context, tokenID string) (*NewKey, error) {
@@ -290,7 +290,7 @@ func (e *HTTPEndpoint) RotateToken(ctx context.Context, tokenID string) (*NewKey
 	if err != nil {
 		return nil, err
 	}
-	return decodeNewKey("caf agent token rotate", resp.Body)
+	return decodeNewKey("cafe agent token rotate", resp.Body)
 }
 
 func (e *HTTPEndpoint) RevokeToken(ctx context.Context, tokenID string) error {
@@ -355,7 +355,7 @@ func (e *HTTPEndpoint) do(ctx context.Context, r route, payload any, auth bool, 
 			// Refused here rather than sent: an empty bearer is a request a
 			// server answers 401 for a token that never existed, and the log
 			// it writes is a log about nothing.
-			return nil, fmt.Errorf("caf agent: this call needs a token and the keyring returned none; run `caf agent register`")
+			return nil, fmt.Errorf("cafe agent: this call needs a token and the keyring returned none; run `cafe agent register`")
 		}
 		req.Header.Set("Authorization", "Bearer "+e.Token)
 	}
@@ -412,9 +412,9 @@ func (e *StatusError) Error() string {
 func (e *StatusError) Hint() string {
 	switch {
 	case e.Status == http.StatusForbidden && strings.Contains(strings.ToLower(e.Code+e.Body), "agent_unclaimed"):
-		return "this agent is unclaimed: a human owner must open the claim URL `caf agent register` printed and approve it; until then identity answers every authenticated call with 403 agent_unclaimed"
+		return "this agent is unclaimed: a human owner must open the claim URL `cafe agent register` printed and approve it; until then identity answers every authenticated call with 403 agent_unclaimed"
 	case e.Status == http.StatusUnauthorized:
-		return "the token was not accepted; it may have been rotated or revoked — run `caf agent token rotate` or `caf agent register`"
+		return "the token was not accepted; it may have been rotated or revoked — run `cafe agent token rotate` or `cafe agent register`"
 	case e.Status == http.StatusTooManyRequests:
 		return "identity is rate limiting this machine; wait a minute and try again"
 	case e.Status >= 500:
@@ -440,7 +440,7 @@ func statusError(r route, status int, body []byte) *StatusError {
 		}
 	}
 	return &StatusError{
-		Op:     "caf agent " + verbFor(r),
+		Op:     "cafe agent " + verbFor(r),
 		Route:  r.String(),
 		Status: status,
 		Code:   code,

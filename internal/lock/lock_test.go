@@ -12,7 +12,7 @@ import (
 //
 // Built by copying this repository's own manifest and generated telemetry rather
 // than by writing fixtures, and the reason is that a fixture tree is a second
-// thing to keep in step with the generator: the day `caf gen telemetry` starts
+// thing to keep in step with the generator: the day `cafe gen telemetry` starts
 // emitting a fourth file, a hand-built fixture still has three and every test
 // over it keeps passing against a tree nothing can produce. The copy is made
 // from the real tree at the repository root, so it moves when the real thing
@@ -84,13 +84,13 @@ func copyTree(from, to string) error {
 	})
 }
 
-// A tree is only locked if `caf lock` writes something that reads back, and
+// A tree is only locked if `cafe lock` writes something that reads back, and
 // reads back to the same thing. The round trip is the assertion: a marshaller
 // that dropped a field would still write a file that parses.
 func TestAWrittenLockReadsBackIdentically(t *testing.T) {
 	root := tree(t)
 
-	built, err := Build(root, "caf 1.2.3")
+	built, err := Build(root, "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestAWrittenLockReadsBackIdentically(t *testing.T) {
 		t.Fatalf("read: %v", err)
 	}
 
-	if read.LockVersion != LockVersion || read.Tool != "caf 1.2.3" || read.Hash != HashSHA256 {
+	if read.LockVersion != LockVersion || read.Tool != "cafe 1.2.3" || read.Hash != HashSHA256 {
 		t.Errorf("header did not survive the round trip: %+v", read)
 	}
 	if len(read.Files) != len(built.Files) {
@@ -122,7 +122,7 @@ func TestAWrittenLockReadsBackIdentically(t *testing.T) {
 // quietly stopped pinning generated clients fails by name instead of on an
 // arithmetic difference.
 func TestTheLockPinsEveryKindCafCanIdentify(t *testing.T) {
-	built, err := Build(tree(t), "caf 1.2.3")
+	built, err := Build(tree(t), "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -136,9 +136,9 @@ func TestTheLockPinsEveryKindCafCanIdentify(t *testing.T) {
 		kind Kind
 		want int
 	}{
-		{KindSpec, 1},            // cafaye.yml; caf declares no exposes.api
+		{KindSpec, 1},            // cafaye.yml; cafe declares no exposes.api
 		{KindVendoredSchema, 7},  // one manifest schema and six telemetry
-		{KindGeneratedClient, 3}, // the three files caf gen telemetry writes
+		{KindGeneratedClient, 3}, // the three files cafe gen telemetry writes
 		{KindRuleBundle, 1},      // gate.yml
 	} {
 		if found[row.kind] != row.want {
@@ -186,11 +186,11 @@ func TestTheHashIsOfTheBytesAndNotOfWhereTheyAre(t *testing.T) {
 	// The vector is SHA-256("abc") from FIPS 180-2, not a digest this package
 	// produced and had written down: a constant copied out of the
 	// implementation under test asserts that the implementation agrees with
-	// itself, and the whole argument for SHA-256 here is that `caf lock` and
+	// itself, and the whole argument for SHA-256 here is that `cafe lock` and
 	// `shasum -a 256` agree on a machine neither of them was built on.
 	const want = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 	if got := HashBytes([]byte("abc")); got != want {
-		t.Errorf("HashBytes(%q) = %s, want %s. `caf lock` against `shasum -a 256` is the whole "+
+		t.Errorf("HashBytes(%q) = %s, want %s. `cafe lock` against `shasum -a 256` is the whole "+
 			"argument for sha256, and it only holds if the two agree byte for byte", "abc", got, want)
 	}
 }
@@ -202,11 +202,11 @@ func TestTheHashIsOfTheBytesAndNotOfWhereTheyAre(t *testing.T) {
 func TestTwoBuildsOfOneTreeProduceTheSameBytes(t *testing.T) {
 	root := tree(t)
 
-	first, err := Build(root, "caf 1.2.3")
+	first, err := Build(root, "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
-	second, err := Build(root, "caf 1.2.3")
+	second, err := Build(root, "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build again: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestTwoBuildsOfOneTreeProduceTheSameBytes(t *testing.T) {
 // legible if the order is one somebody chose rather than one the filesystem
 // happened to hand back.
 func TestEntriesAreSortedByPath(t *testing.T) {
-	built, err := Build(tree(t), "caf 1.2.3")
+	built, err := Build(tree(t), "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestReadingALockRefusesTheThreeWaysItCanAndSaysWhatToDo(t *testing.T) {
 		{
 			name:   "no lock at all",
 			body:   "",
-			wants:  []string{FileName, "caf lock"},
+			wants:  []string{FileName, "cafe lock"},
 			absent: true,
 		},
 		{
@@ -278,13 +278,13 @@ func TestReadingALockRefusesTheThreeWaysItCanAndSaysWhatToDo(t *testing.T) {
 			wants: []string{FileName, "not a lockfile"},
 		},
 		{
-			name:  "a format this caf does not write",
-			body:  `{"lockVersion":99,"tool":"caf 1.2.3","hash":"sha256","files":[]}`,
-			wants: []string{"lockVersion", "99", "caf lock"},
+			name:  "a format this cafe does not write",
+			body:  `{"lockVersion":99,"tool":"cafe 1.2.3","hash":"sha256","files":[]}`,
+			wants: []string{"lockVersion", "99", "cafe lock"},
 		},
 		{
-			name:  "a hash algorithm this caf does not compute",
-			body:  `{"lockVersion":1,"tool":"caf 1.2.3","hash":"blake3","files":[]}`,
+			name:  "a hash algorithm this cafe does not compute",
+			body:  `{"lockVersion":1,"tool":"cafe 1.2.3","hash":"blake3","files":[]}`,
 			wants: []string{"blake3", "sha256"},
 		},
 	} {
@@ -308,10 +308,10 @@ func TestReadingALockRefusesTheThreeWaysItCanAndSaysWhatToDo(t *testing.T) {
 
 // An unknown kind is refused rather than skipped. The alternative — hashing it
 // anyway and calling it a pass — is a lock written by something that knows things
-// this caf does not, verified by something that does not, and reported green.
+// this cafe does not, verified by something that does not, and reported green.
 func TestAnUnknownKindIsNeverAPass(t *testing.T) {
 	root := tree(t)
-	built, err := Build(root, "caf 1.2.3")
+	built, err := Build(root, "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestAnUnknownKindIsNeverAPass(t *testing.T) {
 		t.Fatalf("verify: %v", err)
 	}
 	if report.OK() {
-		t.Fatal("a lock pinning a kind this caf does not know verified clean")
+		t.Fatal("a lock pinning a kind this cafe does not know verified clean")
 	}
 	if got := report.Problems[0].Problem; got != ProblemKind {
 		t.Errorf("problem = %q, want %q", got, ProblemKind)

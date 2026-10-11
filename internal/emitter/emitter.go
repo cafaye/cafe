@@ -16,15 +16,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // shutdownTimeout bounds the flush at the end of a command.
 //
-// MEASURED, and the number is the argument. caf's shipped default endpoint is
+// MEASURED, and the number is the argument. cafe's shipped default endpoint is
 // `http://otel-collector:4317`, which does not resolve on a machine that has not
 // started the local stack — so this budget is paid by EVERY command a developer
-// runs before they have run `caf dev` once. At 2s, `caf version` took 2.001s;
+// runs before they have run `cafe dev` once. At 2s, `cafe version` took 2.001s;
 // at 200ms it takes 0.2s. Measured on this machine, both times, and the 2s
 // figure is why the first number in this file is not 2.
 //
@@ -37,7 +37,7 @@ import (
 //
 // The cost, stated rather than glossed: on a genuinely slow collector link a
 // span can be lost, because the flush gives up rather than holding the terminal.
-// That is the right way round for a CLI. `caf dev` — the one long-running
+// That is the right way round for a CLI. `cafe dev` — the one long-running
 // command — has a context of its own and can afford a longer wait, and the
 // timeout is not a constant the caller can raise today; that is the one thing
 // here a successor should add, and it is named in the report rather than left
@@ -120,7 +120,7 @@ func (s Session) NoOpReason() string { return s.reason }
 // a function rather than a package-level initialiser: the switches are read and
 // the no-op session returned BEFORE any exporter is constructed. A package-level
 // `init()` cannot be ordered against the environment in a way a reader can
-// verify, and an emitter that dials at init time is a CLI whose `caf --help`
+// verify, and an emitter that dials at init time is a CLI whose `cafe --help`
 // waits on a collector.
 func Install(ctx context.Context, opts Options) (Session, error) {
 	lookup := opts.Lookup
@@ -147,13 +147,13 @@ func Install(ctx context.Context, opts Options) (Session, error) {
 	if err != nil {
 		// A telemetry backend that will not accept an exporter is not a reason
 		// for a command the user asked for to fail. core's endpoint contract
-		// makes this concrete: the endpoint is `required: false`, so a caf
+		// makes this concrete: the endpoint is `required: false`, so a cafe
 		// pointed at a dead collector still runs every command it has always
 		// run. The failure is reported on stderr so it is visible in a CI log
 		// and nowhere else — see the noOp.warnings rule, which forbids
 		// per-attempt spam, and this is one line once per process rather than
 		// per attempt.
-		fmt.Fprintf(os.Stderr, "caf: telemetry is configured but no exporter could be built (%v); "+
+		fmt.Fprintf(os.Stderr, "cafe: telemetry is configured but no exporter could be built (%v); "+
 			"running without it. The command itself is unaffected.\n", err)
 		otel.SetTracerProvider(noop.NewTracerProvider())
 		return Session{tracer: noop.NewTracerProvider().Tracer(instrumentationName), reason: "exporter: " + err.Error()}, nil
@@ -166,10 +166,10 @@ func Install(ctx context.Context, opts Options) (Session, error) {
 	if err != nil {
 		// Unlike the exporter failure this one is NOT swallowed: it means two
 		// resource schemas were merged that core does not intend to be merged,
-		// which is a caf bug rather than a deployment problem. Silently running
+		// which is a cafe bug rather than a deployment problem. Silently running
 		// without identity would put spans in the backend under no service.name,
 		// which is the one outcome the whole resource block exists to prevent.
-		return Session{}, fmt.Errorf("caf: build the telemetry resource: %w", err)
+		return Session{}, fmt.Errorf("cafe: build the telemetry resource: %w", err)
 	}
 
 	provider := sdktrace.NewTracerProvider(
@@ -225,7 +225,7 @@ func mergeResource(a, b *sdkresource.Resource) (*sdkresource.Resource, error) {
 //
 // It is the service name rather than a constant of this package's own, because
 // this package is not a library a caller should be able to attribute spans to:
-// the scope says which code produced the span, and the answer is "caf".
+// the scope says which code produced the span, and the answer is "cafe".
 const instrumentationName = telemetry.ServiceName
 
 // resourceAttributes is the resource block, and every value on it comes from
@@ -233,7 +233,7 @@ const instrumentationName = telemetry.ServiceName
 //
 // Absent rather than defaulted is the rule that matters. core's
 // traces.schema.json closes the resource with `additionalProperties: false` and
-// gives deployment.environment a four-value enum, so a caf built with no version
+// gives deployment.environment a four-value enum, so a cafe built with no version
 // injected and no environment set must emit a resource with neither rather than
 // one with a placeholder — a placeholder is a value in a backend that somebody
 // later has to filter out, and "there is no row for that" is the honest state.
@@ -295,9 +295,9 @@ func hostPort(endpoint string) string {
 // MEASURED: with the shipped default endpoint and no local stack running, this
 // returned `context deadline exceeded` — the gRPC exporter cannot resolve
 // `otel-collector`, so the flush waits out its budget and fails. Printed by the
-// caller that would put `caf: could not flush telemetry: context deadline
+// caller that would put `cafe: could not flush telemetry: context deadline
 // exceeded` on the stderr of every single command a developer runs before they
-// have run `caf dev` once. core's otel-endpoint.schema.json pins noOp.warnings to
+// have run `cafe dev` once. core's otel-endpoint.schema.json pins noOp.warnings to
 // `none` and says the failure mode is a service that "fills its own log store
 // with the fact that telemetry is off, which is how a self-hoster discovers that
 // turning telemetry off is not supported — the opposite of the intent." A
@@ -327,4 +327,4 @@ func (s Session) Shutdown(ctx context.Context) error {
 
 // errClosedSpan is returned when a caller ends a span twice, which is a bug in
 // the caller rather than in telemetry and is stated rather than ignored.
-var errClosedSpan = errors.New("caf: span already ended")
+var errClosedSpan = errors.New("cafe: span already ended")

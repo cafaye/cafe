@@ -1,6 +1,6 @@
 package cli
 
-// What `caf new` and `caf init` share: the catalog call, the report, and the
+// What `cafe new` and `cafe init` share: the catalog call, the report, and the
 // no-clobber rule behind both.
 //
 // This file exists for the reason confirm.go gives — the subtle part is not
@@ -14,19 +14,19 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cafaye/caf/internal/scaffold"
+	"github.com/cafaye/cafe/internal/scaffold"
 )
 
 // printScaffolded prints every file in full, under a header naming the
 // template it came from.
 //
-// In full, not a summary, for the same reason `caf dev` prints the compose
-// document and `caf gen` prints what it generated: a scaffold nobody can
+// In full, not a summary, for the same reason `cafe dev` prints the compose
+// document and `cafe gen` prints what it generated: a scaffold nobody can
 // inspect is a scaffold nobody can debug, and a document that only lives
 // inside a tool is a document nobody can diff. A path and a byte count would
 // tell a reader that five files exist and nothing about what is in them.
 func printScaffolded(w io.Writer, verb string, out scaffold.Output) {
-	fmt.Fprintf(w, "caf %s wrote %d file(s) from template %s:\n", verb, len(out.Files), out.Template)
+	fmt.Fprintf(w, "cafe %s wrote %d file(s) from template %s:\n", verb, len(out.Files), out.Template)
 	for _, file := range out.Files {
 		fmt.Fprintf(w, "\n===== %s =====\n%s", file.Path, file.Content)
 	}

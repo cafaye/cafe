@@ -56,7 +56,7 @@ func greet(ctx context.Context, in pingIn) (pingOut, error) {
 // `isError` means it happened and did not succeed. An agent can read the second
 // and carry on; the first means its host has to restart the server, and
 // everything the agent had learned is gone. This is the test that says which
-// one caf chooses.
+// one cafe chooses.
 func TestAToolThatFailsIsAToolErrorNotAProtocolError(t *testing.T) {
 	failure := errors.New("no cafaye.yml in /tmp/nothing")
 	session := connected(t, Tool[pingIn, pingOut]{
@@ -81,7 +81,7 @@ func TestAToolThatFailsIsAToolErrorNotAProtocolError(t *testing.T) {
 	}
 }
 
-// A panic is a bug in caf, and a bug in one tool must not be a dead server. The
+// A panic is a bug in cafe, and a bug in one tool must not be a dead server. The
 // probe program in this packet's research printed the goroutine dump and the
 // process died, so this is the shape of the crash being refused: the agent gets
 // a tool error naming the tool, and the next call is answered normally.
@@ -142,7 +142,7 @@ func TestAToolThatPanicsIsAToolErrorAndTheServerKeepsServing(t *testing.T) {
 
 // The annotations are how a host decides whether a tool may run without asking,
 // so a tool that mutates something must not be annotated as a read. The default
-// in the protocol is destructive, and caf states it explicitly rather than
+// in the protocol is destructive, and cafe states it explicitly rather than
 // relying on that.
 func TestTheAnnotationsSayWhatAToolDoesToTheMachine(t *testing.T) {
 	tests := []struct {
@@ -218,7 +218,7 @@ func TestTheAnnotationsSayWhatAToolDoesToTheMachine(t *testing.T) {
 
 // A tool description is what an agent reads to decide whether to call the tool,
 // so an empty one is a tool nobody ever calls. It is refused where it can be
-// caught — at registration, on the first `caf mcp` run — rather than served and
+// caught — at registration, on the first `cafe mcp` run — rather than served and
 // discovered later by noticing the tool is never called.
 func TestAToolWithoutADescriptionIsRefused(t *testing.T) {
 	tests := []struct {
@@ -301,9 +301,9 @@ func TestParseTransport(t *testing.T) {
 	}{
 		{name: "stdio", input: "stdio", want: Stdio},
 		{name: "http", input: "http", want: HTTP},
-		{name: "empty", input: "", wantErr: `caf serves stdio and http`},
-		{name: "unknown", input: "carrier-pigeon", wantErr: `"carrier-pigeon" (caf serves stdio and http)`},
-		{name: "wrong case", input: "STDIO", wantErr: `"STDIO" (caf serves stdio and http)`},
+		{name: "empty", input: "", wantErr: `cafe serves stdio and http`},
+		{name: "unknown", input: "carrier-pigeon", wantErr: `"carrier-pigeon" (cafe serves stdio and http)`},
+		{name: "wrong case", input: "STDIO", wantErr: `"STDIO" (cafe serves stdio and http)`},
 	}
 
 	for _, tt := range tests {
@@ -388,8 +388,8 @@ func TestServeHTTPRefusesANonLoopbackAddress(t *testing.T) {
 // failure a flag's existence implies.
 //
 // The client here is the SDK's own streamable HTTP client rather than a
-// hand-written POST, because the thing under test is caf's server and a
-// hand-written client would be testing the shape of a request caf never makes.
+// hand-written POST, because the thing under test is cafe's server and a
+// hand-written client would be testing the shape of a request cafe never makes.
 // The earlier version of this test POSTed tools/list straight at the handler
 // and was told "invalid during session initialization", which is the protocol
 // being right: a client that skips the handshake gets refused, and a test that
@@ -451,7 +451,7 @@ func TestServeHTTPAgreesWithARealClient(t *testing.T) {
 // session, and for protocol versions before SEP-2575 (2026-07-28) that check
 // fails the HTTP request itself: 400 with a plain-text body, and no JSON-RPC
 // frame at all. That is the SDK following the transport spec rather than a gap
-// in caf, and it is still an answer — a client is told its method is unknown
+// in cafe, and it is still an answer — a client is told its method is unknown
 // rather than left waiting — but a client written against the stdio behaviour
 // will not find the -32601 it expects. So it is asserted here, and the report
 // says which transport gives which.

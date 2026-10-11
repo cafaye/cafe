@@ -259,9 +259,9 @@ func NewComposeRuntime(binary string) *ComposeRuntime {
 }
 
 // Up brings the stack up. `--remove-orphans` is not optional: a service removed
-// from the manifest leaves a container behind otherwise, and the next `caf dev`
+// from the manifest leaves a container behind otherwise, and the next `cafe dev`
 // reconciles a stack that still has a member nobody declared. Detached, because
-// `caf dev` is the thing watching, not compose.
+// `cafe dev` is the thing watching, not compose.
 func (r *ComposeRuntime) Up(ctx context.Context, project, file string) error {
 	return r.run1(ctx, composeCall{verb: "up", project: project, file: file, flags: []string{"-d", "--remove-orphans"}})
 }
@@ -329,10 +329,10 @@ func detail(output string) string {
 	return ": " + strings.ReplaceAll(trimmed, "\n", "; ")
 }
 
-// psContainer is the part of `compose ps --format json` that caf reads. The
+// psContainer is the part of `compose ps --format json` that cafe reads. The
 // struct has only the fields used, because a fixture that copied all twenty
 // would change on every release of the runtime and fail for reasons that have
-// nothing to do with caf.
+// nothing to do with cafe.
 type psContainer struct {
 	Service  string `json:"Service"`
 	Name     string `json:"Name"`
@@ -420,9 +420,9 @@ func statusOf(container psContainer) Status {
 	case "paused":
 		return StatusUnhealthy
 	default:
-		// A state this caf has never heard of is reported as pending rather
+		// A state this cafe has never heard of is reported as pending rather
 		// than as a failure: the wait keeps polling, and a stack stuck in a
-		// state a future runtime invents is a caf bug rather than a container
+		// state a future runtime invents is a cafe bug rather than a container
 		// that is broken.
 		return StatusPending
 	}

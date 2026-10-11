@@ -1,26 +1,26 @@
-# cafaye.yml — {{ .Name }}: a cafaye app scaffolded by `caf new --template app`.
+# cafaye.yml — {{ .Name }}: a cafaye app scaffolded by `cafe new --template app`.
 #
 # This file is the app's IDENTITY and never its configuration. Core's schema is
 # `additionalProperties: false`, so a credential written here is a lint failure
 # rather than a secret committed to a repository — service environment arrives
-# per deployment, by reference. Owner and repository are the two facts caf
+# per deployment, by reference. Owner and repository are the two facts cafe
 # cannot know; edit them.
 #
 # Checked against core's manifest schema and the conventions with:
 #
-#   caf contract lint .
+#   cafe contract lint .
 name: {{ .Name }}
-description: A cafaye app scaffolded by caf new.
+description: A cafaye app scaffolded by cafe new.
 
 language: go
 
-# The core contract version this app is written against. `caf contract
+# The core contract version this app is written against. `cafe contract
 # resolve 0.2.0` answers whether a given version is inside this range.
 core: {{ .CoreConstraint }}
 
 # `exposes` is deliberately absent: a scaffolded app publishes nothing yet.
 # When this app serves an API or publishes events, declare them here — every
-# event type opens with the publisher's own name — and `caf contract lint`
+# event type opens with the publisher's own name — and `cafe contract lint`
 # will hold this manifest to it.
 repository:
   url: {{ .RepositoryURL }}

@@ -1,16 +1,16 @@
 ---
-# caf's CI. Two halves: kit's shared workflow, which owns the toolchain, and
+# cafe's CI. Two halves: kit's shared workflow, which owns the toolchain, and
 # three things only this repository can know.
 #
 # BLAST RADIUS — read this before making the `ci` job optional, skippable, or
 # continue-on-error.
 #
-# caf is not a service. It is the tool the rest of the fleet's CI shells out
-# to. `caf contract lint` validates a service manifest against the copy of
+# cafe is not a service. It is the tool the rest of the fleet's CI shells out
+# to. `cafe contract lint` validates a service manifest against the copy of
 # core's schema vendored in internal/contract, and pantry's own gate
 # (`bin/prime`, in ../pantry) ends in a block of `OK …` lines that this binary
 # prints — eight of them on master today, one per registered service. A broken
-# caf does not fail one repository; it fails every repository whose contract
+# cafe does not fail one repository; it fails every repository whose contract
 # check runs, and it fails them with a message that names a manifest rather than
 # a Go build error. That is the blast radius, and it is why the job below is
 # not optional.
@@ -95,7 +95,7 @@ jobs:
       # 68-75%: the reclamation path was the least-tested part of the binary,
       # which is the part that runs when something has already gone wrong.
       coverage-fail-under: '85'
-      # caf is a CLI. It serves no HTTP, holds no listener, and the tree has no
+      # cafe is a CLI. It serves no HTTP, holds no listener, and the tree has no
       # reference to a traceparent or an OTel SDK, so the conformance job has
       # no suite to run. Stated rather than defaulted, so that the day someone
       # adds an HTTP surface they have to turn this on in the same diff that
@@ -114,7 +114,7 @@ jobs:
   # of which nobody runs locally, and a green badge that means the one nobody
   # runs. kit's only job that runs a repository's own command is `language:
   # none`, which is hardcoded to `tests/validate.sh` and fails when that file is
-  # absent; caf's gate is `bin/prime` in a repository with a real manifest, so
+  # absent; cafe's gate is `bin/prime` in a repository with a real manifest, so
   # `none` is the wrong language as well as the wrong command.
   gate:
     name: 'gate (bin/prime)'
@@ -143,7 +143,7 @@ jobs:
         run: git diff --exit-code -- go.mod go.sum
 
   # ------------------------------------------------------- the gated test tier
-  # caf's suite has exactly one environment-gated test, and the environment that
+  # cafe's suite has exactly one environment-gated test, and the environment that
   # disables it is the one CI does not have: TestLintReportsAnUnreadableManifest
   # skips itself when the process is root, because root reads a 0o000 file and
   # the assertion would then be vacuous. A GitHub-hosted runner is uid 1001, so

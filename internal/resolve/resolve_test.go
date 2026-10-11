@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // fakePantry is the seam a test drives the resolver's tier 1 and tier 2
@@ -219,7 +219,7 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 func TestNoCredentialIsANamedTier2Failure(t *testing.T) {
 	pantry := &fakePantry{
 		project:   &Project{Name: "gateway"},
-		coordsErr: &PantryError{Status: 401, Code: "unauthorized", Detail: "this operation requires a caf token and none was presented"},
+		coordsErr: &PantryError{Status: 401, Code: "unauthorized", Detail: "this operation requires a cafe token and none was presented"},
 	}
 	r := NewResolver(pantry, &fakeConductor{})
 
@@ -298,7 +298,7 @@ func TestVersionNotGrantedNamesBothRanges(t *testing.T) {
 	}
 }
 
-// A paid dependency with no account named is a caf-side failure, and the
+// A paid dependency with no account named is a cafe-side failure, and the
 // remedy is the flag that names it.
 func TestPaidDependencyWithoutAccountIsNamed(t *testing.T) {
 	pantry := &fakePantry{
@@ -335,7 +335,7 @@ func TestNoPantryIsANamedFailure(t *testing.T) {
 }
 
 // The manifest schema makes `version` OPTIONAL; conductor's check makes it
-// REQUIRED. The disagreement is settled on caf's side rather than in a round
+// REQUIRED. The disagreement is settled on cafe's side rather than in a round
 // trip that answers 422 and blames the reader for it, and it is a failure the
 // resolver records like any other — so an OPTIONAL paid dependency with no
 // range degrades instead of blocking.

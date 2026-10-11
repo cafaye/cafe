@@ -1,5 +1,5 @@
 // Package contract validates cafaye manifests, the OpenAPI documents they name,
-// and core version constraints: the things every other caf command will need and
+// and core version constraints: the things every other cafe command will need and
 // must not re-implement per caller.
 //
 // A manifest (`cafaye.yml`) is YAML, but the contract it is written against is
@@ -15,11 +15,11 @@
 // # The OpenAPI layer, and why it is a layer rather than a command
 //
 // A manifest that declares `exposes.api` has named a document, and every reader
-// in the platform resolves that same path: `caf gen`, the contract tests, pantry.
+// in the platform resolves that same path: `cafe gen`, the contract tests, pantry.
 // So `Lint` reads it as part of the same walk and reports it as its own Finding —
 // a document is not a manifest, and a line naming the manifest would send the
 // reader to the wrong file for a rule about an integer. `CheckData` is the other
-// half of the answer and deliberately cannot do this: `caf dev` calls it with
+// half of the answer and deliberately cannot do this: `cafe dev` calls it with
 // bytes it has already read and has no reason to walk a tree, so a layer that
 // reached for the filesystem from there would make a working command depend on
 // something it never needed.
@@ -52,14 +52,14 @@
 //     sigs.k8s.io/yaml reports "yaml: line 7: could not find expected ':'".
 //     It also has zero dependencies, so the whole cost of a YAML parser is one
 //     module in go.mod instead of four, and it is YAML 1.2, which is the
-//     subset `caf init` and every cafaye service actually writes.
+//     subset `cafe init` and every cafaye service actually writes.
 //
 //   - github.com/santhosh-tekuri/jsonschema/v6 for validation. It implements
 //     draft 2020-12 (which core's schema declares), asserts `format` when
 //     asked — core pins `rfc3339-validator` for the same reason — and returns
-//     a typed error tree, so caf can report the field that failed instead of a
+//     a typed error tree, so cafe can report the field that failed instead of a
 //     wall of text. Its `kind` subpackage exposes the concrete values behind
-//     each error, which is what lets the message be caf's own wording.
+//     each error, which is what lets the message be cafe's own wording.
 //
 // Nothing else is imported. A linter that is a hundred lines of `any` and
 // `map[string]any` would be shorter to write and impossible to change.
@@ -69,12 +69,12 @@
 // `schemas/manifest-0.2.json` is a byte-for-byte copy of
 // `schemas/cafaye.manifest.schema.json` from cafaye/core at commit
 // 3340e0f3171e09750f43e9f2974a3efb00f0ed82, the sha256 of the copy is pinned in
-// schema_test.go, and schemas/README.md holds the refresh procedure. caf never
+// schema_test.go, and schemas/README.md holds the refresh procedure. cafe never
 // fetches it: a validator that downloads the schema it validates against gives
 // a different answer on a different day, and cannot run on an air-gapped CI
 // runner (AGENTS.md: no network).
 //
-// The file is named for the spec version it pins, not for the caf version that
+// The file is named for the spec version it pins, not for the cafe version that
 // shipped it, because the interesting fact about a pin is which contract it
 // enforces.
 //
@@ -84,7 +84,7 @@
 // below compare two fields of the same document, which no JSON Schema keyword
 // can do, and they are documented in core's docs/manifest-conventions.md under
 // "Rules the schema cannot state". They are named with a `convention.` prefix
-// so a caller can tell a caf rule from a schema keyword by string alone.
+// so a caller can tell a cafe rule from a schema keyword by string alone.
 //
 // # What is deliberately not here
 //
@@ -128,11 +128,11 @@
 //
 // # Findings for core, which is what this package cannot fix
 //
-//   - **A tier selection has nowhere durable to live.** `caf contract breaking
+//   - **A tier selection has nowhere durable to live.** `cafe contract breaking
 //     --tiers` is a flag, so the selection is per invocation rather than per
 //     service, which is the shape a CI job has and not the shape a repository
 //     has. The honest home is core's manifest schema — an `exposes.api` sibling
-//     naming the tiers the service is held to — and caf can only read it once core
+//     naming the tiers the service is held to — and cafe can only read it once core
 //     publishes it. Adding the field here without core would be a second contract.
 //   - **A dependency's stability cannot be written in a manifest.** core's
 //     `semverRange` pattern is `^MAJOR.MINOR.PATCH` and admits no prerelease

@@ -13,7 +13,7 @@ import (
 
 // DrillOutcome is what one drill proved.
 //
-// Three words and not two, because "the restore worked" and "caf would not
+// Three words and not two, because "the restore worked" and "cafe would not
 // touch the service" are different facts with different fixes, and a boolean
 // would merge them into one that means neither: a refused drill is a service
 // whose backup is broken, and it is the operator's file to edit rather than a
@@ -27,7 +27,7 @@ const (
 	// DrillFailed is a cycle that ran and did not restore. The scratch database
 	// was still dropped; see drill.go's caller for why that ordering is fixed.
 	DrillFailed DrillOutcome = "failed"
-	// DrillRefused is caf checking the service and declining to touch it: the
+	// DrillRefused is cafe checking the service and declining to touch it: the
 	// two-file contract is broken, the backup configuration is unreadable, or
 	// the deploy engine is not installed. Nothing was booted.
 	DrillRefused DrillOutcome = "refused"
@@ -46,7 +46,7 @@ func (o DrillOutcome) Failed() bool { return o != DrillPassed }
 // imagine, so each one here has a test that produces it — see drill_test.go.
 const (
 	// DrillReasonPassed is the one quiet outcome, named so a record with no
-	// reason is a record caf could not classify rather than one that passed.
+	// reason is a record cafe could not classify rather than one that passed.
 	DrillReasonPassed Reason = "caf-backup/drill-passed"
 	// DrillReasonFailed is a cycle that ran and the restore proof did not hold.
 	// The failing command's own words are in Detail, because a drill can fail
@@ -55,8 +55,8 @@ const (
 	// DrillReasonRefused is a refusal. The specific clause is in the report and
 	// in Detail; this says the class.
 	DrillReasonRefused Reason = "caf-backup/drill-refused"
-	// DrillReasonNotRun is caf being unable to start: no deploy engine on PATH,
-	// or a project caf could not read. It is a FAILURE and not a fourth quiet
+	// DrillReasonNotRun is cafe being unable to start: no deploy engine on PATH,
+	// or a project cafe could not read. It is a FAILURE and not a fourth quiet
 	// state, because a drill that never ran has proven nothing and a record
 	// that said otherwise would be the gap this package exists to close.
 	DrillReasonNotRun Reason = "caf-backup/drill-not-run"
@@ -71,7 +71,7 @@ var drillReasons = []Reason{DrillReasonPassed, DrillReasonFailed, DrillReasonRef
 // Every field is a non-secret: the service, the engine, the scratch database's
 // NAME, the tables that were asserted, the verdict and how long it took. No
 // credential appears here and none can, because nothing in the cycle's result
-// is one — caf never reads a credential's value, and a record that could carry
+// is one — cafe never reads a credential's value, and a record that could carry
 // one would make every upload of the state directory a leak. That is the same
 // split box.json and config.json make, for the same reason.
 type DrillRecord struct {
@@ -132,7 +132,7 @@ func ReportReason(report string) Reason {
 
 // reasonPrefix is the namespace every caf-backup reason is written under, which
 // is contract.go's `caf-backup/` and the only thing a report can be scanned for
-// that cannot appear in prose caf did not write.
+// that cannot appear in prose cafe did not write.
 const reasonPrefix = "caf-backup/"
 
 // Age is how long ago the drill finished, against now.
@@ -189,7 +189,7 @@ type DrillStore struct{ dir string }
 // experiments — can point the whole tool at a scratch directory without a flag
 // on every verb, then XDG_STATE_HOME, then the home directory.
 //
-// It is STATE and not config: these are records caf wrote about work it did,
+// It is STATE and not config: these are records cafe wrote about work it did,
 // not decisions a person made, and a record that lived in the config directory
 // would be a record that looked editable.
 func DefaultDrillDir() (string, error) {
@@ -197,13 +197,13 @@ func DefaultDrillDir() (string, error) {
 		return dir, nil
 	}
 	if state := os.Getenv("XDG_STATE_HOME"); state != "" {
-		return filepath.Join(state, "caf", "drills"), nil
+		return filepath.Join(state, "cafe", "drills"), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve the drill directory: %w (set CAF_DRILL_DIR to say where drill records go)", err)
 	}
-	return filepath.Join(home, ".local", "state", "caf", "drills"), nil
+	return filepath.Join(home, ".local", "state", "cafe", "drills"), nil
 }
 
 // OpenDrillStore makes a store in a directory, creating the layout. It is Open

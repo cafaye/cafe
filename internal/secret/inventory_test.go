@@ -11,7 +11,7 @@ import (
 
 // The SECRET RECORD block in the kit installer, transcribed.
 //
-// This is caf's half of kit's own drift tripwire: kit's substrate test parses
+// This is cafe's half of kit's own drift tripwire: kit's substrate test parses
 // the block out of install.sh and fails if a fixture removes a name, and this is
 // the same claim on the Go side — every name the installer's record declares is
 // enumerated here. The transcription is deliberate: a copy that drifted would be

@@ -5,16 +5,16 @@ import (
 	"testing"
 )
 
-// caf dev renders the services a developer runs, and a service in that document
+// cafe dev renders the services a developer runs, and a service in that document
 // has no way to reach the collector unless the document says where the collector
 // is. The variable that says it is `<SERVICE>_OTEL_ENDPOINT` — core's
 // otel-endpoint.schema.json calls that variable "the ONLY contract" — and before
-// this packet `caf/internal/dev` did not mention it, so every service started by
-// `caf dev` was left to whatever default its own code happened to carry.
+// this packet `cafe/internal/dev` did not mention it, so every service started by
+// `cafe dev` was left to whatever default its own code happened to carry.
 //
 // Measured consequence, and it is not "telemetry is off": a service whose default
 // is core's shipped collector (`http://otel-collector:4317`) still exported, but
-// only because it guessed. The moment a developer ran `caf dev` against a stack
+// only because it guessed. The moment a developer ran `cafe dev` against a stack
 // where the collector is on a different network or absent, the variable was the
 // only place that could have said so and it was empty.
 //
@@ -51,7 +51,7 @@ func TestTheRenderedDocumentCarriesTheEndpointVariable(t *testing.T) {
 
 // A registry entry describes a service's own configuration, so its value has to
 // win — a self-hoster pointing one service at their own backend, which is the
-// whole escape hatch core's schema describes. If caf's local default outranked
+// whole escape hatch core's schema describes. If cafe's local default outranked
 // the catalog, the escape hatch would be a comment.
 func TestARegistryEndpointValueOutranksCafsDefault(t *testing.T) {
 	registry := twoServiceRegistry()
@@ -67,13 +67,13 @@ func TestARegistryEndpointValueOutranksCafsDefault(t *testing.T) {
 	env := envOf(service(t, stack, "alpha"))
 	if got := env["ALPHA_OTEL_ENDPOINT"]; got != "https://otlp.example.com:4318" {
 		t.Errorf("alpha ALPHA_OTEL_ENDPOINT = %q, want the value its own catalog entry declared. "+
-			"caf's value is a default for a service nobody described, not an override of one that was", got)
+			"cafe's value is a default for a service nobody described, not an override of one that was", got)
 	}
 	// Scoped to alpha's own block: a document-wide search would be red for the
-	// right behaviour, because beta and the project service carry caf's default
+	// right behaviour, because beta and the project service carry cafe's default
 	// beside it.
 	if block := between(t, stack.Compose, "  alpha:\n", "\n  beta:"); strings.Contains(block, "otel-collector") {
-		t.Errorf("alpha's rendered block still carries caf's default collector:\n%s", block)
+		t.Errorf("alpha's rendered block still carries cafe's default collector:\n%s", block)
 	}
 }
 
@@ -110,8 +110,8 @@ func TestNoInfraStillRendersTheTelemetryEndpoint(t *testing.T) {
 // The variable name is core's pattern applied to the service name, and the dash
 // is the whole reason it is derived rather than typed: `internal/gen`'s
 // `endpointVariable` drops it, because core's pattern admits no dash, so a
-// repository named `my-service` reads `MYSERVICE_OTEL_ENDPOINT`. caf dev and
-// `caf gen telemetry` have to agree on that spelling or a kebab-case service is
+// repository named `my-service` reads `MYSERVICE_OTEL_ENDPOINT`. cafe dev and
+// `cafe gen telemetry` have to agree on that spelling or a kebab-case service is
 // handed a variable its own generated code does not read — which is the same
 // defect this repository already found once, in the drift gate measuring courier
 // against courier.
@@ -132,7 +132,7 @@ owner:
 	env := envOf(service(t, stack, "my-service"))
 	if got := env["MYSERVICE_OTEL_ENDPOINT"]; got != "http://otel-collector:4317" {
 		t.Errorf("my-service carries MYSERVICE_OTEL_ENDPOINT = %q. core's endpoint pattern "+
-			"^[A-Z][A-Z0-9]*_OTEL_ENDPOINT$ admits no dash, and caf gen telemetry drops it for the same "+
+			"^[A-Z][A-Z0-9]*_OTEL_ENDPOINT$ admits no dash, and cafe gen telemetry drops it for the same "+
 			"reason and in the same way — two derivations that disagree leave a service handed a variable "+
 			"nothing reads", got)
 	}

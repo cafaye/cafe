@@ -14,8 +14,8 @@ type Options struct {
 	// only one until W6-P2 composes the platform app.
 	Template string
 	// Name is the cafaye namespace name. Empty means derive it from the base
-	// of Dir, which is right for `caf init` inside an existing repository and
-	// for `caf new <name>` where the directory IS the name.
+	// of Dir, which is right for `cafe init` inside an existing repository and
+	// for `cafe new <name>` where the directory IS the name.
 	Name string
 	// Dir is the directory the project is written into.
 	Dir string
@@ -25,14 +25,14 @@ type Options struct {
 	Force bool
 }
 
-// DefaultTemplate is the template `caf new` and `caf init` use when none is
+// DefaultTemplate is the template `cafe new` and `cafe init` use when none is
 // named.
 const DefaultTemplate = "app"
 
 // Output is what a scaffold produced: the template it came from and the files
 // it would write, in the template's own order. It is what the command prints
 // — every file, in full — because a scaffold nobody can inspect is a scaffold
-// nobody can debug, and the precedent is `caf dev` and `caf gen` printing
+// nobody can debug, and the precedent is `cafe dev` and `cafe gen` printing
 // what they generated.
 type Output struct {
 	Template string
@@ -45,8 +45,8 @@ type Output struct {
 // the manifest, the repository URL, the owner team — is derived from it, and a
 // refusal after rendering would be a refusal about a project that exists only
 // in memory. The manifest is then validated against the vendored contract
-// before anything is written, so `caf new` cannot produce a project that
-// `caf contract lint` would reject.
+// before anything is written, so `cafe new` cannot produce a project that
+// `cafe contract lint` would reject.
 func New(opts Options) (Output, error) {
 	catalog, err := LoadCatalog()
 	if err != nil {
@@ -78,13 +78,13 @@ func New(opts Options) (Output, error) {
 	return Output{Template: template.Name, Files: files}, nil
 }
 
-// Init writes only the manifest into opts.Dir: `caf init` is for a project
+// Init writes only the manifest into opts.Dir: `cafe init` is for a project
 // that already exists, so the rest of the app template would be files laid
 // over somebody's working tree.
 //
 // The name is derived from the directory unless -name overrides it, which is
 // the case for a repository whose directory is not its service name — a
-// worktree called caf-w6p1 holding the service caf would derive a name that
+// worktree called caf-w6p1 holding the service cafe would derive a name that
 // is both illegal and reserved.
 func Init(opts Options) (Output, error) {
 	catalog, err := LoadCatalog()

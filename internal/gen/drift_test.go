@@ -8,20 +8,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // THE DRIFT GATE.
 //
 // One test, and it is the check this package exists for: the committed copy of
-// what `caf gen telemetry` writes is regenerated from the vendored core schemas
+// what `cafe gen telemetry` writes is regenerated from the vendored core schemas
 // and compared byte for byte.
 //
 // WHERE THE COMMITTED COPY LIVES, and why it is the repository root rather than a
 // golden under `internal/gen/testdata/`, is the single most important decision in
 // this file.
 //
-// caf runs its own generator on its own manifest, so `internal/telemetry/` and
+// cafe runs its own generator on its own manifest, so `internal/telemetry/` and
 // `telemetry/otel-endpoint.json` are committed copies of the generator's output
 // that are part of this module. That means:
 //
@@ -34,7 +34,7 @@ import (
 //     rows, written by the generator from the same contract tables as the setup
 //     they test. That suite is the standing check that the emitted setup still
 //     honours what core says, and it keeps working after nobody has run
-//     `caf gen` for a year.
+//     `cafe gen` for a year.
 //
 // The first version of this gate kept the golden in `testdata/`, which is the
 // conventional place, and it was wrong for exactly one reason: `testdata` is
@@ -86,7 +86,7 @@ func TestTheGeneratedTelemetryHasNotDrifted(t *testing.T) {
 			want, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatalf("read the committed copy %s: %v\n"+
-					"  It is a checked-in copy of what caf gen telemetry writes, and without it this gate has "+
+					"  It is a checked-in copy of what cafe gen telemetry writes, and without it this gate has "+
 					"nothing to compare against.\n"+
 					"  To create it for the first time, or after a core refresh you have read the changelog "+
 					"for, run:\n    go test ./internal/gen/ -run TestTheGeneratedTelemetryHasNotDrifted -update",
@@ -108,13 +108,13 @@ func TestTheGeneratedTelemetryHasNotDrifted(t *testing.T) {
 // generator, and a report that printed only the differing bytes would leave the
 // classification to whoever is reading the CI log at midnight.
 func driftMessage(path, difference string) string {
-	return path + " has drifted from what caf gen telemetry writes today.\n" +
+	return path + " has drifted from what cafe gen telemetry writes today.\n" +
 		"  Two things can cause this, and they have opposite remedies:\n" +
 		"    * core moved. The vendored schemas changed — that is a refresh procedure\n" +
 		"      with a core commit attached, and it is legitimate. Read core's CHANGELOG\n" +
-		"      at the new commit, confirm the change is one caf can adopt, and only then\n" +
+		"      at the new commit, confirm the change is one cafe can adopt, and only then\n" +
 		"      run: go test ./internal/gen/ -run TestTheGeneratedTelemetryHasNotDrifted -update\n" +
-		"    * caf's generator moved without this file being regenerated. That is the\n" +
+		"    * cafe's generator moved without this file being regenerated. That is the\n" +
 		"      other half of the gate, and it is the one a reviewer would otherwise\n" +
 		"      catch by reading a diff and wondering.\n" +
 		"  First difference: " + difference
@@ -210,7 +210,7 @@ func TestTheDriftReportNamesBothCausesAndTheFirstDifference(t *testing.T) {
 	for _, want := range []string{
 		"internal/telemetry/telemetry.go",
 		"core moved",
-		"caf's generator moved",
+		"cafe's generator moved",
 		"-update",
 		"CHANGELOG",
 		"First difference",
@@ -254,7 +254,7 @@ func TestTheDriftReportSurvivesAFileThatChangedLength(t *testing.T) {
 	}
 }
 
-// The committed copy has to have been produced by a caf that read the contract,
+// The committed copy has to have been produced by a cafe that read the contract,
 // not typed by a person — so it carries the same provenance header the emitter
 // writes, and this is what says so.
 //
@@ -297,14 +297,14 @@ func generatedNames(t *testing.T) []string {
 //
 // The first version of this gate generated from `manifestFor` — courier's
 // manifest — and compared the result against files in a repository whose own
-// manifest says `name: caf`. It was green, and it was green because it was
+// manifest says `name: cafe`. It was green, and it was green because it was
 // comparing courier's output with courier's output. So the committed copy was
 // courier's: `internal/telemetry/telemetry.go` declared `ServiceName = "courier"`
 // and read `COURIER_OTEL_ENDPOINT`, in the cafaye platform CLI, and the drift
 // gate could not see it.
 //
 // The failure mode is worth naming, because it is the one this whole file exists
-// to prevent. `AGENTS.md` says "caf runs its own generator on its own
+// to prevent. `AGENTS.md` says "cafe runs its own generator on its own
 // `cafaye.yml`, so `internal/telemetry/` is a committed copy of generated Go" —
 // and the sentence was true of the intent and false of the bytes. A gate whose
 // input is a fixture is a gate that proves the generator is deterministic, which
@@ -313,7 +313,7 @@ func generatedNames(t *testing.T) []string {
 // a fixture.
 //
 // Reading the real manifest also makes this the check it claims to be: rename
-// `caf` in `cafaye.yml` and this test is red until somebody regenerates, which is
+// `cafe` in `cafaye.yml` and this test is red until somebody regenerates, which is
 // the whole contract between a manifest and the telemetry setup derived from it.
 func ownManifest(t *testing.T) string {
 	t.Helper()

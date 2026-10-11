@@ -13,10 +13,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cafaye/caf/internal/dev"
+	"github.com/cafaye/cafe/internal/dev"
 )
 
-// devDeps is what `caf dev` needs from the world. It is a parameter rather than
+// devDeps is what `cafe dev` needs from the world. It is a parameter rather than
 // a set of package-level variables so a test can hand the command a recording
 // runtime and drive the whole thing — render, up, wait, report, tear down —
 // without a container runtime anywhere in sight.
@@ -50,7 +50,7 @@ func (d devDeps) withDefaults() devDeps {
 	return d
 }
 
-// devOptions is the parsed flag state for `caf dev`.
+// devOptions is the parsed flag state for `cafe dev`.
 type devOptions struct {
 	out      string
 	registry string
@@ -60,7 +60,7 @@ type devOptions struct {
 	noInfra  bool
 }
 
-// defaultWait is how long `caf dev` waits for a stack to settle before it gives
+// defaultWait is how long `cafe dev` waits for a stack to settle before it gives
 // up and reports what did not. It is generous because a first run builds images
 // and pulls databases, and a developer watching a container pull does not need
 // to be told at ninety seconds that something went wrong.
@@ -76,9 +76,9 @@ func newDevCommand(deps devDeps) *Command {
 	c := &Command{
 		Name:    "dev",
 		Summary: "run the local development stack for a project",
-		Usage:   "caf dev [flags] [project]",
+		Usage:   "cafe dev [flags] [project]",
 		LongHelp: "Reads <project>'s cafaye.yml — the current directory by default —\n" +
-			"validates it against the same rules `caf contract lint` applies,\n" +
+			"validates it against the same rules `cafe contract lint` applies,\n" +
 			"renders a compose file from it, writes that file, prints it, and\n" +
 			"brings the stack up. Services come from the manifest's declared\n" +
 			"dependencies, resolved through the service catalog `-registry`\n" +
@@ -89,7 +89,7 @@ func newDevCommand(deps devDeps) *Command {
 			"\n" +
 			"Progress is printed as plain lines, one per step, in the order the\n" +
 			"steps happen. There is no TUI: AGENTS.md holds it for a later packet,\n" +
-			"and `caf dev --dry-run` is how a plan is inspected before anything is\n" +
+			"and `cafe dev --dry-run` is how a plan is inspected before anything is\n" +
 			"started.\n" +
 			"\n" +
 			"Runs twice, the same project name and a byte-identical compose file\n" +
@@ -113,20 +113,20 @@ func newDevCommand(deps devDeps) *Command {
 		case 1:
 			dir = args[0]
 		default:
-			return fmt.Errorf("%w: caf %s wants at most 1 argument, a project directory, got %d (usage: %s)",
+			return fmt.Errorf("%w: cafe %s wants at most 1 argument, a project directory, got %d (usage: %s)",
 				errUsage, c.Name, len(args), c.Usage)
 		}
 		// Checked here rather than deep in the plan, so the message names the
 		// flag the developer typed instead of a conflict three layers down.
 		if err := checkPort(opts.port); err != nil {
-			return fmt.Errorf("%w: caf %s: %w", errUsage, c.Name, err)
+			return fmt.Errorf("%w: cafe %s: %w", errUsage, c.Name, err)
 		}
 		return (devRun{deps: deps, opts: opts, dir: dir, env: *env}).run()
 	}
 	return c
 }
 
-// devRun is one `caf dev` invocation, gathered so the steps can be read top to
+// devRun is one `cafe dev` invocation, gathered so the steps can be read top to
 // bottom and tested without a closure capturing six variables.
 type devRun struct {
 	deps devDeps
@@ -166,7 +166,7 @@ func defaultDevDeps() devDeps {
 func (r devRun) run() error {
 	project, err := dev.Load(r.dir)
 	if err != nil {
-		return fmt.Errorf("caf dev: %w", err)
+		return fmt.Errorf("cafe dev: %w", err)
 	}
 
 	registry, err := r.loadRegistry()
@@ -180,7 +180,7 @@ func (r devRun) run() error {
 		NoInfra:  r.opts.noInfra,
 	})
 	if err != nil {
-		return fmt.Errorf("caf dev: %w", err)
+		return fmt.Errorf("cafe dev: %w", err)
 	}
 
 	file, err := r.writeCompose(project.Dir, stack)
@@ -204,7 +204,7 @@ func (r devRun) run() error {
 func (r devRun) loadRegistry() (dev.Registry, error) {
 	registry, err := r.deps.registry(r.opts.registry)
 	if err != nil {
-		return nil, fmt.Errorf("caf dev: %w", err)
+		return nil, fmt.Errorf("cafe dev: %w", err)
 	}
 	return registry, nil
 }
@@ -219,16 +219,16 @@ func (r devRun) writeCompose(dir string, stack dev.Stack) (string, error) {
 		file = filepath.Join(dir, file)
 	}
 	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
-		return "", fmt.Errorf("caf dev: %w", err)
+		return "", fmt.Errorf("cafe dev: %w", err)
 	}
 	if err := os.WriteFile(file, []byte(stack.Compose), 0o644); err != nil {
-		return "", fmt.Errorf("caf dev: write %s: %w", file, err)
+		return "", fmt.Errorf("cafe dev: write %s: %w", file, err)
 	}
 	return file, nil
 }
 
 // reportPlan prints the plan, the document and where it went. The document is
-// printed in full because it is the only copy of what caf decided: a developer
+// printed in full because it is the only copy of what cafe decided: a developer
 // reading a CI log or a terminal scrollback can see the whole stack without
 // opening a file, and the file is there for diffing.
 func (r devRun) reportPlan(project dev.Project, stack dev.Stack, file string) {
@@ -257,11 +257,11 @@ func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 	w := r.env.Stdout
 
 	// The runtime resolves relative paths against its own working directory, so
-	// the file is named absolutely before it is handed over. `caf dev` in a
-	// project directory and `caf dev ../billing` must bring up the same stack.
+	// the file is named absolutely before it is handed over. `cafe dev` in a
+	// project directory and `cafe dev ../billing` must bring up the same stack.
 	absolute, err := filepath.Abs(file)
 	if err != nil {
-		return fmt.Errorf("caf dev: %w", err)
+		return fmt.Errorf("cafe dev: %w", err)
 	}
 
 	// An interrupt that has already arrived stops here, before anything is
@@ -279,7 +279,7 @@ func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 	// the same problem. So the teardown is armed before `up` runs.
 	//
 	// A run that ends with a stack up leaves it up, which is the whole point of
-	// `caf dev`. It is a defer on this goroutine rather than a watcher, because
+	// `cafe dev`. It is a defer on this goroutine rather than a watcher, because
 	// `dev.Wait` returns as soon as the context is done and a goroutine racing a
 	// channel close is a teardown that happens sometimes.
 	usable := false
@@ -291,7 +291,7 @@ func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 
 	fmt.Fprintf(w, "starting %d services in %s\n", len(stack.Services), stack.Project)
 	if err := r.deps.runtime.Up(ctx, stack.Project, absolute); err != nil {
-		return fmt.Errorf("caf dev: %w", err)
+		return fmt.Errorf("cafe dev: %w", err)
 	}
 
 	snapshot, waitErr := dev.Wait(ctx, r.deps.runtime, stack.Names(), dev.WaitOptions{
@@ -344,7 +344,7 @@ func (r devRun) teardown(project string) {
 			break
 		}
 		if ctx.Err() != nil {
-			fmt.Fprintf(r.env.Stdout, "%s is still running %d service(s); run caf dev and interrupt again, or stop them by hand\n",
+			fmt.Fprintf(r.env.Stdout, "%s is still running %d service(s); run cafe dev and interrupt again, or stop them by hand\n",
 				project, len(left))
 			return
 		}

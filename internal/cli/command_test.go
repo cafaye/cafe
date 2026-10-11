@@ -44,7 +44,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 }
 
 // Help output order comes straight from the registry, so a stable order is what
-// keeps `caf help` diffable.
+// keeps `cafe help` diffable.
 func TestRegistryIsSorted(t *testing.T) {
 	names := commandNames(Commands())
 	for i := 1; i < len(names); i++ {
@@ -65,7 +65,7 @@ func TestEveryCommandIsDocumented(t *testing.T) {
 			if c.Run == nil {
 				t.Error("Run is nil")
 			}
-			if want := "caf " + c.Name; !strings.HasPrefix(c.Usage, want) {
+			if want := "cafe " + c.Name; !strings.HasPrefix(c.Usage, want) {
 				t.Errorf("Usage = %q, want it to start with %q", c.Usage, want)
 			}
 		})
@@ -77,7 +77,7 @@ func TestRegistryHelpListsEveryCommand(t *testing.T) {
 
 	for _, name := range commandNames(Commands()) {
 		if !strings.Contains(stdout, name) {
-			t.Errorf("caf help does not list %q\ngot:\n%s", name, stdout)
+			t.Errorf("cafe help does not list %q\ngot:\n%s", name, stdout)
 		}
 	}
 }
@@ -112,7 +112,7 @@ func TestPrintHelpRendersFlags(t *testing.T) {
 	var out bytes.Buffer
 	printHelp(&out, c)
 
-	for _, want := range []string{"caf new", c.Summary, "Usage:", c.Usage, "-template"} {
+	for _, want := range []string{"cafe new", c.Summary, "Usage:", c.Usage, "-template"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("help missing %q\ngot:\n%s", want, out.String())
 		}
@@ -129,7 +129,7 @@ func TestPrintHelpRendersLongHelp(t *testing.T) {
 	var out bytes.Buffer
 	printHelp(&out, c)
 
-	for _, want := range []string{"caf contract", c.Summary, "Usage:", c.Usage, c.LongHelp, "contract lint", "contract resolve"} {
+	for _, want := range []string{"cafe contract", c.Summary, "Usage:", c.Usage, c.LongHelp, "contract lint", "contract resolve"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("help missing %q\ngot:\n%s", want, out.String())
 		}
@@ -254,7 +254,7 @@ func TestCommandHelpFlagPrintsHelp(t *testing.T) {
 	for _, arg := range []string{"-h", "-help", "--help"} {
 		t.Run(arg, func(t *testing.T) {
 			record := &runRecord{}
-			c := &Command{Name: "probe", Summary: "probe things", Usage: "caf probe [flags]", Flags: probeFlags(record), Run: record.run}
+			c := &Command{Name: "probe", Summary: "probe things", Usage: "cafe probe [flags]", Flags: probeFlags(record), Run: record.run}
 			env := newTestEnv()
 
 			if err := c.Execute(env, []string{arg}); err != nil {
@@ -263,7 +263,7 @@ func TestCommandHelpFlagPrintsHelp(t *testing.T) {
 			if record.ran {
 				t.Error("run function was called, want help only")
 			}
-			if !strings.Contains(written(t, env.Stdout), "caf probe") {
+			if !strings.Contains(written(t, env.Stdout), "cafe probe") {
 				t.Errorf("help was not printed\ngot:\n%s", written(t, env.Stdout))
 			}
 		})
@@ -286,7 +286,7 @@ func TestWantArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := wantArgs("probe", "caf probe [flags] <name>", tt.want, tt.got)
+			err := wantArgs("probe", "cafe probe [flags] <name>", tt.want, tt.got)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("err = %v, wantErr = %t", err, tt.wantErr)
 			}

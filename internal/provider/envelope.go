@@ -15,7 +15,7 @@ import (
 
 // The envelope version and algorithm this package writes. They are in the
 // document rather than in a comment because the box, opening the envelope
-// later, has to branch on them: an envelope from a future caf that speaks a
+// later, has to branch on them: an envelope from a future cafe that speaks a
 // different algorithm is a box's honest "I cannot open this" rather than a
 // silent decode.
 const (
@@ -52,7 +52,7 @@ type Envelope struct {
 // ours — a wrong version, a wrong algorithm, or a field that will not decode.
 // It is a sentinel so a caller can say "this envelope is not mine" rather than
 // reporting a decode failure that names no cause.
-var ErrUnknownEnvelope = fmt.Errorf("envelope is not a caf X25519+A256GCM envelope")
+var ErrUnknownEnvelope = fmt.Errorf("envelope is not a cafe X25519+A256GCM envelope")
 
 // field order, so a sealed envelope's bytes are stable across runs of one
 // input. Conductor's SealedEnvelope has the same property and for the same
@@ -110,7 +110,7 @@ func ed25519PublicToX25519(ed25519Public ed25519.PublicKey) (ed25519.PublicKey, 
 
 // ed25519PrivateToX25519 converts an ed25519 private key to the X25519 private
 // key of the same keypair. The ed25519 form is the 64-byte seed-and-public
-// pair caf stores in the keyring; the X25519 form is the clamp of the first
+// pair cafe stores in the keyring; the X25519 form is the clamp of the first
 // half of SHA-512 of the seed, which is the same derivation ed25519 itself
 // uses before it signs. The public half of the input is ignored, so a caller
 // that has only the seed loses nothing.

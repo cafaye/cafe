@@ -113,7 +113,7 @@ type conductorResponse struct {
 // page, a captive portal — is reported as what it is.
 func (c HTTPConductor) Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, fmt.Errorf("redeem capability: no conductor URL configured; set it with `caf box enroll --token … --conductor <url>` or in %s", identityFile)
+		return nil, fmt.Errorf("redeem capability: no conductor URL configured; set it with `cafe box enroll --token … --conductor <url>` or in %s", identityFile)
 	}
 	body, err := json.Marshal(redeemRequest{Token: token, PublicKey: publicKeyText(publicKey)})
 	if err != nil {

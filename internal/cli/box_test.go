@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/box"
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // The seams a box test needs, in one place: a keyring the test owns and a
@@ -89,7 +89,7 @@ func boxTestEnv(t *testing.T) (deps boxDeps, cond *countingBoxConductor, ring *b
 // one and nothing accepts it but the fake.
 var boxTestToken = "cap_" + strings.Repeat("b", 64)
 
-// runBoxCLI drives ONE caf box command tree against the injected deps and hands
+// runBoxCLI drives ONE cafe box command tree against the injected deps and hands
 // back the exit code plus both streams — exactly what main() does with the real
 // process, minus the process. It goes through the parent's dispatcher rather
 // than at a verb directly, so the verb lookup and its usage errors are what is
@@ -115,7 +115,7 @@ func enrollResult(t *testing.T, stdout string) box.EnrollResult {
 }
 
 // fakeBoxKey is a real keypair, so the pending keyring entry and the journal
-// this case plants are the same bytes a caf run would have written.
+// this case plants are the same bytes a cafe run would have written.
 type fakeBoxKey struct {
 	text   string
 	public string
@@ -158,13 +158,13 @@ func TestBoxEnrollIsIdempotentThroughTheCommandTree(t *testing.T) {
 	if first.Identity == nil || first.Identity.BoxID != fakeBoxInstallation().BoxID {
 		t.Errorf("first identity = %+v, want it to name the box conductor assigned", first.Identity)
 	}
-	if strings.Count(stderr, "\n") != 1 || !strings.HasPrefix(stderr, "caf box: ") {
+	if strings.Count(stderr, "\n") != 1 || !strings.HasPrefix(stderr, "cafe box: ") {
 		t.Errorf("first stderr is not the one-sentence verdict:\n%s", stderr)
 	}
 	if _, err := deps.store().Identity(); err != nil {
 		t.Fatalf("no identity after a successful enroll: %v", err)
 	}
-	private := ring.entries["caf/box/"+fakeBoxInstallation().BoxID]
+	private := ring.entries["cafe/box/"+fakeBoxInstallation().BoxID]
 	if private == "" {
 		t.Fatal("no box key in the keyring")
 	}
@@ -202,7 +202,7 @@ func TestBoxEnrollRecoversFromAnInterruptedSequence(t *testing.T) {
 	// Interrupt the sequence the way a process that died between the redemption
 	// and the write would have: the keypair is filed under the pending account
 	// and the journal records the installation facts. Both are written as the
-	// bytes caf itself writes, because the state under test is the file.
+	// bytes cafe itself writes, because the state under test is the file.
 	store := deps.store()
 	key := newFakeBoxKey(t)
 	if err := store.Ring.Set(box.KeyringService, box.KeyringAccountPending, key.text); err != nil {
@@ -268,7 +268,7 @@ func TestNoBoxCommandEverPrintsThePrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	private := ring.entries["caf/box/"+id.BoxID]
+	private := ring.entries["cafe/box/"+id.BoxID]
 	if private == "" || private == id.PublicKey {
 		t.Fatal("the fixture holds no private key distinct from the public one")
 	}
@@ -422,7 +422,7 @@ func TestBoxUsageErrors(t *testing.T) {
 		want string
 	}{
 		{name: "no token", args: []string{"enroll"}, want: "--token <capability>"},
-		{name: "unknown verb", args: []string{"frobnicate"}, want: "caf box \"frobnicate\" is not a command"},
+		{name: "unknown verb", args: []string{"frobnicate"}, want: "cafe box \"frobnicate\" is not a command"},
 		{name: "phase twice", args: []string{"apply", "--phase", "data", "data"}, want: "got the phase twice"},
 		{name: "no phase", args: []string{"apply"}, want: "wants --phase"},
 		{name: "too many args", args: []string{"status", "extra"}, want: "wants 0 arguments"},
@@ -493,16 +493,16 @@ func TestBoxApplyRefusesToSkipAPhase(t *testing.T) {
 	}
 }
 
-// Bare `caf box` is a question, not a mistake: it answers with its help and
+// Bare `cafe box` is a question, not a mistake: it answers with its help and
 // exits 0. It must also not touch the machine — the zero deps resolve to the
 // config directory only when a verb runs.
 func TestBareBoxIsAQuestionNotAMistake(t *testing.T) {
 	var out, errOut bytes.Buffer
 	env := &Env{Stdout: &out, Stderr: &errOut, Version: testVersion, Context: context.Background()}
 	if err := newBoxCommand(boxDeps{}).Execute(env, nil); err != nil {
-		t.Fatalf("bare `caf box` failed: %v", err)
+		t.Fatalf("bare `cafe box` failed: %v", err)
 	}
-	if !strings.Contains(out.String(), "caf box <enroll|status|plan|apply|logs|verify>") {
+	if !strings.Contains(out.String(), "cafe box <enroll|status|plan|apply|logs|verify>") {
 		t.Errorf("help does not carry its usage line:\n%s", out.String())
 	}
 	for _, verb := range []string{"enroll", "status", "plan", "apply", "logs", "verify"} {

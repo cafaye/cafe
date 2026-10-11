@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/agent"
+	"github.com/cafaye/cafe/internal/agent"
 )
 
 // agentRegisterAttemptsForTest is the retry budget the store is allowed to
@@ -116,7 +116,7 @@ func (f *fakeIdentity) RevokeToken(_ context.Context, tokenID string) error {
 // 403, and the error code is in the body rather than the status line.
 func unclaimed() error {
 	return &agent.StatusError{
-		Op:     "caf agent whoami",
+		Op:     "cafe agent whoami",
 		Route:  "GET /v1/agents/home",
 		Status: http.StatusForbidden,
 		Code:   "agent_unclaimed",
@@ -195,7 +195,7 @@ func (r *agentTestRing) Delete(service, account string) error {
 
 var _ agent.Keyring = (*agentTestRing)(nil)
 
-// runAgentCLI drives ONE caf agent command tree against the injected deps and
+// runAgentCLI drives ONE cafe agent command tree against the injected deps and
 // hands back the exit code plus both streams — exactly what main() does with the
 // real process, minus the process. It goes through the parent's dispatcher
 // rather than at a verb directly, so the verb lookup and its usage errors are
@@ -256,7 +256,7 @@ func TestAgentRegisterSplitsTheStreamsAndStoresTheToken(t *testing.T) {
 
 	// The token is in the keyring, under the service and account this package
 	// names — and that is the only place in the tree it exists.
-	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentTestToken {
+	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentTestToken {
 		t.Errorf("keyring holds %q, want the token identity minted", got)
 	}
 	// The config file on disk holds the non-secrets and no credential.
@@ -307,7 +307,7 @@ func TestNoTokenEverReachesEitherStream(t *testing.T) {
 				}
 			}
 			// The keyring, not the streams, is where a credential lives.
-			if got := ring.entries["caf/agent/noel-cafaye-test"]; got == "" {
+			if got := ring.entries["cafe/agent/noel-cafaye-test"]; got == "" {
 				t.Errorf("%v left the keyring empty", args)
 			}
 		})
@@ -324,7 +324,7 @@ func TestNoTokenEverReachesEitherStream(t *testing.T) {
 	}
 
 	// And the ring ends up holding the NEWEST token, not the first.
-	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentRotatedToken {
+	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentRotatedToken {
 		t.Errorf("keyring holds the pre-rotation token; rotate did not replace it")
 	}
 
@@ -334,7 +334,7 @@ func TestNoTokenEverReachesEitherStream(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("revoke exited %d (stderr: %s)", code, stderr)
 	}
-	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != "" {
+	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != "" {
 		t.Errorf("revoke left a token in the keyring")
 	}
 	for _, token := range tokens {
@@ -423,7 +423,7 @@ func TestAgentRegisterGeneratesAUsernameAndRetriesOnConflict(t *testing.T) {
 	deps, id, _ := agentTestEnv(t)
 	// A generated username is retried; a chosen one is not.
 	id.registerEr = &agent.StatusError{
-		Op: "caf agent register", Route: "POST /v1/agents",
+		Op: "cafe agent register", Route: "POST /v1/agents",
 		Status: http.StatusUnprocessableEntity, Code: "invalid_agent",
 		Body: `{"error":"invalid_agent","message":"username has already been taken"}`,
 	}
@@ -461,7 +461,7 @@ func TestAgentRegisterGeneratesAUsernameAndRetriesOnConflict(t *testing.T) {
 	}
 }
 
-// Login is a local decision, and `caf agent whoami` is the verb that proves a
+// Login is a local decision, and `cafe agent whoami` is the verb that proves a
 // token works — so a login against a session whose token is gone is refused
 // with the remedy rather than silently becoming the active session.
 func TestAgentLoginRefusesASessionWithNoToken(t *testing.T) {
@@ -469,18 +469,18 @@ func TestAgentLoginRefusesASessionWithNoToken(t *testing.T) {
 	if code, _, _ := runAgentCLI(t, deps, "register", "--name", "Noel"); code != 0 {
 		t.Fatal("register did not seed a session")
 	}
-	deps.ring.(*agentTestRing).entries["caf/agent/noel-cafaye-test"] = ""
+	deps.ring.(*agentTestRing).entries["cafe/agent/noel-cafaye-test"] = ""
 
 	code, _, stderr := runAgentCLI(t, deps, "login", "--agent", "noel")
 	if code != exitFailure {
 		t.Errorf("exit = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "caf agent register") {
+	if !strings.Contains(stderr, "cafe agent register") {
 		t.Errorf("the refusal does not name the remedy:\n%s", stderr)
 	}
 }
 
-// A word caf does not have is a usage mistake: the answer is the list of verbs
+// A word cafe does not have is a usage mistake: the answer is the list of verbs
 // rather than a stack trace.
 func TestAgentUnknownVerbListsTheVerbs(t *testing.T) {
 	deps, _, _ := agentTestEnv(t)
@@ -568,7 +568,7 @@ func TestAgentTokenShowListsAndSelectsOneByName(t *testing.T) {
 	if code != exitFailure {
 		t.Errorf("exit = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "caf agent token show") {
+	if !strings.Contains(stderr, "cafe agent token show") {
 		t.Errorf("the failure does not name the verb:\n%s", stderr)
 	}
 }
@@ -586,7 +586,7 @@ func TestAgentTokenRotateAndRevokeByIdLeaveTheSessionsTokenAlone(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("token rotate tok_01CLI exited %d (stderr: %s)", code, stderr)
 	}
-	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentTestToken {
+	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentTestToken {
 		t.Errorf("rotating another token overwrote the session's keyring entry: holds %q", got)
 	}
 	if id.rotateID != "tok_01CLI" {
@@ -600,7 +600,7 @@ func TestAgentTokenRotateAndRevokeByIdLeaveTheSessionsTokenAlone(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("token revoke tok_01CLI exited %d (stderr: %s)", code, stderr)
 	}
-	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentTestToken {
+	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentTestToken {
 		t.Errorf("revoking another token disturbed the session's keyring entry: holds %q", got)
 	}
 	if id.revokeID != "tok_01CLI" {
@@ -627,7 +627,7 @@ func TestAgentTokenRotateAndRevokeWithNoIdActOnTheSessionsOwnToken(t *testing.T)
 	if id.rotateID != "tok_01BOOT" {
 		t.Errorf("bare rotate asked for %q, want the session's own tok_01BOOT", id.rotateID)
 	}
-	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != agentRotatedToken {
+	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentRotatedToken {
 		t.Errorf("the rotated token was not stored: keyring holds %q", got)
 	}
 
@@ -638,7 +638,7 @@ func TestAgentTokenRotateAndRevokeWithNoIdActOnTheSessionsOwnToken(t *testing.T)
 	if id.revokeID != "tok_01ROT" {
 		t.Errorf("bare revoke asked for %q, want the post-rotation tok_01ROT", id.revokeID)
 	}
-	if got := ring.entries["caf/agent/noel-cafaye-test"]; got != "" {
+	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != "" {
 		t.Errorf("revoke left a token in the keyring")
 	}
 }
@@ -668,7 +668,7 @@ func TestAgentTokenCreateSendsItsName(t *testing.T) {
 	}
 }
 
-// Bare `caf agent` is a question, not a mistake: it prints help and succeeds.
+// Bare `cafe agent` is a question, not a mistake: it prints help and succeeds.
 func TestBareAgentPrintsHelp(t *testing.T) {
 	deps, _, _ := agentTestEnv(t)
 	code, stdout, stderr := runAgentCLI(t, deps)

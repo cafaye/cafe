@@ -13,12 +13,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
-// `caf env up` is the only provisioning verb, and the thing that makes it one
+// `cafe env up` is the only provisioning verb, and the thing that makes it one
 // is that it is the *parent* of the process under test rather than a sibling
 // that exits. A sibling that exits leaves the stack up and the cleanup to
 // memory; a parent that is killed leaves nothing to remember, because the
@@ -195,7 +195,7 @@ func TestEnvUpRecordsTheStackAndReleasesItWhenItComesDown(t *testing.T) {
 // A bring-up that fails is put straight back down, because the runtime makes
 // containers and networks before it discovers the failure. And because the
 // teardown succeeded, the entry is released: nothing is left, and an entry for
-// nothing is what `caf reclaim` would then have to read to convince itself of.
+// nothing is what `cafe reclaim` would then have to read to convince itself of.
 func TestAFailedBringUpIsTornDownAndItsEntryReleased(t *testing.T) {
 	dir := envProject(t)
 	book := openTestLedger(t)
@@ -292,8 +292,8 @@ func TestTheTierIsRecordedAndNotEnforced(t *testing.T) {
 		tier string
 		want string
 	}{
-		{name: "a tier caf knows", tier: "go", want: "go"},
-		{name: "a tier caf does not know", tier: "hypothetical", want: "hypothetical"},
+		{name: "a tier cafe knows", tier: "go", want: "go"},
+		{name: "a tier cafe does not know", tier: "hypothetical", want: "hypothetical"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -302,7 +302,7 @@ func TestTheTierIsRecordedAndNotEnforced(t *testing.T) {
 				t.Fatalf("stderr: %s", stderr)
 			}
 			// Read back through the same function a gate would use, so a receipt
-			// only caf's own table can agree with cannot pass.
+			// only cafe's own table can agree with cannot pass.
 			receipt, err := parseReceipt(stdout)
 			if err != nil {
 				t.Fatalf("the receipt does not parse: %v", err)
@@ -327,7 +327,7 @@ func TestTheTierIsRecordedAndNotEnforced(t *testing.T) {
 	}
 }
 
-// A tier is a required argument. `caf env up` with no tier would have to guess,
+// A tier is a required argument. `cafe env up` with no tier would have to guess,
 // and a provisioning verb that guesses which policy to apply is a provisioning
 // verb that applies the wrong one.
 func TestEnvUpNeedsATier(t *testing.T) {
@@ -341,7 +341,7 @@ func TestEnvUpNeedsATier(t *testing.T) {
 }
 
 // `env up` is a subcommand of `env`, dispatched by the parent, so it is not in
-// the registry and `caf help env` does not list it as a top-level command.
+// the registry and `cafe help env` does not list it as a top-level command.
 func TestEnvUpIsNotATopLevelCommand(t *testing.T) {
 	if _, found := lookupCommand(Commands(), "env up"); found {
 		t.Error("\"env up\" is in the top-level registry; a subcommand of a subcommand is dispatched by its parent")
@@ -368,7 +368,7 @@ func TestEnvRefusesAnUnknownVerb(t *testing.T) {
 
 // ---------------------------------------------------------------------------
 
-// testBlock is where the env cases reserve. It is far outside caf's real block
+// testBlock is where the env cases reserve. It is far outside cafe's real block
 // because this machine has a sibling worker publishing inside it, and a unit test
 // that reserved there would be a unit test running against a live neighbour.
 var testBlock = ports.Block{First: 42200, Last: 42299}
@@ -419,7 +419,7 @@ func runEnvUpWith(t *testing.T, dir string, book *ledger.Ledger, deps envDeps, b
 	// cannot exercise a shape a user cannot type.
 	command := newEnvUpCommand()
 
-	// A case may pass caf's own flags after the command it means to run, because
+	// A case may pass cafe's own flags after the command it means to run, because
 	// the grammar puts them before the tier and a case should not have to know
 	// that. They are stripped from the whole argument list before the invocation
 	// is split, which is the only place a flag can be told apart from a child
@@ -455,7 +455,7 @@ func runExit(err error) int {
 	default:
 		var coded exitCoder
 		if errors.As(err, &coded) {
-			return coded.cafExitCode()
+			return coded.cafeExitCode()
 		}
 		if errors.Is(err, errUsage) {
 			return exitUsage
@@ -471,10 +471,10 @@ func stderrFor(err error, stderr string) string {
 	var coded exitCoder
 	if errors.As(err, &coded) {
 		// The child already wrote its reason to stderr, which went to the same
-		// buffer; adding "caf: exit status 3" would be the same sentence twice.
+		// buffer; adding "cafe: exit status 3" would be the same sentence twice.
 		return stderr
 	}
-	return stderr + fmt.Sprintf("caf: %v\n", err)
+	return stderr + fmt.Sprintf("cafe: %v\n", err)
 }
 
 func runEnvUpWithLedger(t *testing.T, dir string, book *ledger.Ledger, deps envDeps, args ...string) (int, string, string) {
@@ -499,8 +499,8 @@ func envProject(t *testing.T) string {
 	return dir
 }
 
-// parseReceipt is the reader a gate will use, so caf's own test is the one that
-// proves the two agree. A receipt format that only caf can read is a receipt
+// parseReceipt is the reader a gate will use, so cafe's own test is the one that
+// proves the two agree. A receipt format that only cafe can read is a receipt
 // format no gate can use.
 func TestTheReceiptRoundTrips(t *testing.T) {
 	want := Receipt{
@@ -514,7 +514,7 @@ func TestTheReceiptRoundTrips(t *testing.T) {
 		Ports:      []int{15020},
 		Databases:  []string{"identity-worker-identity-7_pgdata"},
 		Compose:    "/repo/identity/caf.dev.compose.yaml",
-		Ledger:     "/home/dev/.local/state/caf/ledger",
+		Ledger:     "/home/dev/.local/state/cafe/ledger",
 		Started:    true,
 		Policy:     tierPolicyOwed,
 	}
@@ -551,18 +551,18 @@ func TestAReceiptThatIsNotJSONIsAnError(t *testing.T) {
 
 func receiptLine(encoded []byte) string { return "CAF_RECEIPT=" + string(encoded) }
 
-// cafFlagNames is every flag `env up` declares. The harness pulls these out of
+// cafeFlagNames is every flag `env up` declares. The harness pulls these out of
 // an invocation wherever they appear, so a case can pass `-port` after the
 // command it means to run without the case having to know the grammar — which is
 // what the grammar is for, and what a test should not have to reimplement.
-var cafFlagNames = []string{"-project", "-registry", "-ledger", "-port", "-wait"}
+var cafeFlagNames = []string{"-project", "-registry", "-ledger", "-port", "-wait"}
 
-// cafBoolFlags take no value. They are separate because a boolean flag written
+// cafeBoolFlags take no value. They are separate because a boolean flag written
 // as `-dry-run` is the spelling a person types, and a harness that expected a
 // value after it would report a usage error on correct input.
-var cafBoolFlags = []string{"-dry-run", "-no-infra"}
+var cafeBoolFlags = []string{"-dry-run", "-no-infra"}
 
-// flagsFor strips caf's own flags out of an invocation, returning what is left
+// flagsFor strips cafe's own flags out of an invocation, returning what is left
 // and the flag state.
 //
 // The flag package stops at the first positional argument, so a whole invocation
@@ -577,25 +577,25 @@ func flagsFor(args []string, opts envOptions) ([]string, envOptions, error) {
 	// has to land in the option, and reading it back off the flagset is what
 	// keeps the two from drifting.
 	if err := fs.Parse(nil); err != nil {
-		return nil, opts, fmt.Errorf("%w: caf env up: %w", errUsage, err)
+		return nil, opts, fmt.Errorf("%w: cafe env up: %w", errUsage, err)
 	}
 
 	rest := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		name, value, takesValue := cafFlag(args[i])
+		name, value, takesValue := cafeFlag(args[i])
 		if name == "" {
 			rest = append(rest, args[i])
 			continue
 		}
 		if takesValue {
 			if i+1 >= len(args) {
-				return nil, opts, fmt.Errorf("%w: caf env up: flag needs an argument: %s", errUsage, name)
+				return nil, opts, fmt.Errorf("%w: cafe env up: flag needs an argument: %s", errUsage, name)
 			}
 			i++
 			value = args[i]
 		}
 		if err := fs.Set(strings.TrimLeft(name, "-"), value); err != nil {
-			return nil, opts, fmt.Errorf("%w: caf env up: %w", errUsage, err)
+			return nil, opts, fmt.Errorf("%w: cafe env up: %w", errUsage, err)
 		}
 	}
 
@@ -608,16 +608,16 @@ func flagsFor(args []string, opts envOptions) ([]string, envOptions, error) {
 	return rest, opts, nil
 }
 
-// cafFlag is one caf flag found in an argument, with its value if it takes one.
-// A name that is not caf's returns "", so the caller keeps it — which is how a
+// cafeFlag is one cafe flag found in an argument, with its value if it takes one.
+// A name that is not cafe's returns "", so the caller keeps it — which is how a
 // child's own -test survives.
-func cafFlag(arg string) (name, value string, takesValue bool) {
-	for _, flag := range cafFlagNames {
+func cafeFlag(arg string) (name, value string, takesValue bool) {
+	for _, flag := range cafeFlagNames {
 		if arg == flag {
 			return arg, "", true
 		}
 	}
-	for _, flag := range cafBoolFlags {
+	for _, flag := range cafeBoolFlags {
 		if arg == flag {
 			return arg, "true", false
 		}

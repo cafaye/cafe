@@ -172,13 +172,13 @@ func TestADryRunPrintsEveryCommandAndWhyItIsThere(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"kamal setup",               // the step that changes a server
-		"--version v9",              // the release the operator pinned
-		"kamal app containers",      // the step a FAILURE would run
-		"only if the deploy above",  // and that it is conditional
-		"kamal config",              // the step that really ran
-		"was NOT run",               // that nothing changing was executed
-		"caf deploy --yes identity", // and the exact command that does it
+		"kamal setup",                // the step that changes a server
+		"--version v9",               // the release the operator pinned
+		"kamal app containers",       // the step a FAILURE would run
+		"only if the deploy above",   // and that it is conditional
+		"kamal config",               // the step that really ran
+		"was NOT run",                // that nothing changing was executed
+		"cafe deploy --yes identity", // and the exact command that does it
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("dry-run output does not contain %q:\n%s", want, got)
@@ -277,7 +277,7 @@ func TestADryRunReportsTheRefusalWithoutDeploying(t *testing.T) {
 	}, &out, io.Discard)
 
 	if err == nil {
-		t.Fatal("got no error, so `caf deploy --dry-run` would pass on a config that exposes the database")
+		t.Fatal("got no error, so `cafe deploy --dry-run` would pass on a config that exposes the database")
 	}
 	if runner.ranStep(Deploy) {
 		t.Errorf("a dry run deployed anyway: %v", runner.commands())
@@ -287,7 +287,7 @@ func TestADryRunReportsTheRefusalWithoutDeploying(t *testing.T) {
 	}
 }
 
-// A resolved config caf could not read is not a clean config. The one answer that
+// A resolved config cafe could not read is not a clean config. The one answer that
 // must never be invented is "no accessories, therefore nothing published".
 func TestAnUnreadableResolvedConfigIsARefusalNotAPass(t *testing.T) {
 	runner := newFakeRunner()
@@ -296,10 +296,10 @@ func TestAnUnreadableResolvedConfigIsARefusalNotAPass(t *testing.T) {
 	err := Run(context.Background(), runner, Request{Dir: oneProject(t), Service: "identity"}, io.Discard, io.Discard)
 
 	if !errors.Is(err, ErrRefused) {
-		t.Errorf("err = %v, want ErrRefused: caf could not read the config, so it cannot have cleared it", err)
+		t.Errorf("err = %v, want ErrRefused: cafe could not read the config, so it cannot have cleared it", err)
 	}
 	if runner.ranStep(Deploy) {
-		t.Errorf("the deploy ran on a config caf could not check: %v", runner.commands())
+		t.Errorf("the deploy ran on a config cafe could not check: %v", runner.commands())
 	}
 }
 
@@ -385,7 +385,7 @@ func TestASuccessfulDeploySaysHowToCheckIt(t *testing.T) {
 	}
 }
 
-// A deploy is the one place in caf that can put a database on the internet, and
+// A deploy is the one place in cafe that can put a database on the internet, and
 // the credential rule is absolute: no secret value may reach any output, at any
 // step. This asserts against the whole rendered dry run rather than field by
 // field, because a value that reached somewhere nobody thought to check is
@@ -399,7 +399,7 @@ func TestNoSecretValueReachesAnyOutput(t *testing.T) {
 
 	// A resolved config that names the secret, and a kamal that echoes it back on
 	// stdout, because a secret leaking through a third party's output is not a
-	// caf bug caf can prevent — it is a caf bug caf must catch.
+	// cafe bug cafe can prevent — it is a cafe bug cafe must catch.
 	runner := newFakeRunner()
 	runner.out = resolvedWithoutPublishedPort + "  :secret:\n  - " + secretValue + "\n"
 
@@ -438,7 +438,7 @@ func TestAMissingDeployEngineStopsBeforeAnythingElse(t *testing.T) {
 		t.Fatal("got no error with no kamal installed")
 	}
 	if len(runner.commands()) != 1 {
-		t.Errorf("caf ran something past the preflight: %v", runner.commands())
+		t.Errorf("cafe ran something past the preflight: %v", runner.commands())
 	}
 }
 

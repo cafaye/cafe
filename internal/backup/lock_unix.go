@@ -13,7 +13,7 @@ import (
 // drillLock is one exclusive hold on the drill store.
 //
 // It is flock for the reason internal/ledger's is: flock is owned by the open
-// file description, so the kernel drops it when the holder dies. A crashed caf
+// file description, so the kernel drops it when the holder dies. A crashed cafe
 // needs no janitor, and a lock left behind by a killed process is not stale —
 // it is gone. That property matters more here than it does there, because a
 // drill takes minutes and the machine that runs one is a machine somebody
@@ -33,7 +33,7 @@ func (s *DrillStore) lock() (*drillLock, error) {
 }
 
 // tryLock is lock that will not wait, and it exists for the same reason
-// internal/ledger's TryLock does: it is how a caller answers "is another caf
+// internal/ledger's TryLock does: it is how a caller answers "is another cafe
 // writing this store" without hanging behind a lock it cannot see. A drill
 // takes minutes, so a second drill that BLOCKED would be a command that looked
 // broken for the length of the first one.
@@ -60,7 +60,7 @@ func (s *DrillStore) lockWith(flags int) (*drillLock, error) {
 	if err != nil {
 		_ = file.Close()
 		if errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, syscall.EAGAIN) {
-			return nil, fmt.Errorf("%w: another caf is writing the drill store at %s", ErrDrillHeld, s.dir)
+			return nil, fmt.Errorf("%w: another cafe is writing the drill store at %s", ErrDrillHeld, s.dir)
 		}
 		return nil, fmt.Errorf("drill store: take the store lock: %w", err)
 	}

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/resolve"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/resolve"
 )
 
 // publishTestManifest parses one cafaye.yml the way the command does, so the
@@ -80,7 +80,7 @@ func TestTheKindIsDerivedFromTheContractSurface(t *testing.T) {
 	}
 }
 
-// The curated case: no contract surface at all. caf cannot derive the kind, and
+// The curated case: no contract surface at all. cafe cannot derive the kind, and
 // the refusal names the flag rather than guessing — a guessed kind is a claim
 // the publisher never made, and the registry stores claims.
 func TestAManifestWithNoSurfaceNamesTheKindFlag(t *testing.T) {
@@ -103,7 +103,7 @@ func TestAManifestWithNoSurfaceNamesTheKindFlag(t *testing.T) {
 
 // `spec` is core's language for specification-only repositories, and it is
 // deliberately absent from the registry's vocabulary: a specification is not a
-// project. The refusal is caf-side, because a 400 from the server would blame
+// project. The refusal is cafe-side, because a 400 from the server would blame
 // the publisher for a rule the manifest schema already states.
 func TestLanguageSpecIsRefused(t *testing.T) {
 	_, err := ProposalFor(publishTestManifest(t, "name: app\nlanguage: spec\ncore: ^0.2.0\n"), "v1.0.0", "")
@@ -117,7 +117,7 @@ func TestLanguageSpecIsRefused(t *testing.T) {
 
 // A dependency with no version cannot become an edge: the registry resolves a
 // range against the target's releases at write time, and an unbounded edge is
-// refused there. caf refuses here, naming the field to add, rather than
+// refused there. cafe refuses here, naming the field to add, rather than
 // sending a request whose only possible answer is a 400.
 func TestADependencyWithoutAVersionIsRefused(t *testing.T) {
 	withUnbounded := strings.Replace(publishFullManifest,
@@ -463,7 +463,7 @@ func TestOneFailingEdgeDoesNotStopTheOthers(t *testing.T) {
 
 // The HTTP publisher speaks pantry's wire: the three routes, the bearer, the
 // body fields. This is the test that would catch a client whose request shape
-// drifted from the server's — the fake above can only prove caf asked its own
+// drifted from the server's — the fake above can only prove cafe asked its own
 // fake correctly.
 func TestTheHTTPPublisherPostsPantrysWireShape(t *testing.T) {
 	var paths []string

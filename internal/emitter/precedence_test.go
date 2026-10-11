@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // The endpoint precedence, asserted over the WIRE rather than over a function.
@@ -48,7 +48,7 @@ func dialled(first []byte) bool { return bytes.HasPrefix(first, h2ClientPreface)
 // `Endpoint()`'s own comment says the cafaye variable "wins over the standard
 // `OTEL_EXPORTER_OTLP_ENDPOINT`". courier's worker measured the opposite and put
 // it in `test/courier/otel_export_test.exs`. This file is the same measurement
-// for caf, and it found the ADDRESS half already correct and the SCHEME half not.
+// for cafe, and it found the ADDRESS half already correct and the SCHEME half not.
 func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 	for _, row := range []struct {
 		name string
@@ -58,7 +58,7 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 		values func(mine, theirs string) (cafaye, standard string)
 		// winner is the socket the documented precedence says was dialled.
 		winner string
-		// wantPlaintext is whether caf must dial WITHOUT TLS. It is an answer, not
+		// wantPlaintext is whether cafe must dial WITHOUT TLS. It is an answer, not
 		// a restatement of the input: `only-standard` and `both-conflict` differ in
 		// spelling and must not differ in expectation.
 		wantPlaintext bool
@@ -71,7 +71,7 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 			},
 			winner:        "the standard variable",
 			wantPlaintext: true,
-			why: "the fallback exists so caf works with generic OTel tooling, and a fallback nothing " +
+			why: "the fallback exists so cafe works with generic OTel tooling, and a fallback nothing " +
 				"ever reaches is not a fallback",
 		},
 		{
@@ -190,13 +190,13 @@ func clearOTELSwitches(t *testing.T) {
 	}
 }
 
-// emitAndFlush records one span and flushes, which is the whole of what a caf
+// emitAndFlush records one span and flushes, which is the whole of what a cafe
 // invocation does with the exporter.
 func emitAndFlush(t *testing.T, sess Session) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, span := sess.tracer.Start(ctx, "caf.precedence")
+	_, span := sess.tracer.Start(ctx, "cafe.precedence")
 	span.End()
 	if err := sess.Shutdown(context.Background()); err != nil {
 		t.Fatalf("Shutdown: %v", err)

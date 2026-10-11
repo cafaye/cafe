@@ -11,8 +11,8 @@ import (
 // usernameBase turns a display name into the base of a username: lower case,
 // alphanumerics and dashes, no leading or trailing dash, bounded. It is the
 // same function the legacy CLI uses, because a username the user typed and a
-// username caf generated have to obey the same grammar for
-// `caf agent login --agent <name>` to be able to find either of them.
+// username cafe generated have to obey the same grammar for
+// `cafe agent login --agent <name>` to be able to find either of them.
 func usernameBase(name string) string {
 	raw := strings.ToLower(strings.TrimSpace(name))
 	if raw == "" {

@@ -17,17 +17,17 @@ import (
 
 // The telemetry contract, vendored.
 //
-// `caf gen telemetry` emits an OpenTelemetry setup, and every fact in it — the
+// `cafe gen telemetry` emits an OpenTelemetry setup, and every fact in it — the
 // per-signal attribute allowlists, the prohibition on unbounded identifiers,
 // the resource attribute list, the `error.type` vocabulary, the span-name
 // pattern, the endpoint variable and the no-op path — is READ OUT OF THESE SIX
-// FILES rather than written down in caf. That is the whole mechanism by which
+// FILES rather than written down in cafe. That is the whole mechanism by which
 // the generated artifact cannot drift from core: a core release that adds an
-// `error.type` value or drops `db.operation` changes the bytes caf emits, and
+// `error.type` value or drops `db.operation` changes the bytes cafe emits, and
 // `internal/gen`'s drift gate goes red on the committed golden.
 //
-// It is a deliberate asymmetry with the manifest half of this package, where caf
-// validates a document against the vendored schema. Here caf is the *producer*
+// It is a deliberate asymmetry with the manifest half of this package, where cafe
+// validates a document against the vendored schema. Here cafe is the *producer*
 // and core's schema is the source of the values, so what is extracted is the
 // schema's own structure — its allowlists, its enums, its `not` clause — and
 // the extraction is the part that has to be right. Every extraction below is
@@ -137,13 +137,13 @@ type Signal struct {
 	Allowlist []Attribute
 	// Resource is the resource attribute list. Core keeps this byte-identical
 	// across all three signals and `TestTheResourceAttributeListIsTheSameOn
-	// EverySignal` is what holds caf to that.
+	// EverySignal` is what holds cafe to that.
 	Resource []Attribute
 	// ErrorTypes is the closed `error.type` vocabulary this signal's allowlist
 	// carries, read out of that allowlist rather than from a table of its own.
 	//
 	// Every signal declares the same `enum` and core's own suite asserts the
-	// three copies match; `TestEverySignalCarriesTheSameErrorType` is caf's half
+	// three copies match; `TestEverySignalCarriesTheSameErrorType` is cafe's half
 	// of that, and carrying the list on the signal is what lets the generator
 	// emit it without deciding for itself which signal is authoritative. A
 	// generator that emitted twelve classes where core has thirteen is a
@@ -159,7 +159,7 @@ type Endpoint struct {
 	VariablePattern string
 	// Default is the shipped collector's address. Core writes it as a schema
 	// `pattern` and a `format`, not as a value, so this is the fleet's own
-	// convention rather than something caf may read out of the schema.
+	// convention rather than something cafe may read out of the schema.
 	Default string
 	// Required is always false; the field that separates "on by default" from
 	// "mandatory". Carried as a bool so the emitted document has to write it.
@@ -192,7 +192,7 @@ type Endpoint struct {
 // rather than in an example.
 type Redaction struct {
 	// Version is the core spec the policy was written against, and the value
-	// `caf gen telemetry` writes into the emitted declaration.
+	// `cafe gen telemetry` writes into the emitted declaration.
 	Version string
 	// EnforcedAt is where the boundary lives. Core's default is "collector"; a
 	// service that sets it to "service" has declared that its own allowlist is
@@ -213,7 +213,7 @@ type Redaction struct {
 	// realistic way this leaks: not an attacker, but a well-meaning change six
 	// months from now by someone who did not read the spec.
 	ContentWords []string
-	// NeverRecordFloor is core's `minItems` on `neverRecord`. caf does NOT emit
+	// NeverRecordFloor is core's `minItems` on `neverRecord`. cafe does NOT emit
 	// the list — it is a policy's content and lives in core's example — so this
 	// is here to say that a declaration below the floor would not validate.
 	NeverRecordFloor int
@@ -222,7 +222,7 @@ type Redaction struct {
 	LLMCallFloor int
 }
 
-// TelemetrySpec is every fact `caf gen telemetry` emits, read out of the six
+// TelemetrySpec is every fact `cafe gen telemetry` emits, read out of the six
 // vendored schemas.
 //
 // The whole type is computed once per process. The schemas cannot change while
@@ -292,11 +292,11 @@ func Telemetry() (TelemetrySpec, error) { return telemetrySpec() }
 // ValidateTelemetry compiles one of the vendored telemetry schemas and checks a
 // document against it.
 //
-// This exists because `caf gen telemetry` writes documents derived from these
+// This exists because `cafe gen telemetry` writes documents derived from these
 // schemas, and a generator that is only ever checked by its own tests is a
 // generator whose idea of correct is whatever it happens to do. Handing the
 // emitted bytes to core's own schema is the one check that cannot share that
-// blind spot: a declaration caf would write that core's schema rejects fails
+// blind spot: a declaration cafe would write that core's schema rejects fails
 // here and nothing reaches the disk.
 //
 // The signal name is the schema's file stem: "traces", "metrics", "logs",
@@ -540,7 +540,7 @@ func readAttribute(doc []byte, path ...string) (Attribute, error) {
 	// `type` is a bare string on almost every attribute and a list on the three
 	// that accept more than one (`traceId`, `target`, and friends). The first
 	// member is the one a generated setup has to parse into, and which one it is
-	// does not matter because nothing caf emits puts a value in those fields.
+	// does not matter because nothing cafe emits puts a value in those fields.
 	var types []string
 	if err := json.Unmarshal(kind, &types); err == nil && len(types) > 0 {
 		attribute.Kind = types[0]
@@ -607,7 +607,7 @@ func prohibitedMeasurements(doc []byte) ([]string, error) {
 		if len(clause.Required) != 1 {
 			return nil, fmt.Errorf("measurementAttributes/not/anyOf/%d requires %d names, and this reader "+
 				"expects the one-name-per-alternative form core writes. Every alternative is a name core refuses, "+
-				"so a multi-name clause is %d names caf would silently refuse to emit", i, len(clause.Required), len(clause.Required))
+				"so a multi-name clause is %d names cafe would silently refuse to emit", i, len(clause.Required), len(clause.Required))
 		}
 		names = append(names, clause.Required[0])
 	}
@@ -668,7 +668,7 @@ func readEndpoint(doc []byte) (Endpoint, error) {
 //
 // The two floors are carried and NOT satisfied: `neverRecord` and
 // `prohibited` are a policy's content and core ships them as
-// `examples/valid/telemetry/redaction.json`. caf does not invent them, and the
+// `examples/valid/telemetry/redaction.json`. cafe does not invent them, and the
 // absence of them from a generated file is a decision recorded rather than an
 // oversight. What IS in the schema, and is the half that matters
 // mechanically, is the list of words that may not appear inside an allowlisted
@@ -724,7 +724,7 @@ func contentWords(doc []byte) ([]string, error) {
 			word = strings.TrimPrefix(word, prefix)
 		}
 		if word == "" {
-			return nil, fmt.Errorf("redaction word %q is a regex caf cannot read a word out of", clause.Pattern)
+			return nil, fmt.Errorf("redaction word %q is a regex cafe cannot read a word out of", clause.Pattern)
 		}
 		words = append(words, word)
 	}

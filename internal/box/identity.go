@@ -103,7 +103,7 @@ func parsePrivateKey(text string) (ed25519.PrivateKey, error) {
 // ErrNotEnrolled is what every lifecycle verb answers on a machine that has
 // never enrolled. It is a sentinel so a caller can tell "you have not enrolled"
 // from "your enrollment is broken", which are different instructions.
-var ErrNotEnrolled = errors.New("box is not enrolled: run `caf box enroll --token …` first")
+var ErrNotEnrolled = errors.New("box is not enrolled: run `cafe box enroll --token …` first")
 
 // ErrNoPrivateKey is what `verify` answers when the identity is on disk and its
 // key is not in the keyring: the box exists as a record and cannot act as a

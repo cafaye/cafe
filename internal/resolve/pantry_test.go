@@ -76,7 +76,7 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 	}
 }
 
-// Tier 2 presents the caller's caf token as the bearer and decodes the
+// Tier 2 presents the caller's cafe token as the bearer and decodes the
 // coordinates.
 func TestHTTPPantryTier2ServesCoordinatesWithTheToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -111,10 +111,10 @@ func TestHTTPPantryTier2ServesCoordinatesWithTheToken(t *testing.T) {
 // detail; it never switches on the detail to tell the two apart, and this test
 // is where that rule is pinned.
 func TestHTTPPantryTier2UnauthorizedIsNamed(t *testing.T) {
-	const noEntitlementYet = "this operation requires a caf token and none was presented. A service's " +
+	const noEntitlementYet = "this operation requires a cafe token and none was presented. A service's " +
 		"repository coordinates are tier 2: `GET /v1/projects` and `GET /v1/projects/{name}` publish what a " +
 		"service is, and this operation alone publishes where its code lives. Present `Authorization: Bearer " +
-		"cafaye_…` with a live caf token"
+		"cafaye_…` with a live cafe token"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -151,7 +151,7 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/unavailable","title":"Service unavailable","status":503,"detail":"the presented caf token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/projects/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://errors.cafaye.com/unavailable","title":"Service unavailable","status":503,"detail":"the presented cafe token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/projects/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 

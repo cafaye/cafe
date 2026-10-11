@@ -4,9 +4,9 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 // heldPorts is the real reservation, behind the portReserver seam. It is the
@@ -41,7 +41,7 @@ func (h *heldPorts) Reserve(ctx context.Context, session string, gen, n int) ([]
 
 // Take holds one named port, or refuses it. It is the registry's TryReserve with
 // the ledger entry written under the adapter's own session, so a developer's
-// explicit port is recorded exactly like one caf chose.
+// explicit port is recorded exactly like one cafe chose.
 func (h *heldPorts) Take(ctx context.Context, session string, gen, port int) ([]int, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

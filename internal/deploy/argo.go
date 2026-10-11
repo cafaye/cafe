@@ -14,7 +14,7 @@ import (
 )
 
 // ArgoRunner is the Argo engine: it owns the Argo plan and runs it through git
-// and kubectl, which stay the only places caf knows how to drive a pull-only
+// and kubectl, which stay the only places cafe knows how to drive a pull-only
 // substrate — including the "kubectl is not installed" sentence, which is this
 // engine's shape of the missing-tool refusal.
 //
@@ -95,15 +95,15 @@ func readChart(dir string) (chartFacts, error) {
 
 	valuesContent, err := os.ReadFile(valuesPath)
 	if err != nil {
-		return chartFacts{}, fmt.Errorf("caf deploy: %s has no chart/values.yaml, so there is no chart to release.\n"+
-			"  Run `caf gen chart` in the service repository to write it, then deploy again.\n"+
+		return chartFacts{}, fmt.Errorf("cafe deploy: %s has no chart/values.yaml, so there is no chart to release.\n"+
+			"  Run `cafe gen chart` in the service repository to write it, then deploy again.\n"+
 			"  The values ride inside the OCI chart artifact — DEPLOYMENT.md — so the file\n"+
 			"  the deploy resolves is the one the chart ships, not one the Application names", dir)
 	}
 	chartContent, err := os.ReadFile(chartPath)
 	if err != nil {
-		return chartFacts{}, fmt.Errorf("caf deploy: %s has no Chart.yaml, so there is no chart version to bump.\n"+
-			"  Run `caf gen chart` in the service repository to write it, then deploy again.\n"+
+		return chartFacts{}, fmt.Errorf("cafe deploy: %s has no Chart.yaml, so there is no chart version to bump.\n"+
+			"  Run `cafe gen chart` in the service repository to write it, then deploy again.\n"+
 			"  The chart version is the OCI tag — DEPLOYMENT.md — so without it there is\n"+
 			"  no version for the publish workflow to push and no targetRevision to move", dir)
 	}
@@ -115,29 +115,29 @@ func readChart(dir string) (chartFacts, error) {
 		} `yaml:"image"`
 	}
 	if err := yaml.Unmarshal(valuesContent, &values); err != nil {
-		return chartFacts{}, fmt.Errorf("caf deploy: read chart/values.yaml: %w", err)
+		return chartFacts{}, fmt.Errorf("cafe deploy: read chart/values.yaml: %w", err)
 	}
 	if values.Image.Repository == "" || values.Image.Tag == "" {
-		return chartFacts{}, fmt.Errorf("caf deploy: chart/values.yaml has no image.repository and image.tag, so there is\n" +
+		return chartFacts{}, fmt.Errorf("cafe deploy: chart/values.yaml has no image.repository and image.tag, so there is\n" +
 			"  no image reference to bump. The generator writes both; a hand-edited values.yaml\n" +
-			"  that dropped them is a chart nobody can release. Run `caf gen chart` to rewrite it")
+			"  that dropped them is a chart nobody can release. Run `cafe gen chart` to rewrite it")
 	}
 
 	var chart struct {
 		Version string `yaml:"version"`
 	}
 	if err := yaml.Unmarshal(chartContent, &chart); err != nil {
-		return chartFacts{}, fmt.Errorf("caf deploy: read Chart.yaml: %w", err)
+		return chartFacts{}, fmt.Errorf("cafe deploy: read Chart.yaml: %w", err)
 	}
 	if chart.Version == "" {
-		return chartFacts{}, fmt.Errorf("caf deploy: Chart.yaml has no version, so there is no chart version to bump.\n" +
+		return chartFacts{}, fmt.Errorf("cafe deploy: Chart.yaml has no version, so there is no chart version to bump.\n" +
 			"  The chart version is the OCI tag — DEPLOYMENT.md — so without it there is\n" +
 			"  no version for the publish workflow to push")
 	}
 
 	commit, err := gitOutput(dir, "rev-parse", "--short", "HEAD")
 	if err != nil {
-		return chartFacts{}, fmt.Errorf("caf deploy: %s is not a git repository caf can read, so there is no commit\n"+
+		return chartFacts{}, fmt.Errorf("cafe deploy: %s is not a git repository cafe can read, so there is no commit\n"+
 			"  to build the release from: %w\n"+
 			"  A deploy under Argo is a values commit; without a git repository there is\n"+
 			"  nothing to commit and nothing to push", dir, err)
@@ -176,7 +176,7 @@ func (r *ArgoRunner) Run(ctx context.Context, dir string, step Step, stdout, std
 
 // commit writes the two files the release carries, checks the working tree,
 // and commits. It is the half of the deploy that changes the service
-// repository, and the only half caf is allowed to change: Argo is pull-only,
+// repository, and the only half cafe is allowed to change: Argo is pull-only,
 // and the cluster is never written.
 func (r *ArgoRunner) commit(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error {
 	// The dirty-tree check comes first, before anything is written. A release
@@ -201,10 +201,10 @@ func (r *ArgoRunner) commit(ctx context.Context, dir string, step Step, stdout, 
 
 	for _, file := range step.Files {
 		if err := os.MkdirAll(filepath.Dir(file.Path), 0o755); err != nil {
-			return fmt.Errorf("caf deploy: create the directory for %s: %w", file.Path, err)
+			return fmt.Errorf("cafe deploy: create the directory for %s: %w", file.Path, err)
 		}
 		if err := os.WriteFile(file.Path, []byte(file.Content), 0o600); err != nil {
-			return fmt.Errorf("caf deploy: write %s for the %s step: %w", file.Path, step.Name, err)
+			return fmt.Errorf("cafe deploy: write %s for the %s step: %w", file.Path, step.Name, err)
 		}
 	}
 
@@ -214,11 +214,11 @@ func (r *ArgoRunner) commit(ctx context.Context, dir string, step Step, stdout, 
 	// the two files the deploy writes.
 	add := append([]string{"git", "add"}, filePaths(step.Files)...)
 	if err := r.run(ctx, dir, add, stdout, stderr); err != nil {
-		return fmt.Errorf("caf deploy: stage the release: %w", err)
+		return fmt.Errorf("cafe deploy: stage the release: %w", err)
 	}
 
 	if err := r.run(ctx, dir, step.Argv, stdout, stderr); err != nil {
-		return fmt.Errorf("caf deploy: commit the release: %w", err)
+		return fmt.Errorf("cafe deploy: commit the release: %w", err)
 	}
 	return nil
 }
@@ -230,14 +230,14 @@ func (r *ArgoRunner) commit(ctx context.Context, dir string, step Step, stdout, 
 func (r *ArgoRunner) push(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error {
 	remotes, err := gitOutput(dir, "remote")
 	if err != nil {
-		return fmt.Errorf("caf deploy: read the git remotes: %w", err)
+		return fmt.Errorf("cafe deploy: read the git remotes: %w", err)
 	}
 	if strings.TrimSpace(remotes) == "" {
 		fmt.Fprintf(stdout, "\n%s\n\n", ErrRefused)
 		fmt.Fprintf(stdout, "  the service repository has no git remote, so the release commit cannot be pushed.\n")
 		fmt.Fprintf(stdout, "  The publish workflow pushes the new OCI tag and Argo syncs it, and both need\n")
 		fmt.Fprintf(stdout, "  the commit on a remote. Add the remote the service repository is published\n")
-		fmt.Fprintf(stdout, "  from, then deploy again — caf pushes; it does not hand the commit to an operator.\n")
+		fmt.Fprintf(stdout, "  from, then deploy again — cafe pushes; it does not hand the commit to an operator.\n")
 		return fmt.Errorf("%w: no git remote to push to", ErrRefused)
 	}
 	return r.run(ctx, dir, step.Argv, stdout, stderr)
@@ -250,7 +250,7 @@ func (r *ArgoRunner) push(ctx context.Context, dir string, step Step, stdout, st
 func (r *ArgoRunner) dirtyPaths(ctx context.Context, dir string) ([]string, error) {
 	out, err := gitOutput(dir, "status", "--porcelain")
 	if err != nil {
-		return nil, fmt.Errorf("caf deploy: read the working tree: %w", err)
+		return nil, fmt.Errorf("cafe deploy: read the working tree: %w", err)
 	}
 	var paths []string
 	for _, line := range strings.Split(out, "\n") {
@@ -268,23 +268,23 @@ func (r *ArgoRunner) dirtyPaths(ctx context.Context, dir string) ([]string, erro
 }
 
 // syncWait polls the Application's status until Argo has synced the revision
-// caf committed and the service is healthy, or fails with the status it
+// cafe committed and the service is healthy, or fails with the status it
 // stopped at.
 //
 // # Why it refuses to claim a deploy that leaves targetRevision behind
 //
-// The deploy lever is the chart version: caf bumps it, commits, and pushes.
+// The deploy lever is the chart version: cafe bumps it, commits, and pushes.
 // The Application's targetRevision must then move to the new version — a
-// second commit in kit, or an operator action, which caf does not make. So
-// the wait is for the Application's SYNCED revision to match the version caf
+// second commit in kit, or an operator action, which cafe does not make. So
+// the wait is for the Application's SYNCED revision to match the version cafe
 // committed. Until it does, Argo is still running the old chart, and a deploy
 // that reported success then would be a deploy that lied about what is
 // running. The status it stopped at is the report: the revision Argo has
-// synced, the health it reports, and the version caf expected.
+// synced, the health it reports, and the version cafe expected.
 func (r *ArgoRunner) syncWait(ctx context.Context, plan Plan, stdout, stderr io.Writer) error {
 	step := plan.Step(SyncWait)
 	if step.Argv == nil {
-		return fmt.Errorf("caf deploy: the plan has no %q step, so there is nothing to wait for", SyncWait)
+		return fmt.Errorf("cafe deploy: the plan has no %q step, so there is nothing to wait for", SyncWait)
 	}
 	deadline := time.Now().Add(syncTimeoutForTests)
 	asked := 0
@@ -295,7 +295,7 @@ func (r *ArgoRunner) syncWait(ctx context.Context, plan Plan, stdout, stderr io.
 			// An unreachable Argo is not a sync that is slow. It is a fact
 			// about the cluster, and reporting it as a timeout would send an
 			// operator to a clock instead of to the kubeconfig.
-			return fmt.Errorf("caf deploy: Argo is not reachable, so there is no sync to wait for: %w\n"+
+			return fmt.Errorf("cafe deploy: Argo is not reachable, so there is no sync to wait for: %w\n"+
 				"  The poll is read-only — %s — and it failed, which means the cluster\n"+
 				"  is not answering. Check the kubeconfig and that the argocd namespace\n"+
 				"  is the one the Application lives in.", err, step.Command())
@@ -315,12 +315,12 @@ func (r *ArgoRunner) syncWait(ctx context.Context, plan Plan, stdout, stderr io.
 			}
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("caf deploy: Argo never converged.\n"+
+			return fmt.Errorf("cafe deploy: Argo never converged.\n"+
 				"  The deploy committed revision %s and pushed it, but the Application's synced\n"+
-				"  revision is %s (%s), which is not the version caf released.\n"+
+				"  revision is %s (%s), which is not the version cafe released.\n"+
 				"  The deploy lever is the chart version: the Application's targetRevision must\n"+
 				"  move to %s for Argo to sync the new revision. That is a second commit in kit,\n"+
-				"  or an operator action — caf writes commits, never the cluster, and never\n"+
+				"  or an operator action — cafe writes commits, never the cluster, and never\n"+
 				"  another repository's tree. Move targetRevision, then deploy again.\n"+
 				"  The status it stopped at: revision %s, health %s.",
 				plan.Version, fields[0], fields[1], plan.Version, fields[0], fields[1])
@@ -425,7 +425,7 @@ func runArgoDeploy(ctx context.Context, r Runner, req Request, stdout, stderr io
 	}
 	info, err := os.Stat(abs)
 	if err != nil || !info.IsDir() {
-		return fmt.Errorf("caf deploy: %s is not a directory caf can read: %w", abs, err)
+		return fmt.Errorf("cafe deploy: %s is not a directory cafe can read: %w", abs, err)
 	}
 
 	dep := Deployment{Dir: abs, Service: req.Service}
@@ -453,7 +453,7 @@ func runArgoDeploy(ctx context.Context, r Runner, req Request, stdout, stderr io
 	fmt.Fprintf(stdout, "%s: releasing %s from %s with kubectl %s\n",
 		plan.Service, plan.Version, shortPath(plan.Dir), version)
 	fmt.Fprintf(stdout, "  the release is a values commit: the image tag and the chart version ride\n")
-	fmt.Fprintf(stdout, "  inside the OCI chart artifact, and the only lever caf has is a commit\n")
+	fmt.Fprintf(stdout, "  inside the OCI chart artifact, and the only lever cafe has is a commit\n")
 
 	cause := runArgoSteps(ctx, r, plan, stdout, stderr)
 	if cause != nil {
@@ -468,7 +468,7 @@ func runArgoSteps(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Wr
 	for _, name := range []string{Commit, Push, SyncWait} {
 		step := plan.Step(name)
 		if step.Argv == nil {
-			return fmt.Errorf("caf deploy: the plan has no %q step, so the deploy stopped there rather than pretending", name)
+			return fmt.Errorf("cafe deploy: the plan has no %q step, so the deploy stopped there rather than pretending", name)
 		}
 		fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 		if err := r.Run(ctx, plan.Dir, step, stdout, stderr); err != nil {
@@ -483,14 +483,14 @@ func runArgoSteps(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Wr
 // It names the revision Argo synced and the commit it was built from, because
 // "the deploy succeeded" is a claim about a sync this package observed, and
 // the revision is the proof. It also says what the deploy did NOT do — move
-// the targetRevision — because that is the second move caf cannot make, and
+// the targetRevision — because that is the second move cafe cannot make, and
 // a report that left it out would read as a complete deploy when it is not.
 func argoSuccessReport(plan Plan, stdout io.Writer) error {
 	fmt.Fprintf(stdout, "\n%s: Argo synced revision %s\n", plan.Service, plan.Version)
 	fmt.Fprintf(stdout, "  the values commit is pushed and the Application reports the service healthy at\n")
-	fmt.Fprintf(stdout, "  the revision caf released. The commit was built from %s.\n", plan.Commit)
+	fmt.Fprintf(stdout, "  the revision cafe released. The commit was built from %s.\n", plan.Commit)
 	fmt.Fprintf(stdout, "  what this did NOT do: move the Application's targetRevision. That is a second\n")
-	fmt.Fprintf(stdout, "  commit in kit, or an operator action — caf writes commits, never the cluster,\n")
+	fmt.Fprintf(stdout, "  commit in kit, or an operator action — cafe writes commits, never the cluster,\n")
 	fmt.Fprintf(stdout, "  and never another repository's tree. If the targetRevision is not at %s, the\n", plan.Version)
 	fmt.Fprintf(stdout, "  sync above is Argo reporting the old chart, and the deploy is not complete.\n")
 	return nil
@@ -509,7 +509,7 @@ func argoFailureReport(plan Plan, stdout io.Writer, cause error) error {
 	fmt.Fprint(stdout, "  still running the old revision, and the service is not serving the release.\n")
 	fmt.Fprint(stdout, "  the reason is the command's own, above.\n")
 	// ErrDeployFailed is a sentinel so the caller can tell "the report is above"
-	// from "caf failed before it could report anything" — the first is errReported
+	// from "cafe failed before it could report anything" — the first is errReported
 	// (exit 1, stderr empty), the second is an error that belongs there.
 	return fmt.Errorf("%w: %s", ErrDeployFailed, plan.Service)
 }
@@ -521,7 +521,7 @@ func argoFailureReport(plan Plan, stdout io.Writer, cause error) error {
 // value a real run writes — so the document on the screen and the document on
 // disk are one fact, and a dry run cannot drift from the run it describes.
 func printArgoDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what caf deploy would run:\n\n")
+	fmt.Fprintf(stdout, "\nthis is what cafe deploy would run:\n\n")
 	for _, step := range plan.Steps {
 		fmt.Fprintf(stdout, "  %s\n", step.Command())
 		fmt.Fprintf(stdout, "      %s\n", step.Why)
@@ -534,7 +534,7 @@ func printArgoDryRun(stdout io.Writer, plan Plan) {
 	fmt.Fprintf(stdout, "file in %s was written — the two documents above are the files the commit\n", plan.Dir)
 	fmt.Fprintf(stdout, "would write, printed rather than written. The sync-wait a real run makes was\n")
 	fmt.Fprintf(stdout, "not made: it is a read of the Application's status, and a dry run touches no cluster.\n")
-	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  caf deploy --engine argo%s %s\n", yesFlag(plan), plan.Service)
+	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  cafe deploy --engine argo%s %s\n", yesFlag(plan), plan.Service)
 }
 
 // strconv is used by bumpPatch in plan.go; this file needs no such import.

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// The three things caf has to say to the shell inside the backup accessory, and
+// The three things cafe has to say to the shell inside the backup accessory, and
 // the escaping that makes them arrive.
 //
 // Everything here was measured against ghcr.io/crmne/kamal-backup:0.5.2 and
@@ -158,7 +158,7 @@ func TestTheShellCarrierIsEnvDashSAndNotShDashC(t *testing.T) {
 
 // Every script starts by turning DATABASE_URL into PG* variables, because libpq
 // reads those and nothing else — the accessory's environment has no PG* at all,
-// which is why this cannot be done by caf on the outside.
+// which is why this cannot be done by cafe on the outside.
 func TestEveryScriptDerivesTheConnectionFromTheEnvironmentAndNeverAnArgument(t *testing.T) {
 	scripts := map[string]string{
 		"create": CreateScript("caf_drill"),
@@ -232,7 +232,7 @@ func TestTheAssertionComparesTheCountRatherThanPrintingIt(t *testing.T) {
 	// The counts are echoed, because the gem captures the check's output and prints
 	// it, and "the drill passed" with no number in the transcript is a claim about
 	// a verdict this package did not make.
-	if !strings.Contains(script, `echo "caf backup: $t holds ${n:-0} rows`) {
+	if !strings.Contains(script, `echo "cafe backup: $t holds ${n:-0} rows`) {
 		t.Errorf("the assertion does not report the counts it checked:\n%s", script)
 	}
 	// A missing table must fail, not read as zero and be reported as a number.

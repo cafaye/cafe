@@ -56,7 +56,7 @@ type Options struct {
 }
 
 // Daemon is one running box daemon. It is a value with no package-level
-// state, per the house rule: two caf boxd processes on one box are two
+// state, per the house rule: two cafe boxd processes on one box are two
 // Daemons, and neither can reach the other's connection.
 type Daemon struct {
 	opts Options
@@ -95,7 +95,7 @@ func Open(opts Options) (*Daemon, error) {
 // conductor is not a busy loop.
 //
 // With Once, a round that completed without the context ending is the
-// daemon's whole life: `caf boxd -once` returns after one capability, so an
+// daemon's whole life: `cafe boxd -once` returns after one capability, so an
 // operator can watch one round trip happen rather than signalling a daemon
 // they cannot see.
 func (d *Daemon) Run(ctx context.Context) error {

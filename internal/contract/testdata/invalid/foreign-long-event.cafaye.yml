@@ -1,4 +1,4 @@
-# EXPECTED FAILURE — the JSON Schema accepts this file; the caf cross-field
+# EXPECTED FAILURE — the JSON Schema accepts this file; the cafe cross-field
 # rules in docs/manifest-conventions.md do not.
 #
 # Rule 1: every published event type starts with the publisher's own name.

@@ -28,7 +28,7 @@ type Phase struct {
 	// Summary is the paragraph a plan prints.
 	Summary string `json:"summary"`
 	// Handoff is what actually runs this phase: kit's installer (W2-P4) under
-	// `caf boxd` (W2-P7). It is recorded here, as a string, so the plan can
+	// `cafe boxd` (W2-P7). It is recorded here, as a string, so the plan can
 	// name the work without pretending to run it.
 	Handoff string `json:"handoff"`
 	// Human marks the phases invariant 5 requires a person for. The install is
@@ -37,7 +37,7 @@ type Phase struct {
 	Human bool `json:"human,omitempty"`
 }
 
-// phaseEnrolled is phase zero, the state `caf box enroll` leaves behind. It is
+// phaseEnrolled is phase zero, the state `cafe box enroll` leaves behind. It is
 // in the table because a plan that starts at the first thing you still have to
 // do reads wrong on a box that has done nothing else.
 const phaseEnrolled = "enrolled"
@@ -50,7 +50,7 @@ var Phases = []Phase{
 	{
 		Name: phaseEnrolled, Title: "Enrolled",
 		Summary: "The box has a keypair, has redeemed its capability and is recognised by conductor.",
-		Handoff: "caf box enroll --token …",
+		Handoff: "cafe box enroll --token …",
 	},
 	{
 		Name: "substrate", Title: "Kubernetes substrate",
@@ -74,13 +74,13 @@ var Phases = []Phase{
 	},
 	{
 		Name: "app", Title: "The customer's app",
-		Summary: "caf new scaffolds the service and caf deploy ships it behind the box's ingress.",
-		Handoff: "caf new && caf deploy --engine argo",
+		Summary: "cafe new scaffolds the service and cafe deploy ships it behind the box's ingress.",
+		Handoff: "cafe new && cafe deploy --engine argo",
 	},
 	{
 		Name: "ready", Title: "Serving",
 		Summary: "The box answers on its domain with a certificate it issued itself, and the app is live.",
-		Handoff: "caf box verify",
+		Handoff: "cafe box verify",
 	},
 }
 
@@ -104,7 +104,7 @@ func PhaseNames() []string {
 	return out
 }
 
-// Status is what `caf box status` reports: the box, where it is, what is next,
+// Status is what `cafe box status` reports: the box, where it is, what is next,
 // and the facts `verify` checks — presented together because an agent asking
 // "is this box healthy" should not have to ask twice.
 type Status struct {
@@ -174,7 +174,7 @@ func (s *Store) Status() (*Status, error) {
 	return st, nil
 }
 
-// PlanStep is one row of `caf box plan`: a phase, where it stands, and what
+// PlanStep is one row of `cafe box plan`: a phase, where it stands, and what
 // would run it.
 type PlanStep struct {
 	Phase
@@ -219,12 +219,12 @@ func (s *Store) Plan() (*Plan, error) {
 	if cur+1 < len(Phases) {
 		plan.Next = Phases[cur+1].Name
 	} else {
-		plan.Reason = "every phase has been reached; run `caf box verify` to check the box's own record of itself"
+		plan.Reason = "every phase has been reached; run `cafe box verify` to check the box's own record of itself"
 	}
 	return plan, nil
 }
 
-// ApplyResult is what one `caf box apply` did.
+// ApplyResult is what one `cafe box apply` did.
 type ApplyResult struct {
 	Action  string `json:"action"`
 	BoxID   string `json:"box_id"`
@@ -257,7 +257,7 @@ func PhaseError(name string) error {
 }
 
 // Apply takes the box to a phase. It is the record of the install, not the
-// installer: kit's install.sh and `caf boxd` run the phases, and this writes
+// installer: kit's install.sh and `cafe boxd` run the phases, and this writes
 // down that one was reached.
 //
 // Three rules, and each is a refusal rather than a warning:
@@ -298,7 +298,7 @@ func (s *Store) Apply(phase string) (*ApplyResult, error) {
 		return res, nil
 	case want > cur+1:
 		res.Action = ApplyRefused
-		return nil, fmt.Errorf("caf box apply: %s is not the next phase — the box is at %s, so the next one is %s; the install is sequential and skipping is not a shortcut, it is a box that reports a state it has not reached", Phases[want].Name, id.Phase, Phases[cur+1].Name)
+		return nil, fmt.Errorf("cafe box apply: %s is not the next phase — the box is at %s, so the next one is %s; the install is sequential and skipping is not a shortcut, it is a box that reports a state it has not reached", Phases[want].Name, id.Phase, Phases[cur+1].Name)
 	}
 
 	id.Phase = Phases[want].Name
@@ -337,7 +337,7 @@ func (s *Store) events() ([]Event, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("caf box: read the event log: %w", err)
+		return nil, fmt.Errorf("cafe box: read the event log: %w", err)
 	}
 	var out []Event
 	for _, line := range strings.Split(string(raw), "\n") {
@@ -361,7 +361,7 @@ func (s *Store) appendEvent(action, phase, message string) {
 	e := Event{At: s.stamp(), Action: action, Phase: phase, Message: message}
 	raw, err := json.Marshal(e)
 	if err != nil {
-		return // a log line that will not encode is a log line caf does not have
+		return // a log line that will not encode is a log line cafe does not have
 	}
 	f, err := os.OpenFile(s.eventsPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
@@ -371,7 +371,7 @@ func (s *Store) appendEvent(action, phase, message string) {
 	f.Write(append(raw, '\n'))
 }
 
-// VerifyFact is one thing `caf box verify` checked, reported as a fact rather
+// VerifyFact is one thing `cafe box verify` checked, reported as a fact rather
 // than a verdict, so the output is a document an agent can branch on.
 type VerifyFact struct {
 	Name   string `json:"name"`

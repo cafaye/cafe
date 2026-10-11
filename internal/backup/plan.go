@@ -8,38 +8,38 @@ import (
 	"time"
 )
 
-// The plan is the whole decision `caf backup` makes: which commands run, in
+// The plan is the whole decision `cafe backup` makes: which commands run, in
 // what order, and what each one is for.
 //
 // It is pure. It reads no file, opens no socket and runs no command, which is
 // what lets a test assert the exact argv of a dry run without a container
 // runtime, a restic repository or an SSH connection anywhere in sight.
 
-// ErrUsage is the sentinel for "caf was invoked wrongly", which is a different
+// ErrUsage is the sentinel for "cafe was invoked wrongly", which is a different
 // class from both a refusal and a failed cycle and gets a different exit code.
 //
 // A missing --table and a table name that cannot be written down unquoted are
 // both the operator's flags, not a configuration somebody committed and a
-// deployment that did not do what it said. caf exit-2s those and exit-1s the other
+// deployment that did not do what it said. cafe exit-2s those and exit-1s the other
 // two, so a pipeline can tell "I called it wrong" from "it refused" from "it ran
 // and something broke" — three different fixes behind three different codes.
-var ErrUsage = errors.New("caf backup: invalid invocation")
+var ErrUsage = errors.New("cafe backup: invalid invocation")
 
-// Options is one `caf backup` invocation's choices, after flag parsing.
+// Options is one `cafe backup` invocation's choices, after flag parsing.
 type Options struct {
 	// Env is the Kamal destination, "" for none.
 	Env string
 	// Scratch is the database the restore is drilled into. It is the operator's
-	// name for a database caf is about to create and drop; whether the name is
-	// ALLOWED is not caf's decision, and PlanFor only checks that it can be
+	// name for a database cafe is about to create and drop; whether the name is
+	// ALLOWED is not cafe's decision, and PlanFor only checks that it can be
 	// written down without a shell quoting it. The production-name rule belongs
 	// to kamal-backup (Config#production_like_target?) and to
 	// cafaye/kit's templates/kamal/drill.sh, and both of them say so when it
-	// fires. See the package doc for why caf keeps no copy of it.
+	// fires. See the package doc for why cafe keeps no copy of it.
 	Scratch string
 	// Tables are the tables that must hold rows after the restore. At least one:
 	// a restore whose only proof is that a command exited zero is not a drill,
-	// which is kit's reason for requiring --table and caf's reason for requiring
+	// which is kit's reason for requiring --table and cafe's reason for requiring
 	// the same thing here.
 	Tables []string
 	// Timeout bounds each command. Every step that boots, pulls, dumps or
@@ -293,7 +293,7 @@ func PlanFor(cover Cover, backupDoc Config, o Options) (Plan, error) {
 				Name: Preflight,
 				// `kamal version`, NOT `kamal --version`: the latter is not a
 				// subcommand, it prints the command list and exits 1. Measured on
-				// kamal 2.12.0, and inherited from caf deploy, which found it by
+				// kamal 2.12.0, and inherited from cafe deploy, which found it by
 				// running it rather than by reading.
 				Argv: []string{"kamal", "version"},
 				Why:  "kamal is the deploy engine; this prints its version and fails if it is not installed",
@@ -302,7 +302,7 @@ func PlanFor(cover Cover, backupDoc Config, o Options) (Plan, error) {
 			{
 				Name: Resolve,
 				Argv: append([]string{"kamal", "config"}, destinationArgs(o.Env)...),
-				Why:  "reads config/deploy.yml with its ERB evaluated, and is the document caf checks the backup config against",
+				Why:  "reads config/deploy.yml with its ERB evaluated, and is the document cafe checks the backup config against",
 				On:   Always,
 			},
 			{
@@ -407,7 +407,7 @@ func PlanForCNPG(cover Cover, o Options) (Plan, error) {
 	}
 
 	// The cluster is the service being backed up: CloudNativePG names a cluster
-	// after the PostgreSQL instance it manages, and caf's service name is the
+	// after the PostgreSQL instance it manages, and cafe's service name is the
 	// name the operator already types. The backup and scratch names are derived
 	// from it deterministically, so a dry run prints the same names a real run
 	// would use — a plan that guessed at a backup name would be a plan whose

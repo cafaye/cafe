@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/backup"
-	"github.com/cafaye/caf/internal/cve"
-	"github.com/cafaye/caf/internal/failure"
-	"github.com/cafaye/caf/internal/secret"
+	"github.com/cafaye/cafe/internal/backup"
+	"github.com/cafaye/cafe/internal/cve"
+	"github.com/cafaye/cafe/internal/failure"
+	"github.com/cafaye/cafe/internal/secret"
 )
 
 // fixture is one box's month, in every shape the report consumes. It is built
@@ -346,7 +346,7 @@ func TestADrillOnTheBoundaryBelongsToTheNextMonth(t *testing.T) {
 // is the control that stops it: the real inventory, through the real state, must
 // produce the same answer through both. If OPS-P10 moves its rule, this test
 // goes red and names the entry rather than the report quietly disagreeing with
-// `caf secret inventory` about what a customer owes.
+// `cafe secret inventory` about what a customer owes.
 func TestTheDueRuleIsTheSecretPacketsOwn(t *testing.T) {
 	now := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
 	state := secret.NewState()

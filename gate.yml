@@ -1,10 +1,10 @@
-# gate.yml — how caf is gated, declared rather than guessed.
+# gate.yml — how cafe is gated, declared rather than guessed.
 #
 # WHY THIS FILE EXISTS. cafaye/core owns the format
 # (`schemas/gate.schema.json`), the checker (`harness/gate_check.py`) and the
 # reasoning (`docs/gate.md`). Across the fifteen repositories in the cafaye
 # workspace "run the gate" had five different spellings, and every one of them
-# was found by a human getting it wrong. This is caf's, and every number in it
+# was found by a human getting it wrong. This is cafe's, and every number in it
 # was measured on this tree at de25e37 + caf-07 — not copied from core's, not
 # from another service's, and not rounded.
 #
@@ -26,13 +26,13 @@
 # `notEnforced`, and neither is restated here as if this file closed it.
 #
 # WHAT THIS DECLARATION DELIBERATELY DOES NOT CLAIM. It does not claim the
-# container tier ran. caf's live tests assert a property of a *particular*
+# container tier ran. cafe's live tests assert a property of a *particular*
 # container runtime, one of them is red on the machine this was written on, and
 # both reasons are measured and written out at `gate.proof[].live-tier` and in
 # `external.requirements`. Read that section before concluding the gate covers
 # the whole tree.
 version: 1
-name: caf
+name: cafe
 
 gate:
   # An argv, never a shell string, so the exit code is the gate's own. This
@@ -41,7 +41,7 @@ gate:
   #
   # `bin/prime`, not `mise run prime`. courier has to name mise because its
   # `bin/prime` calls `mix local.hex --force` and dies without mise's shims on
-  # PATH; caf's does not — it calls `go`, `go list` and `grep` directly, and
+  # PATH; cafe's does not — it calls `go`, `go list` and `grep` directly, and
   # needs nothing mise installs to be found. So the shortest true argv is the
   # script, and `mise run prime` is checked below to resolve to the same file.
   command: [bin/prime]
@@ -85,32 +85,32 @@ gate:
     # deleting exactly such workarounds elsewhere in the fleet. `go test` does
     # not colourise when its output is not a terminal anyway.
     - id: packages
-      match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 28, measured with `go list ./...` on this tree: internal/publish landed with W11 (caf publish).
+      match: '^cafe: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
+      # 28, measured with `go list ./...` on this tree: internal/publish landed with W11 (cafe publish).
       # The security and substance packages are pinned by name and existence:
       # emitter, box, boxd, agent, provider, run, resolve, scaffold, publish.
       minimum: 28
     - id: suite
-      match: '^caf: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
+      match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
       # 1259, measured with `./bin/prime` on this tree (28 packages, 1234 subtests, 8 skips).
       # The floor moved twice in the Cafaye Ops wave: OPS-P9 (backup drill) and
       # OPS-P10/P11/P12 (secret inventory, cve surface, failure library) and
       # OPS-P13 (the monthly report) each added top-level tests and no subtests,
-      # so only this number changed. W11 (caf publish) added both: the
+      # so only this number changed. W11 (cafe publish) added both: the
       # decision table in internal/cli and the proposal/sequence tests in
-      # internal/publish. W13 (caf owner addressing) added top-level tests in
+      # internal/publish. W13 (cafe owner addressing) added top-level tests in
       # internal/resolve (the address read, the ambiguity retry, the wrong-owner
       # refusal), internal/publish (the 201 body's address) and internal/cli
       # (the slash form).
       minimum: 1259
     - id: subtests
-      match: '^caf: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
+      match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1234, measured: internal/cve's classification tables, the cve CLI
       # verbs, and W11's table-driven publish cases.
       minimum: 1234
 
     - id: live-tier
-      match: '^caf: live tier: [0-9]+ of 7 executed'
+      match: '^cafe: live tier: [0-9]+ of 7 executed'
 
 external:
   # NOT self-contained, and saying so is the point. `bin/prime` needs a Go
@@ -203,7 +203,7 @@ external:
   #   * no database and no service beyond the conditional one above. Nothing in
   #     the gate opens a socket to anything but the loopback interface;
   #     `internal/ports`' tests bind `127.0.0.1` and `::1` and nothing else.
-  #   * no credential, and no secret of any kind. caf reads no token, key or JWT
+  #   * no credential, and no secret of any kind. cafe reads no token, key or JWT
   #     anywhere in this tree, and this declaration introduces none: every
   #     `satisfy.command` above is a binary name. The live tier touches the
   #     Docker socket, and the reaper connection carries a session label and
@@ -221,7 +221,7 @@ ci:
   # that means CI and the local gate have drifted into two different gates.
   #
   # The plain one-line spelling, deliberately, and it is already the shape
-  # caf's workflow uses at ci.yml's `the gate a developer runs` step:
+  # cafe's workflow uses at ci.yml's `the gate a developer runs` step:
   # `run: ./bin/prime`. As of core 63fd319 the checker reads every `run:`
   # spelling — one-liners, `- run:` sequence items, and bare `run:` with the
   # value on the lines below — so there is no longer any reason to reach for an

@@ -13,7 +13,7 @@
 //
 // The third engine is the only one whose target is a cafaye deployment rather
 // than one the operator owns, and it is the reason the seam was worth building:
-// before it, `caf deploy` had two engines and both pointed at something the
+// before it, `cafe deploy` had two engines and both pointed at something the
 // operator runs themselves, which is the "nowhere cafaye-operated to deploy to"
 // gap AGENTS-FIRST.md named as knowingly not done. It ships REFUSED, and
 // remote.go holds why: one deployment serving many accounts is only safe once
@@ -22,7 +22,7 @@
 // variable or a config key, because a tenancy decision a CI job could set with
 // nobody deciding it is not a decision.
 //
-// # Why caf drives engines rather than being them
+// # Why cafe drives engines rather than being them
 //
 // Neither engine is reimplemented. Kamal owns the build, the push, the proxy
 // boot, the rolling rollout, the health gate and the rollback; Argo owns the
@@ -30,12 +30,12 @@
 // be a second deploy engine that can disagree with the first about what a
 // deploy is, and the disagreement would be discovered in production.
 //
-// So caf owns the part on either side of the engine: the refusal that should
+// So cafe owns the part on either side of the engine: the refusal that should
 // happen before it, and the report that has to be true after it.
 //
 // # What a deploy means under each engine
 //
-// Under Kamal, caf runs exactly one command that changes anything — `kamal
+// Under Kamal, cafe runs exactly one command that changes anything — `kamal
 // setup` — and refuses an accessory port published on every interface of the
 // host. Under Argo, the substrate is pull-only: CI never holds cluster
 // credentials, and the only thing that changes the cluster is a commit. So a

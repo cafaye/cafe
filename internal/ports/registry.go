@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cafaye/caf/internal/ledger"
+	"github.com/cafaye/cafe/internal/ledger"
 )
 
 // The three refusals, and why each is its own sentinel. A caller that cannot tell
-// them apart cannot act on them: one is a machine fact, one is caf working, and
+// them apart cannot act on them: one is a machine fact, one is cafe working, and
 // one is a policy decision the caller made.
 var (
 	// ErrExhausted is a block with nothing left in it. It names the block,
@@ -18,11 +18,11 @@ var (
 	// what a port outside the block looks like the morning after, and "could not
 	// find a free port" is not enough to act on.
 	ErrExhausted = errors.New("no free port in the block")
-	// ErrHeld is a port another live caf session has reserved. It is the design
+	// ErrHeld is a port another live cafe session has reserved. It is the design
 	// working, not a problem, and it is distinct from ErrBusy so a report can
 	// say "another worker has it" rather than "something is there".
-	ErrHeld = errors.New("port reserved by another caf session")
-	// ErrOutsideBlock is a port the caller chose from outside the block. caf
+	ErrHeld = errors.New("port reserved by another cafe session")
+	// ErrOutsideBlock is a port the caller chose from outside the block. cafe
 	// picks ports from the block or refuses; it never reaches outside.
 	ErrOutsideBlock = errors.New("port outside the block")
 )
@@ -38,7 +38,7 @@ type Registry struct {
 
 // New builds a registry. The prober and the block are arguments rather than
 // constants so a caller can narrow the block (a test, a machine that reserves
-// half of caf's) and so the loopback prober is a decision rather than an
+// half of cafe's) and so the loopback prober is a decision rather than an
 // ambient fact.
 func New(block Block, l *ledger.Ledger, prober Prober) (*Registry, error) {
 	if err := block.Validate(); err != nil {
@@ -59,7 +59,7 @@ func (r *Registry) Block() Block { return r.block }
 // Reservation is one held port. Holding it is the mechanism; the ledger row is
 // the record. The two are not the same thing and the difference is what makes a
 // crash survivable: the kernel drops the lock when the process dies, and
-// `caf reclaim` uses exactly that to tell a stale row from a live reservation.
+// `cafe reclaim` uses exactly that to tell a stale row from a live reservation.
 type Reservation struct {
 	Port    int
 	Session string
@@ -76,7 +76,7 @@ type Reservation struct {
 // Release gives the port back and clears the ledger row.
 //
 // It is safe to call twice, and it is safe to never call: the kernel releases
-// the lock when the process exits, which is the property that makes a caf killed
+// the lock when the process exits, which is the property that makes a cafe killed
 // mid-session leave nothing stranded.
 //
 // The receiver is a pointer so that a nil *Reservation is a no-op rather than a
@@ -102,7 +102,7 @@ func (r *Reservation) Release() error {
 }
 
 // PortLockName is the ledger lock a port's reservation is held on. It is
-// exported because `caf reclaim` has to be able to ask the same question the
+// exported because `cafe reclaim` has to be able to ask the same question the
 // registry asked — "is anybody holding this?" — and two spellings of a lock name
 // is one of them being wrong.
 func PortLockName(port int) string { return "port-" + strconv.Itoa(port) }
@@ -158,18 +158,18 @@ func (r *Registry) ReserveContext(ctx context.Context, session string, gen, n in
 	}
 	if len(held) < n {
 		release()
-		return nil, fmt.Errorf("%w: %d of %d found; every port in %s is either held by a live caf session or in use by something the ledger does not know about (caf reclaim --yes reports which)",
+		return nil, fmt.Errorf("%w: %d of %d found; every port in %s is either held by a live cafe session or in use by something the ledger does not know about (cafe reclaim --yes reports which)",
 			ErrExhausted, len(held), n, r.block)
 	}
 	return held, nil
 }
 
 // TryReserve reserves one port the caller named, and refuses rather than moving.
-// `caf dev -port N` is a developer's decision: caf checks it, says what is
+// `cafe dev -port N` is a developer's decision: cafe checks it, says what is
 // there, and does not silently publish somewhere else.
 func (r *Registry) TryReserve(port int) (*Reservation, error) {
 	if !r.block.Contains(port) {
-		return nil, fmt.Errorf("%w: %d is not in %s; caf publishes from the block or not at all (that is how 21101 and 55432 happened)",
+		return nil, fmt.Errorf("%w: %d is not in %s; cafe publishes from the block or not at all (that is how 21101 and 55432 happened)",
 			ErrOutsideBlock, port, r.block)
 	}
 	return r.take(context.Background(), "", 0, port)
@@ -177,7 +177,7 @@ func (r *Registry) TryReserve(port int) (*Reservation, error) {
 
 // take is one port: hold the lock, probe both families, record the row.
 //
-// The lock is taken *before* the probe and held afterwards, so two caf sessions
+// The lock is taken *before* the probe and held afterwards, so two cafe sessions
 // racing for the same port are serialised by the kernel rather than by
 // whoever's probe happened to run last. A probe that answered first and locked
 // second would leave a window in which both had said yes.
@@ -208,8 +208,8 @@ func (r *Registry) take(ctx context.Context, session string, gen, port int) (*Re
 	reservation := &Reservation{Port: port, Session: session, Gen: gen, lock: lock, ledger: r.ledger}
 	if session != "" {
 		// The row is written before anything can act on the port, which is the
-		// same ordering rule the stack entries follow: a caf killed here leaves a
-		// row naming a port nobody holds, and `caf reclaim` reports it
+		// same ordering rule the stack entries follow: a cafe killed here leaves a
+		// row naming a port nobody holds, and `cafe reclaim` reports it
 		// `:missing`. The other order leaves a held lock no row names.
 		entry, err := r.ledger.Reserve(ledger.Entry{
 			Session:  session,
@@ -241,7 +241,7 @@ func (r *Registry) holderDetail(port int) string {
 }
 
 // LedgerDir is where this registry's locks and entries live. It is exposed so a
-// caller that has to sweep the same ledger — `caf reclaim`, in a test — can reach
+// caller that has to sweep the same ledger — `cafe reclaim`, in a test — can reach
 // it rather than re-deriving the path and getting it subtly wrong.
 func (r *Registry) LedgerDir() string { return r.ledger.Dir() }
 

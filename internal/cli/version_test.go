@@ -14,17 +14,17 @@ func TestVersionString(t *testing.T) {
 		{
 			name: "release build",
 			in:   Version{Semver: "1.2.3", Commit: "abc1234"},
-			want: "caf 1.2.3 (commit abc1234)",
+			want: "cafe 1.2.3 (commit abc1234)",
 		},
 		{
 			name: "unreleased build",
 			in:   Version{Semver: "0.0.0-dev", Commit: "unknown"},
-			want: "caf 0.0.0-dev (commit unknown)",
+			want: "cafe 0.0.0-dev (commit unknown)",
 		},
 		{
 			name: "prerelease",
 			in:   Version{Semver: "2.0.0-rc.1", Commit: "deadbee"},
-			want: "caf 2.0.0-rc.1 (commit deadbee)",
+			want: "cafe 2.0.0-rc.1 (commit deadbee)",
 		},
 	}
 
@@ -38,11 +38,11 @@ func TestVersionString(t *testing.T) {
 }
 
 // The build identity is injected at link time, so the string must stay
-// parseable by eye and by script: "caf <semver> (commit <sha>)".
+// parseable by eye and by script: "cafe <semver> (commit <sha>)".
 func TestVersionStringFormat(t *testing.T) {
 	got := Version{Semver: "1.2.3", Commit: "abc1234"}.String()
 
-	for _, part := range []string{"caf ", "1.2.3", "commit ", "abc1234"} {
+	for _, part := range []string{"cafe ", "1.2.3", "commit ", "abc1234"} {
 		if !strings.Contains(got, part) {
 			t.Errorf("%q missing from %q", part, got)
 		}
@@ -58,12 +58,12 @@ func TestVersionCommand(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
 	}
-	if want := "caf 1.2.3 (commit abc1234)\n"; stdout != want {
+	if want := "cafe 1.2.3 (commit abc1234)\n"; stdout != want {
 		t.Errorf("stdout = %q, want %q", stdout, want)
 	}
 }
 
-// `caf version`, `caf --version` and `caf -v` must agree: a build that reports
+// `cafe version`, `cafe --version` and `cafe -v` must agree: a build that reports
 // two different versions is worse than one that reports none.
 func TestVersionFlagMatchesVersionCommand(t *testing.T) {
 	_, fromCommand, _ := runCLI(t, testVersion, "version")
@@ -85,7 +85,7 @@ func TestVersionDefaultsWhenNotInjected(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
-	if want := "caf " + devVersion + " (commit " + unknownCommit + ")\n"; stdout != want {
+	if want := "cafe " + devVersion + " (commit " + unknownCommit + ")\n"; stdout != want {
 		t.Errorf("stdout = %q, want %q", stdout, want)
 	}
 }

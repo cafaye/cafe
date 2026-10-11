@@ -12,13 +12,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/mcp"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/mcp"
 
 	"github.com/goccy/go-yaml"
 )
 
-// mcpOptions is the parsed flag state for `caf mcp`.
+// mcpOptions is the parsed flag state for `cafe mcp`.
 type mcpOptions struct {
 	transport string
 	addr      string
@@ -33,20 +33,20 @@ func newMCPCommand() *Command {
 	c := &Command{
 		Name:    "mcp",
 		Summary: "serve the cafaye tools over the Model Context Protocol",
-		Usage:   "caf mcp [flags]",
-		LongHelp: "Serves caf's tools to an agent over the Model Context Protocol.\n" +
+		Usage:   "cafe mcp [flags]",
+		LongHelp: "Serves cafe's tools to an agent over the Model Context Protocol.\n" +
 			"Most agent hosts spawn this as a child process and speak the stdio\n" +
 			"transport, which is the default:\n" +
 			"\n" +
-			"  caf mcp\n" +
+			"  cafe mcp\n" +
 			"\n" +
 			"The tools are the ones an agent operating a cafaye deployment needs,\n" +
-			"and every one of them is a read over work caf already does:\n" +
+			"and every one of them is a read over work cafe already does:\n" +
 			"\n" +
-			"  caf_doctor     the toolchain and project checks `caf doctor` reports\n" +
+			"  caf_doctor     the toolchain and project checks `cafe doctor` reports\n" +
 			"  caf_manifest   what a cafaye.yml declares, and its API document's version\n" +
 			"  caf_registry   what the service catalog says, and what the plan leaves out\n" +
-			"  caf_dev_plan   the stack `caf dev` would build, without starting it\n" +
+			"  caf_dev_plan   the stack `cafe dev` would build, without starting it\n" +
 			"  caf_dev_up     bring the local stack up\n" +
 			"  caf_dev_down   take the local stack down\n" +
 			"\n" +
@@ -67,9 +67,9 @@ func newMCPCommand() *Command {
 			"as this machine's own agent session.\n" +
 			"\n" +
 			"-registry is the service catalog the tools resolve dependencies through,\n" +
-			"the same one `caf dev -registry` takes; pantry serves the official one.\n" +
+			"the same one `cafe dev -registry` takes; pantry serves the official one.\n" +
 			"Without it a project that declares dependencies is reported as unresolvable,\n" +
-			"which is true and is what `caf dev` says too.\n" +
+			"which is true and is what `cafe dev` says too.\n" +
 			"\n" +
 			"On stdio, stdout is the protocol: this command writes nothing else to it,\n" +
 			"and its diagnostics go to stderr. On http it serves the streamable HTTP\n" +
@@ -98,11 +98,11 @@ func newMCPCommand() *Command {
 		transport, err := mcp.ParseTransport(opts.transport)
 		if err != nil {
 			// The person typed a word the flag does not take, which is how they
-			// invoke caf wrongly rather than a command that ran and failed.
-			return fmt.Errorf("%w: caf %s: %w", errUsage, c.Name, err)
+			// invoke cafe wrongly rather than a command that ran and failed.
+			return fmt.Errorf("%w: cafe %s: %w", errUsage, c.Name, err)
 		}
 		if err := checkLoopbackAddr(opts.addr); err != nil {
-			return fmt.Errorf("%w: caf %s: %w", errUsage, c.Name, err)
+			return fmt.Errorf("%w: cafe %s: %w", errUsage, c.Name, err)
 		}
 		return runMCP(transport, opts, env)
 	}
@@ -142,13 +142,13 @@ func runMCP(transport mcp.Transport, opts *mcpOptions, env *Env) error {
 		return server.ServeStdio(env.Context, os.Stdin, os.Stdout)
 	case mcp.HTTP:
 		return server.ServeHTTP(env.Context, opts.addr, func(addr string) {
-			fmt.Fprintf(env.Stderr, "caf mcp: serving streamable HTTP on http://%s\n", addr)
+			fmt.Fprintf(env.Stderr, "cafe mcp: serving streamable HTTP on http://%s\n", addr)
 		})
 	default:
 		// Unreachable: ParseTransport has already named every transport there
 		// is, and a new one that nobody dispatches here fails loudly at the one
 		// place that has to change.
-		return fmt.Errorf("caf mcp: %s is parsed but not served", transport)
+		return fmt.Errorf("cafe mcp: %s is parsed but not served", transport)
 	}
 }
 
@@ -187,10 +187,10 @@ func newMCPServer(env *Env, opts *mcpOptions) *mcp.Server {
 }
 
 // mcpTools holds what the handlers need: the environment, the service catalog
-// path they resolve dependencies through, and the `caf dev` seams the two
+// path they resolve dependencies through, and the `cafe dev` seams the two
 // mutating tools share with the command.
 //
-// devDeps is the same seam `caf dev` has and for the same reason: three of
+// devDeps is the same seam `cafe dev` has and for the same reason: three of
 // these tools start and stop containers, and a test that cannot substitute a
 // recording runtime is a test that needs Docker. The router fills in the real
 // wiring; a test fills in a fake and drives the whole path.
@@ -209,7 +209,7 @@ type mcpTools struct {
 // structured-content support. The types are the schema: a field's doc comment
 // is its description and there is no second copy to fall out of date.
 
-// doctorFacts is `caf doctor` as a value: the three tables the command prints,
+// doctorFacts is `cafe doctor` as a value: the three tables the command prints,
 // as fields an agent reads rather than as text it parses.
 type doctorFacts struct {
 	Tools      []doctorTool `json:"tools"`
@@ -322,7 +322,7 @@ type devSkip struct {
 	Reason  string `json:"reason"`
 }
 
-// planFacts is the stack `caf dev` would build, without anything started.
+// planFacts is the stack `cafe dev` would build, without anything started.
 type planFacts struct {
 	Project     string    `json:"project"`
 	Root        string    `json:"root"`
@@ -378,7 +378,7 @@ func (t *mcpTools) doctor() mcp.Tool[doctorArgs, doctorFacts] {
 			"Needs nothing: every section works on any directory. Returns the toolchain rows, then one check per " +
 			"fact about the project and the machine, then one about the reclamation ledger. " +
 			"Each check is ok, warn or fail, and each one that is not ok carries the exact command that fixes it. " +
-			"The verdict field is the whole report reduced to one word; a fail means caf doctor would exit 1. " +
+			"The verdict field is the whole report reduced to one word; a fail means cafe doctor would exit 1. " +
 			"Does not start, stop or build anything, and does not fix what it finds: read the rows and act on them. " +
 			"Pass tools_only to skip the project and reclamation halves.",
 		ReadOnly: true,
@@ -548,7 +548,7 @@ type apiInfo struct {
 }
 
 // readAPIDocument reads `info.title` and `info.version` out of a service's API
-// document. A document caf cannot read is reported as an error rather than as a
+// document. A document cafe cannot read is reported as an error rather than as a
 // blank version, because an agent that reads "version: " concludes the service
 // publishes one and it does not.
 func readAPIDocument(dir, name string) (apiInfo, error) {
@@ -662,13 +662,13 @@ func (t *mcpTools) skippedFor(dir string) ([]devSkip, error) {
 	return skipped, nil
 }
 
-// devPlan serves the stack `caf dev` would build, and stops there. It is the
-// `caf dev --dry-run` answer: the plan, the services, the start order and where
+// devPlan serves the stack `cafe dev` would build, and stops there. It is the
+// `cafe dev --dry-run` answer: the plan, the services, the start order and where
 // the compose document was written.
 func (t *mcpTools) devPlan() mcp.Tool[planArgs, planFacts] {
 	return mcp.Tool[planArgs, planFacts]{
 		Name: "caf_dev_plan",
-		Description: "Report the local stack `caf dev` would build for a project, and write the compose document to " +
+		Description: "Report the local stack `cafe dev` would build for a project, and write the compose document to " +
 			"the project directory without starting anything. Returns every service with its origin, image, published " +
 			"port and dependencies, the order they can be started in, and which declared dependencies were left out. " +
 			"Needs a project directory, the current one by default. " +
@@ -729,7 +729,7 @@ func (t *mcpTools) runDevPlan(ctx context.Context, args planArgs) (planFacts, er
 
 // devUp brings the local stack up. It is the one tool that starts something, and
 // it is the real path: the same plan, the same document and the same compose
-// call `caf dev` makes.
+// call `cafe dev` makes.
 func (t *mcpTools) devUp() mcp.Tool[planArgs, stackState] {
 	return mcp.Tool[planArgs, stackState]{
 		Name: "caf_dev_up",
@@ -785,7 +785,7 @@ func (t *mcpTools) devDown() mcp.Tool[downArgs, stackState] {
 
 func (t *mcpTools) runDevDown(ctx context.Context, args downArgs) (stackState, error) {
 	// The project name is the compose project's, which comes from the same plan
-	// `caf dev` builds — a teardown that named a stack by hand could stop a
+	// `cafe dev` builds — a teardown that named a stack by hand could stop a
 	// different one, and `down` with the wrong name silently succeeds.
 	dir := args.Project
 	if dir == "" {
@@ -821,7 +821,7 @@ func (t *mcpTools) runDevDown(ctx context.Context, args downArgs) (stackState, e
 
 // stateOf reports what is running in a project now. It is read after the stack
 // is up or down rather than taken from the call that did it, so the answer is
-// the runtime's and not caf's expectation of it.
+// the runtime's and not cafe's expectation of it.
 func (t *mcpTools) stateOf(ctx context.Context, project, note string) (stackState, error) {
 	snapshot, err := t.devDeps.withDefaults().runtime.Snapshot(ctx, project)
 	if err != nil {
@@ -842,10 +842,10 @@ func (t *mcpTools) stateOf(ctx context.Context, project, note string) (stackStat
 	return state, nil
 }
 
-// planRun builds the pieces `caf dev` builds before it starts anything: the
+// planRun builds the pieces `cafe dev` builds before it starts anything: the
 // project, the catalog, the plan and the compose document. It is one function
 // because three tools need exactly these four values and a fourth copy of the
-// sequence is a fourth chance to disagree with `caf dev` about what a stack is.
+// sequence is a fourth chance to disagree with `cafe dev` about what a stack is.
 func (t *mcpTools) planRun(args planArgs) (devRun, dev.Project, dev.Stack, string, error) {
 	dir := args.Project
 	if dir == "" {
@@ -904,7 +904,7 @@ func (t *mcpTools) planRun(args planArgs) (devRun, dev.Project, dev.Stack, strin
 }
 
 // loadRegistry resolves the catalog the dependencies resolve through. It is the
-// same function `caf dev` uses for the same flag, so an agent and a person see
+// same function `cafe dev` uses for the same flag, so an agent and a person see
 // the same registry.
 func (t *mcpTools) loadRegistry() (dev.Registry, error) {
 	deps := t.devDeps.withDefaults()
@@ -912,7 +912,7 @@ func (t *mcpTools) loadRegistry() (dev.Registry, error) {
 }
 
 // registrySource is what to call this catalog in the answer: the path it came
-// from, or the sentence that says there is none. "caf ships no catalog" is a
+// from, or the sentence that says there is none. "cafe ships no catalog" is a
 // fact about the platform and naming it is more useful than an empty string an
 // agent has to interpret.
 func (t *mcpTools) registrySource() string {
@@ -938,7 +938,7 @@ func envNames(env dev.Environment) []string {
 }
 
 // documentEnvNames are the names of every variable the rendered compose document
-// sets, sorted and deduplicated. caf's own local values — a database URL with
+// sets, sorted and deduplicated. cafe's own local values — a database URL with
 // the project name as its password — are names too, and a reader asking "is
 // this service configured" wants to know that DATABASE_URL is set without
 // receiving its contents.

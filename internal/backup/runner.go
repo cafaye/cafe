@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// The two engines, and the whole set. `caf backup --engine` selects one, and
+// The two engines, and the whole set. `cafe backup --engine` selects one, and
 // the default is Kamal because the fleet runs Kamal today — DEPLOYMENT.md:
 // "Kamal and kit/templates/kamal retire at parity, not before."
 const (
@@ -25,7 +25,7 @@ const (
 // "Kamal and kit/templates/kamal retire at parity, not before."
 //
 // An unknown name is an error and not a default: a typo in --engine is the
-// operator invoking caf wrongly, and the wrong answer to it is a drill run
+// operator invoking cafe wrongly, and the wrong answer to it is a drill run
 // against the wrong substrate — which is the one outcome a backup command
 // must never produce by accident. The error wraps ErrUsage so the caller
 // exits 2, the same as any other bad flag.
@@ -57,7 +57,7 @@ func RunnerFor(engine string) (Runner, error) {
 // # What the caller keeps
 //
 // The parts either side of the engine, which internal/deploy/doc.go says are
-// caf's job: preflight, the refusal, the dry run, the confirmation and the
+// cafe's job: preflight, the refusal, the dry run, the confirmation and the
 // after-the-fact report.
 //
 // The interface is declared HERE and satisfied by the engines in this package

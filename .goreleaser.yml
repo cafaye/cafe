@@ -1,12 +1,12 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
 # vim: set ts=2 sw=2 tw=0 fo=jcroql
 #
-# caf releases are build-only for now. No Homebrew, no Scoop, no Docker image
+# cafe releases are build-only for now. No Homebrew, no Scoop, no Docker image
 # and no package managers until the install story has an owner; see the roadmap
 # in README.md.
 version: 2
 
-project_name: caf
+project_name: cafe
 
 env:
   - CGO_ENABLED=0
@@ -16,9 +16,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: caf
-    main: ./cmd/caf
-    binary: caf
+  - id: cafe
+    main: ./cmd/cafe
+    binary: cafe
     flags:
       - -trimpath
     ldflags:
@@ -35,9 +35,9 @@ builds:
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
-  - id: caf
+  - id: cafe
     ids:
-      - caf
+      - cafe
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
     formats:

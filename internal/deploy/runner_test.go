@@ -119,7 +119,7 @@ func TestRunUsesTheDirectoryItWasGiven(t *testing.T) {
 	}
 }
 
-// The process's own output has to reach the writers caf was handed, because a
+// The process's own output has to reach the writers cafe was handed, because a
 // person watching a deploy is watching the deploy engine's own words. A deploy
 // that swallowed them would be a report about something other than what happened.
 func TestRunWiresBothStreamsToTheCommand(t *testing.T) {

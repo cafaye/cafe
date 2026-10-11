@@ -22,7 +22,7 @@ import (
 // It is asserted over the emitted BYTES rather than by running them, because a
 // generated Go file is not compiled until a service adopts it, and this repository
 // compiles only its own copy. So the generated file has to carry the table itself
-// — `caf gen telemetry` emits the suite beside the setup for exactly this reason.
+// — `cafe gen telemetry` emits the suite beside the setup for exactly this reason.
 func TestTheGeneratedSetupCarriesTheEndpointPrecedenceItDocuments(t *testing.T) {
 	out := generate(t, manifestFor)
 
@@ -66,7 +66,7 @@ func TestTheGeneratedSetupCarriesTheEndpointPrecedenceItDocuments(t *testing.T) 
 	// precedence held and the scheme half did not.
 	// The literals are the gofmt-canonical spacing of the emitted rows rather than
 	// the spacing in the generator's source, because the emitted file is what a
-	// service reads and `caf gen telemetry` writes it through gofmt. A test that
+	// service reads and `cafe gen telemetry` writes it through gofmt. A test that
 	// matched the generator's own alignment would go red the moment a row above
 	// this one changed width, which is a test of the wrong thing.
 	for _, want := range []string{

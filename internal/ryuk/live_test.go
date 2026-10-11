@@ -34,7 +34,7 @@ import (
 //
 //	CAF_LIVE_RYUK=1 go test -run TestAClosedLeaseReaps -v ./internal/ryuk/
 //
-// # Why the port is outside caf's block
+// # Why the port is outside cafe's block
 //
 // The reaper's own port is published on a scratch port, not on 15000-15999,
 // because those belong to the fleet and a test has no business in them.
@@ -43,14 +43,14 @@ import (
 // it is yours to use.
 const liveGate = "CAF_LIVE_RYUK"
 
-// reaperPort is where the reaper is published. Outside caf's block, and not a
+// reaperPort is where the reaper is published. Outside cafe's block, and not a
 // port anything else in this repository uses.
 const reaperPort = 42799
 
 // survivorLabel is on a container the demonstration creates and expects to still
 // be there afterwards. It is the control: if the reaper is matching more than it
 // was asked to, this container is the first thing to go.
-const survivorLabel = "org.testcontainers.caf.demo=ryuk-survivor"
+const survivorLabel = "org.testcontainers.cafe.demo=ryuk-survivor"
 
 func TestAClosedLeaseReapsAndAnOpenOneDoesNot(t *testing.T) {
 	if os.Getenv(liveGate) == "" {
@@ -160,7 +160,7 @@ func TestAClosedLeaseReapsAndAnOpenOneDoesNot(t *testing.T) {
 	// So: everything that existed before the reaper started must still exist,
 	// except the one container the lease was supposed to reap. That holds
 	// whatever the neighbours are doing, and it holds for the two workers that
-	// publish inside caf's port block as much as for anything else.
+	// publish inside cafe's port block as much as for anything else.
 	for _, id := range before {
 		if id == target {
 			continue
@@ -262,7 +262,7 @@ func (d *liveRuntime) remove(ctx context.Context, name string) {
 func liveSessionID() string {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
-		panic("caf: the system entropy source is unavailable: " + err.Error())
+		panic("cafe: the system entropy source is unavailable: " + err.Error())
 	}
 	return hex.EncodeToString(buf)
 }

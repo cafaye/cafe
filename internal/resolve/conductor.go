@@ -71,7 +71,7 @@ func (c HTTPConductor) client() *http.Client {
 // by the redemption, so handing it back would be handing back something
 // already used.
 //
-// The caller's token (the agent's caf credential) is presented as the bearer
+// The caller's token (the agent's cafe credential) is presented as the bearer
 // for the mint and kept for the length of exactly this call. Whether it is
 // sufficient — whether the caller is a member of the account — is conductor's
 // decision, and the refusal is named: 401 unauthenticated, 404 not_found (an
@@ -183,7 +183,7 @@ func (c HTTPConductor) redeem(ctx context.Context, capToken, accountID string) (
 // for a token that never existed.
 func (c HTTPConductor) do(ctx context.Context, token, method, path string, body []byte) (*http.Response, []byte, error) {
 	if strings.TrimSpace(token) == "" {
-		return nil, nil, &ConductorError{Code: "unauthenticated", Message: "this call needs a caf token and none was presented"}
+		return nil, nil, &ConductorError{Code: "unauthenticated", Message: "this call needs a cafe token and none was presented"}
 	}
 	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(c.BaseURL, "/")+path, bytes.NewReader(body))
 	if err != nil {

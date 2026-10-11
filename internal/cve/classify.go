@@ -162,7 +162,7 @@ func Classify(components []Component, advisories []Advisory) ([]Finding, Counts)
 //
 // Three separate sentences, because they are three separate actions:
 // upgrade to a named version; mitigate, because nobody has published a fix;
-// or find out what version this box is actually running, because caf could
+// or find out what version this box is actually running, because cafe could
 // not read it. A single "this component is affected" would collapse all
 // three into one instruction that is wrong for two of them.
 func whyFor(c Component, a Advisory, class Class) string {

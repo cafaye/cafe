@@ -2,7 +2,7 @@ package ports
 
 import "fmt"
 
-// Block is a range of host ports caf publishes from. It is a value rather than
+// Block is a range of host ports cafe publishes from. It is a value rather than
 // a pair of constants so a test can build a two-port block and a caller can be
 // given a different one, and so "the block" is a value that can be printed in an
 // error message — which it always is, because a port outside the block is
@@ -13,7 +13,7 @@ type Block struct {
 	Last  int
 }
 
-// CAF is the block caf publishes from. 15000-15999 is a thousand ports, which
+// CAF is the block cafe publishes from. 15000-15999 is a thousand ports, which
 // is more than a fleet of parallel workers needs and few enough that a port in
 // it is recognisable as ours by looking at it.
 var CAF = Block{First: 15000, Last: 15999}

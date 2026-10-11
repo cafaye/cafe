@@ -43,7 +43,7 @@ const (
 	// under, before conductor has said which box it belongs to.
 	KeyringAccountPending = "box/enrollment-pending"
 	// KeyringService is the keyring's service name.
-	KeyringService = "caf"
+	KeyringService = "cafe"
 	// IdentityFileName is the file the box's non-secrets live in.
 	IdentityFileName = identityFile
 	// JournalFileName is the file an in-progress enrollment lives in.
@@ -69,7 +69,7 @@ const (
 	ActionAlreadyEnrolled = "already-enrolled"
 	// ActionRefused means the attempt did not complete and the box is still
 	// unenrolled. It is a failure, and it is the honest one: the capability is
-	// gone and caf will not pretend otherwise.
+	// gone and cafe will not pretend otherwise.
 	ActionRefused = "refused"
 )
 
@@ -81,7 +81,7 @@ const (
 // afterwards.
 type Store struct {
 	// Dir is where box.json, box-journal.json and box-events.jsonl live. It is
-	// the operator's config directory (~/.config/caf), never a temp directory:
+	// the operator's config directory (~/.config/cafe), never a temp directory:
 	// an enrollment is durable state and a temp directory is not.
 	Dir string
 	// Ring holds the private key. See ring.go.
@@ -96,7 +96,7 @@ type Store struct {
 
 // NewStore defaults the clock and nothing else. A store with no conductor is
 // refused at the moment it is used rather than at construction, so a caller
-// that only inspects state (`caf box status` on an enrolled box) does not need
+// that only inspects state (`cafe box status` on an enrolled box) does not need
 // an endpoint configured at all.
 func NewStore(dir string, ring Keyring, cond Conductor) *Store {
 	return &Store{Dir: dir, Ring: ring, Conductor: cond, now: time.Now}
@@ -165,16 +165,16 @@ var ErrNoConductor = errors.New("no conductor configured: pass --conductor <url>
 //  6. box.json written, journal deleted
 //
 // Step 3 to step 4 is the one window that cannot be closed from this side, and
-// it is stated rather than hidden: if caf dies between receiving the response
+// it is stated rather than hidden: if cafe dies between receiving the response
 // and writing the journal, the retry presents the token again and conductor
 // refuses it, because conductor's single-use is enforced in its own database.
 // The answer in that case is an honest refusal that names the window and the
-// remedy (`caf box enroll` with a freshly minted token), which is strictly
+// remedy (`cafe box enroll` with a freshly minted token), which is strictly
 // better than a client that hid the refusal and reported success.
 func (s *Store) Enroll(ctx context.Context, token, conductorURL string) (EnrollResult, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return EnrollResult{Action: ActionRefused}, fmt.Errorf("caf box enroll: --token is required; it is the single-use capability conductor minted for this box")
+		return EnrollResult{Action: ActionRefused}, fmt.Errorf("cafe box enroll: --token is required; it is the single-use capability conductor minted for this box")
 	}
 	if s.Conductor == nil {
 		return EnrollResult{Action: ActionRefused}, ErrNoConductor
@@ -235,7 +235,7 @@ func (s *Store) Enroll(ctx context.Context, token, conductorURL string) (EnrollR
 		// (network, conductor restarting) must be retryable, and a failed
 		// redemption must not look like a completed one.
 		s.appendEvent("enroll", "", "redemption refused: "+err.Error())
-		return EnrollResult{Action: ActionRefused, Redemptions: 1}, fmt.Errorf("caf box enroll: %w", err)
+		return EnrollResult{Action: ActionRefused, Redemptions: 1}, fmt.Errorf("cafe box enroll: %w", err)
 	}
 
 	// Record what the redemption bought BEFORE moving the key or writing the
@@ -276,25 +276,25 @@ func (s *Store) pendingKey(jr *journal) (ed25519.PrivateKey, error) {
 	if err == nil {
 		key, perr := parsePrivateKey(stored)
 		if perr != nil {
-			return nil, fmt.Errorf("caf box enroll: %w; remove the pending enrollment and start again", perr)
+			return nil, fmt.Errorf("cafe box enroll: %w; remove the pending enrollment and start again", perr)
 		}
 		return key, nil
 	}
 	if !errors.Is(err, ErrNotFound) {
-		return nil, fmt.Errorf("caf box enroll: read the pending box key: %w", err)
+		return nil, fmt.Errorf("cafe box enroll: read the pending box key: %w", err)
 	}
 	if jr != nil && jr.State == journalRedeemed {
 		// A recorded redemption whose pending key is gone is unrecoverable:
 		// the capability is spent, conductor holds the installation, and the
-		// only thing that could finish the job is the key caf no longer has.
-		return nil, fmt.Errorf("caf box enroll: the pending box key for box %s is not in the keyring; the capability is spent, so re-enroll with a freshly minted token", jr.BoxID)
+		// only thing that could finish the job is the key cafe no longer has.
+		return nil, fmt.Errorf("cafe box enroll: the pending box key for box %s is not in the keyring; the capability is spent, so re-enroll with a freshly minted token", jr.BoxID)
 	}
 	fresh, err := generateBox()
 	if err != nil {
 		return nil, err
 	}
 	if err := s.Ring.Set(ringService, journalPending, privateKeyText(fresh.private)); err != nil {
-		return nil, fmt.Errorf("caf box enroll: store the pending box key: %w", err)
+		return nil, fmt.Errorf("cafe box enroll: store the pending box key: %w", err)
 	}
 	return fresh.private, nil
 }
@@ -308,15 +308,15 @@ func (s *Store) finish(jr journal) (*Identity, error) {
 		return nil, err
 	}
 	if got := publicKeyText(private.Public().(ed25519.PublicKey)); got != jr.PublicKey {
-		return nil, fmt.Errorf("caf box enroll: the recorded box key does not match the key in the keyring; the enrollment is inconsistent and must be started again with a freshly minted token")
+		return nil, fmt.Errorf("cafe box enroll: the recorded box key does not match the key in the keyring; the enrollment is inconsistent and must be started again with a freshly minted token")
 	}
 	// The permanent account first, the pending entry second: a box whose key is
 	// filed twice is harmless, a box whose key is filed nowhere is not.
 	if err := s.Ring.Set(ringService, ringAccount(jr.BoxID), privateKeyText(private)); err != nil {
-		return nil, fmt.Errorf("caf box enroll: file the box key: %w", err)
+		return nil, fmt.Errorf("cafe box enroll: file the box key: %w", err)
 	}
 	if err := s.Ring.Delete(ringService, journalPending); err != nil {
-		return nil, fmt.Errorf("caf box enroll: clear the pending box key: %w", err)
+		return nil, fmt.Errorf("cafe box enroll: clear the pending box key: %w", err)
 	}
 	id := &Identity{
 		BoxID:      jr.BoxID,
@@ -335,7 +335,7 @@ func (s *Store) finish(jr journal) (*Identity, error) {
 	// enroll again and cannot retry: every resource it made would be orphaned
 	// by the very store that was supposed to remember them.
 	if err := os.Remove(s.paths(journalFile)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("caf box enroll: clear the enrollment journal: %w", err)
+		return nil, fmt.Errorf("cafe box enroll: clear the enrollment journal: %w", err)
 	}
 	return id, nil
 }
@@ -364,14 +364,14 @@ func writePrivate(path string, raw []byte) error {
 
 func (s *Store) writeIdentity(id *Identity) error {
 	if err := s.writeJSON(identityFile, id); err != nil {
-		return fmt.Errorf("caf box enroll: write the box identity: %w", err)
+		return fmt.Errorf("cafe box enroll: write the box identity: %w", err)
 	}
 	return nil
 }
 
 func (s *Store) writeJournal(jr *journal) error {
 	if err := s.writeJSON(journalFile, jr); err != nil {
-		return fmt.Errorf("caf box enroll: write the enrollment journal: %w", err)
+		return fmt.Errorf("cafe box enroll: write the enrollment journal: %w", err)
 	}
 	return nil
 }
@@ -394,11 +394,11 @@ func (s *Store) loadJournal() (*journal, bool, error) {
 		return nil, false, nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("caf box: read the enrollment journal: %w", err)
+		return nil, false, fmt.Errorf("cafe box: read the enrollment journal: %w", err)
 	}
 	var jr journal
 	if err := json.Unmarshal(raw, &jr); err != nil {
-		return nil, false, fmt.Errorf("caf box: the enrollment journal at %s is not readable JSON: %w; remove it and re-enroll with a freshly minted token", s.paths(journalFile), err)
+		return nil, false, fmt.Errorf("cafe box: the enrollment journal at %s is not readable JSON: %w; remove it and re-enroll with a freshly minted token", s.paths(journalFile), err)
 	}
 	return &jr, true, nil
 }
@@ -418,8 +418,8 @@ func (s *Store) Identity() (*Identity, error) {
 // invariant 1 — a private key that a caller holds is a private key that ends up
 // in a log the first time somebody formats the wrong variable.
 //
-// As of this packet there is no caller: nothing in caf signs yet, because
-// outbound mTLS is `caf boxd`'s (W2-P7). The method exists so that the day the
+// As of this packet there is no caller: nothing in cafe signs yet, because
+// outbound mTLS is `cafe boxd`'s (W2-P7). The method exists so that the day the
 // signer arrives, the key is fetched at the point of use rather than threaded
 // through three layers of arguments.
 func (s *Store) BoxKey(id *Identity) (ed25519.PrivateKey, error) {

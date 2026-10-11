@@ -1,4 +1,4 @@
-// Package publish is `caf publish`: the client half of pantry's write surface —
+// Package publish is `cafe publish`: the client half of pantry's write surface —
 // the three operations that take a project from a developer's checkout into the
 // public catalog.
 //

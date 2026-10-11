@@ -280,7 +280,7 @@ func TestThePlanDoesNotWriteAnAccountFlagWithNoValue(t *testing.T) {
 	if remoteEnabled {
 		t.Fatalf("remoteEnabled is true, so the tests below are not exercising a gated engine")
 	}
-	// The plan the flag would have produced: `caf deploy --engine remote
+	// The plan the flag would have produced: `cafe deploy --engine remote
 	// identity` with no --account on the command line at all.
 	plan := planForRemote(Deployment{Dir: ".", Service: "identity"}, Options{Version: "0.2.0"})
 	for _, step := range plan.Steps {
@@ -303,7 +303,7 @@ func TestThePlanDoesNotWriteAnAccountFlagWithNoValue(t *testing.T) {
 // element was not the engine's own name, so a service called `remote` would
 // have been deployed as a service called nothing.
 func TestTheServiceIsTheLastTokenEvenWhenItIsNamedLikeTheEngine(t *testing.T) {
-	argv := []string{"caf", "deploy", "--engine", EngineRemote, AccountFlag, "acct-1", "--yes", EngineRemote}
+	argv := []string{"cafe", "deploy", "--engine", EngineRemote, AccountFlag, "acct-1", "--yes", EngineRemote}
 	if got := requestFromArgv(argv).Service; got != EngineRemote {
 		t.Errorf("the request carries service %q, not %q: %v", got, EngineRemote, argv)
 	}
@@ -313,7 +313,7 @@ func TestTheServiceIsTheLastTokenEvenWhenItIsNamedLikeTheEngine(t *testing.T) {
 // `--account --yes` is an account nobody named, and reading `--yes` as the id
 // would be a deploy to a destination that does not exist.
 func TestAFlagShapedTokenIsNotAnAccountValue(t *testing.T) {
-	argv := []string{"caf", "deploy", "--engine", EngineRemote, AccountFlag, "--yes", "identity"}
+	argv := []string{"cafe", "deploy", "--engine", EngineRemote, AccountFlag, "--yes", "identity"}
 	req := requestFromArgv(argv)
 	if req.AccountID != "" {
 		t.Errorf("the request carries account %q, which is a flag and not an account", req.AccountID)
@@ -368,7 +368,7 @@ func TestARemoteDryRunWithNoAccountIsRefusedBeforeItPrintsAnything(t *testing.T)
 	if !strings.Contains(err.Error(), AccountFlag) {
 		t.Errorf("the refusal does not name the flag to pass: %v", err)
 	}
-	if strings.Contains(stdout.String(), "this is what caf deploy would ask") {
+	if strings.Contains(stdout.String(), "this is what cafe deploy would ask") {
 		t.Errorf("the dry run printed the steps before refusing:\n%s", stdout.String())
 	}
 	if r.asked != 0 {
@@ -423,7 +423,7 @@ func TestARemoteDeployWithNoAccountIsRefusedByName(t *testing.T) {
 	// The step is built by hand rather than by the gated plan, because this is
 	// the shape the plan produces once the gate is open: an argv with no
 	// --account in it.
-	step := Step{Name: Boundary, Argv: []string{"caf", "deploy", "--engine", EngineRemote, "--yes", "identity"}}
+	step := Step{Name: Boundary, Argv: []string{"cafe", "deploy", "--engine", EngineRemote, "--yes", "identity"}}
 	err := r.Run(context.Background(), ".", step, &strings.Builder{}, &strings.Builder{})
 	if err == nil {
 		t.Fatal("a remote deploy with no account ran")
@@ -484,7 +484,7 @@ func TestARemoteDeployDryRunRefusesToo(t *testing.T) {
 	if err == nil {
 		t.Fatal("a dry run of the refused engine succeeded")
 	}
-	if strings.Contains(stdout.String(), "this is what caf deploy would ask") {
+	if strings.Contains(stdout.String(), "this is what cafe deploy would ask") {
 		t.Errorf("the dry run printed the steps, so it reads as a deploy that works:\n%s", stdout.String())
 	}
 	if !strings.Contains(stdout.String(), "TG-D1") {
@@ -495,7 +495,7 @@ func TestARemoteDeployDryRunRefusesToo(t *testing.T) {
 // TestTheRemoteRunnerHasNoRemoteByDefaultRefuses is the stub seam's own claim:
 // a runner with nothing configured does not invent a destination.
 func TestTheRemoteRunnerHasNoRemoteByDefaultRefuses(t *testing.T) {
-	step := Step{Name: Boundary, Argv: []string{"caf", "deploy", "--engine", EngineRemote, AccountFlag, "acct-1", "--yes", "identity"}}
+	step := Step{Name: Boundary, Argv: []string{"cafe", "deploy", "--engine", EngineRemote, AccountFlag, "acct-1", "--yes", "identity"}}
 	r := &RemoteRunner{}
 	if _, err := (StubRemote{}).ReadAccount(context.Background(), "acct-1"); err == nil {
 		t.Error("the stub remote answered an account question")

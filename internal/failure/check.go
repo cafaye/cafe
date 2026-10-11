@@ -144,7 +144,7 @@ func (r Report) String() string {
 	holds := r.Holds()
 	unknown := r.Unknown()
 
-	fmt.Fprintf(&out, "caf failure: %d rule(s) evaluated: %d hold, %d do not hold, %d unknown.\n",
+	fmt.Fprintf(&out, "cafe failure: %d rule(s) evaluated: %d hold, %d do not hold, %d unknown.\n",
 		r.Rules, len(holds), r.Rules-len(holds)-len(unknown), len(unknown))
 
 	if len(holds) > 0 {
@@ -180,7 +180,7 @@ func (r Report) String() string {
 }
 
 // Describe is the one line a caller prints beside the count: how many rules,
-// how many held. It is the library's own summary and it is what `caf failure
+// how many held. It is the library's own summary and it is what `cafe failure
 // check` prints last.
 func (r Report) Describe() string {
 	return fmt.Sprintf("%d rule(s), %d condition(s) hold, %d unknown", r.Rules, len(r.Holds()), len(r.Unknown()))

@@ -19,13 +19,13 @@ import (
 // package, and that is the physical shape of "outbound-only": nothing on this
 // box accepts a connection from anywhere, so nothing outside can knock on the
 // box even if it wanted to. The house rule in AGENTS.md about listeners is
-// the same rule at fleet scale: `caf mcp`'s HTTP transport is loopback-only
+// the same rule at fleet scale: `cafe mcp`'s HTTP transport is loopback-only
 // because it starts containers, and this channel is outbound-only because it
 // redeems capabilities.
 //
 // The wire is one JSON object per line over the TLS connection, chosen over
 // HTTP because the channel is long-lived and has exactly two verbs. It is
-// caf's side of a contract whose server half lands with conductor's own
+// cafe's side of a contract whose server half lands with conductor's own
 // capability-machinery work (W1-P3); the protocol is written down here rather
 // than discovered from a server, so both sides have something to be checked
 // against from day one, and the failure when they disagree is a failed test

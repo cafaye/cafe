@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 // The helpers the reclaim cases share. They are in their own file so the cases
@@ -40,7 +40,7 @@ func seedTestStack(t *testing.T, l *ledger.Ledger, project string) {
 	}
 }
 
-// twoTestRegistries is two caf processes over one ledger directory, which is the
+// twoTestRegistries is two cafe processes over one ledger directory, which is the
 // state a worker and its sibling are in. The hold has to be visible across them.
 func twoTestRegistries(t *testing.T, block ports.Block) (*ports.Registry, *ports.Registry) {
 	t.Helper()
@@ -135,7 +135,7 @@ func (p *recordingPorts) Take(_ context.Context, _ string, _ int, port int) ([]i
 		return nil, p.holdErr
 	}
 	if !testBlock.Contains(port) {
-		return nil, fmt.Errorf("port outside the block: %d is not in %s; caf publishes from the block or not at all", port, testBlock)
+		return nil, fmt.Errorf("port outside the block: %d is not in %s; cafe publishes from the block or not at all", port, testBlock)
 	}
 	p.reserved = append(p.reserved, port)
 	return []int{port}, nil

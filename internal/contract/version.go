@@ -143,7 +143,7 @@ func (c Constraint) Satisfies(version Version) bool {
 	return bounds.Open || version.Compare(bounds.Ceiling) < 0
 }
 
-// Rationale is the sentence `caf contract resolve` prints after the answer.
+// Rationale is the sentence `cafe contract resolve` prints after the answer.
 // "no" on its own sends a person back to the grammar; saying which edge of the
 // range they are on sends them to the fix.
 func (c Constraint) Rationale(version Version) string {
@@ -205,7 +205,7 @@ func Resolve(constraint, version string) (Resolution, error) {
 var constraintPattern = regexp.MustCompile(`^(\^|~|>=)?([0-9]+)\.([0-9]+)\.([0-9]+)$`)
 
 // versionPattern is the same grammar with no operator: a version is a version,
-// and `caf contract resolve` is asked about one version and one constraint.
+// and `cafe contract resolve` is asked about one version and one constraint.
 var versionPattern = regexp.MustCompile(`^([0-9]+)\.([0-9]+)\.([0-9]+)$`)
 
 // ParseConstraint reads a `core` constraint: `MAJOR.MINOR.PATCH`, optionally

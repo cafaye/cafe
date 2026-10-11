@@ -91,7 +91,7 @@ var testToken = "cap_" + strings.Repeat("a", 64)
 // The enrollment's three stages are each drivable into "a retry converges",
 // and the convergence is measured as the number of redemptions performed.
 //
-// The stages are not hypothetical: each one is a place a caf process can stop.
+// The stages are not hypothetical: each one is a place a cafe process can stop.
 // `prepared` is a run that died with a keypair on disk and nothing spent;
 // `redeemed` is a run that died after presenting the capability and before
 // writing box.json, which is the interesting one because the capability is
@@ -190,7 +190,7 @@ func TestARetriedEnrollmentConvergesAndNeverRedeemsTwice(t *testing.T) {
 	}
 }
 
-// prepare puts the store into `stage` the way a caf process that died there
+// prepare puts the store into `stage` the way a cafe process that died there
 // would have left it. It is written out rather than mocked because the state
 // being tested is the state on disk, and a helper that crafted it some other
 // way would be testing a different store.

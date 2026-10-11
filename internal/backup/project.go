@@ -15,7 +15,7 @@ const (
 	secretsKey       = "secrets"
 )
 
-// Cover is everything caf knows about a service's backup before it asks Kamal
+// Cover is everything cafe knows about a service's backup before it asks Kamal
 // anything: where the project is, which Kamal config describes it, and where the
 // credentials come from.
 //
@@ -26,7 +26,7 @@ const (
 // ReadConfig, and the contract between the two files is decided in contract.go
 // against Kamal's own resolved output.
 type Cover struct {
-	// Dir is the absolute project directory. Everything caf names to the operator
+	// Dir is the absolute project directory. Everything cafe names to the operator
 	// is absolute, so a message is unambiguous about which project it is about.
 	Dir string
 	// Service is the service being backed up. It came from the manifest, not from
@@ -50,7 +50,7 @@ type Cover struct {
 	//
 	// so `--destination staging` reads .kamal/secrets-common and
 	// .kamal/secrets.staging and does NOT read .kamal/secrets. Measured on kamal
-	// 2.12.0. So caf resolves and names them rather than assuming the one
+	// 2.12.0. So cafe resolves and names them rather than assuming the one
 	// `kamal init` creates.
 	Secrets []string
 }
@@ -59,7 +59,7 @@ type Cover struct {
 // about it, refusing with a message that names the file that is missing.
 //
 // It checks existence and nothing else. Whether `config/deploy.yml` is *valid*
-// is Kamal's answer and not caf's, whether `config/kamal-backup.yml` says
+// is Kamal's answer and not cafe's, whether `config/kamal-backup.yml` says
 // anything useful is ReadConfig's, and whether the two agree is contract.go's.
 func Read(dir, service, env string) (Cover, error) {
 	abs, err := filepath.Abs(dir)
@@ -68,10 +68,10 @@ func Read(dir, service, env string) (Cover, error) {
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		return Cover{}, fmt.Errorf("caf backup: %s is not a directory caf can read: %w", abs, err)
+		return Cover{}, fmt.Errorf("cafe backup: %s is not a directory cafe can read: %w", abs, err)
 	}
 	if !info.IsDir() {
-		return Cover{}, fmt.Errorf("caf backup: %s is not a directory", abs)
+		return Cover{}, fmt.Errorf("cafe backup: %s is not a directory", abs)
 	}
 
 	cover := Cover{
@@ -82,9 +82,9 @@ func Read(dir, service, env string) (Cover, error) {
 	}
 
 	if !isFile(cover.Config) {
-		return Cover{}, fmt.Errorf("caf backup: %s has no %s, so there is no deployment to back up.\n"+
+		return Cover{}, fmt.Errorf("cafe backup: %s has no %s, so there is no deployment to back up.\n"+
 			"  Copy it from cafaye/kit: templates/kamal/deploy.yml.erb -> config/deploy.yml\n"+
-			"  Deploy the service with `caf deploy` first. A backup accessory is an accessory: with no deploy config "+
+			"  Deploy the service with `cafe deploy` first. A backup accessory is an accessory: with no deploy config "+
 			"there is nothing for it to be an accessory of, and config/kamal-backup.yml would be a file nothing reads",
 			abs, filepath.Join("config", configName))
 	}
@@ -92,7 +92,7 @@ func Read(dir, service, env string) (Cover, error) {
 	if env != "" {
 		cover.Overlay = filepath.Join(abs, "config", strings.TrimSuffix(configName, ".yml")+"."+env+".yml")
 		if !isFile(cover.Overlay) {
-			return Cover{}, fmt.Errorf("caf backup: -env %s reads %s, which does not exist.\n"+
+			return Cover{}, fmt.Errorf("cafe backup: -env %s reads %s, which does not exist.\n"+
 				"  Kamal merges config/deploy.yml with that overlay, so the environment is a file and not a flag on its own.\n"+
 				"  Write it, or back up without -env to use config/deploy.yml alone",
 				env, cover.Overlay)
@@ -111,7 +111,7 @@ func Read(dir, service, env string) (Cover, error) {
 // project, in Kamal's own order. An empty environment means no destination, and
 // Kamal then reads the single default path.
 //
-// This is Kamal's rule, not caf's, and it is the one a caf that guessed would
+// This is Kamal's rule, not cafe's, and it is the one a cafe that guessed would
 // get wrong in the way that hurts: telling an operator their credentials are in
 // .kamal/secrets when the environment they just asked for means Kamal will not
 // open it.

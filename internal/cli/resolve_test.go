@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/resolve"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/resolve"
 )
 
 // resolveCallerToken is a string no real credential looks like and every fake
@@ -120,7 +120,7 @@ func resolveTestEnv(t *testing.T, ring *agentTestRing, pantry resolve.Pantry, co
 	return deps
 }
 
-// runResolveCLI drives ONE caf resolve invocation against injected deps and
+// runResolveCLI drives ONE cafe resolve invocation against injected deps and
 // hands back the exit code plus both streams — exactly what main() does with
 // the real process, minus the process.
 func runResolveCLI(t *testing.T, deps resolveDeps, args ...string) (code int, stdout, stderr string) {
@@ -384,7 +384,7 @@ func TestResolveWithoutAManifestNamesTheCommand(t *testing.T) {
 	if code == 0 {
 		t.Fatalf("a project with no manifest exited 0")
 	}
-	if !strings.Contains(stderr, "caf init") {
+	if !strings.Contains(stderr, "cafe init") {
 		t.Errorf("stderr does not name the command that creates one:\n%s", stderr)
 	}
 }
@@ -419,7 +419,7 @@ owner:
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0\nstderr:\n%s", code, stderr)
 	}
-	if !strings.Contains(stderr, "caf agent register") {
+	if !strings.Contains(stderr, "cafe agent register") {
 		t.Errorf("stderr does not name the command that gets a credential:\n%s", stderr)
 	}
 	if !json.Valid([]byte(stdout)) {
@@ -432,7 +432,7 @@ owner:
 	}
 }
 
-// A paid dependency with no --account is a caf-side refusal that names the
+// A paid dependency with no --account is a cafe-side refusal that names the
 // flag, not a silent skip and not a call to conductor with an empty account.
 func TestResolvePaidDependencyWithoutAccountNamesTheFlag(t *testing.T) {
 	ring := newAgentTestRing()
@@ -473,7 +473,7 @@ owner:
 
 // The manifest schema makes `version` OPTIONAL and conductor's check makes it
 // REQUIRED — an unbounded request is a 422 the endpoint refuses. The
-// disagreement is settled on caf's side rather than in a round trip that
+// disagreement is settled on cafe's side rather than in a round trip that
 // answers 422 and blames the reader for it.
 func TestResolvePaidDependencyWithoutAVersionIsNamed(t *testing.T) {
 	ring := newAgentTestRing()
@@ -668,7 +668,7 @@ func TestResolveUsage(t *testing.T) {
 	}
 }
 
-// THE ADDRESS FORM. `caf resolve <owner>/<name>` asks about one project
+// THE ADDRESS FORM. `cafe resolve <owner>/<name>` asks about one project
 // addressed unambiguously, not about a directory: a community project whose
 // bare name another publisher also holds, or whose owner is the only thing
 // the caller knows. The command parses the slash form and hands the resolver

@@ -10,14 +10,14 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/gen"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/gen"
 )
 
-// `caf gen` is a verb group, for the same reason `caf contract` is: the words a
+// `cafe gen` is a verb group, for the same reason `cafe contract` is: the words a
 // person types and the command that runs them are different strings, and a help
-// line or a usage error that reads `caf lint` instead of `caf contract lint` has
+// line or a usage error that reads `cafe lint` instead of `cafe contract lint` has
 // made a person go and look for a command that does not exist.
 //
 // So each verb below is a Command named with its full invocation. They are
@@ -43,12 +43,12 @@ func newGenCommand() *Command {
 	c := &Command{
 		Name:     "gen",
 		Summary:  "generate code and config from cafaye contracts",
-		Usage:    "caf gen <chart|telemetry> [flags]",
+		Usage:    "cafe gen <chart|telemetry> [flags]",
 		LongHelp: genVerbTable(verbs) + genFlagNote,
 	}
 	c.Run = func(args []string, env *Env) error {
-		// Bare `caf gen` is a question ("what can this do?"), not a mistake, so
-		// it answers instead of exiting 2 — the same call `caf contract` makes.
+		// Bare `cafe gen` is a question ("what can this do?"), not a mistake, so
+		// it answers instead of exiting 2 — the same call `cafe contract` makes.
 		if len(args) == 0 {
 			printHelp(env.Stdout, c)
 			return nil
@@ -78,12 +78,12 @@ func unknownGenVerb(name string, verbs []genVerb) error {
 	for _, verb := range verbs {
 		names = append(names, verb.name)
 	}
-	return fmt.Errorf("%w: unknown caf gen target %q (usage: caf gen <%s>)",
+	return fmt.Errorf("%w: unknown cafe gen target %q (usage: cafe gen <%s>)",
 		errUsage, name, strings.Join(names, "|"))
 }
 
 // genVerbTable is the verb list in a command's help. One string rather than a
-// rendering hook, so `caf gen`, `caf gen --help` and `caf help gen` cannot drift
+// rendering hook, so `cafe gen`, `cafe gen --help` and `cafe help gen` cannot drift
 // into three different answers.
 func genVerbTable(verbs []genVerb) string {
 	var table strings.Builder
@@ -110,7 +110,7 @@ edited, and a generator that silently replaces one is a generator nobody runs
 twice.
 `
 
-// genOptions is the parsed flag state for `caf gen telemetry`.
+// genOptions is the parsed flag state for `cafe gen telemetry`.
 type genOptions struct {
 	out   string
 	force bool
@@ -121,7 +121,7 @@ func newGenTelemetryCommand() *Command {
 	c := &Command{
 		Name:    "gen telemetry",
 		Summary: "write the OpenTelemetry setup a service needs to honour core's telemetry contract",
-		Usage:   "caf gen telemetry [flags]",
+		Usage:   "cafe gen telemetry [flags]",
 		LongHelp: "Reads this project's cafaye.yml — the current directory by default — and\n" +
 			"writes three files derived from it and from the cafaye core telemetry\n" +
 			"contract vendored in this binary:\n" +
@@ -137,9 +137,9 @@ func newGenTelemetryCommand() *Command {
 			"                                         validated against that schema first\n" +
 			"\n" +
 			"Every value in those files is READ OUT OF core's schemas rather than written\n" +
-			"here, so a core release that changes an allowlist changes what caf emits.\n" +
+			"here, so a core release that changes an allowlist changes what cafe emits.\n" +
 			"That is why the generated test exists: it is the check that keeps holding\n" +
-			"after nobody has run caf gen for a year.\n" +
+			"after nobody has run cafe gen for a year.\n" +
 			"\n" +
 			"Go only. kit ships the other five languages' OpenTelemetry templates at\n" +
 			"templates/otel/, and a second generator of the same file is how two of them\n" +
@@ -160,13 +160,13 @@ func newGenTelemetryCommand() *Command {
 	return c
 }
 
-// runGenChart is `caf gen chart`: the same three steps as telemetry — read the
+// runGenChart is `cafe gen chart`: the same three steps as telemetry — read the
 // project, generate into memory, write what is missing — with the service's
 // environment arriving as flags rather than as a guess.
 func runGenChart(opts *genChartOptions, env *Env) error {
 	project, err := dev.Load(".")
 	if err != nil {
-		return fmt.Errorf("caf gen chart: %w", err)
+		return fmt.Errorf("cafe gen chart: %w", err)
 	}
 
 	out, err := gen.Generate("chart", project.Manifest, gen.TargetOptions{Env: opts.env})
@@ -174,14 +174,14 @@ func runGenChart(opts *genChartOptions, env *Env) error {
 		// A refusal from the generator is already a sentence aimed at the person
 		// who typed the command, so it is passed through rather than rewrapped
 		// into something vaguer.
-		return fmt.Errorf("caf gen chart: %w", err)
+		return fmt.Errorf("cafe gen chart: %w", err)
 	}
 
 	// Refused before anything is written, so the report is about every file at
 	// once rather than about whichever happened to be first.
 	existing, err := existingFiles(out.Files, opts.out)
 	if err != nil {
-		return fmt.Errorf("caf gen chart: %w", err)
+		return fmt.Errorf("cafe gen chart: %w", err)
 	}
 	if len(existing) > 0 && !opts.force {
 		return errRefusedExistingChart(existing)
@@ -189,7 +189,7 @@ func runGenChart(opts *genChartOptions, env *Env) error {
 
 	for _, file := range out.Files {
 		if err := writeGenerated(opts.out, file); err != nil {
-			return fmt.Errorf("caf gen chart: %w", err)
+			return fmt.Errorf("cafe gen chart: %w", err)
 		}
 	}
 
@@ -199,13 +199,13 @@ func runGenChart(opts *genChartOptions, env *Env) error {
 
 // errRefusedExistingChart is errRefusedExisting with the chart's name in it.
 func errRefusedExistingChart(existing []string) error {
-	return fmt.Errorf("nothing was written; %s already exist. caf gen chart does not overwrite a "+
+	return fmt.Errorf("nothing was written; %s already exist. cafe gen chart does not overwrite a "+
 		"generated file without being told to, and it cannot tell a generated one from one somebody wrote "+
-		"under the same name — so look at %s first, then re-run with -force if they are caf's",
+		"under the same name — so look at %s first, then re-run with -force if they are cafe's",
 		plural(len(existing), "file"), strings.Join(existing, ", "))
 }
 
-// genChartOptions is the parsed flag state for `caf gen chart`.
+// genChartOptions is the parsed flag state for `cafe gen chart`.
 type genChartOptions struct {
 	out   string
 	force bool
@@ -217,7 +217,7 @@ func newGenChartCommand() *Command {
 	c := &Command{
 		Name:    "gen chart",
 		Summary: "write the Helm chart a service is deployed from",
-		Usage:   "caf gen chart [flags]",
+		Usage:   "cafe gen chart [flags]",
 		LongHelp: "Reads this project's cafaye.yml — the current directory by default — and\n" +
 			"writes the Helm chart the service is deployed from:\n" +
 			"\n" +
@@ -241,9 +241,9 @@ func newGenChartCommand() *Command {
 			"\n" +
 			"The service's environment arrives as repeated -env flags, because the\n" +
 			"manifest carries no env — a service's configuration is its own, and\n" +
-			"caf will not guess it:\n" +
+			"cafe will not guess it:\n" +
 			"\n" +
-			"  caf gen chart -env DATABASE_URL=... -env API_KEY=...\n" +
+			"  cafe gen chart -env DATABASE_URL=... -env API_KEY=...\n" +
 			"\n" +
 			"Without -env the chart's env block is empty and the values are filled\n" +
 			"on the box, per deployment.\n" +
@@ -299,12 +299,12 @@ func (f *envFlag) Set(pair string) error {
 func runGenTelemetry(opts *genOptions, env *Env) error {
 	project, err := dev.Load(".")
 	if err != nil {
-		return fmt.Errorf("caf gen telemetry: %w", err)
+		return fmt.Errorf("cafe gen telemetry: %w", err)
 	}
 
 	spec, err := contract.Telemetry()
 	if err != nil {
-		return fmt.Errorf("caf gen telemetry: read the vendored telemetry contract: %w", err)
+		return fmt.Errorf("cafe gen telemetry: read the vendored telemetry contract: %w", err)
 	}
 
 	out, err := gen.Generate("telemetry", project.Manifest, gen.TargetOptions{Spec: spec})
@@ -312,14 +312,14 @@ func runGenTelemetry(opts *genOptions, env *Env) error {
 		// A refusal from the generator is already a sentence aimed at the person
 		// who typed the command, so it is passed through rather than rewrapped
 		// into something vaguer.
-		return fmt.Errorf("caf gen telemetry: %w", err)
+		return fmt.Errorf("cafe gen telemetry: %w", err)
 	}
 
 	// Refused before anything is written, so the report is about every file at
 	// once rather than about whichever happened to be first.
 	existing, err := existingFiles(out.Files, opts.out)
 	if err != nil {
-		return fmt.Errorf("caf gen telemetry: %w", err)
+		return fmt.Errorf("cafe gen telemetry: %w", err)
 	}
 	if len(existing) > 0 && !opts.force {
 		return errRefusedExisting(existing)
@@ -327,7 +327,7 @@ func runGenTelemetry(opts *genOptions, env *Env) error {
 
 	for _, file := range out.Files {
 		if err := writeGenerated(opts.out, file); err != nil {
-			return fmt.Errorf("caf gen telemetry: %w", err)
+			return fmt.Errorf("cafe gen telemetry: %w", err)
 		}
 	}
 
@@ -362,9 +362,9 @@ func existingFiles(files []gen.File, root string) ([]string, error) {
 // somebody wrote by hand under that name. Overwriting that would destroy work,
 // and a generator that can do it silently is a generator nobody runs.
 func errRefusedExisting(existing []string) error {
-	return fmt.Errorf("nothing was written; %s already exist. caf gen telemetry does not overwrite a "+
+	return fmt.Errorf("nothing was written; %s already exist. cafe gen telemetry does not overwrite a "+
 		"generated file without being told to, and it cannot tell a generated one from one somebody wrote "+
-		"under the same name — so look at %s first, then re-run with -force if they are caf's",
+		"under the same name — so look at %s first, then re-run with -force if they are cafe's",
 		plural(len(existing), "file"), strings.Join(existing, ", "))
 }
 
@@ -383,13 +383,13 @@ func writeGenerated(root string, file gen.File) error {
 // printGenerated prints every file in full, under a header naming the project and
 // the core contract it came from.
 //
-// In full, not a summary, because `caf dev` set the precedent and the reason holds
+// In full, not a summary, because `cafe dev` set the precedent and the reason holds
 // here too: a command that generates something nobody can inspect is a command
 // nobody can debug, and a document that only lives inside a tool is a document
 // nobody can diff. A path and a byte count would tell a reader that three files
 // exist and nothing about what is in them.
 func printGenerated(w io.Writer, out gen.Output) {
-	fmt.Fprintf(w, "caf gen %s wrote %d file(s) from this project's cafaye.yml:\n", out.Target, len(out.Files))
+	fmt.Fprintf(w, "cafe gen %s wrote %d file(s) from this project's cafaye.yml:\n", out.Target, len(out.Files))
 	for _, file := range out.Files {
 		fmt.Fprintf(w, "\n===== %s =====\n%s", file.Path, file.Content)
 	}

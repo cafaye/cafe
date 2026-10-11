@@ -36,7 +36,7 @@
 // its identity and its journal in, and its whole surface is stdlib.
 //
 // WHAT THIS PACKAGE IS NOT. It is not the installer. kit owns the substrate
-// install (W2-P4) and `caf boxd` owns the daemon that drives it (W2-P7); what
+// install (W2-P4) and `cafe boxd` owns the daemon that drives it (W2-P7); what
 // this package is, is the state machine they write into, so that a driver
 // that arrives does not have to grow a second idea of what a step is. The
 // steps are named by the caller: the box's install passes the phase table

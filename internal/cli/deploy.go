@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cafaye/caf/internal/deploy"
+	"github.com/cafaye/cafe/internal/deploy"
 )
 
-// deployDeps is what `caf deploy` needs from the world: a way to run Kamal.
+// deployDeps is what `cafe deploy` needs from the world: a way to run Kamal.
 //
 // It is a parameter rather than a package-level variable for the same reason
 // `devDeps` and `reclaimDeps` are: a test can hand the command a runner that
@@ -20,7 +20,7 @@ type deployDeps struct {
 	runner deploy.Runner
 	// confirm asks the operator. It is a seam because a confirmation prompt read
 	// from os.Stdin is a prompt no test can answer and no CI job can satisfy:
-	// `caf deploy` in a pipeline must either be given -yes or fail, and both of
+	// `cafe deploy` in a pipeline must either be given -yes or fail, and both of
 	// those have to be assertable.
 	confirm func(prompt string) (bool, error)
 }
@@ -40,7 +40,7 @@ func (d deployDeps) withDefaults() deployDeps {
 	return d
 }
 
-// deployOptions is the parsed flag state for `caf deploy`.
+// deployOptions is the parsed flag state for `cafe deploy`.
 type deployOptions struct {
 	environment string
 	dryRun      bool
@@ -58,7 +58,7 @@ type deployOptions struct {
 	account string
 }
 
-// deployLongHelp is the prose `caf deploy` prints under its usage line. It is
+// deployLongHelp is the prose `cafe deploy` prints under its usage line. It is
 // the answer to "what do I type", written down where a person reads it before
 // running a command that changes a server.
 const deployLongHelp = `One command deploys a service, and the engine it uses is the one the
@@ -68,8 +68,8 @@ holds cluster credentials).
 KAMAL, the self-host engine. It drives Kamal: Kamal installs Docker on the host
 if the host lacks it, boots the accessories, builds and pushes the image, and
 rolls the release out behind kamal-proxy only once the new container answers its
-healthcheck. caf does not decompose that, because a second implementation of a
-rolling deploy is a second opinion about what a deploy is. The one command caf
+healthcheck. cafe does not decompose that, because a second implementation of a
+rolling deploy is a second opinion about what a deploy is. The one command cafe
 runs that changes anything is "kamal setup", because that is the one that also
 creates the database on a fresh host; "kamal deploy" is the last third of it
 alone. It needs config/deploy.yml, the Kamal configuration, copied from
@@ -82,20 +82,20 @@ ARGO, the pull-only substrate. Argo is pull-only: CI never holds cluster
 credentials, and the only thing that changes the cluster is a commit. So a
 deploy is a values commit, a push, and a wait for Argo to sync — never a
 "kubectl apply" of a workload, never "helm", never a cluster credential in CI.
-caf resolves the service repository's chart/values.yaml — the values the OCI
+cafe resolves the service repository's chart/values.yaml — the values the OCI
 chart ships — bumps the image tag and the chart version, commits the two files
 with a message naming the service, the version and the commit it was built from,
 pushes, and polls the Application's status until Argo has synced the new
 revision and the service is healthy. The chart version is the OCI tag: the
 publish workflow pushes it, and the Application's targetRevision must move to
 it for Argo to sync. That second move is a commit in kit or an operator action —
-caf writes commits, never the cluster, and never another repository's tree — so
+cafe writes commits, never the cluster, and never another repository's tree — so
 the sync-wait refuses to claim a deploy that leaves targetRevision behind. It
 refuses a dirty working tree, a service repository with no git remote, a chart
 whose values or image reference cannot be found, and an Argo that is not
 reachable or never converges.
 
-ONE PATH. caf deploy <service> --engine <engine> --yes, from the project
+ONE PATH. cafe deploy <service> --engine <engine> --yes, from the project
 directory. --dry-run prints every command that would run — and, under Argo, the
 exact commit and the two files it would write — and executes nothing. Without
 --yes it asks first, and a machine with nobody to answer is told to pass --yes
@@ -127,7 +127,7 @@ func newDeployCommand(deps deployDeps) *Command {
 	c := &Command{
 		Name:     "deploy",
 		Summary:  "deploy a service: kamal (build, push, roll out), argo (a values commit, then wait for sync) or remote (the cafaye-operated platform, pinned off)",
-		Usage:    "caf deploy [flags] <service>",
+		Usage:    "cafe deploy [flags] <service>",
 		LongHelp: deployLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.environment, "env", "", "environment overlay to deploy, as config/deploy.<env>.yml merged over config/deploy.yml")
@@ -151,7 +151,7 @@ func newDeployCommand(deps deployDeps) *Command {
 	return c
 }
 
-// deployRun is one `caf deploy` invocation, gathered so the steps read top to
+// deployRun is one `cafe deploy` invocation, gathered so the steps read top to
 // bottom and can be tested without a closure capturing four variables.
 type deployRun struct {
 	opts    deployOptions
@@ -198,7 +198,7 @@ func (r deployRun) run() error {
 
 	// The dry run happens before the prompt, and that order is the point: a
 	// refusal or a plan that says "this is wrong" is more useful than a question
-	// about whether to go ahead and do it. Somebody who typed `caf deploy` to see
+	// about whether to go ahead and do it. Somebody who typed `cafe deploy` to see
 	// what it would do gets the answer, not a prompt.
 	if r.opts.dryRun {
 		return deploy.Run(ctxOrBackground(r.env), runner, deploy.Request{
@@ -216,7 +216,7 @@ func (r deployRun) run() error {
 		return err
 	}
 	if !ok {
-		fmt.Fprintf(r.out(), "caf deploy: nothing was deployed. Run it with --yes when you mean it.\n")
+		fmt.Fprintf(r.out(), "cafe deploy: nothing was deployed. Run it with --yes when you mean it.\n")
 		return errReported
 	}
 
@@ -254,7 +254,7 @@ func engineName(engine string) string {
 	return engine
 }
 
-// ask is the confirmation, and it is the only interactive thing caf does.
+// ask is the confirmation, and it is the only interactive thing cafe does.
 //
 // A dry run never reaches it. --yes skips it. Everything else asks once, naming
 // the service and the environment, because a prompt that does not say what it is
@@ -275,7 +275,7 @@ func (r deployRun) ask() (bool, error) {
 		// The account is the destination, so a prompt that named only the
 		// service would be approving a deploy to no stated place — and a prompt
 		// that printed an empty account shows the reader a hole where the
-		// destination should be, which reads as caf's bug rather than theirs.
+		// destination should be, which reads as cafe's bug rather than theirs.
 		// It says so in as many words, and names the flag that fills it.
 		if r.opts.account == "" {
 			where = "the operated platform, and NO ACCOUNT is named — pass --account <uuid>, because the account is what the platform serves"
@@ -283,7 +283,7 @@ func (r deployRun) ask() (bool, error) {
 			where = "the operated platform, account " + r.opts.account
 		}
 	}
-	return r.deps.confirm(fmt.Sprintf("caf deploy: deploy %s to %s? [y/N] ", r.service, where))
+	return r.deps.confirm(fmt.Sprintf("cafe deploy: deploy %s to %s? [y/N] ", r.service, where))
 }
 
 // out and errOut are the shared ones from confirm.go, so a nil writer is handled

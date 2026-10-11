@@ -1,12 +1,12 @@
 // Package agent is the agent half of the CLI: the principal that registers
 // itself, becomes claimed by a human, and holds a token.
 //
-// The split is the command vocabulary in moon/AGENTS-FIRST.md: `caf agent …`
+// The split is the command vocabulary in moon/AGENTS-FIRST.md: `cafe agent …`
 // is a *principal* (an identity that exists, becomes claimed by a human
-// account, and holds a token) and `caf box …` is a *machine* (it has a keypair,
+// account, and holds a token) and `cafe box …` is a *machine* (it has a keypair,
 // it enrolls, it runs the substrate). A box does not log in; it presents a
 // capability. An agent does not enroll; it registers. Two subjects, two verbs,
-// and `caf agent register` never reads as "the agent is registering a box".
+// and `cafe agent register` never reads as "the agent is registering a box".
 //
 // THREE SEAMS, and each one is there so a test can drive this package without a
 // network, a keychain or a subprocess:
@@ -40,6 +40,6 @@
 // WHAT THIS PACKAGE DOES NOT DO, and deliberately: it does not claim anything.
 // `POST /v1/accounts/{accountID}/agents/claim` is identity's, it needs a
 // signed-in human and an account in the path, and it is a browser flow. What
-// `caf agent register` does is produce the URL that flow starts from and say,
+// `cafe agent register` does is produce the URL that flow starts from and say,
 // on stderr, that a human has to open it.
 package agent

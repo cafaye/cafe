@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Document is the JSON answer `caf secret inventory` prints.
+// Document is the JSON answer `cafe secret inventory` prints.
 //
 // It is one object, not a stream, and it is written to stdout as one document —
 // the same contract internal/agent holds, where machine JSON goes to stdout and

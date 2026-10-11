@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/lock"
+	"github.com/cafaye/cafe/internal/lock"
 )
 
 // `caf.lock` is this repository's own lock, and this file is the check that it
@@ -57,7 +57,7 @@ func TestTheTreeMatchesItsCommittedLock(t *testing.T) {
 		t.Fatalf("%v\n"+
 			"  This repository pins its specs, vendored schemas and generated clients, and the check "+
 			"is this test. To create the lock for the first time, or after a refresh you have read the "+
-			"changelog for, run:\n    go run ./cmd/caf lock .", err)
+			"changelog for, run:\n    go run ./cmd/cafe lock .", err)
 	}
 
 	report, err := lock.Verify(root, committed)
@@ -69,10 +69,10 @@ func TestTheTreeMatchesItsCommittedLock(t *testing.T) {
 	}
 	t.Errorf("caf.lock does not describe this tree:\n%s\n"+
 		"  Two things cause this, and they have opposite remedies:\n"+
-		"    * core moved, or caf gen moved. Re-run `go run ./cmd/caf lock .` after reading core's\n"+
+		"    * core moved, or cafe gen moved. Re-run `go run ./cmd/cafe lock .` after reading core's\n"+
 		"      CHANGELOG at the new commit — the drift gate in internal/gen is the check on that half.\n"+
 		"    * somebody edited a pinned file by hand. Revert it. A vendored schema and a generated\n"+
-		"      client are both still plausible and both are wrong, and neither `caf contract lint` nor\n"+
+		"      client are both still plausible and both are wrong, and neither `cafe contract lint` nor\n"+
 		"      a build can tell them apart from the real thing.",
 		report)
 }
@@ -104,7 +104,7 @@ func TestTheTreeMatchesItsCommittedLock(t *testing.T) {
 // `internal/gen`'s drift gate already compares the generated files byte for byte.
 // So for the `vendored-schema` and `generated-client` kinds this repository has
 // two checks that agree, and the one this test drives is the second. The kinds
-// `caf lock` is genuinely the first check for here are `spec` and `rule-bundle` —
+// `cafe lock` is genuinely the first check for here are `spec` and `rule-bundle` —
 // `cafaye.yml` and `gate.yml`, neither of which anything in this repository
 // hashed before it — and REPORT-caf-lock-01.md is where that is written down in
 // full.
@@ -222,7 +222,7 @@ func pickVendoredSchema(l lock.Lock) (lock.Entry, error) {
 //
 // This is the check that keeps the format honest about being four kinds rather
 // than however many a tree happens to have: a kind added to `internal/lock` and
-// not written into caf's own lock would otherwise sit there with no example of
+// not written into cafe's own lock would otherwise sit there with no example of
 // itself in this repository, which is the state `internal/gen`'s goldens were in
 // before they moved out of `testdata/`.
 func TestTheCommittedLockOnlyUsesKindsCafKnows(t *testing.T) {
@@ -234,12 +234,12 @@ func TestTheCommittedLockOnlyUsesKindsCafKnows(t *testing.T) {
 	seen := map[lock.Kind]bool{}
 	for _, entry := range committed.Files {
 		if !lock.KnownKind(entry.Kind) {
-			t.Errorf("caf.lock pins %s as kind %q, which this caf does not know", entry.Path, entry.Kind)
+			t.Errorf("caf.lock pins %s as kind %q, which this cafe does not know", entry.Path, entry.Kind)
 		}
 		seen[entry.Kind] = true
 	}
 
-	// caf's own tree declares all four, so all four have an example here. A
+	// cafe's own tree declares all four, so all four have an example here. A
 	// repository that only had two would still be correct; this one is the
 	// reference, and a kind with no instance in it is a kind nobody has run.
 	for _, kind := range lock.KnownKinds() {

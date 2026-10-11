@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/mcp"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/mcp"
 )
 
 // # The remote MCP surface, wired
@@ -51,13 +51,13 @@ const principalTTL = 5 * time.Minute
 // live token resolves against — so the acceptance is identity's, not this
 // file's. A token that is not accepted comes back as a non-2xx and becomes a
 // refusal, which `internal/mcp` turns into the 401 naming
-// `caf agent token create`.
+// `cafe agent token create`.
 //
 // THE SCOPES, STATED HONESTLY. Identity's agent tokens carry no scope
 // vocabulary yet — "the agent-token scope vocabulary arrives with the routes it
 // will gate", identity's own comment at the mint — so there is no scope set to
 // read off the answer. What this file grants a bearer identity accepts is the
-// default scope caf's own table says a claimed agent is granted: read. The
+// default scope cafe's own table says a claimed agent is granted: read. The
 // write scopes (deploy.propose, deploy.apply) are granted by the claim screen,
 // which does not exist yet; until it does, a verified agent token reads and
 // cannot write, which is the fail-closed direction. The principal's subject is
@@ -101,7 +101,7 @@ func newIdentityAuthority(dir string) *identityAuthority {
 func (a *identityAuthority) Authenticate(ctx context.Context, token string) (*mcp.Principal, error) {
 	session, err := a.config.Session()
 	if err != nil {
-		return nil, fmt.Errorf("no agent session is saved on this machine (%v); run `caf agent register`", err)
+		return nil, fmt.Errorf("no agent session is saved on this machine (%v); run `cafe agent register`", err)
 	}
 	// The bearer goes to identity as its OWN credential. A server that verified
 	// the keyring's token instead would be a server that accepted its
@@ -128,7 +128,7 @@ func (a *identityAuthority) Authenticate(ctx context.Context, token string) (*mc
 
 // mcpBoxWorld is the mcp.World over this box's own recorded state.
 //
-// Every read is a read of something caf already wrote down: the enrollment
+// Every read is a read of something cafe already wrote down: the enrollment
 // journal, the phase table, the event log and the run store. Nothing here makes
 // a network call, and nothing here holds a key — `box.Store`'s identity carries
 // none, which is the shape `internal/box` was built to.
@@ -141,8 +141,8 @@ type mcpBoxWorld struct {
 
 var _ mcp.World = (*mcpBoxWorld)(nil)
 
-// newMCPBoxWorld builds the world a `caf mcp` serves from: the box state under
-// the same config directory `caf box enroll` wrote it.
+// newMCPBoxWorld builds the world a `cafe mcp` serves from: the box state under
+// the same config directory `cafe box enroll` wrote it.
 func newMCPBoxWorld() *mcpBoxWorld {
 	dir := ""
 	if home, err := defaultConfigDir(); err == nil {
@@ -179,11 +179,11 @@ func (w *mcpBoxWorld) Health(ctx context.Context) (mcp.Health, error) {
 		// The one thing a box that looks unenrolled needs to know: an
 		// enrollment was started and did not finish, and the journal says so.
 		health.Note = "this machine has no enrolled box, and an enrollment was started and did not " +
-			"finish (" + status.Journal + "); `caf box enroll --token …` resumes it."
+			"finish (" + status.Journal + "); `cafe box enroll --token …` resumes it."
 		return health, nil
 	}
 	if !status.Enrolled {
-		health.Note = "this machine has no enrolled box; `caf box enroll --token …` is what makes " +
+		health.Note = "this machine has no enrolled box; `cafe box enroll --token …` is what makes " +
 			"there be one, and it is run on the box itself."
 	}
 	_ = ctx
@@ -273,9 +273,9 @@ func (w *mcpBoxWorld) Apply(context.Context, mcp.ApplyArgs) (mcp.Applied, error)
 // so a caller can ask which of the two halves it is missing, and its message is
 // the actionable half: it names the packet and what the caller can do
 // meanwhile.
-var ErrNotWired = fmt.Errorf("caf mcp: proposing and applying a release need conductor's releases and " +
+var ErrNotWired = fmt.Errorf("cafe mcp: proposing and applying a release need conductor's releases and " +
 	"approvals, which are W5-P1 and are not in this build. The reads (caf_health, caf_logs, " +
-	"caf_rollout, caf_status) are live, and `caf box plan` shows the install phases a human can " +
+	"caf_rollout, caf_status) are live, and `cafe box plan` shows the install phases a human can " +
 	"drive directly")
 
 func (w *mcpBoxWorld) now() time.Time {
@@ -292,7 +292,7 @@ func notWired(reason string) string {
 }
 
 // phaseTitle is the one-line sentence for a phase name, from the same table
-// `caf box plan` reads.
+// `cafe box plan` reads.
 func phaseTitle(name string) string {
 	for _, phase := range box.Phases {
 		if phase.Name == name {
@@ -321,7 +321,7 @@ func statusDetail(status *box.Status) string {
 // attachAuth wires the transport auth onto a built server.
 //
 // WHY IT IS SEPARATE FROM newMCPServer, and why the two transports get
-// different halves rather than one: a `caf mcp` child process an agent host
+// different halves rather than one: a `cafe mcp` child process an agent host
 // spawns has no HTTP request to carry a bearer, so on stdio the caller is this
 // machine's own agent session, verified ONCE at startup. Over HTTP the caller
 // is the request, and the bearer in it is verified per request. The same
@@ -330,8 +330,8 @@ func statusDetail(status *box.Status) string {
 //
 // A nil authority is not a failure. A machine with no saved agent session still
 // serves its six local tools, because those need no scope, and the six remote
-// ones refuse with a message naming `caf agent register`. A server that refused
-// to boot without an identity would break `caf mcp` on every machine that had
+// ones refuse with a message naming `cafe agent register`. A server that refused
+// to boot without an identity would break `cafe mcp` on every machine that had
 // not registered yet, which is a worse failure than the one it prevents.
 func attachAuth(server *mcp.Server, env *Env, opts *mcpOptions, transport mcp.Transport) {
 	dir, err := defaultConfigDir()
@@ -377,14 +377,14 @@ func standingPrincipal(env *Env, authority *identityAuthority) *mcp.Principal {
 	if err != nil {
 		return nil
 	}
-	// Bounded, so a hung identity cannot hang `caf mcp` on its way up. The
+	// Bounded, so a hung identity cannot hang `cafe mcp` on its way up. The
 	// server starts either way; only the scoped tools depend on the answer.
 	ctx, cancel := context.WithTimeout(env.Context, 10*time.Second)
 	defer cancel()
 	principal, err := authority.Authenticate(ctx, token)
 	if err != nil {
 		// A diagnostic on stderr and never stdout: on stdio stdout is the wire.
-		fmt.Fprintf(env.Stderr, "caf mcp: the saved agent session was not accepted by identity: %v\n", err)
+		fmt.Fprintf(env.Stderr, "cafe mcp: the saved agent session was not accepted by identity: %v\n", err)
 		return nil
 	}
 	return principal
@@ -394,7 +394,7 @@ func standingPrincipal(env *Env, authority *identityAuthority) *mcp.Principal {
 // token held in a variable for the length of the process would be a credential
 // a process carries around, which is invariant 1.
 func ringToken(dir string, session agent.Session) (string, error) {
-	// The agent store's own ring, and the same 0600 file ring `caf agent` uses:
+	// The agent store's own ring, and the same 0600 file ring `cafe agent` uses:
 	// an agent's token and a box's key are two kinds of secret in one secret
 	// store, and a second implementation of "put a secret somewhere" is a
 	// second place for the mode bits to be wrong.

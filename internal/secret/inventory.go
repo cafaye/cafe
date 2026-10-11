@@ -27,7 +27,7 @@ const (
 	Conditional Class = "conditional"
 
 	// NotRotatable is the class where a rotation is a fork or a cutover. The
-	// reason names which. `caf secret rotate` REFUSES these by name and by
+	// reason names which. `cafe secret rotate` REFUSES these by name and by
 	// reason, which is the whole point of the class: a silent skip is how
 	// somebody spends a weekend discovering it.
 	NotRotatable Class = "not-rotatable"
@@ -425,7 +425,7 @@ type UnknownError struct {
 }
 
 func (e *UnknownError) Error() string {
-	return "caf secret: no inventory entry named " + quote(e.Name) +
+	return "cafe secret: no inventory entry named " + quote(e.Name) +
 		". The inventory holds: " + joinComma(e.Known)
 }
 

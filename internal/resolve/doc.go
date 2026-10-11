@@ -6,13 +6,13 @@
 // the tiers in order, and the order is the semantics:
 //
 //	Tier 1  the listing	pantry  GET /v1/projects/{name}	         anonymous
-//	Tier 2  the metadata	pantry  GET /v1/projects/{name}/coordinates  caf token
+//	Tier 2  the metadata	pantry  GET /v1/projects/{name}/coordinates  cafe token
 //	Tier 3  the artifact	conductor POST …/artifact_fetches → redeem	entitlement
 //
 // Tier 1 says the project exists and what it is (name, description, language,
 // `repository.visibility`) — advertising, free and paid alike (D5). Tier 2
 // says where its code lives (repository coordinates), to any caller
-// presenting a live caf token. Tier 3 says whether the caller may fetch the
+// presenting a live cafe token. Tier 3 says whether the caller may fetch the
 // artifact at all: the entitlement check mints a single-use, minutes-lived
 // artifact.fetch capability bound to exactly (account, artifact,
 // version-range), and the redemption is the fetch grant. A free service never
@@ -25,11 +25,11 @@
 // `platform`, `identity`, `courier`), which are still service names because
 // conductor's contract did not move. A sentence about the catalog says
 // "project"; a sentence about what is paid says "product"; the runtime word
-// "service" survives in caf's own vocabulary.
+// "service" survives in cafe's own vocabulary.
 //
 // THE ONE INVARIANT, stated once because everything else here is downstream of
 // it: **the caller's credential is presented, never stored.** The resolver
-// takes the caller's caf token as a parameter, hands it to the pantry and
+// takes the caller's cafe token as a parameter, hands it to the pantry and
 // conductor clients for the length of one call, and keeps no reference to it.
 // It is never printed, never logged, never put in a document. The token is the
 // agent's, read from the keyring by the command that calls this package; this
@@ -48,7 +48,7 @@
 // honours it: a failed optional dependency is a warning, not a block. The
 // decision is the command's — the resolver reports every failure with its
 // dependency's Required flag, and the caller decides warn-vs-block. Conductor
-// never sees `required`; it is caf's side of the contract.
+// never sees `required`; it is cafe's side of the contract.
 //
 // WHAT THIS PACKAGE DOES NOT DO, and deliberately: it does not fetch artifact
 // bytes. There is no artifact-serving endpoint yet — tier 3's fetch grant is

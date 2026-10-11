@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 func itoa(i int) string { return strconv.Itoa(i) }
 
-// `caf reclaim` is the one command in this binary that destroys things, so the
+// `cafe reclaim` is the one command in this binary that destroys things, so the
 // tests below are about the order of operations and the words on stdout rather
 // than about the plumbing.
 
@@ -220,7 +220,7 @@ func TestALivePortReservationIsLeftAlone(t *testing.T) {
 
 // A reservation whose holder is gone is reclaimable without a janitor, because
 // the kernel dropped the lock when the holder died. The row outliving the
-// process is the whole reason `caf reclaim` has to exist at all.
+// process is the whole reason `cafe reclaim` has to exist at all.
 func TestAStalePortReservationIsReleased(t *testing.T) {
 	l := openTestLedger(t)
 	gen, err := l.NextGen("/repo/identity")
@@ -257,7 +257,7 @@ func TestAStalePortReservationIsReleased(t *testing.T) {
 }
 
 // `-ledger` points the sweep at a scratch directory, which is how a test runs it
-// and how a developer runs two experiments at once. caf must not write to a
+// and how a developer runs two experiments at once. cafe must not write to a
 // developer's real ledger because a command in a test binary ran.
 func TestTheLedgerFlagChoosesTheLedger(t *testing.T) {
 	dir := t.TempDir()
@@ -302,7 +302,7 @@ func runReclaim(t *testing.T, l *ledger.Ledger, docker ledger.Docker, args ...st
 	case errors.Is(err, errReported):
 		return exitFailure, out.String(), errOut.String()
 	default:
-		fmt.Fprintf(&errOut, "caf: %v\n", err)
+		fmt.Fprintf(&errOut, "cafe: %v\n", err)
 		if errors.Is(err, errUsage) {
 			return exitUsage, out.String(), errOut.String()
 		}

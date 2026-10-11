@@ -6,11 +6,11 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/reclaim"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/reclaim"
 )
 
-// reclaimDeps is what `caf reclaim` needs from the world: a ledger to read and a
+// reclaimDeps is what `cafe reclaim` needs from the world: a ledger to read and a
 // container runtime to ask. They are parameters rather than globals so a test
 // can hand the command a runtime that is down, one that refuses a removal, and a
 // ledger in a scratch directory — three states a developer's machine cannot be
@@ -33,9 +33,9 @@ func newReclaimCommand(deps reclaimDeps) *Command {
 	opts := &reclaimOptions{}
 	c := &Command{
 		Name:    "reclaim",
-		Summary: "reclaim what a caf session left behind: containers first, then volumes",
-		Usage:   "caf reclaim [flags]",
-		LongHelp: "Every stack caf brought up is written to a ledger before the\n" +
+		Summary: "reclaim what a cafe session left behind: containers first, then volumes",
+		Usage:   "cafe reclaim [flags]",
+		LongHelp: "Every stack cafe brought up is written to a ledger before the\n" +
 			"resource is created, and this is the command that reads it back.\n" +
 			"\n" +
 			"It is a dry run unless you pass -yes. The plan is printed in full,\n" +
@@ -58,7 +58,7 @@ func newReclaimCommand(deps reclaimDeps) *Command {
 			"Exits 1 when something was :failed, so a script can tell a clean\n" +
 			"sweep from a broken one. It never runs a blanket prune: every\n" +
 			"resource is named by its compose project, which carries the\n" +
-			"ledger's generation, and nothing that caf did not create is\n" +
+			"ledger's generation, and nothing that cafe did not create is\n" +
 			"reachable at all.",
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.ledgerDir, "ledger", "", "the ledger to read; the default is $CAF_LEDGER_DIR or the user state directory")
@@ -83,7 +83,7 @@ func (d reclaimDeps) withDefaults() reclaimDeps {
 	return d
 }
 
-// reclaimRun is one `caf reclaim`, gathered so the steps read top to bottom.
+// reclaimRun is one `cafe reclaim`, gathered so the steps read top to bottom.
 type reclaimRun struct {
 	opts reclaimOptions
 	deps reclaimDeps
@@ -103,7 +103,7 @@ func (r reclaimRun) out(env *Env) io.Writer {
 func (r reclaimRun) run(env *Env) error {
 	book, err := r.openLedger()
 	if err != nil {
-		return fmt.Errorf("caf reclaim: %w", err)
+		return fmt.Errorf("cafe reclaim: %w", err)
 	}
 
 	report, err := ledger.Sweep(ctxOrBackground(env), book, r.deps.docker, ledger.SweepOptions{
@@ -111,7 +111,7 @@ func (r reclaimRun) run(env *Env) error {
 		Generations: generations(r.opts.generation),
 	})
 	if err != nil {
-		return fmt.Errorf("caf reclaim: %w", err)
+		return fmt.Errorf("cafe reclaim: %w", err)
 	}
 
 	r.write(env, book, report)

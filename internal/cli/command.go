@@ -12,7 +12,7 @@ import (
 // the message can gain context without losing the sentinel.
 var errNotImplemented = errors.New("not implemented in v0")
 
-// Command is one caf subcommand.
+// Command is one cafe subcommand.
 //
 // Name is the word the user types, Summary is its one-line help, Usage is the
 // full usage line, LongHelp is optional prose printed under the usage, Flags
@@ -21,7 +21,7 @@ var errNotImplemented = errors.New("not implemented in v0")
 // rule the standard flag package enforces.
 //
 // A subcommand of a subcommand is a Command too, with its full invocation as
-// its Name: `caf contract lint` is one command named "contract lint", so its
+// its Name: `cafe contract lint` is one command named "contract lint", so its
 // help and its usage errors read exactly as the person typed them.
 type Command struct {
 	Name     string
@@ -49,7 +49,7 @@ func (c *Command) FlagSet() *flag.FlagSet {
 // Execute parses args and runs the command.
 //
 // `-h` is not a declared flag, so the flag package reports ErrHelp: the command
-// prints its help and succeeds, which is what a person typing `caf new --help`
+// prints its help and succeeds, which is what a person typing `cafe new --help`
 // expects.
 func (c *Command) Execute(env *Env, args []string) error {
 	fs := c.FlagSet()
@@ -58,12 +58,12 @@ func (c *Command) Execute(env *Env, args []string) error {
 			printHelp(env.Stdout, c)
 			return nil
 		}
-		return fmt.Errorf("%w: caf %s: %w", errUsage, c.Name, err)
+		return fmt.Errorf("%w: cafe %s: %w", errUsage, c.Name, err)
 	}
 	return c.Run(fs.Args(), env)
 }
 
-// Commands returns every subcommand, in the order `caf help` lists them.
+// Commands returns every subcommand, in the order `cafe help` lists them.
 func Commands() []*Command {
 	return []*Command{
 		newAgentCommand(agentDeps{}),
@@ -108,7 +108,7 @@ func wantArgs(name, usage string, want, got int) error {
 	if got == want {
 		return nil
 	}
-	return fmt.Errorf("%w: caf %s wants %s, got %d (usage: %s)", errUsage, name, pluralArgs(want), got, usage)
+	return fmt.Errorf("%w: cafe %s wants %s, got %d (usage: %s)", errUsage, name, pluralArgs(want), got, usage)
 }
 
 func pluralArgs(n int) string {
@@ -119,7 +119,7 @@ func pluralArgs(n int) string {
 }
 
 // notImplemented is what every stub returns. The command name goes in so the
-// message is useful on a terminal: "caf deploy: not implemented in v0".
+// message is useful on a terminal: "cafe deploy: not implemented in v0".
 func notImplemented(c *Command) error {
-	return fmt.Errorf("caf %s: %w", c.Name, errNotImplemented)
+	return fmt.Errorf("cafe %s: %w", c.Name, errNotImplemented)
 }

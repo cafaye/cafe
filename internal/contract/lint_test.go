@@ -47,7 +47,7 @@ func TestLintWalksTheTree(t *testing.T) {
 
 // The skip list is a contract: one directory name per vendored or generated
 // tree, asserted one at a time, so adding an entry is a visible decision
-// rather than a silent widening of what `caf contract lint` reads.
+// rather than a silent widening of what `cafe contract lint` reads.
 func TestLintSkipsVendoredTrees(t *testing.T) {
 	for _, skipped := range skippedDirs {
 		t.Run(skipped, func(t *testing.T) {

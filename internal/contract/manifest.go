@@ -21,7 +21,7 @@ type Manifest struct {
 	documentJSON []byte
 }
 
-// manifestFields is the shape caf reads out of a manifest. It is deliberately
+// manifestFields is the shape cafe reads out of a manifest. It is deliberately
 // smaller than the schema: every field here exists because a rule or a
 // consumer needs it, and a field nobody reads is a field nobody validates.
 type manifestFields struct {
@@ -82,8 +82,8 @@ func (d Dependency) String() string {
 }
 
 // ManifestFileName is the one name a manifest may have. It is exported
-// because the file name is a contract between caf and the filesystem, not a
-// detail of the parser: `caf resolve` and `caf dev` both have to find the
+// because the file name is a contract between cafe and the filesystem, not a
+// detail of the parser: `cafe resolve` and `cafe dev` both have to find the
 // manifest before either can read it, and a caller that had to guess the name
 // is a caller that cannot report "there is nothing here" on its own.
 func ManifestFileName() string { return manifestFileName }
@@ -130,7 +130,7 @@ func (m Manifest) Publishes() []string {
 func (m Manifest) Consumes() []string { return m.fields.Consumes }
 
 // Language is the implementation language, or "spec" for a repository that
-// only holds specifications. It is the first thing `caf dev` and `caf doctor`
+// only holds specifications. It is the first thing `cafe dev` and `cafe doctor`
 // read: it decides the container port, the toolchain a developer needs, and
 // whether the service is a library at all.
 func (m Manifest) Language() string { return m.fields.Language }
@@ -140,7 +140,7 @@ func (m Manifest) Language() string { return m.fields.Language }
 func (m Manifest) Description() string { return m.fields.Description }
 
 // Dependencies are the other cafaye services this one builds on, in the order
-// the manifest declares them. `caf dev` turns them into a running stack, so
+// the manifest declares them. `cafe dev` turns them into a running stack, so
 // this is the list the local closure is walked from.
 func (m Manifest) Dependencies() []Dependency {
 	declared := m.fields.Dependencies
@@ -176,7 +176,7 @@ func (m Manifest) APIDocumentPath() string {
 }
 
 // CoreConstraint is the `core` field parsed as a constraint on the core spec
-// version, so `caf gen` and `caf deploy` can ask what a service was written
+// version, so `cafe gen` and `cafe deploy` can ask what a service was written
 // against instead of pattern-matching the string themselves.
 func (m Manifest) CoreConstraint() (Constraint, error) {
 	return ParseConstraint(m.fields.Core)

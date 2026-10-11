@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // Outcome is how an invocation ended, and it is a closed set because core's
@@ -20,14 +20,14 @@ type Outcome int
 const (
 	// OutcomeSuccess is a command that did what it was asked and exits 0.
 	OutcomeSuccess Outcome = iota
-	// OutcomeUsage is caf being invoked wrongly: unknown command, bad flag,
+	// OutcomeUsage is cafe being invoked wrongly: unknown command, bad flag,
 	// wrong argument count. Exit 2.
 	//
 	// Classified `invalid_request`, not `internal_error`. This is the one class
 	// where the error is caused by something OUTSIDE the process and nobody
 	// inside it is at fault: the person typed the command wrong. Filing it as
 	// internal_error would put a user's typo in the same dashboard bucket as a
-	// caf bug, and the two have opposite remedies.
+	// cafe bug, and the two have opposite remedies.
 	OutcomeUsage
 	// OutcomeFailure is a command that ran and failed. Exit 1.
 	//
@@ -43,13 +43,13 @@ const (
 	// OutcomeCancelled is a command stopped by SIGINT or SIGTERM. Exit 1.
 	//
 	// Classified `cancelled`, which core's vocabulary has a value for exactly
-	// so this does not have to be invented. A Ctrl-C during `caf dev` is not an
+	// so this does not have to be invented. A Ctrl-C during `cafe dev` is not an
 	// error in the sense an alert should page on, and a class that says so is
 	// what stops an operator's own impatience showing up in an error rate.
 	OutcomeCancelled
 )
 
-// exitCode is the process exit code for an outcome, and it is the mapping caf
+// exitCode is the process exit code for an outcome, and it is the mapping cafe
 // has already committed to in internal/cli.
 func (o Outcome) exitCode() int {
 	switch o {
@@ -65,8 +65,8 @@ func (o Outcome) exitCode() int {
 // Classified lets a command name its own error class.
 //
 // It exists because the default is `internal_error` and that default is right
-// for most commands and wrong for a few. A `caf deploy` that cannot reach the
-// registry is `dependency_unavailable`, not a caf bug, and a reader of the
+// for most commands and wrong for a few. A `cafe deploy` that cannot reach the
+// registry is `dependency_unavailable`, not a cafe bug, and a reader of the
 // dashboard cannot tell those apart from the class alone. So the one place that
 // knows — the command — can say so, and it must be a member of core's closed
 // vocabulary or Install's caller refuses it.
@@ -96,7 +96,7 @@ func (c Classified) Error() string {
 // keeps `Classify(err, ...)` transparent to the router's own error handling.
 func (c Classified) Unwrap() error { return c.err }
 
-// StartInvocation opens the one root span a caf run produces.
+// StartInvocation opens the one root span a cafe run produces.
 //
 // The name is derived, not passed in, and that is the property core's grammar
 // exists to enforce: the span name is `<service>.<operation>[.<target>]` with a
@@ -162,12 +162,12 @@ func errorType(outcome Outcome) string {
 	}
 }
 
-// InvocationSpanName is the span name for one caf run, derived from its
+// InvocationSpanName is the span name for one cafe run, derived from its
 // arguments.
 //
 // It is exported and pure because the derivation is the contract, and a contract
 // a test cannot name is a contract that gets re-implemented. It reads only the
-// leading non-flag words, so `caf dev -project x` and `caf dev -project y` are
+// leading non-flag words, so `cafe dev -project x` and `cafe dev -project y` are
 // the same span, which is the whole property: a per-request span name is a
 // cardinality explosion and a per-subcommand one is a dashboard.
 //
@@ -175,7 +175,7 @@ func errorType(outcome Outcome) string {
 // lowercase, dot-separated, at most 15 characters a segment, at most three
 // segments after the service name. A word that cannot be made legal is DROPPED
 // rather than mangled, because mangling produces two names for one command and a
-// dashboard with `caf.dev.-proj` on it is worse than one missing a rare command.
+// dashboard with `cafe.dev.-proj` on it is worse than one missing a rare command.
 // The final answer is always checked against the generated pattern, so a name
 // that cannot be made legal falls back to the whole-run name rather than
 // exporting something core's collector will drop.
@@ -203,25 +203,25 @@ func InvocationSpanName(args []string) string {
 }
 
 // fallbackSpanName is the name for a run whose arguments yield nothing legal —
-// `caf`, `caf --help`, `caf -version`.
+// `cafe`, `cafe --help`, `cafe -version`.
 //
-// `caf.cli.run` rather than `caf.run`: the target segment exists precisely
-// because the operation alone is ambiguous across the fleet, and `caf.run` could
+// `cafe.cli.run` rather than `cafe.run`: the target segment exists precisely
+// because the operation alone is ambiguous across the fleet, and `cafe.run` could
 // be an HTTP call, an event publish, or a person typing at a terminal. `run`
-// names what every caf invocation is.
+// names what every cafe invocation is.
 const fallbackSpanName = telemetry.ServiceName + ".cli.run"
 
 // commandWords are the command's own words: leading arguments that are not
 // flags and not flag values.
 //
 // A flag's VALUE is excluded along with the flag, and that is the part that is
-// easy to get wrong. `caf gen telemetry -out /tmp/x` must be `caf.gen.telemetry`
-// and not `caf.gen.telemetry.out.tmp.x` — so a `-flag` consumes the word after
+// easy to get wrong. `cafe gen telemetry -out /tmp/x` must be `cafe.gen.telemetry`
+// and not `cafe.gen.telemetry.out.tmp.x` — so a `-flag` consumes the word after
 // it unless that word is itself a flag, and the skipped word is not examined.
-// This is a heuristic and it is stated as one: caf's flags are documented with
+// This is a heuristic and it is stated as one: cafe's flags are documented with
 // their arities in each subcommand's `Flags` function, and a name derived from a
-// heuristic that misreads `caf dev -no-infra up` is a span called `caf.dev.up`
-// when the command was `caf dev`. The alternative — threading each command's real
+// heuristic that misreads `cafe dev -no-infra up` is a span called `cafe.dev.up`
+// when the command was `cafe dev`. The alternative — threading each command's real
 // name through the router — is the honest fix and is not done here; see the
 // report. What this guarantees is the property that matters either way: the
 // answer is always legal per core's grammar, never unbounded, and never a path.
@@ -231,8 +231,8 @@ func commandWords(args []string) []string {
 		arg := args[i]
 		if strings.HasPrefix(arg, "-") {
 			// A flag consumes the next argument unless that one is a flag too:
-			// `caf dev --project foo` is two words about one value, and
-			// `caf dev -no-infra` is one.
+			// `cafe dev --project foo` is two words about one value, and
+			// `cafe dev -no-infra` is one.
 			if !strings.Contains(arg, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 				i++
 			}
@@ -247,7 +247,7 @@ func commandWords(args []string) []string {
 //
 // The bound is core's, not this file's: 15 characters, lowercase, and no dash.
 // A dash is a legal character in a service name and an ILLEGAL one in every
-// segment after it, so `caf gen telemetry` is fine and a two-word subcommand
+// segment after it, so `cafe gen telemetry` is fine and a two-word subcommand
 // joined by a dash would not be — hence the underscore, which the grammar does
 // allow, and which is why the dash is dropped rather than refused.
 func spanSegment(word string) (string, bool) {
@@ -275,7 +275,7 @@ func spanSegment(word string) (string, bool) {
 	return segment, true
 }
 
-// SpanKind is the kind core's span-naming.schema.json gives a caf invocation.
+// SpanKind is the kind core's span-naming.schema.json gives a cafe invocation.
 //
 // `internal`, which the schema's enum allows and which OpenTelemetry defines as
 // an operation internal to an application. There is no request, so `server`
@@ -287,7 +287,7 @@ const SpanKind = trace.SpanKindInternal
 // rather than only a constant nobody reads. core's enum is
 // internal/server/client/producer/consumer and there is no generated Go constant
 // for it — the generated file carries the SPAN NAMES and the error vocabulary,
-// not a kind list — so this is the check that caf has not drifted from a
+// not a kind list — so this is the check that cafe has not drifted from a
 // contract it reads by hand.
 var _ = map[trace.SpanKind]string{
 	SpanKind: "internal",

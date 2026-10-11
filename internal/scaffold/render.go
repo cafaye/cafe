@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // serviceNamePattern mirrors core's serviceName $defs
@@ -30,9 +30,9 @@ const (
 )
 
 // reservedNames are the four names core's serviceName $defs reserves. They
-// pass the pattern — "caf" and "core" are legal kebab-case — so only a check
+// pass the pattern — "cafe" and "core" are legal kebab-case — so only a check
 // here keeps a scaffolded app from taking the CLI's own namespace.
-var reservedNames = []string{"cafaye", "caf", "kit", "core"}
+var reservedNames = []string{"cafaye", "cafe", "kit", "core"}
 
 // coreConstraint is the core contract version a scaffolded app is written
 // against. It tracks the schema this package validates against (manifest-0.2),
@@ -41,13 +41,13 @@ var reservedNames = []string{"cafaye", "caf", "kit", "core"}
 const coreConstraint = "^0.2.0"
 
 // manifestPath is the one file every template writes and the one file every
-// project is identified by. `caf contract lint` looks for exactly this name at
+// project is identified by. `cafe contract lint` looks for exactly this name at
 // the root of a repository, so the catalog cannot offer a project without it.
 const manifestPath = "cafaye.yml"
 
 // defaultRepositoryOrg is the organization a scaffolded app's repository URL
 // is guessed under. It is a starting point the manifest's own comment says to
-// edit, not a fact: caf cannot know where a stranger's app will live.
+// edit, not a fact: cafe cannot know where a stranger's app will live.
 const defaultRepositoryOrg = "cafaye"
 
 // templateData is what a template may substitute. It is small on purpose: a
@@ -141,7 +141,7 @@ func executeTemplate(templateName, relative string, source []byte, data template
 
 // validateManifest is the gate: the rendered manifest goes through
 // contract.CheckData — core's schema and the cross-field conventions, the same
-// code `caf contract lint` runs — before anything is written. A template that
+// code `cafe contract lint` runs — before anything is written. A template that
 // renders an invalid manifest is a defect in this repository, not in the
 // scaffolded app, and the error says so.
 func validateManifest(templateName string, files []File) error {
@@ -160,7 +160,7 @@ func validateManifest(templateName string, files []File) error {
 }
 
 // manifestOf is the manifest file out of a rendered set. Callers that write
-// only the manifest (caf init) need it, and a second walk of the files is
+// only the manifest (cafe init) need it, and a second walk of the files is
 // cheaper than a second field on File.
 func manifestOf(files []File) (File, bool) {
 	for _, file := range files {

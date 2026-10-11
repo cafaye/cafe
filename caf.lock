@@ -1,10 +1,10 @@
 {
   "lockVersion": 1,
-  "tool": "caf 0.0.0-dev",
+  "tool": "cafe 0.0.0-dev",
   "hash": "sha256",
   "files": [
-    {"path": "cafaye.yml", "kind": "spec", "sha256": "a7268f608db1b83d437f12e3c521c00a4cdeb746f469834c77448aa4963019c5"},
-    {"path": "gate.yml", "kind": "rule-bundle", "sha256": "bc904c566901402a383d1fa85668058f0a6f3f559f880c6a8903da3db1d7c9e0"},
+    {"path": "cafaye.yml", "kind": "spec", "sha256": "69f21db40a77f98f02d11709cea3917e5f882fd1c47a37517a7a1a3abd8d11a9"},
+    {"path": "gate.yml", "kind": "rule-bundle", "sha256": "5e5cfe2c03b7f018234c5f78b86b49eac79f4c3fe4ba53d0bccd04ba64a8d80a"},
     {"path": "internal/contract/schemas/manifest-0.2.json", "kind": "vendored-schema", "sha256": "9f90b3707d39da40b2416ac815ad9127681b65c8d87e5b50879e5f7af69ef0b9"},
     {"path": "internal/contract/schemas/telemetry/logs.schema.json", "kind": "vendored-schema", "sha256": "816cb1066d17bc13cef82d095208bb895b75bb347bb897771bda7890b08f78e6"},
     {"path": "internal/contract/schemas/telemetry/metrics.schema.json", "kind": "vendored-schema", "sha256": "1f816b16b3962a1390d71a482466bf3b33aa67fbcb0023d06ebefb5d3699746a"},
@@ -12,8 +12,8 @@
     {"path": "internal/contract/schemas/telemetry/redaction.schema.json", "kind": "vendored-schema", "sha256": "1e5cd92a79bd7d63fffaa2caba6f6e49d99e291de3362be8d7281991c5581171"},
     {"path": "internal/contract/schemas/telemetry/span-naming.schema.json", "kind": "vendored-schema", "sha256": "d846c78dec600456d0de20383510e6bcb37e23cd083e1d82717dbe401d3cd495"},
     {"path": "internal/contract/schemas/telemetry/traces.schema.json", "kind": "vendored-schema", "sha256": "101132a6792318670c352a8f61a3231387748eb53ec86d0a23dbac55a71ed576"},
-    {"path": "internal/telemetry/telemetry.go", "kind": "generated-client", "sha256": "839de66a076777a29f6e42877119e1174b902084f2412cd7d349d0a5e0c16247"},
-    {"path": "internal/telemetry/telemetry_test.go", "kind": "generated-client", "sha256": "fea588084ca5a2da32edaada17843f2a1413299a4775b7bf10c5a13d63ef31c9"},
-    {"path": "telemetry/otel-endpoint.json", "kind": "generated-client", "sha256": "97e0deddd6d17582ff340e4817c346d01b564967e0f517a9b4f7346b2f9ca2a7"}
+    {"path": "internal/telemetry/telemetry.go", "kind": "generated-client", "sha256": "f16ec390b61561288f5ed920077907d31d7e31af40f7276fa90c3d33e455b84c"},
+    {"path": "internal/telemetry/telemetry_test.go", "kind": "generated-client", "sha256": "f0d2fb0d7d18cac1eecee2eb58bb96e84157297ff70e726a1c371f9a62360560"},
+    {"path": "telemetry/otel-endpoint.json", "kind": "generated-client", "sha256": "ec88e0711fe34dd2707622a46e285146946f2640b8e304cbb9681cc187594bf8"}
   ]
 }

@@ -1,16 +1,16 @@
 # {{ .Name }}
 
-A cafaye platform app, scaffolded by `caf new --template platform`. It runs on
-`caf dev` with the launch four — identity, gateway, courier, and parlor —
-composed into a starting product, ships from a Helm chart `caf gen chart`
-writes, and is held to the cafaye contract by `caf contract lint`.
+A cafaye platform app, scaffolded by `cafe new --template platform`. It runs on
+`cafe dev` with the launch four — identity, gateway, courier, and parlor —
+composed into a starting product, ships from a Helm chart `cafe gen chart`
+writes, and is held to the cafaye contract by `cafe contract lint`.
 
 ## The loop
 
 ```sh
-caf dev              # build the image and run the stack locally
-caf gen chart        # the Helm chart this app deploys from
-caf contract lint .  # the manifest, checked against core's schema
+cafe dev              # build the image and run the stack locally
+cafe gen chart        # the Helm chart this app deploys from
+cafe contract lint .  # the manifest, checked against core's schema
 ```
 
 ## What is in the box
@@ -20,7 +20,7 @@ caf contract lint .  # the manifest, checked against core's schema
 | `cafaye.yml` | the app's identity: name, language, contract version, owner, repository, and the four platform dependencies |
 | `main.go` | a real service on `:8080`, answering `/healthz` and `/readyz` |
 | `go.mod` | the Go module |
-| `docker/Dockerfile` | the image `caf dev` builds, in the place it looks for one |
+| `docker/Dockerfile` | the image `cafe dev` builds, in the place it looks for one |
 
 The app listens on 8080 because that is the port cafaye knows a Go service
 listens on — it is read out of the manifest's `language`, not configured
@@ -38,19 +38,19 @@ This app depends on the four platform services:
 | **parlor** | the web app the customer sees |
 
 Each is declared in `cafaye.yml` under `dependencies` and resolved through the
-service registry at `caf dev` time. The registry (pantry serves the official
-one) knows how to run each service locally; `caf dev` starts them alongside
+service registry at `cafe dev` time. The registry (pantry serves the official
+one) knows how to run each service locally; `cafe dev` starts them alongside
 this app and wires the connections.
 
 ## The two rules that matter most
 
 **The manifest is identity, not configuration.** Core's schema is
 `additionalProperties: false`: a field core has not declared is an error, and
-`caf contract lint` reports it. A credential belongs in the deployment's
+`cafe contract lint` reports it. A credential belongs in the deployment's
 secret store, referenced by name — never in a file that is committed. When
 this app starts publishing events or serving an API, declare them in
 `exposes`: every event type opens with the publisher's own name, and
-`caf contract lint` enforces that too.
+`cafe contract lint` enforces that too.
 
 **The app is the editable surface.** The customer's repository is the source
 of truth; the platform's surface is its contracts and configuration. An agent

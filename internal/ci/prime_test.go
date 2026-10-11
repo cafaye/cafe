@@ -136,11 +136,11 @@ func TestTheGateAccountsForEveryLiveTest(t *testing.T) {
 // edits a pattern and asserts `gate.proof-missing`. Three copies that are each
 // checked against the others; not one copy that is trusted.
 const (
-	summaryFormat = "caf: %s packages, %s top-level passes, %s subtest passes, %s failures, %s skips"
+	summaryFormat = "cafe: %s packages, %s top-level passes, %s subtest passes, %s failures, %s skips"
 	// The prefix of the live-tier line, up to the number. The tier size itself
 	// is checked against the tree above, and against `gate.yml` by the
 	// self-test, so it is deliberately not written down a third time here.
-	liveTierLinePrefix = "caf: live tier: "
+	liveTierLinePrefix = "cafe: live tier: "
 )
 
 // TestTheGateReportsItsOwnCounts is the second half, and it is here because the
@@ -169,7 +169,7 @@ func TestTheGateReportsItsOwnCounts(t *testing.T) {
 	// The reason the counts exist. `go test` on its own prints one `ok <pkg>`
 	// line per package and no test count whatsoever, so a gate that printed
 	// only what `go test` prints could not be given a floor at all — which is
-	// the state caf was in until this packet: 12,480 lines of code, and
+	// the state cafe was in until this packet: 12,480 lines of code, and
 	// nothing countable to put a minimum against.
 	if strings.Contains(prime, "go test ./...\n") && !strings.Contains(prime, "go test -v ./...") {
 		t.Errorf("bin/prime runs `go test` without -v, so it has no `--- PASS:` lines to count. " +
@@ -252,7 +252,7 @@ func liveTestsInTree(t *testing.T) []liveTest {
 			return err
 		}
 		if entry.IsDir() {
-			// Generated, hidden and fixture trees hold no caf test source, and
+			// Generated, hidden and fixture trees hold no cafe test source, and
 			// walking them is how a check turns into a slow one.
 			if notASourceTree(entry.Name()) {
 				return filepath.SkipDir
@@ -468,7 +468,7 @@ const expectedSkips = 8
 // rather than a constant that silently becomes a lookup for nothing.
 const suiteProofID = "suite"
 
-// TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave is core's ratchet, and caf
+// TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave is core's ratchet, and cafe
 // needs the same one.
 //
 // core writes it as `test_the_gate_floor_is_not_below_the_suite_core_claims_to_have`
@@ -478,7 +478,7 @@ const suiteProofID = "suite"
 // floor in `gate.yml` is raised in the same commit. Do not 'fix' that test by
 // lowering the assertion; raise the number, which is the point of it."
 //
-// This packet is the first commit in caf to move that number, and it moved it
+// This packet is the first commit in cafe to move that number, and it moved it
 // three times while the packet was being written — 428 to 430 to 431 — each
 // time by adding a test. So the thing being described is not hypothetical.
 // Without this test the ratchet is a convention, and a convention is what the
@@ -576,7 +576,7 @@ func suiteFloor(t *testing.T) int {
 	var gate declaration
 	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "gate.yml"))
 	if err != nil {
-		t.Fatalf("read gate.yml: %v. caf declares its gate and the file is not here", err)
+		t.Fatalf("read gate.yml: %v. cafe declares its gate and the file is not here", err)
 	}
 	if err := yaml.Unmarshal(raw, &gate); err != nil {
 		t.Fatalf("parse gate.yml: %v", err)
@@ -644,7 +644,7 @@ func testFuncsInTree(t *testing.T) int {
 	return declared
 }
 
-// notASourceTree is whether a directory holds no caf test source, whatever it is
+// notASourceTree is whether a directory holds no cafe test source, whatever it is
 // called.
 //
 // `testdata` is here because the go toolchain excludes it from every package, and

@@ -253,7 +253,7 @@ func TestADamagedJournalIsRefusedByName(t *testing.T) {
 }
 
 // Two drills over one directory serialise, and the loser is told rather than
-// dropped. caf is one binary a schedule runs and an operator also runs, so two
+// dropped. cafe is one binary a schedule runs and an operator also runs, so two
 // appends can genuinely overlap — and the one that lost has to be able to say
 // so instead of quietly overwriting the other's history.
 // Two appends both land, and the store's read-modify-write cycle is what makes
@@ -300,7 +300,7 @@ func TestTheStoreLockReportsWhenAnotherCafHoldsIt(t *testing.T) {
 	}
 
 	if _, err := store.tryLock(); err == nil {
-		t.Error("a second caf took the store's lock while the first held it")
+		t.Error("a second cafe took the store's lock while the first held it")
 	} else if !strings.Contains(err.Error(), "held") {
 		t.Errorf("the loser was not told it was held: %v", err)
 	}
@@ -352,7 +352,7 @@ func TestTheDrillDirectoryFollowsTheEnvironment(t *testing.T) {
 }
 
 // With no variable it is under the state directory and not the config
-// directory: these are records caf wrote about work it did, not decisions a
+// directory: these are records cafe wrote about work it did, not decisions a
 // person made, and a record that lived beside config.json would be a record
 // that looked editable.
 func TestTheDrillDirectoryIsStateAndNotConfig(t *testing.T) {
@@ -362,12 +362,12 @@ func TestTheDrillDirectoryIsStateAndNotConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DefaultDrillDir: %v", err)
 	}
-	if !strings.Contains(filepath.ToSlash(dir), "caf/drills") {
-		t.Errorf("the drill directory is %s, want it under <state>/caf/drills", dir)
+	if !strings.Contains(filepath.ToSlash(dir), "cafe/drills") {
+		t.Errorf("the drill directory is %s, want it under <state>/cafe/drills", dir)
 	}
 }
 
-// A store with no directory is a caller error, not a directory caf invents.
+// A store with no directory is a caller error, not a directory cafe invents.
 func TestAStoreWithNoDirectoryIsRefused(t *testing.T) {
 	if _, err := OpenDrillStore("   "); err == nil {
 		t.Error("OpenDrillStore accepted a blank directory")

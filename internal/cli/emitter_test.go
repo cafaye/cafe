@@ -11,11 +11,11 @@ import (
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"github.com/cafaye/caf/internal/emitter"
+	"github.com/cafaye/cafe/internal/emitter"
 )
 
 // These are the tests that answer the packet's question at the level that
-// matters: what a person typing `caf` observes when telemetry is off, when it is
+// matters: what a person typing `cafe` observes when telemetry is off, when it is
 // on, and when the thing they asked for fails.
 //
 // `internal/emitter` proves the span is right. This file proves the wiring does
@@ -35,7 +35,7 @@ func withOTELEnv(t *testing.T, env map[string]string) {
 
 	for _, name := range []string{
 		"OTEL_SDK_DISABLED", "OTEL_TRACES_EXPORTER", "OTEL_METRICS_EXPORTER", "OTEL_LOGS_EXPORTER",
-		"CAF_OTEL_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT",
+		"CAFE_OTEL_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT",
 		"DEPLOYMENT_ENVIRONMENT", "TENANT_ID",
 	} {
 		t.Setenv(name, "")
@@ -59,7 +59,7 @@ func TestTheNoOpPathChangesNoCommandsBehaviour(t *testing.T) {
 	}{
 		{name: "a successful command", args: []string{"version"}, wantCode: exitSuccess, wantOut: "1.2.3"},
 		{name: "help", args: []string{"--help"}, wantCode: exitSuccess, wantOut: "Commands:"},
-		{name: "a command's own help", args: []string{"lock", "-h"}, wantCode: exitSuccess, wantOut: "caf lock"},
+		{name: "a command's own help", args: []string{"lock", "-h"}, wantCode: exitSuccess, wantOut: "cafe lock"},
 		{name: "no arguments at all", args: nil, wantCode: exitSuccess, wantOut: "Usage:"},
 		{name: "no arguments prints the root help", args: nil, wantCode: exitSuccess, wantOut: "Commands:"},
 		{name: "an unknown command", args: []string{"nonsense"}, wantCode: exitUsage, wantErr: "unknown command"},
@@ -101,14 +101,14 @@ func TestTheNoOpPathChangesNoCommandsBehaviour(t *testing.T) {
 //
 // This is the row that matters most in the whole package. A collector that is
 // down is the normal state of a developer machine that has not started the
-// stack, and `caf --help` on such a machine must still be instant and silent. If
+// stack, and `cafe --help` on such a machine must still be instant and silent. If
 // this row needed the collector to be up, telemetry would be a thing that works
 // in the environment where nobody notices it broken.
 func TestTelemetryBeingConfiguredDoesNotChangeACommandsBehaviourOrDelayIt(t *testing.T) {
 	withOTELEnv(t, map[string]string{
 		// 127.0.0.1:1 is reserved and refuses instantly, so a dial that did
 		// happen would fail immediately rather than hanging the test.
-		"CAF_OTEL_ENDPOINT": "http://127.0.0.1:1",
+		"CAFE_OTEL_ENDPOINT": "http://127.0.0.1:1",
 	})
 
 	for _, row := range []struct {
@@ -150,10 +150,10 @@ func TestTelemetryBeingConfiguredDoesNotChangeACommandsBehaviourOrDelayIt(t *tes
 // An exporter that cannot be BUILT says so once — and the test has to provoke a
 // build failure, because the real gRPC exporter cannot be provoked into one.
 //
-// MEASURED, and this is the row that documents it: pointing caf at
+// MEASURED, and this is the row that documents it: pointing cafe at
 // 127.0.0.1:1 does NOT fail. The gRPC dial is asynchronous by design — see the
 // note on `WithDialOption` in exporter.go, where the absence of `WithBlock` is
-// the reason `caf --help` does not wait on a collector — so the exporter is
+// the reason `cafe --help` does not wait on a collector — so the exporter is
 // built successfully, the span is dropped at the flush, and stderr is empty.
 //
 // That is the correct behaviour and it is worth a test rather than a comment,
@@ -165,7 +165,7 @@ func TestTelemetryBeingConfiguredDoesNotChangeACommandsBehaviourOrDelayIt(t *tes
 // resource merge that cannot succeed, which Install reports rather than
 // swallows because it means spans would arrive with no service.name.
 func TestAFailureInstallCannotSwallowIsSaidOnceAndOnlyOnce(t *testing.T) {
-	withOTELEnv(t, map[string]string{"CAF_OTEL_ENDPOINT": "http://127.0.0.1:1"})
+	withOTELEnv(t, map[string]string{"CAFE_OTEL_ENDPOINT": "http://127.0.0.1:1"})
 
 	// The happy path is silent, which is the assertion.
 	_, _, stderr := runCLI(t, testVersion, "version")
@@ -182,7 +182,7 @@ func TestAFailureInstallCannotSwallowIsSaidOnceAndOnlyOnce(t *testing.T) {
 func TestTheExporterBuildFailureIsReportedOnceAndSaysTheCommandIsUnaffected(t *testing.T) {
 	session, err := emitter.Install(context.Background(), emitter.Options{
 		Lookup: func(name string) string {
-			if name == "CAF_OTEL_ENDPOINT" {
+			if name == "CAFE_OTEL_ENDPOINT" {
 				return "otel-collector:4317"
 			}
 			return ""
@@ -210,9 +210,9 @@ func TestTheExporterBuildFailureIsReportedOnceAndSaysTheCommandIsUnaffected(t *t
 //
 // The four exit classes are all here because `Run` derives the span outcome from
 // the same error it derives the exit code from, and a change to that derivation
-// would move an exit code — which is the one thing in caf that scripts branch on.
+// would move an exit code — which is the one thing in cafe that scripts branch on.
 func TestAFailingCommandExitsTheSameWayWithTelemetryOn(t *testing.T) {
-	withOTELEnv(t, map[string]string{"CAF_OTEL_ENDPOINT": "http://127.0.0.1:1"})
+	withOTELEnv(t, map[string]string{"CAFE_OTEL_ENDPOINT": "http://127.0.0.1:1"})
 
 	for _, row := range []struct {
 		name     string
@@ -229,8 +229,8 @@ func TestAFailingCommandExitsTheSameWayWithTelemetryOn(t *testing.T) {
 			if code != row.wantCode {
 				t.Errorf("exit code = %d, want %d", code, row.wantCode)
 			}
-			if !strings.HasPrefix(stderr, "caf: ") {
-				t.Errorf("stderr does not carry caf's usual one-line reason:\n%s", stderr)
+			if !strings.HasPrefix(stderr, "cafe: ") {
+				t.Errorf("stderr does not carry cafe's usual one-line reason:\n%s", stderr)
 			}
 			if strings.Contains(stderr, "telemetry") {
 				t.Errorf("a failing command's stderr mentions telemetry:\n%s", stderr)
@@ -242,13 +242,13 @@ func TestAFailingCommandExitsTheSameWayWithTelemetryOn(t *testing.T) {
 // A cancelled context is `cancelled` and not `internal_error`, and the exit code
 // is unchanged.
 //
-// This row exists because `caf dev` is the command that reads `Env.Context` — it
+// This row exists because `cafe dev` is the command that reads `Env.Context` — it
 // cancels on a signal to stop waiting and put the stack it started back down —
 // so the invocation span's context is a real one rather than a background nobody
 // cancels. An operator's Ctrl-C is not an error an alert should page on, and
 // core's vocabulary has a value for exactly that.
 func TestACancelledInvocationIsNotClassifiedAsAnInternalError(t *testing.T) {
-	withOTELEnv(t, map[string]string{"CAF_OTEL_ENDPOINT": "http://127.0.0.1:1"})
+	withOTELEnv(t, map[string]string{"CAFE_OTEL_ENDPOINT": "http://127.0.0.1:1"})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -262,7 +262,7 @@ func TestACancelledInvocationIsNotClassifiedAsAnInternalError(t *testing.T) {
 		Context: ctx,
 	})
 
-	// `caf version` does not read its context, so an already-dead one changes
+	// `cafe version` does not read its context, so an already-dead one changes
 	// nothing about what it does — which is the point of asserting the exit code
 	// here at all: the wiring handed a dead context to a command that ignores it
 	// and the command behaved identically.
@@ -271,7 +271,7 @@ func TestACancelledInvocationIsNotClassifiedAsAnInternalError(t *testing.T) {
 			"command does", code, exitSuccess)
 	}
 
-	// The classification, on the shape it actually occurs in: `caf dev` is the
+	// The classification, on the shape it actually occurs in: `cafe dev` is the
 	// command that reads `Env.Context`, it returns a non-zero code when the
 	// context dies, and the error it returns wraps context.Canceled. That
 	// combination is what the span has to read as `cancelled`.
@@ -343,8 +343,8 @@ func TestACancelledInvocationIsNotClassifiedAsAnInternalError(t *testing.T) {
 // effect.
 //
 // A documented list that nothing checks is a list a self-hoster cannot rely on:
-// "set CAF_OTEL_ENDPOINT" is a promise about a name, and the only thing that
-// makes it true is that changing it changes what caf does. So every row here
+// "set CAFE_OTEL_ENDPOINT" is a promise about a name, and the only thing that
+// makes it true is that changing it changes what cafe does. So every row here
 // drives the variable and watches the consequence — and the consequence for each
 // of them is different, which is what makes this a table rather than a loop.
 //
@@ -365,7 +365,7 @@ func TestEveryTelemetryVariableTheWiringReadsHasAnObservableEffect(t *testing.T)
 		{
 			// wantQuiet, and the reason is worth stating because it looks like a
 			// gap: selecting an endpoint produces NO stderr. MEASURED — the gRPC
-			// exporter's dial is asynchronous, so pointing caf at an address
+			// exporter's dial is asynchronous, so pointing cafe at an address
 			// nothing is listening on builds an exporter successfully and the
 			// span is simply lost at the flush. The alternative would be a
 			// warning on every command on every machine without a collector,
@@ -376,28 +376,28 @@ func TestEveryTelemetryVariableTheWiringReadsHasAnObservableEffect(t *testing.T)
 			// emitter.TestTheEndpointPrecedence, where the seam is. Asserting it
 			// here would mean asserting it through a real socket, and a test
 			// that needs a collector is a test that does not run in CI.
-			name:      "CAF_OTEL_ENDPOINT",
-			why:       "caf gen telemetry derives the name from the manifest, so a reader knows it without reading the code",
-			env:       map[string]string{"CAF_OTEL_ENDPOINT": "http://127.0.0.1:1"},
+			name:      "CAFE_OTEL_ENDPOINT",
+			why:       "cafe gen telemetry derives the name from the manifest, so a reader knows it without reading the code",
+			env:       map[string]string{"CAFE_OTEL_ENDPOINT": "http://127.0.0.1:1"},
 			wantQuiet: true,
 		},
 		{
 			name:      "OTEL_EXPORTER_OTLP_ENDPOINT",
-			why:       "the standard fallback, so caf works with tooling that knows nothing about cafaye",
+			why:       "the standard fallback, so cafe works with tooling that knows nothing about cafaye",
 			env:       map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:1"},
 			wantQuiet: true,
 		},
 		{
 			name:      "OTEL_SDK_DISABLED",
 			why:       "the OTel spec's own kill switch, and the mechanism core says the no-op path is implemented with",
-			env:       map[string]string{"OTEL_SDK_DISABLED": "true", "CAF_OTEL_ENDPOINT": "http://127.0.0.1:1"},
+			env:       map[string]string{"OTEL_SDK_DISABLED": "true", "CAFE_OTEL_ENDPOINT": "http://127.0.0.1:1"},
 			wantQuiet: true,
 		},
 		{
 			name: "every per-signal exporter set to none",
 			why:  "the finer-grained half; naming all three is the point, because a no-op covering only traces is a service that still phones home",
 			env: map[string]string{
-				"CAF_OTEL_ENDPOINT":     "http://127.0.0.1:1",
+				"CAFE_OTEL_ENDPOINT":    "http://127.0.0.1:1",
 				"OTEL_TRACES_EXPORTER":  "none",
 				"OTEL_METRICS_EXPORTER": "none",
 				"OTEL_LOGS_EXPORTER":    "none",

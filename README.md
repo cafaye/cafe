@@ -1,21 +1,21 @@
-# caf
+# cafe
 
-The cafaye platform CLI. One binary, one manifest, one set of contracts: `caf`
+The cafaye platform CLI. One binary, one manifest, one set of contracts: `cafe`
 is how a developer creates a project, runs it locally, deploys it, and exposes
 it to agents.
 
 **v0 is a skeleton, and the parts that are not a skeleton work.** Every
-subcommand exists and validates its arguments. `version`, `doctor`, `caf
+subcommand exists and validates its arguments. `version`, `doctor`, `cafe
 contract`, `dev` and `deploy` do real work; the rest say so, plainly, instead of
 half-working:
 
 ```
-$ caf deploy --env staging --dry-run identity
+$ cafe deploy --env staging --dry-run identity
 identity: deploying config/deploy.yml from ~/src/identity with kamal 2.12.0
   credentials come from .kamal/secrets.staging, by name only
   environment staging, so config/deploy.staging.yml is merged over config/deploy.yml
 
-this is what caf deploy would run:
+this is what cafe deploy would run:
 
   kamal version
       kamal is the deploy engine; this prints its version and fails if it is not installed
@@ -33,20 +33,20 @@ server, was NOT run. No container was started, no image was built or pushed,
 no file in /home/you/src/identity was written, and no secret was read.
 
 Deploy it for real with:
-  caf deploy --env staging --yes identity
+  cafe deploy --env staging --yes identity
 ```
 
 ## Install
 
 ```sh
-go install github.com/cafaye/caf/cmd/caf@latest
+go install github.com/cafaye/cafe/cmd/cafe@latest
 ```
 
 Or build from source:
 
 ```sh
 bin/prime              # go mod download && go build ./... && go test -v ./... , then say what ran
-go build ./cmd/caf
+go build ./cmd/cafe
 ```
 
 `bin/prime` is the gate, and it is declared rather than guessed: [`gate.yml`](gate.yml)
@@ -77,55 +77,55 @@ a run in which they passed.
 
 | Command | What it does | v0 |
 |---|---|---|
-| `caf init` | write the `cafaye.yml` manifest for an existing project, validated against core's schema | **works** |
-| `caf new <name>` | scaffold a new cafaye service or app from the template catalog | **works** |
-| `caf dev [project]` | run the local development stack | **works** |
-| `caf deploy <service>` | deploy a service or app: `--engine kamal` (default), `--engine argo` or `--engine remote` (the operated platform, pinned off until TG-D1) | **works** |
-| `caf backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
-| `caf backup drill <service>` | the same cycle unattended, with the outcome recorded and `--json` for a machine | **works** |
-| `caf box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
-| `caf agent register --name "Noel"` | ask identity for an unclaimed agent, store its token in the OS keyring, print the claim URL on stderr | **works** |
-| `caf agent login` / `whoami` | make one saved agent session active, and ask identity who this machine is | **works** |
-| `caf agent token show [<name>]` | list the agent's tokens — or the one live token with a name; never the values | **works** |
-| `caf agent token create [<name>]` | mint a fresh named token and store it in the OS keyring | **works** |
-| `caf agent token rotate [<id>]` | replace a token with a fresh one; the session's own when no id is given | **works** |
-| `caf agent token revoke --yes [<id>]` | destroy a token and remove it from the keyring; refused without `--yes` | **works** |
-| `caf box status --json` | which box this is, which phase it is at, and what is next | **works** |
-| `caf box plan --json` | the install, phase by phase, with this box's position marked | **works** |
-| `caf box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
-| `caf box logs --json` | the box's own log: what happened, when, and to which phase | **works** |
-| `caf box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
-| `caf provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to conductor — the agent never sees the value | **works** |
-| `caf provider status --json` | which providers this box is connected to, as conductor reports it; opens no envelope | **works** |
-| `caf failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
-| `caf gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
-| `caf gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
-| `caf lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |
-| `caf lock --verify <path>` | recompute every pin and name every file that no longer matches | **works** |
-| `caf contract lint <path>` | validate `cafaye.yml` against the core schema, and the OpenAPI document it names | **works** |
-| `caf contract breaking <a> <b>` | compare two OpenAPI revisions, reporting which tier each change breaks | **works** |
-| `caf contract resolve <c> <v>` | resolve a core version constraint | **works** |
-| `caf cve inventory` | every component on the box and its version, against what the substrate pins | **works** |
-| `caf cve scan` | the box's CVE surface: the component, the advisory, the fixed version, and what applying it touches | **works** |
-| `caf cve schedule` | print the cron line that puts the scan on a schedule | **works** |
-| `caf mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
-| `caf boxd` | run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities (invariant 4) | **works** |
-| `caf version` | print the caf version | **works** |
-| `caf doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
-| `caf reclaim` | reclaim what a caf session left behind, containers before volumes | **works** |
-| `caf env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
-| `caf resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project\|owner/name>` | resolve a project's `cafaye.yml` dependencies through the catalog's tiers — tier 1 listing, tier 2 coordinates, tier 3 the entitlement check and the fetch grant — naming every failure and degrading `required: false`; `<owner>/<name>` resolves the one project that address names | **works** |
-| `caf publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api\|worker\|both\|cli>] [--json] [--pantry <url>] <project>` | publish a project to the cafaye catalog — non-interactive by default: the manifest is validated, the proposal (registration, version tag, dependency edges) is printed, and the three writes run; `--dry-run` is the proposal mode that writes nothing, `--yes` is an accepted no-op kept for compatibility, and every outcome is one JSON document | **works** |
-| `caf secret inventory [--box <id>]` | every secret the box holds, classified rotatable / conditional / not-rotatable with the reason and the file:line it comes from — one JSON document | **works** |
-| `caf secret rotate [<name>] [--dry-run] [--yes] [--all]` | rotate the rotatable class on the schedule recorded in the state file, and name every entry it refuses to touch — no silent skips | **works** |
-| `caf secret inventory [--state-dir <dir>] [--box <id>]` | every secret this box holds, each classed rotatable / conditional / not-rotatable with the reason and the file:line it comes from, as one JSON document | **works** |
-| `caf secret rotate [--dry-run] [--all] [--yes] [--timeout <d>] [--state-dir <dir>] [--box <id>] [name]` | rotate the rotatable class on its schedule, and refuse the rest by name — a value is never printed, never put in argv, and never read back out of the cluster | **works** |
-| `caf update [path]` | merge the template's updates into this checkout and advance the template pin | **works** |
+| `cafe init` | write the `cafaye.yml` manifest for an existing project, validated against core's schema | **works** |
+| `cafe new <name>` | scaffold a new cafaye service or app from the template catalog | **works** |
+| `cafe dev [project]` | run the local development stack | **works** |
+| `cafe deploy <service>` | deploy a service or app: `--engine kamal` (default), `--engine argo` or `--engine remote` (the operated platform, pinned off until TG-D1) | **works** |
+| `cafe backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
+| `cafe backup drill <service>` | the same cycle unattended, with the outcome recorded and `--json` for a machine | **works** |
+| `cafe box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
+| `cafe agent register --name "Noel"` | ask identity for an unclaimed agent, store its token in the OS keyring, print the claim URL on stderr | **works** |
+| `cafe agent login` / `whoami` | make one saved agent session active, and ask identity who this machine is | **works** |
+| `cafe agent token show [<name>]` | list the agent's tokens — or the one live token with a name; never the values | **works** |
+| `cafe agent token create [<name>]` | mint a fresh named token and store it in the OS keyring | **works** |
+| `cafe agent token rotate [<id>]` | replace a token with a fresh one; the session's own when no id is given | **works** |
+| `cafe agent token revoke --yes [<id>]` | destroy a token and remove it from the keyring; refused without `--yes` | **works** |
+| `cafe box status --json` | which box this is, which phase it is at, and what is next | **works** |
+| `cafe box plan --json` | the install, phase by phase, with this box's position marked | **works** |
+| `cafe box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
+| `cafe box logs --json` | the box's own log: what happened, when, and to which phase | **works** |
+| `cafe box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
+| `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to conductor — the agent never sees the value | **works** |
+| `cafe provider status --json` | which providers this box is connected to, as conductor reports it; opens no envelope | **works** |
+| `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
+| `cafe gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
+| `cafe gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
+| `cafe lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |
+| `cafe lock --verify <path>` | recompute every pin and name every file that no longer matches | **works** |
+| `cafe contract lint <path>` | validate `cafaye.yml` against the core schema, and the OpenAPI document it names | **works** |
+| `cafe contract breaking <a> <b>` | compare two OpenAPI revisions, reporting which tier each change breaks | **works** |
+| `cafe contract resolve <c> <v>` | resolve a core version constraint | **works** |
+| `cafe cve inventory` | every component on the box and its version, against what the substrate pins | **works** |
+| `cafe cve scan` | the box's CVE surface: the component, the advisory, the fixed version, and what applying it touches | **works** |
+| `cafe cve schedule` | print the cron line that puts the scan on a schedule | **works** |
+| `cafe mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
+| `cafe boxd` | run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities (invariant 4) | **works** |
+| `cafe version` | print the cafe version | **works** |
+| `cafe doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
+| `cafe reclaim` | reclaim what a cafe session left behind, containers before volumes | **works** |
+| `cafe env up <tier> -- <cmd>` | provision the stack, run a command against it, and reclaim it when the command is done | **works** |
+| `cafe resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project\|owner/name>` | resolve a project's `cafaye.yml` dependencies through the catalog's tiers — tier 1 listing, tier 2 coordinates, tier 3 the entitlement check and the fetch grant — naming every failure and degrading `required: false`; `<owner>/<name>` resolves the one project that address names | **works** |
+| `cafe publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api\|worker\|both\|cli>] [--json] [--pantry <url>] <project>` | publish a project to the cafaye catalog — non-interactive by default: the manifest is validated, the proposal (registration, version tag, dependency edges) is printed, and the three writes run; `--dry-run` is the proposal mode that writes nothing, `--yes` is an accepted no-op kept for compatibility, and every outcome is one JSON document | **works** |
+| `cafe secret inventory [--box <id>]` | every secret the box holds, classified rotatable / conditional / not-rotatable with the reason and the file:line it comes from — one JSON document | **works** |
+| `cafe secret rotate [<name>] [--dry-run] [--yes] [--all]` | rotate the rotatable class on the schedule recorded in the state file, and name every entry it refuses to touch — no silent skips | **works** |
+| `cafe secret inventory [--state-dir <dir>] [--box <id>]` | every secret this box holds, each classed rotatable / conditional / not-rotatable with the reason and the file:line it comes from, as one JSON document | **works** |
+| `cafe secret rotate [--dry-run] [--all] [--yes] [--timeout <d>] [--state-dir <dir>] [--box <id>] [name]` | rotate the rotatable class on its schedule, and refuse the rest by name — a value is never printed, never put in argv, and never read back out of the cluster | **works** |
+| `cafe update [path]` | merge the template's updates into this checkout and advance the template pin | **works** |
 
 Every command in the table above works; there are no stubs left in v0.
-`caf help <command>` prints the flags a command will honor.
+`cafe help <command>` prints the flags a command will honor.
 
-Global flags: `-h`/`--help`, `-v`/`--version`. `caf help <command>` is the same
+Global flags: `-h`/`--help`, `-v`/`--version`. `cafe help <command>` is the same
 as `<command> --help`.
 
 ### Exit codes
@@ -134,47 +134,47 @@ as `<command> --help`.
 |---|---|
 | 0 | the command succeeded, or you asked for help |
 | 1 | the command ran and failed |
-| 2 | caf was invoked wrongly: unknown command or flag, wrong argument count |
+| 2 | cafe was invoked wrongly: unknown command or flag, wrong argument count |
 
-`caf doctor` exits 0 unless some row is `fail`, then 1; a `warn` never moves it.
-It used to always exit 0, and that is a change — see [`caf doctor`](#caf-doctor).
-`caf env up` passes its child's exit code through, so a CI job running a suite
+`cafe doctor` exits 0 unless some row is `fail`, then 1; a `warn` never moves it.
+It used to always exit 0, and that is a change — see [`cafe doctor`](#cafe-doctor).
+`cafe env up` passes its child's exit code through, so a CI job running a suite
 through it cannot read 0 out of a red run. `contract lint` and `contract resolve` print their verdict on stdout and say
-nothing on stderr, so a CI log shows the answer once. `caf dev` does the same for
+nothing on stderr, so a CI log shows the answer once. `cafe dev` does the same for
 a stack that came up with something in it that did not: the report is the
 message, and it is not repeated on stderr.
 
 ### Flag syntax
 
 Flags come from the standard Go `flag` package, so they must precede positional
-arguments: `caf deploy --dry-run identity` works, `caf deploy identity
+arguments: `cafe deploy --dry-run identity` works, `cafe deploy identity
 --dry-run` does not. Single dash and double dash are equivalent.
 
-## `caf version`
+## `cafe version`
 
 ```
-$ caf version
-caf 0.1.0 (commit a5acc37)
+$ cafe version
+cafe 0.1.0 (commit a5acc37)
 ```
 
 The semver and commit are injected at link time (`.goreleaser.yml` does this for
 releases). A plain `go build` or `go run` of the source tree reports
-`caf 0.0.0-dev (commit unknown)`.
+`cafe 0.0.0-dev (commit unknown)`.
 
-## `caf dev`
+## `cafe dev`
 
-`caf dev` reads a project's `cafaye.yml`, validates it against the same rules
-`caf contract lint` applies, renders a compose file from it, **writes that file,
+`cafe dev` reads a project's `cafaye.yml`, validates it against the same rules
+`cafe contract lint` applies, renders a compose file from it, **writes that file,
 prints it in full**, brings the stack up, waits for it, and reports what came up
 and what did not.
 
 ```
-$ caf dev --dry-run -registry catalog.json ./hello
+$ cafe dev --dry-run -registry catalog.json ./hello
 project hello-dev: hello (go)
 skipped legacy: optional dependency, and the local registry does not know how to run it
 wrote /work/hello/hello.compose.yaml
 
-# caf dev — the local stack for "hello-dev", generated from cafaye.yml.
+# cafe dev — the local stack for "hello-dev", generated from cafaye.yml.
 # Do not edit: every run rewrites this file. The manifest is the
 # source of truth; this is what it turned into.
 name: hello-dev
@@ -278,13 +278,13 @@ volumes:
 ```
 
 That is real output, from a real run. The document is printed rather than only
-written because it is the only copy of what caf decided: a command that
+written because it is the only copy of what cafe decided: a command that
 generates something nobody can inspect is a command nobody can debug.
 
 Then, without `--dry-run`:
 
 ```
-$ caf dev -registry catalog.json ./hello
+$ cafe dev -registry catalog.json ./hello
 starting 4 services in hello-dev
 
 service   status   origin          notes
@@ -299,14 +299,14 @@ hello is up on http://localhost:8080
 The rows are in start order, which is why the infrastructure is at the top: the
 uptimes say the stack came up in dependency order, `hello` starting only once
 `alpha` was healthy. The `origin` column says why each one is there — the
-project, the catalog, or caf.
+project, the catalog, or cafe.
 
 ### What it decides, and refuses
 
 | Situation | What happens |
 |---|---|
-| No `cafaye.yml` | refused in one sentence, with `caf init` named as the fix |
-| An invalid manifest | refused with `caf contract lint`'s exact line, so the two cannot disagree |
+| No `cafaye.yml` | refused in one sentence, with `cafe init` named as the fix |
+| An invalid manifest | refused with `cafe contract lint`'s exact line, so the two cannot disagree |
 | A dependency cycle | refused **before anything starts**, with the loop in the message: `dependency cycle: alpha -> beta -> alpha` |
 | Two services on one published port | refused, naming both and the port, and pointing at `-port` |
 | A required dependency the catalog cannot answer for | refused by name; a service that needs `identity` does not start without it |
@@ -325,7 +325,7 @@ Every cafaye service in the rendered document carries
 documents as the default. That variable is the fleet's whole endpoint contract —
 core's `otel-endpoint.schema.json` calls it "the ONLY contract" — and a variable
 only exists if something writes it. The service that would write it is a binary
-that reads it, so `caf dev` writes it.
+that reads it, so `cafe dev` writes it.
 
 A catalog entry's own value outranks that default, which is the self-hoster
 escape hatch core describes: one service pointed at their own backend, the rest
@@ -375,17 +375,17 @@ serves the official one:
 ```
 
 `dependencies` are service names resolved through the same registry, so the
-closure caf walks is the registry's own graph — and a cycle in it is a cycle in
+closure cafe walks is the registry's own graph — and a cycle in it is a cycle in
 pantry, reported with its path.
 
-**caf ships no catalog.** There is no table of images in the binary, because an
+**cafe ships no catalog.** There is no table of images in the binary, because an
 image reference guessed by a CLI is a reference that pulls the wrong thing. A
 project that declares no dependencies runs today; one that declares some is
 told which dependency it needs and how to supply it.
 
 ### Idempotence, and what an interrupt does
 
-Running `caf dev` twice reconciles one stack rather than starting a second
+Running `cafe dev` twice reconciles one stack rather than starting a second
 beside it. Two things make that true: the compose project name is
 `<service>-dev` and is the same both times, and the document is byte-identical,
 so the runtime's config hash does not change and it has nothing to recreate.
@@ -393,7 +393,7 @@ so the runtime's config hash does not change and it has nothing to recreate.
 ```
 $ shasum -a 256 hello.compose.yaml
 2b3d2d83f022f5e3a9ffcf11c86639c3d7ae34950d7792b1bc3d0b1f51128b8b  hello.compose.yaml
-$ caf dev -registry catalog.json ./hello      # again
+$ cafe dev -registry catalog.json ./hello      # again
 $ shasum -a 256 hello.compose.yaml
 2b3d2d83f022f5e3a9ffcf11c86639c3d7ae34950d7792b1bc3d0b1f51128b8b  hello.compose.yaml
 ```
@@ -406,7 +406,7 @@ same manifest twenty times.
 An interrupt stops the wait and puts the stack back down, and the volumes stay:
 
 ```
-$ caf dev -registry catalog.json ./hello
+$ cafe dev -registry catalog.json ./hello
 starting 4 services in hello-dev
 ^C
 stopping hello-dev
@@ -440,17 +440,17 @@ a service that genuinely needs neither.
 
 Progress is plain lines, one per step, in the order the steps happen. The
 repository had no TUI framework and this packet did not add one: it would be a
-dependency nobody asked for and a second rendering of the same state. `caf
+dependency nobody asked for and a second rendering of the same state. `cafe
 dev --dry-run` is how a plan is inspected before anything starts, which is the
 job a TUI would have had here.
 
-## `caf deploy`
+## `cafe deploy`
 
-`caf deploy` runs a real deployment. It drives [Kamal 2](https://kamal-deploy.org),
+`cafe deploy` runs a real deployment. It drives [Kamal 2](https://kamal-deploy.org),
 and it runs **one** command that changes anything:
 
 ```sh
-caf deploy <service> --env <env> --yes
+cafe deploy <service> --env <env> --yes
 ```
 
 `kamal setup` — not `kamal deploy` — because `setup` is "install Docker on the
@@ -459,10 +459,10 @@ part a first deploy needs and a bare `deploy` skips. A customer following this
 path onto a fresh VPS would otherwise get a service with no database, and the
 error would be a connection-refused from inside the application.
 
-caf does not reimplement the deploy. Build, push, proxy boot, the rolling
+cafe does not reimplement the deploy. Build, push, proxy boot, the rolling
 rollout, the health gate and the rollback are Kamal's; a Go implementation of
 them would be a second deploy engine that can disagree with the first about what a
-deploy is, and the disagreement would be found in production. What caf owns is
+deploy is, and the disagreement would be found in production. What cafe owns is
 the part either side: the refusal that should happen before, and the report that
 has to be true after.
 
@@ -474,7 +474,7 @@ The `KIT_*` variables that template interpolates are **deployment facts, not
 secrets**, so they are exported in the shell that runs the deploy and the template
 refuses to render a blank one. Credentials are **names** in `.kamal/secrets.<env>`
 (or `.kamal/secrets` with no `--env`), resolved by Kamal; no value ever appears in
-the config or in caf's output.
+the config or in cafe's output.
 
 The deploy engine is a Ruby gem, so the machine you deploy *from* needs Ruby. The
 **service image does not** — `kamal-proxy` and `kamal-secrets` are standalone
@@ -485,12 +485,12 @@ found".
 ### It refuses one thing, and says why
 
 An accessory that publishes its port puts the database on every interface the host
-has. caf reads Kamal's **own resolved config** — after the ERB is evaluated — and
+has. cafe reads Kamal's **own resolved config** — after the ERB is evaluated — and
 refuses to deploy a config that does this:
 
 ```
-$ caf deploy --env production identity
-caf deploy: refusing to deploy
+$ cafe deploy --env production identity
+cafe deploy: refusing to deploy
 
 accessory postgres publishes port 5432 on every interface of the host, and its data is reachable from the network.
   kamal turns `port: 5432` into `docker run --publish 5432:5432`, and Docker binds 0.0.0.0 and :: when the
@@ -520,7 +520,7 @@ database **by name** with the accessory publishing nothing at all.
 It prints every command that would run — including the one that only runs *after*
 a failure — and executes the two that cannot change a server. Those two really do
 run, because the config is an ERB template only Kamal can evaluate; printing a
-plan caf had to guess at would be a template with extra steps. And:
+plan cafe had to guess at would be a template with extra steps. And:
 
 - the **filesystem** is walked before and after and compared;
 - the **argv** is recorded by a fake, and the changing step is asserted not to
@@ -536,7 +536,7 @@ terminal, asking would hang.
 ### A partial failure says what to do
 
 ```
-$ caf deploy --env staging --yes identity
+$ cafe deploy --env staging --yes identity
 ...
 kamal setup --destination staging failed: exit status 1
 
@@ -575,7 +575,7 @@ name `kamal-docker-registry` that Kamal itself owns.
 ### `--engine remote`, and why it refuses
 
 ```sh
-$ caf deploy --engine remote --account acct-1 --yes identity
+$ cafe deploy --engine remote --account acct-1 --yes identity
 The remote engine deploys a service into the cafaye-operated platform, where
 every client the account serves is an account on one shared deployment rather
 than a cafaye deployment of its own. ...
@@ -588,12 +588,12 @@ What it would do: ask the operated platform which deployment serves the named
 commit it was built from. The customer's app is built once and deployed once,
 and every client they serve is an account on the shared platform rather than a
 cafaye deployment of its own. That is the platform's reason to exist, and it is
-what `caf deploy` could not name before: the other two engines both target
+what `cafe deploy` could not name before: the other two engines both target
 something the operator runs themselves.
 
 Why it does not do that yet: **one deployment serving many accounts is only safe
 once one deployment is proven safe for strangers** — `TENANCY-GATE.md`, whose
-TG-D1 records the decision. `caf` cannot make that decision and does not try.
+TG-D1 records the decision. `cafe` cannot make that decision and does not try.
 So the gate is a constant in the package that returns the refusal, and not a
 flag, an environment variable or a config key: a tenancy decision a CI job could
 set with nobody deciding it is not a decision.
@@ -627,12 +627,12 @@ when it was not the engine's own name, so a service called `remote` would have
 been deployed as a service called nothing. Both are fixed and both were watched
 going red first.
 
-## `caf backup`
+## `cafe backup`
 
-`caf backup` takes one real backup and then **proves it**, in one command:
+`cafe backup` takes one real backup and then **proves it**, in one command:
 
 ```sh
-caf backup <service> --table <table> [--env <env>] [--scratch <db>] --yes
+cafe backup <service> --table <table> [--env <env>] [--scratch <db>] --yes
 ```
 
 A backup that has never been drilled is not a backup. `config/kamal-backup.yml` is a
@@ -646,14 +646,14 @@ The proof is a number, not a word. kamal-backup decides the drill passed by the 
 status of the `--check` command, so the check has to *be* an assertion:
 
 ```
-$ caf backup --table users --yes identity
+$ cafe backup --table users --yes identity
 identity: backing up from config/kamal-backup.yml in ~/rehearsal with kamal 2.12.0
   the deployment it belongs to is config/deploy.yml
   credentials come from .kamal/secrets, by name only
   the backup accessory runs it, and the restore is drilled into identity_drill
   its schedule is 1d, which is a scheduled dump and not point-in-time recovery
 ...
-caf backup: users holds 7 rows in identity_drill after the restore
+cafe backup: users holds 7 rows in identity_drill after the restore
 ...
   identity_drill is gone, whether the drill passed or not
 
@@ -677,7 +677,7 @@ rather than assuming one.
 
 `config/kamal-backup.yml` and `config/deploy.yml` are one contract. Every clause of it
 is a claim about what happens at deploy time, and a pair that is broken in a way that
-only fails then is cheapest to catch while nothing has started. caf reads Kamal's
+only fails then is cheapest to catch while nothing has started. cafe reads Kamal's
 **own resolved config** — after the ERB is evaluated — and refuses four things:
 
 | reason | what is wrong |
@@ -688,8 +688,8 @@ only fails then is cheapest to catch while nothing has started. caf reads Kamal'
 | `caf-backup/app-name-mismatch` | `app:` disagrees with the service, so every snapshot is unfindable |
 
 ```
-$ caf backup --table users --yes identity
-caf backup: refusing to back up
+$ cafe backup --table users --yes identity
+cafe backup: refusing to back up
 
 caf-backup/secret-not-declared
   the backup configuration names the secret RESTIC_REPOSITORY, and the backup accessory does not declare it.
@@ -703,22 +703,22 @@ caf-backup/secret-not-declared
 Exit 1, nothing booted, and **stderr stays empty** — the refusal is the report. The
 reasons are `caf-backup/…` so a script can match one instead of grepping prose.
 
-### One refusal is deliberately NOT caf's
+### One refusal is deliberately NOT cafe's
 
 A scratch database whose name *looks* production-shaped is refused by
-**kamal-backup** (`Config#production_like_target?`), and caf hands it the name and
+**kamal-backup** (`Config#production_like_target?`), and cafe hands it the name and
 reports what the gem said:
 
 ```
 refusing production-looking restore target identity-postgres/caf_prod_drill; choose a scratch target that does not look like production
 ```
 
-caf keeps **no copy** of that rule. A second copy of a rule about which database gets
+cafe keeps **no copy** of that rule. A second copy of a rule about which database gets
 dropped is a second opinion about the one thing that must not be in doubt — and in
 operator form the same rule already exists in
 [cafaye/kit](https://github.com/cafaye/kit)'s `templates/kamal/drill.sh`, which is
 also where this command's `env.secret` connection preamble and its "a check must be
-an assertion, not a count" rule come from. What caf refuses itself is narrower: a name
+an assertion, not a count" rule come from. What cafe refuses itself is narrower: a name
 it cannot write down unquoted through two shells (`plainIdentifier`).
 
 ### One race is measured, and the retry is conditioned on the cause
@@ -729,7 +729,7 @@ with a cycle the boot itself caused, and restic answers exit 11 — which kamal-
 then reports as a failure to `restic init`, so the last line an operator reads says
 `config file already exists` and the line above it says a lock was held.
 
-caf waits for the repository to be free, and if the snapshot still collides it retries
+cafe waits for the repository to be free, and if the snapshot still collides it retries
 **only while the evidence says it was a lock** — the failing command's own transcript
 first, then a fresh reading. A wrong repository password (restic's exit 12) or a
 missing repository (10) fails in one attempt instead of being retried until the
@@ -761,7 +761,7 @@ The fleet runs Kamal today, so `kamal` is the default. The launch substrate has 
 Kamal, so there is a second engine, selected by `--engine`:
 
 ```sh
-caf backup <service> --engine cnpg --table <table> [--scratch <cluster>] --yes
+cafe backup <service> --engine cnpg --table <table> [--scratch <cluster>] --yes
 ```
 
 `kubectl cnpg` is the tool, and the engine owns its argv. The backup is a CloudNativePG
@@ -787,30 +787,30 @@ the proof this machine can produce, and it needs no cluster.
 Kamal and `kit/templates/kamal` retire at parity, not before — the Kamal path is the
 default and is unchanged.
 
-### `caf backup drill` — the outcome is recorded, not just printed
+### `cafe backup drill` — the outcome is recorded, not just printed
 
 Everything above is a verdict printed to a terminal the process then closes, which is
 the difference between a drill that happened and a drill anybody can point at. So the
 drill has an unattended form that **records** it:
 
 ```sh
-caf backup drill <service> --table <table> [flags] [--json]
+cafe backup drill <service> --table <table> [flags] [--json]
 ```
 
 It is the same cycle with the confirmation taken away — a drill on a schedule has nobody
 to answer a prompt, and a command that hung waiting for one would be a schedule that never
 ran. Every run appends one JSON file per service under the state directory:
-`CAF_DRILL_DIR`, else `$XDG_STATE_HOME/caf/drills`, else `~/.local/state/caf/drills`.
+`CAF_DRILL_DIR`, else `$XDG_STATE_HOME/cafe/drills`, else `~/.local/state/cafe/drills`.
 That is `internal/ledger`'s `DefaultDir` convention, and it is state rather than config —
-these are records caf wrote about work it did, not decisions a person made, and an
+these are records cafe wrote about work it did, not decisions a person made, and an
 editable record is not evidence. The last twelve drills are kept, which is a year of the
 monthly cadence.
 
-`--json` writes **one** document to stdout and moves caf's own report to stderr, so a
+`--json` writes **one** document to stdout and moves cafe's own report to stderr, so a
 script pipes stdout into a parser without skipping a line of prose:
 
 ```
-$ caf backup drill --table users --json identity    # the report goes to stderr
+$ cafe backup drill --table users --json identity    # the report goes to stderr
 {
   "service": "identity",
   "engine": "kamal",
@@ -818,7 +818,7 @@ $ caf backup drill --table users --json identity    # the report goes to stderr
   "tables": ["users"],
   "outcome": "failed",
   "reason": "caf-backup/drill-not-run",
-  "detail": "caf backup: kamal could not read the deployment, so there is nothing to back up: exit status 1",
+  "detail": "cafe backup: kamal could not read the deployment, so there is nothing to back up: exit status 1",
   "started_at": "2026-10-10T09:00:00Z",
   "finished_at": "2026-10-10T09:00:02Z",
   "duration_ms": 1383
@@ -826,10 +826,10 @@ $ caf backup drill --table users --json identity    # the report goes to stderr
 ```
 
 The monthly report and the box agent read that document. Nothing secret is in it and
-nothing can be: caf never reads a credential's value, so it has none to record.
+nothing can be: cafe never reads a credential's value, so it has none to record.
 
 A refused drill is a third outcome and not a boolean, because "the restore worked" and
-"caf would not touch the service" are different facts with different fixes — one is a log
+"cafe would not touch the service" are different facts with different fixes — one is a log
 to read and one is a file to edit. A refusal's record names the **clause**, not only the
 class, so a script learns which line to change rather than only that the config is wrong.
 A fourth fact is kept apart from all of those: `caf-backup/drill-not-run` means the cycle
@@ -842,25 +842,25 @@ Exit 1, a `caf-backup/drill-…` reason a script can match, and one line on stde
 the service and where the record went:
 
 ```
-caf backup drill: caf-backup/drill-failed: identity did not prove a restore (failed)
+cafe backup drill: caf-backup/drill-failed: identity did not prove a restore (failed)
   kamal-backup drill production --database identity_drill failed: exit status 1
-  recorded in ~/.local/state/caf/drills
+  recorded in ~/.local/state/cafe/drills
 ```
 
-caf has no notification transport — the tier copy states that nobody is paged — so the
+cafe has no notification transport — the tier copy states that nobody is paged — so the
 exit code and the named reason are the whole convention, and a monitor that wants more
 reads `--json`. A record that could not be written is itself a failure: a verdict that
 was printed and forgotten is the gap this closes, and a drill whose record did not land
 has been forgotten exactly as thoroughly.
 
-**The schedule is not here.** `caf backup drill` is what a schedule RUNS; it is not a
+**The schedule is not here.** `cafe backup drill` is what a schedule RUNS; it is not a
 scheduler. The cadence stays where the fleet already keeps it — cron, a systemd timer, or
 the box's own — and the record's `finished_at` is what tells you whether it has been
 running.
 
-## `caf doctor`
+## `cafe doctor`
 
-`caf doctor` answers three questions. The first is unchanged; the second is why
+`cafe doctor` answers three questions. The first is unchanged; the second is why
 the command is worth running at all; the third is the one that makes cleanup
 something the tool reminds you about rather than something you remember.
 
@@ -868,7 +868,7 @@ something the tool reminds you about rather than something you remember.
 resolved on `PATH`, the path of the one that answered, nothing executed.
 
 ```
-$ caf doctor
+$ cafe doctor
 tool            status  found at
 git             ok      /opt/homebrew/bin/git
 docker          ok      /usr/local/bin/docker
@@ -886,7 +886,7 @@ checked 10 tools, 10 ok, 0 missing
 **Can this machine run this project?** And **what has it not reclaimed?**
 
 ```
-$ caf doctor -registry catalog.json ./hello
+$ cafe doctor -registry catalog.json ./hello
 check      state  detail                  fix
 toolchain  ok     10 of 10 tools present  -
 1 state check(s): 1 ok, 0 warn, 0 fail
@@ -895,13 +895,13 @@ project /work/hello
 check    state  detail                        fix
 runtime  ok     server 29.4.0                 -
 machine  ok     16 GiB and 8 CPUs             -
-ports    warn   free, but published outside caf's block 15000-15999: 8080; a parallel worker cannot see these and will not avoid them   caf env up go -- <command>   # reserves from 15000-15999 and holds them for the session
+ports    warn   free, but published outside cafe's block 15000-15999: 8080; a parallel worker cannot see these and will not avoid them   cafe env up go -- <command>   # reserves from 15000-15999 and holds them for the session
 plan     ok     4 services in hello-dev       -
 4 state check(s): 2 ok, 1 warn, 0 fail
 
 reclamation
 check        state  detail                                       fix
-reclaimable  warn   1 entr(ies) in /Users/k/.local/state/caf/ledger nothing has reclaimed: 1 stack(s), 1 port reservation(s), oldest 2 days ago   caf reclaim          # a dry run; add -yes to remove
+reclaimable  warn   1 entr(ies) in /Users/k/.local/state/cafe/ledger nothing has reclaimed: 1 stack(s), 1 port reservation(s), oldest 2 days ago   cafe reclaim          # a dry run; add -yes to remove
 port block   ok     nothing is holding a port in 15000-15999     -
 2 state check(s): 1 ok, 1 warn, 0 fail
 
@@ -921,8 +921,8 @@ decoration. So there are three states, and `warn` moves nothing:
 | `warn` | it works, and here is the thing worth knowing | 0 |
 | `fail` | it cannot do what was asked, and here is the command | 1 |
 
-**This is a change from caf 0.x, where `doctor` always exited 0.** It is the one
-behaviour change in this section and `caf help doctor` says so too.
+**This is a change from cafe 0.x, where `doctor` always exited 0.** It is the one
+behaviour change in this section and `cafe help doctor` says so too.
 
 Severity is reasoned per *fact*, not per check, because one check can fail in
 ways of different importance: a ledger with one unreclaimed stack is worth
@@ -947,7 +947,7 @@ Every row that is not `ok` carries the exact command that fixes it.
   zero as "too little" is a false alarm about a machine that is probably fine,
   and an alarm people learn to ignore is worse than no alarm.
 - **A port the stack needs and something else already holds.** The ports come from
-  the same plan `caf dev` would build, not from a list written here, so the two
+  the same plan `cafe dev` would build, not from a list written here, so the two
   cannot drift into a check that passes while the stack cannot start. A port
   published *outside* 15000-15999 is a `warn` with a reason: it works, and no
   sibling worker on the machine can see it.
@@ -956,11 +956,11 @@ Every row that is not `ok` carries the exact command that fixes it.
 
 ### What the reclamation section is for
 
-- **Is there anything unreclaimed?** Every stack `caf dev` brought up is written
-  to a ledger before the resource is created, so a caf killed mid-run leaves a row
+- **Is there anything unreclaimed?** Every stack `cafe dev` brought up is written
+  to a ledger before the resource is created, so a cafe killed mid-run leaves a row
   naming something that still exists. This check says so, with the age, and the
-  fix is `caf reclaim`.
-- **Is something in caf's port block that is not ours?** caf publishes from
+  fix is `cafe reclaim`.
+- **Is something in cafe's port block that is not ours?** cafe publishes from
   15000-15999 so that every worker on a machine can see which ports are ours. A
   stranger in that range is not an error — the stranger may be entitled to it —
   but it is exactly what produces the silent collision, and the check names the
@@ -983,15 +983,15 @@ three shipped with only a green one, and nothing structurally prevented it. The
 rule this enforces is that a check which cannot be driven red in a hermetic test
 does not ship.
 
-## `caf reclaim`
+## `cafe reclaim`
 
-`caf reclaim` is the command that makes cleanup something the tool does rather
+`cafe reclaim` is the command that makes cleanup something the tool does rather
 than something a person remembers. It reads the ledger and removes what the
 ledger accounts for.
 
 ```
-$ caf reclaim
-ledger /Users/k/.local/state/caf/ledger: 1 entr(ies)
+$ cafe reclaim
+ledger /Users/k/.local/state/cafe/ledger: 1 entr(ies)
 resource                         kind       outcome   detail  command
 identity-worker-1-g1-postgres-1  container  :dropped  -       docker rm -f identity-worker-1-g1-postgres-1
 identity-worker-1-g1_pgdata      volume     :dropped  -       docker volume rm identity-worker-1-g1_pgdata
@@ -1038,14 +1038,14 @@ left completely alone and counted, so that "released nothing" is not read as
 
 Flags: `-yes`, `-ledger <dir>`, `-generation <n>`.
 
-## `caf update`
+## `cafe update`
 
 ```
-caf update [path]           # merge the template branch into this checkout, move the pin
-caf update --check [path]   # preview only: the source, the tip, what it carries
+cafe update [path]           # merge the template branch into this checkout, move the pin
+cafe update --check [path]   # preview only: the source, the tip, what it carries
 ```
 
-`caf update` reads `template.yml` — the file that records which template
+`cafe update` reads `template.yml` — the file that records which template
 this checkout was seeded from, which branch it tracks, the full-sha `commit`
 pin it has taken work up to, and the ordered candidate `remotes` — and merges
 the tracked branch into this checkout with a real three-way `git merge
@@ -1068,20 +1068,20 @@ reports, changing no tracked file and no branch. The `added`/`diverged`/
 `removed` lists are hints for the reader about where collisions will be; git
 decides the merge.
 
-## `caf env up`
+## `cafe env up`
 
 ```
-caf env up [flags] <tier> -- <command> [arguments]
+cafe env up [flags] <tier> -- <command> [arguments]
 ```
 
-`caf env up` is the only provisioning verb. It writes the stack to the ledger
+`cafe env up` is the only provisioning verb. It writes the stack to the ledger
 before creating it, reserves the host ports it will publish from 15000-15999 and
 **holds** them for the life of the session, brings the stack up, runs `<command>`
 as its **child**, and takes the stack down and releases the entry when the child
 is gone.
 
 ```
-$ caf env up go -- go test ./...
+$ cafe env up go -- go test ./...
 starting 3 services in identity-dev
 tier         go
 session      d45866fe7141f6eaa31f8e83142f5de5
@@ -1090,7 +1090,7 @@ worktree     /work/identity
 project      identity-dev
 ports        15020
 databases    identity-dev_pgdata,identity-dev_redisdata
-ledger       /Users/k/.local/state/caf/ledger
+ledger       /Users/k/.local/state/cafe/ledger
 tier policy  unimplemented: MD12 owns the tier policy; this command records the tier and enforces nothing
 ...
 $ echo $?
@@ -1115,14 +1115,14 @@ Four things this is and is not:
   `CAF_RECEIPT=` line. It never carries a value from the stack's own environment:
   a receipt is read by CI, pasted into a bug, and printed to a log.
 
-`-port` inside the block is honoured — caf holds the port you typed rather than
+`-port` inside the block is honoured — cafe holds the port you typed rather than
 replacing it. Outside the block it is refused, by name, because a port nobody
 arbitrates is how 21101 and 55432 happened.
 
-## `caf contract lint`
+## `cafe contract lint`
 
 ```
-$ caf contract lint .
+$ cafe contract lint .
 OK services/courier/cafaye.yml
 INVALID services/billing/cafaye.yml: name: "Billing_Service" does not match "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
 INVALID services/legacy/cafaye.yml: invalid YAML: [10:1] found character '	' that cannot start any token
@@ -1141,7 +1141,7 @@ Every manifest is checked against two things:
 
 1. **The core JSON Schema**, vendored at
    [`internal/contract/schemas/manifest-0.2.json`](internal/contract/schemas/manifest-0.2.json)
-   — a byte-identical copy of `cafaye/core`'s schema, pinned by sha256. `caf`
+   — a byte-identical copy of `cafaye/core`'s schema, pinned by sha256. `cafe`
    never fetches it: see [schemas/README.md](internal/contract/schemas/README.md)
    for the provenance, what each spec bump changes, and the refresh procedure.
 2. **The three cross-field rules** from core's
@@ -1166,11 +1166,11 @@ with a field of the wrong type has nothing to compare.
 
 ### The OpenAPI document a manifest names
 
-When a manifest declares `exposes.api`, `caf contract lint` reads that document
+When a manifest declares `exposes.api`, `cafe contract lint` reads that document
 too and reports it as **its own line**, because a document is not a manifest and a
 line naming the manifest would send the reader to the wrong file for a rule about
 an integer. A manifest that names a document which is not there is reported rather
-than skipped: `caf gen`, the contract tests and pantry all resolve the same path,
+than skipped: `cafe gen`, the contract tests and pantry all resolve the same path,
 and one that resolves to nothing is a contract surface that is declared and not
 there.
 
@@ -1194,16 +1194,16 @@ the existence of a bound would be red on every unbounded integer in the fleet on
 the day it landed, including identity's own `expires_in`. What is enforced is that
 a bound somebody *did* write is inside the range a JSON reader can hold.
 
-`caf contract lint` also derives each document's **stability** from the version in
+`cafe contract lint` also derives each document's **stability** from the version in
 its path — `openapi/v1.yaml` is stable, `openapi/v1alpha1.yaml` is alpha — and
 refuses a stable service that depends on a contract less stable than itself. It is
 decidable only when the dependency's own manifest is in the same run, and says so
 rather than passing silently on a dependency it cannot see.
 
-## `caf contract breaking`
+## `cafe contract breaking`
 
 ```
-$ caf contract breaking openapi/v1.yaml openapi/v1.1.yaml
+$ cafe contract breaking openapi/v1.yaml openapi/v1.1.yaml
 property-no-delete [SOURCE+JSON+WIRE] #/components/schemas/User/name: Previously present property "name" on schema "User" was deleted without reserving the name "name".
 $ echo $?
 1
@@ -1255,12 +1255,12 @@ Kubernetes' `// +k8s:deprecated=width,protobuf=3`. The cost of getting it wrong 
 a name an old consumer still sends being reused for something else; the cost of a
 tombstone is one line naming where it used to live.
 
-## `caf contract resolve`
+## `cafe contract resolve`
 
 ```
-$ caf contract resolve '^0.2.0' 0.2.3
+$ cafe contract resolve '^0.2.0' 0.2.3
 yes  ^0.2.0 allows 0.2.3: 0.2.3 is in [0.2.0, 0.3.0)
-$ caf contract resolve '^0.2.0' 0.3.0
+$ cafe contract resolve '^0.2.0' 0.3.0
 no   ^0.2.0 allows 0.3.0: 0.3.0 is not in [0.2.0, 0.3.0)
 ```
 
@@ -1279,22 +1279,22 @@ spellings of one number, and a range that accepts both is a range nobody can
 reason about.
 
 Exit code 0 when the version is inside the constraint, 1 when it is not, and 2
-when caf cannot read what you typed.
+when cafe cannot read what you typed.
 
 ## Layout
 
 ```
-cmd/caf/main.go     thin entrypoint: process in, exit code out
+cmd/cafe/main.go     thin entrypoint: process in, exit code out
 internal/cli/       the router, the registry, one file per subcommand
 internal/contract/  manifest loading, schema validation, version resolution
 internal/deploy/    the deploy: the pure plan, the exposure refusal, the one seam
 internal/dev/       the local stack: planning, rendering, the two seams
-internal/gen/       caf gen: the pure generator, and the drift gate over it
-internal/telemetry/ GENERATED: caf's own copy of `caf gen telemetry`'s output
+internal/gen/       cafe gen: the pure generator, and the drift gate over it
+internal/telemetry/ GENERATED: cafe's own copy of `cafe gen telemetry`'s output
 internal/emitter/    the OTel wiring: one root span per invocation, and the no-op
 internal/mcp/       the MCP server: transports, the served table, the seam
 internal/boxd/      the box daemon: the whitelisted route table, the outbound mTLS channel
-internal/ledger/    the reclamation ledger: what caf created, so cleanup is not memory
+internal/ledger/    the reclamation ledger: what cafe created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/resolve/   the tiered catalog's consumer: resolve a manifest's deps, name failures
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
@@ -1305,19 +1305,19 @@ internal/publish/   the write half of the same client: register a project, publi
 `internal/dev` is the only place that knows what a local stack is. `Plan` is a
 pure function from a manifest and a registry to a rendered compose document and
 a start order — it reads no file, opens no socket and runs no command, which is
-why the interesting behaviour of `caf dev` is covered by tests that start
+why the interesting behaviour of `cafe dev` is covered by tests that start
 nothing at all. Everything that does touch the world sits behind one of two
 seams there: `Registry` (how a service is run locally, which pantry owns),
 `Runtime` (the container runtime, three calls wide) and `PortAllocator` (which host
-port a publishing service gets, which only `caf env up` fills in).
+port a publishing service gets, which only `cafe env up` fills in).
 
 The split follows the pipeline-stage pattern: the router knows nothing about
 any subcommand, and each subcommand owns its flags, help and run function, so
 one can be read, changed and tested without touching the others. Tests sit next
 to what they test as `*_test.go`.
 
-`internal/contract` is where the contract lives, so `caf init`, `caf gen` and
-`caf deploy` validate against the same schema with the same messages instead of
+`internal/contract` is where the contract lives, so `cafe init`, `cafe gen` and
+`cafe deploy` validate against the same schema with the same messages instead of
 each growing its own copy. It has two dependencies, both for jobs the standard
 library cannot do:
 
@@ -1329,10 +1329,10 @@ library cannot do:
 There is no CLI framework: routing is hand-rolled on the standard `flag`
 package.
 
-`internal/gen` is `caf gen`, and it is a pure function like `internal/dev`'s
+`internal/gen` is `cafe gen`, and it is a pure function like `internal/dev`'s
 `Plan`: a manifest and the vendored core telemetry contract go in, a list of
-`{path, content}` comes out, and nothing in between touches a file. `caf gen
-telemetry` writes them; `caf gen chart` writes the Helm chart the service is
+`{path, content}` comes out, and nothing in between touches a file. `cafe gen
+telemetry` writes them; `cafe gen chart` writes the Helm chart the service is
 deployed from — Chart.yaml, values.yaml, and a templates/ directory carrying
 the Deployment, the Service and the Ingress. The ArgoCD Application that
 deploys the chart is the substrate's, not the chart's: one static Application
@@ -1347,45 +1347,45 @@ never an inlined value), the image tag is a value and is never `latest`, and
 resources are set.
 
 Every fact in what it writes is **read out of six schemas vendored from
-[cafaye/core](https://github.com/cafaye/core)** rather than typed into caf — the
+[cafaye/core](https://github.com/cafaye/core)** rather than typed into cafe — the
 three per-signal attribute allowlists and their value vocabularies, the fourteen
 names core refuses as a measurement attribute, the ten resource attributes, the
 thirteen `error.type` values, the span-name grammar, and the `const`s that pin the
-no-op path. So a core release that changes an allowlist changes what `caf gen`
-emits, with nobody editing caf, and `internal/gen/drift_test.go` compares the
+no-op path. So a core release that changes an allowlist changes what `cafe gen`
+emits, with nobody editing cafe, and `internal/gen/drift_test.go` compares the
 regenerated bytes against the committed copy to say so.
 
 Two things about that are worth reading before changing it. **`internal/telemetry/`
 is committed generated Go**, so `go build`, `go vet`, `gofmt -l .` and `go test`
-all reach it — caf runs its own generator on its own `cafaye.yml` so the output has
+all reach it — cafe runs its own generator on its own `cafaye.yml` so the output has
 a first consumer whose compiler and test runner are this repository's gate.
 
 That last clause is a claim about the DRIFT GATE as much as about the files, and
 it was false until this packet measured it. The gate generated from a test
 fixture — courier's manifest — and compared the result against files in a
-repository whose own manifest says `name: caf`, so it was green because it was
+repository whose own manifest says `name: cafe`, so it was green because it was
 measuring courier against courier and `internal/telemetry` shipped declaring
 `ServiceName = "courier"` and reading `COURIER_OTEL_ENDPOINT` in the cafaye
 platform CLI. The gate now reads this repository's own `cafaye.yml`, which is
-what makes it a check on what caf ships rather than a check that the generator is
+what makes it a check on what cafe ships rather than a check that the generator is
 deterministic — the thing `internal/gen/telemetry_test.go` already asserted. And the
 generated `telemetry_test.go` beside it is not decoration: it is twelve top-level
 tests written from the same contract tables as the setup they test, and it is the
-standing check that keeps holding after nobody has run `caf gen` for a year. It
+standing check that keeps holding after nobody has run `cafe gen` for a year. It
 found four real defects in the generated setup while this was being written; the
 report says which.
 
-`internal/telemetry` is not caf's telemetry. It is the CONTRACT — the allowlists,
+`internal/telemetry` is not cafe's telemetry. It is the CONTRACT — the allowlists,
 the span-name bound, the endpoint variable, the no-op path — transcribed out of
 core's schemas, with no OTel SDK import and nothing wired to it. It is what a
 service compiles against; it is not a client.
 
-**`internal/emitter` is the other half, and it is where caf's own telemetry
+**`internal/emitter` is the other half, and it is where cafe's own telemetry
 lives.** The generated file deliberately stops at the contract, so something has
 to wire the SDK — and this is it. One root span per invocation, kind `internal`,
-named `caf.<command>` per core's span-name grammar, identity on the RESOURCE only,
+named `cafe.<command>` per core's span-name grammar, identity on the RESOURCE only,
 `error.type` from core's closed vocabulary on failure. It reads the same switches
-the generated file names (`CAF_OTEL_ENDPOINT`, `OTEL_SDK_DISABLED`,
+the generated file names (`CAFE_OTEL_ENDPOINT`, `OTEL_SDK_DISABLED`,
 `OTEL_TRACES|METRICS|LOGS_EXPORTER`) and re-expresses the two the contract needs
 over an injected lookup — see `contract.go` for why that is a seam and not a
 second definition of "disabled".
@@ -1393,14 +1393,14 @@ second definition of "disabled".
 Two properties are load-bearing and both are measured, not asserted:
 
 - **The precedence covers the SCHEME, and that took a measurement to find.**
-  `CAF_OTEL_ENDPOINT` is documented as winning over the standard
+  `CAFE_OTEL_ENDPOINT` is documented as winning over the standard
   `OTEL_EXPORTER_OTLP_ENDPOINT`, and courier's worker measured the standard one
   winning instead. Measured here it was half true: the ADDRESS followed the
   precedence, because `newGRPCExporter` passes it explicitly and a caller's
   options are applied after the SDK's own environment read — but the SCHEME did
   not, because the exporter appended a scheme option only when it wanted
   plaintext and so left an `https` endpoint to whatever the standard variable had
-  said. With `CAF_OTEL_ENDPOINT=https://…` beside
+  said. With `CAFE_OTEL_ENDPOINT=https://…` beside
   `OTEL_EXPORTER_OTLP_ENDPOINT=http://…`, the first bytes on the connection were
   `50 52 49 20 2a 20 48 54 54 50 2f 32 2e` — the HTTP/2 client preface. The
   standard variable lost the address and won the scheme, and the converse
@@ -1412,26 +1412,26 @@ Two properties are load-bearing and both are measured, not asserted:
   `os.Getenv` itself — which is exactly why the first version of that test passed
   against the broken exporter.
 - **Unset is free.** With a switch off, `Install` returns before it constructs an
-  exporter, so nothing dials and nothing allocates. `caf version` on the disabled
+  exporter, so nothing dials and nothing allocates. `cafe version` on the disabled
   path: **84ns**, against **200ms** on the exporting path with an unresolvable
   collector. The no-op is asserted through a factory that counts its calls, not by
   reading the code, because the property is about what did not happen.
 - **A CLI must not be slowed by telemetry.** The flush budget is 200ms because the
-  first value tried was 2s and `caf version` took **2.001s** with no stack running
-  — paid by every command a developer runs before `caf dev` once. core's endpoint
+  first value tried was 2s and `cafe version` took **2.001s** with no stack running
+  — paid by every command a developer runs before `cafe dev` once. core's endpoint
   contract anticipates this and says to lower `timeoutMs`. A deadline on the flush
   is reported as success, because a collector that is absent is telemetry being
   off, which core calls a supported deployment.
 
 The gRPC exporter deliberately omits `WithDialOption(WithBlock())`: the dial is
-asynchronous, so constructing an exporter costs nothing, and pointing caf at an
+asynchronous, so constructing an exporter costs nothing, and pointing cafe at an
 address nothing listens on is **silent** (measured) rather than a warning on every
 command on every machine without a local stack. The SDK's own error handler, which
 logs one line per failed export to stderr, is replaced for the same reason —
 core pins `noOp.warnings` to `none`.
 
 **What is deliberately not emitted:** metrics and logs (a CLI counter exists once
-and is aggregated by whoever runs caf; a CLI log line is the terminal the user is
+and is aggregated by whoever runs cafe; a CLI log line is the terminal the user is
 already reading), attributes on the invocation span (core's trace allowlist is
 `additionalProperties: false` and has nothing for a command name, an argument, a
 path or an exit code — all unbounded or caller text), and child spans (a root span
@@ -1461,10 +1461,10 @@ like, and `internal/ryuk` is fifteen lines of client for a reaper nobody in this
 repository runs. None of them has a dependency, and each is skipped or faked in
 the two places that touch Docker for real.
 
-## `caf mcp`
+## `cafe mcp`
 
-`caf mcp` serves six tools to an agent over the Model Context Protocol. Every
-one of them is a read over work caf already does — `caf doctor` for the machine,
+`cafe mcp` serves six tools to an agent over the Model Context Protocol. Every
+one of them is a read over work cafe already does — `cafe doctor` for the machine,
 the contract linter for a manifest, the planner for a stack — rather than a
 second implementation of any of them.
 
@@ -1473,7 +1473,7 @@ second implementation of any of them.
 | `caf_doctor` | which toolchains this machine has, and whether it can run this project | no |
 | `caf_manifest` | what a `cafaye.yml` declares, and its API document's title and version | no |
 | `caf_registry` | what the service catalog says, and what the plan leaves out and why | no |
-| `caf_dev_plan` | the stack `caf dev` would build, and where the compose document went | writes the document |
+| `caf_dev_plan` | the stack `cafe dev` would build, and where the compose document went | writes the document |
 | `caf_dev_up` | bring the local stack up and report what came up | starts containers |
 | `caf_dev_down` | take the local stack down and report what is left | stops containers |
 
@@ -1483,13 +1483,13 @@ default. A host configuration looks like this:
 ```json
 {
   "mcpServers": {
-    "caf": { "command": "caf", "args": ["mcp", "-registry", "../pantry/registry.json"] }
+    "cafe": { "command": "cafe", "args": ["mcp", "-registry", "../pantry/registry.json"] }
   }
 }
 ```
 
 `-registry` is the service catalog the tools resolve dependencies through, the
-same one `caf dev -registry` takes.
+same one `cafe dev -registry` takes.
 
 ### Three things it does that a stub cannot
 
@@ -1506,8 +1506,8 @@ server an agent cannot reason about.
 
 **Stdout is the protocol.** On the stdio transport stdout *is* the wire, so a
 single stray print is a corrupt stream: the client loses its place and every
-later call fails. Everything caf would have printed — `caf doctor`'s two tables,
-`caf dev`'s compose document, a container list — goes to stderr instead.
+later call fails. Everything cafe would have printed — `cafe doctor`'s two tables,
+`cafe dev`'s compose document, a container list — goes to stderr instead.
 
 ### What the tools do not return
 
@@ -1525,7 +1525,7 @@ stack rather than starting a second one.
 
 ### HTTP, on loopback only
 
-`caf mcp -transport http` serves the streamable HTTP transport. The listener is
+`cafe mcp -transport http` serves the streamable HTTP transport. The listener is
 loopback-only and anything else is refused, checked both at the flag and again
 where the listener is made. This is not a conservative default: two of the tools
 start and stop containers, so a listener reachable from the network would be an
@@ -1540,9 +1540,9 @@ JSON-RPC framing layer is a month of work and a permanent maintenance burden.
 Above that wrapper nothing imports the SDK, so every tool stays an ordinary Go
 function with an ordinary Go signature.
 
-## `caf boxd`
+## `cafe boxd`
 
-`caf boxd` is the root daemon that runs on the customer's box, in the same
+`cafe boxd` is the root daemon that runs on the customer's box, in the same
 binary. It is the only thing on the box that can act on a conductor
 capability: it dials **out** to conductor over mTLS, waits for capabilities,
 and redeems them. **It opens no listener.** There is no `-listen` flag — an
@@ -1583,9 +1583,9 @@ a `BearerToken` is caught by the same walk. A test nobody has seen fire is not
 on offer. And the daemon's private key is loaded per connection and dropped
 with it — a daemon whose core dump is a keyring would defeat the point.
 
-`caf boxd -once` redeems at most one capability and returns, which is one
+`cafe boxd -once` redeems at most one capability and returns, which is one
 round trip under an operator's eye rather than a signal they cannot see. The
-daemon needs the enrolled identity `caf box enroll` writes; without it, it says
+daemon needs the enrolled identity `cafe box enroll` writes; without it, it says
 so and names that command.
 
 ## Roadmap
@@ -1593,31 +1593,31 @@ so and names that command.
 Phase 0 (v0, now):
 
 - [x] CLI skeleton: every subcommand wired, flagged, tested
-- [x] `caf version`, `caf doctor`
-- [x] `caf contract lint`, `caf contract resolve`
+- [x] `cafe version`, `cafe doctor`
+- [x] `cafe contract lint`, `cafe contract resolve`
 - [x] `cafaye.yml` manifest draft (the schema is owned by
       [cafaye/core](https://github.com/cafaye/core))
-- [x] `caf init` — write the manifest from the core schema
-- [x] `caf new` — scaffold from the template catalog
-- [x] `caf dev` — the local stack: compose from the manifest, health-gated, idempotent
-- [ ] `caf dev` — tilt, and a TUI (see [AGENTS.md](AGENTS.md); both are a later packet)
-- [x] `caf gen telemetry` — the OpenTelemetry setup, its suite, and the endpoint
+- [x] `cafe init` — write the manifest from the core schema
+- [x] `cafe new` — scaffold from the template catalog
+- [x] `cafe dev` — the local stack: compose from the manifest, health-gated, idempotent
+- [ ] `cafe dev` — tilt, and a TUI (see [AGENTS.md](AGENTS.md); both are a later packet)
+- [x] `cafe gen telemetry` — the OpenTelemetry setup, its suite, and the endpoint
   declaration, every value read out of core's vendored telemetry schemas
-- [x] `caf gen chart` — the Helm chart: Deployment, Service, `/readyz` probe,
+- [x] `cafe gen chart` — the Helm chart: Deployment, Service, `/readyz` probe,
   secrets by reference, rendered and dry-run applied (the Argo Application is
   the substrate's)
-- [ ] `caf gen` — typed SDK clients from an API document (a manifest field does
+- [ ] `cafe gen` — typed SDK clients from an API document (a manifest field does
   not record one yet, so there is nothing to generate them from)
-- [ ] `caf contract fetch` — pull a contract from a registry
-- [x] `caf deploy` — a real Kamal 2 deploy, health-gated, with a refusal for a
+- [ ] `cafe contract fetch` — pull a contract from a registry
+- [x] `cafe deploy` — a real Kamal 2 deploy, health-gated, with a refusal for a
       published accessory port and an honest `--dry-run`
-- [x] `caf backup` — a real kamal-backup snapshot, restored into a scratch database
+- [x] `cafe backup` — a real kamal-backup snapshot, restored into a scratch database
       with the rows asserted and the scratch dropped, four contract refusals before
       any boot, and an honest `--dry-run`
-- [x] `caf mcp` — serve the cafaye tools to agents
-- [x] `caf reclaim` — the reclamation ledger, containers before volumes, tri-state
-- [x] `caf env up` — the only provisioning verb: reserve, run as the parent, reclaim
-- [ ] `caf gate` — the tier policy (MD12), reading `env up`'s receipt. **Not
+- [x] `cafe mcp` — serve the cafaye tools to agents
+- [x] `cafe reclaim` — the reclamation ledger, containers before volumes, tri-state
+- [x] `cafe env up` — the only provisioning verb: reserve, run as the parent, reclaim
+- [ ] `cafe gate` — the tier policy (MD12), reading `env up`'s receipt. **Not
       written here on purpose:** a gate that can be passed is worse than no gate,
       because it turns "not built yet" into a green badge.
 - [ ] Homebrew and Scoop install targets
@@ -1629,7 +1629,7 @@ See [AGENTS.md](AGENTS.md) for the conventions this repository follows.
 
 MIT. See [LICENSE](LICENSE).
 
-caf is meant to be consumed as a dependency of a cafaye service, and the whole
+cafe is meant to be consumed as a dependency of a cafaye service, and the whole
 point of the service-registry model is that adding a platform dependency does
 not change a consumer's own licensing situation. That is why this is MIT and not
 a copyleft licence, and it is the reason for it fleet-wide rather than a

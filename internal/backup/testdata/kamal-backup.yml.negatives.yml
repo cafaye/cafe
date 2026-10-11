@@ -4,7 +4,7 @@
 # kamal-backup 0.5.2's ConfigFile::TOP_LEVEL_KEYS is a CLOSED set (app,
 # accessory, databases, paths, restore_from, restic, backup, state) and
 # `validate_top_level_key!` raises "contains unknown key" for anything else. So
-# this document is one the gem refuses at the first line of validation. caf
+# this document is one the gem refuses at the first line of validation. cafe
 # refuses it here, before anything is booted, and names the allowed set — because
 # a typo in a key is a mistake in a file, and a file mistake fixed by editing a
 # file should be reported as one.
@@ -31,7 +31,7 @@ restic:
 # twenty-nine-character name that no accessory declares, and the deployment would
 # fail validation with a message naming a variable nobody wrote.
 #
-# caf refuses it, because the failure it prevents is a secret name that looks
+# cafe refuses it, because the failure it prevents is a secret name that looks
 # plausible and is wrong, and the fix for that is not obvious from the message.
 app: identity
 accessory: backup
@@ -67,7 +67,7 @@ restic:
 #
 # The connection and the repository are written as VALUES here, which is the only
 # way to have a document that names no credential: this is the one shape where a
-# literal rather than a `{ secret: }` is the defect. caf refuses it anyway,
+# literal rather than a `{ secret: }` is the defect. cafe refuses it anyway,
 # because a backup configuration that spells a repository URL is a document whose
 # bucket name is now a fact in two places.
 app: identity
@@ -98,7 +98,7 @@ restic:
 #
 # `databases()` normalises the adapter and raises unless it is postgres, mysql or
 # sqlite; the `name:` is required and is the path component under
-# `databases/<app>/<name>/`. Both are refused by the gem; caf names them here so
+# `databases/<app>/<name>/`. Both are refused by the gem; cafe names them here so
 # the message says which of the two is wrong rather than only that something is.
 app: identity
 accessory: backup

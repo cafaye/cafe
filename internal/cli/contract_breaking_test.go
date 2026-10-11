@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// `caf contract breaking` is the verb the tier model exists for, so its output
+// `cafe contract breaking` is the verb the tier model exists for, so its output
 // is the product: one line per break, each naming the rule and the tiers it
 // breaks, and an exit code a CI job can branch on.
 func TestContractBreakingOutput(t *testing.T) {
@@ -146,10 +146,10 @@ components:
 			wantOut:  []string{"property-same-name"},
 		},
 		{
-			name:     "a document caf cannot parse is a failure, not a clean comparison",
+			name:     "a document cafe cannot parse is a failure, not a clean comparison",
 			args:     []string{"contract", "breaking", previous, broken},
 			wantCode: exitFailure,
-			wantErr:  "caf contract breaking:",
+			wantErr:  "cafe contract breaking:",
 		},
 		{
 			name:     "one document is a usage error",
@@ -164,7 +164,7 @@ components:
 			wantErr:  "wants 2 arguments",
 		},
 		{
-			name:     "a tier caf does not have is a usage error",
+			name:     "a tier cafe does not have is a usage error",
 			args:     []string{"contract", "breaking", "--tiers", "srouce", previous, current},
 			wantCode: exitUsage,
 			wantErr:  "srouce",
@@ -201,8 +201,8 @@ components:
 	}
 }
 
-// The verb is part of `caf contract`, so it has to appear in the verb list its
-// parent prints, or `caf contract` describes a command that exists.
+// The verb is part of `cafe contract`, so it has to appear in the verb list its
+// parent prints, or `cafe contract` describes a command that exists.
 func TestTheBreakingVerbIsInTheVerbList(t *testing.T) {
 	for _, args := range [][]string{{"contract"}, {"help", "contract"}, {"contract", "--help"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestTheBreakingVerbIsInTheVerbList(t *testing.T) {
 			if code != exitSuccess {
 				t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 			}
-			for _, want := range []string{"caf contract", "breaking", "lint", "resolve"} {
+			for _, want := range []string{"cafe contract", "breaking", "lint", "resolve"} {
 				if !strings.Contains(stdout, want) {
 					t.Errorf("stdout missing %q\ngot:\n%s", want, stdout)
 				}
@@ -229,7 +229,7 @@ func TestTheBreakingVerbNamesItsTiersInItsHelp(t *testing.T) {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
 	for _, want := range []string{
-		"caf contract breaking",
+		"cafe contract breaking",
 		"--tiers",
 		"SOURCE", "JSON", "WIRE",
 		"x-cafaye-reserved-properties",

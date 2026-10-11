@@ -43,7 +43,7 @@ var ErrNoLedger = errors.New("no ledger")
 // to a later generation, because the later generation's resources have
 // different names.
 type Entry struct {
-	// Session is the id of the caf run that created this. It is 32 hex
+	// Session is the id of the cafe run that created this. It is 32 hex
 	// characters, generated per run, and is what makes one worker's sweep
 	// structurally incapable of naming another's resource.
 	Session string `json:"session"`
@@ -108,14 +108,14 @@ func (e Entry) Less(other Entry) bool {
 }
 
 // Ledger is the record, held in a directory. Two Ledgers over one directory are
-// two caf processes, and they serialise on the directory's lock file rather than
+// two cafe processes, and they serialise on the directory's lock file rather than
 // on anything in memory.
 type Ledger struct {
 	dir string
 }
 
 // DefaultDir is where the ledger lives when nothing says otherwise:
-// $CAF_LEDGER_DIR, else $XDG_STATE_HOME/caf/ledger, else ~/.local/state/caf/
+// $CAF_LEDGER_DIR, else $XDG_STATE_HOME/cafe/ledger, else ~/.local/state/cafe/
 // ledger. The environment variable is first because a test — and a developer
 // running two experiments — needs to point the whole tool at a scratch
 // directory without a flag on every verb.
@@ -124,13 +124,13 @@ func DefaultDir() (string, error) {
 		return dir, nil
 	}
 	if state := os.Getenv("XDG_STATE_HOME"); state != "" {
-		return filepath.Join(state, "caf", "ledger"), nil
+		return filepath.Join(state, "cafe", "ledger"), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("%w: no home directory and no XDG_STATE_HOME; set CAF_LEDGER_DIR", ErrNoLedger)
 	}
-	return filepath.Join(home, ".local", "state", "caf", "ledger"), nil
+	return filepath.Join(home, ".local", "state", "cafe", "ledger"), nil
 }
 
 // Open makes a ledger in a directory, creating the layout. It is Open and not
@@ -148,8 +148,8 @@ func Open(dir string) (*Ledger, error) {
 	return &Ledger{dir: dir}, nil
 }
 
-// Dir is where the ledger is held. A report prints it, because "caf reclaim
-// found nothing" and "caf reclaim looked somewhere else" are different
+// Dir is where the ledger is held. A report prints it, because "cafe reclaim
+// found nothing" and "cafe reclaim looked somewhere else" are different
 // sentences.
 func (l *Ledger) Dir() string { return l.dir }
 
@@ -293,7 +293,7 @@ func (l *Ledger) Release(session string, gen int) error {
 	return nil
 }
 
-// NewSession is the id of one caf run: 32 hex characters from the system CSPRNG.
+// NewSession is the id of one cafe run: 32 hex characters from the system CSPRNG.
 // It is a run id rather than a process id because the useful half of the
 // guarantee is uniqueness across runs on one machine, and a process id is reused
 // on every machine with a slow clock.
@@ -303,7 +303,7 @@ func NewSession() string {
 		// crypto/rand failing means the platform has no entropy source, which is
 		// not a state this tool can make a safe guess in. A panic here is the
 		// honest answer: every other path in this file would be a silent lie.
-		panic("caf: the system entropy source is unavailable: " + err.Error())
+		panic("cafe: the system entropy source is unavailable: " + err.Error())
 	}
 	return hex.EncodeToString(buf)
 }

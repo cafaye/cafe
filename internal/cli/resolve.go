@@ -11,13 +11,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/resolve"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/resolve"
 )
 
-// resolveDeps is what `caf resolve` needs from the world, and it is a struct of
+// resolveDeps is what `cafe resolve` needs from the world, and it is a struct of
 // parameters for the reason providerDeps and agentDeps are: a test can hand the
 // command a keyring it owns, a pantry and a conductor that answer without a
 // network, and a directory it controls, and drive a whole resolution without a
@@ -26,7 +26,7 @@ type resolveDeps struct {
 	// dir is where config.json and the keyring live. Empty means the resolved
 	// default, and a test always sets it.
 	dir string
-	// ring holds the caller's caf token. Nil means a file ring under the
+	// ring holds the caller's cafe token. Nil means a file ring under the
 	// config directory, and a test always sets it.
 	ring agent.Keyring
 	// pantry is the tiered catalog. Nil means a real HTTP client, which is why
@@ -47,7 +47,7 @@ type resolveDeps struct {
 // pantryURLEnv is where pantry's origin comes from when no flag names one. An
 // environment variable rather than a flag default, for the reason
 // conductorURLEnv is: a flag default baked into a binary is a default that goes
-// stale when the service moves and nobody rebuilds caf to find out.
+// stale when the service moves and nobody rebuilds cafe to find out.
 const pantryURLEnv = "CAF_PANTRY_URL"
 
 func (d resolveDeps) withDefaults() resolveDeps {
@@ -78,12 +78,12 @@ func (d resolveDeps) withDefaults() resolveDeps {
 	return d
 }
 
-// resolveLongHelp is the prose under `caf resolve`'s usage line.
+// resolveLongHelp is the prose under `cafe resolve`'s usage line.
 const resolveLongHelp = `Resolves a project's ` + "`cafaye.yml`" + ` dependencies through the three tiers of
 the cafaye catalog, and names every failure with its remedy.
 
   TIER 1  the listing        the name exists, free and paid alike (anonymous)
-  TIER 2  the metadata      where the code lives (the caller's caf token)
+  TIER 2  the metadata      where the code lives (the caller's cafe token)
   TIER 3  the artifact       the entitlement check and the fetch grant
 
 A dependency that is a paid product must clear tier 3: conductor asks whether
@@ -118,10 +118,10 @@ func newResolveCommand(deps resolveDeps) *Command {
 	c := &Command{
 		Name:     "resolve",
 		Summary:  "resolve a project's cafaye.yml dependencies through the catalog's tiers, naming every failure",
-		Usage:    "caf resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project|owner/name>",
+		Usage:    "cafe resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project|owner/name>",
 		LongHelp: resolveLongHelp,
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.account, "account", "", "the caf account the tier-3 entitlement check runs against; required only when a dependency is a paid product")
+			fs.StringVar(&opts.account, "account", "", "the cafe account the tier-3 entitlement check runs against; required only when a dependency is a paid product")
 			fs.StringVar(&opts.pantry, "pantry", "", "pantry's origin; without it, "+pantryURLEnv+" is used")
 			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, "+conductorURLEnv+" is used and an unset variable is a refusal")
 		},
@@ -135,7 +135,7 @@ func newResolveCommand(deps resolveDeps) *Command {
 	return c
 }
 
-// resolveOptions is `caf resolve`'s flag state.
+// resolveOptions is `cafe resolve`'s flag state.
 type resolveOptions struct {
 	account   string
 	pantry    string
@@ -230,7 +230,7 @@ func reportResolve(report resolve.Report, env *Env) error {
 		//   tier 3, 403 entitlement_required: product `identity` needs an
 		//   entitlement — start one at https://cafaye.com
 		//
-		// A caf-side refusal that never reached the wire carries no status,
+		// A cafe-side refusal that never reached the wire carries no status,
 		// and the tier is what distinguishes "the name is wrong" from "you
 		// are not entitled" without parsing the code.
 		line := "tier " + strconv.Itoa(res.Failure.Tier)
@@ -255,20 +255,20 @@ func reportResolve(report resolve.Report, env *Env) error {
 	}
 	if blocked > 0 {
 		// stderr already carries each named failure, and the exit code is
-		// the verdict — the same rule `caf contract lint` follows.
+		// the verdict — the same rule `cafe contract lint` follows.
 		return errReported
 	}
 	return nil
 }
 
 // readManifest reads and validates one project's cafaye.yml. The validation is
-// the contract linter's own, because caf has no second opinion about what a
+// the contract linter's own, because cafe has no second opinion about what a
 // valid manifest is: a command that validated with its own copy of the rules
-// would eventually disagree with `caf contract lint` about one file, and that
+// would eventually disagree with `cafe contract lint` about one file, and that
 // is the one divergence a single CLI cannot have.
 //
 // It is named for what it does rather than for resolve, because publish reads
-// the same manifest through the same gate: an error that says "caf resolve" on
+// the same manifest through the same gate: an error that says "cafe resolve" on
 // a publish refusal is a refusal that sends a reader to the wrong command's
 // help.
 func readManifest(project string) (contract.Manifest, error) {
@@ -277,7 +277,7 @@ func readManifest(project string) (contract.Manifest, error) {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return contract.Manifest{}, fmt.Errorf("no %s in %s; a project declares its service in one (run %q to create it, or pass the project directory as the argument)",
-				contract.ManifestFileName(), project, "caf init")
+				contract.ManifestFileName(), project, "cafe init")
 		}
 		return contract.Manifest{}, fmt.Errorf("read %s: %w", path, err)
 	}
@@ -298,11 +298,11 @@ func readManifest(project string) (contract.Manifest, error) {
 // it from a 401 two steps later. The reading itself is the shared
 // callerToken in confirm.go, because the courier rule is one rule.
 func (d resolveDeps) callerToken(env *Env) string {
-	return callerToken("caf resolve", d.dir, d.ring, env)
+	return callerToken("cafe resolve", d.dir, d.ring, env)
 }
 
 // sayResolve is the stderr half of the split: one sentence per dependency, for
 // a person.
 func sayResolve(w io.Writer, format string, args ...any) {
-	fmt.Fprintf(w, "caf resolve: "+format+"\n", args...)
+	fmt.Fprintf(w, "cafe resolve: "+format+"\n", args...)
 }

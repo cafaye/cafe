@@ -17,7 +17,7 @@ import (
 //	argo     the launch substrate's cluster, by a values commit and a sync
 //	remote   the cafaye-operated platform: build once, deploy once, serve many
 //
-// The engine exists so `caf deploy` can name a cafaye-operated target at all.
+// The engine exists so `cafe deploy` can name a cafaye-operated target at all.
 // Before it, the command had two engines and both pointed at something the
 // operator runs themselves, which is the "nowhere cafaye-operated to deploy to"
 // gap AGENTS-FIRST.md named as knowingly not done.
@@ -66,8 +66,8 @@ So this is the state of the record, not a bug to work around:
 
 To deploy today, use the two engines that are enabled:
 
-  caf deploy <service>                     kamal, the default: your own box
-  caf deploy <service> --engine argo       the launch substrate's cluster
+  cafe deploy <service>                     kamal, the default: your own box
+  cafe deploy <service> --engine argo       the launch substrate's cluster
 
 When TG-D1 is recorded, enabling this is one line: flip remoteEnabled to true in
 internal/deploy/remote.go. Nothing else moves, and the test asserting the refusal
@@ -209,10 +209,10 @@ func (r *RemoteRunner) Plan(dep Deployment, opts Options) (Plan, error) {
 // The account is a parameter rather than something the runner looks up, because
 // it arrived on a flag and the plan is where a flag becomes a fact.
 func planForRemote(dep Deployment, opts Options) Plan {
-	argv := []string{"caf", "deploy", "--engine", EngineRemote}
+	argv := []string{"cafe", "deploy", "--engine", EngineRemote}
 	// The account is written only when there is one. A plan whose argv carried
 	// `--account` with nothing after it would be an argv nobody could run —
-	// `caf deploy --account --yes identity` parses --yes as the account — and
+	// `cafe deploy --account --yes identity` parses --yes as the account — and
 	// the omission is what makes Run's refusal name the flag rather than the
 	// platform being asked about an account called "--yes".
 	if dep.Account != "" {
@@ -275,7 +275,7 @@ func (r *RemoteRunner) Run(ctx context.Context, dir string, step Step, stdout, s
 	case RequestStep:
 		return runRemoteRequest(ctx, rem, req, stdout)
 	default:
-		return fmt.Errorf("caf deploy: the remote engine has no %q step, so nothing was requested", step.Name)
+		return fmt.Errorf("cafe deploy: the remote engine has no %q step, so nothing was requested", step.Name)
 	}
 }
 
@@ -338,7 +338,7 @@ func requestFromArgv(argv []string) RemoteRequest {
 
 // StubRemote is the seam's default: a remote that is not configured refuses.
 //
-// A nil Remote is a caf built without the remote wiring, and a deploy that
+// A nil Remote is a cafe built without the remote wiring, and a deploy that
 // proceeded anyway would be a deploy to a destination nobody named.
 type StubRemote struct{}
 
@@ -405,7 +405,7 @@ func runRemoteDeploy(ctx context.Context, r Runner, req Request, stdout, stderr 
 	// deploy whose --version and --account came from nowhere, so it is refused
 	// by name rather than accepted.
 	if info, err := os.Stat(abs); err != nil || !info.IsDir() {
-		return fmt.Errorf("caf deploy: %s is not a directory caf can read: %w", abs, err)
+		return fmt.Errorf("cafe deploy: %s is not a directory cafe can read: %w", abs, err)
 	}
 
 	dep := Deployment{Dir: abs, Service: req.Service, Env: req.Env, Account: req.Account}
@@ -456,7 +456,7 @@ func runRemoteSteps(ctx context.Context, r Runner, plan Plan, dep Deployment, st
 	for _, name := range []string{Boundary, RequestStep} {
 		step := plan.Step(name)
 		if step.Argv == nil {
-			return fmt.Errorf("caf deploy: the plan has no %q step, so the deploy stopped there rather than pretending", name)
+			return fmt.Errorf("cafe deploy: the plan has no %q step, so the deploy stopped there rather than pretending", name)
 		}
 		fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 		if err := r.Run(ctx, plan.Dir, step, stdout, stderr); err != nil {
@@ -487,12 +487,12 @@ func printRemoteReport(stdout io.Writer, plan Plan, dep Deployment) {
 // printRemoteDryRun is the remote engine's dry run: every step, and the fact
 // that no request was made.
 func printRemoteDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what caf deploy would ask:\n\n")
+	fmt.Fprintf(stdout, "\nthis is what cafe deploy would ask:\n\n")
 	for _, step := range plan.Steps {
 		fmt.Fprintf(stdout, "  %s\n", step.Command())
 		fmt.Fprintf(stdout, "      %s\n", step.Why)
 	}
 	fmt.Fprintf(stdout, "\nDry run, and nothing was asked: not the boundary question and not the request.\n")
 	fmt.Fprintf(stdout, "No account was queried and no release was requested on the platform.\n")
-	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  caf deploy --engine remote --account <uuid> %s --yes\n", plan.Service)
+	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  cafe deploy --engine remote --account <uuid> %s --yes\n", plan.Service)
 }

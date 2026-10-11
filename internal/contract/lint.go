@@ -99,7 +99,7 @@ func (r Report) String() string {
 //   - The file being complained about is a different file. `INVALID cafaye.yml:
 //     openapi/v1.yaml: is a floating-point value` sends the reader to the wrong
 //     document for a rule about an integer.
-//   - `caf gen` and the contract tests read the document, not the manifest, so a
+//   - `cafe gen` and the contract tests read the document, not the manifest, so a
 //     manifest-only report is not the report they would want.
 //   - A document that moved is diffed against a document, which a finding on a
 //     manifest cannot express.
@@ -206,7 +206,7 @@ func lintOne(manifestPath string, ownManifest bool) (Report, serviceFacts, error
 
 	// The path is repository-relative in the manifest and a manifest may be
 	// anywhere in a tree, so it resolves against the manifest's own directory.
-	// `caf dev` resolves it the same way and the two cannot be allowed to differ.
+	// `cafe dev` resolves it the same way and the two cannot be allowed to differ.
 	full := filepath.Join(filepath.Dir(manifestPath), filepath.FromSlash(document))
 	parsed, err := readAPIDocument(full, document)
 	if err != nil {
@@ -218,7 +218,7 @@ func lintOne(manifestPath string, ownManifest bool) (Report, serviceFacts, error
 		// recorded_copy.rs` asserts the copy is byte-identical to the publisher's.
 		// Each copy says `api: openapi/v1.yaml`, which resolves in identity's
 		// repository and cannot resolve in pantry's, because the document is not
-		// part of pantry. Requiring it there would make `caf contract lint` red on
+		// part of pantry. Requiring it there would make `cafe contract lint` red on
 		// six manifests in a repository that is behaving correctly — measured, not
 		// assumed: that is the output this rule used to print.
 		//
@@ -311,12 +311,12 @@ func applyStabilityGate(report Report, facts []serviceFacts) {
 
 // CheckData validates manifest bytes and hands back both answers: the manifest,
 // for the tools that go on to use it, and the Finding, from the same rules Lint
-// applies. A caller that already holds the bytes — `caf dev` reading a project
+// applies. A caller that already holds the bytes — `cafe dev` reading a project
 // root — must not read and re-implement the rules to get them: a command that
-// checked with its own copy would accept a manifest `caf contract lint`
+// checked with its own copy would accept a manifest `cafe contract lint`
 // rejects, which is the one divergence a CLI cannot have.
 //
-// It is the MANIFEST's rules and only the manifest's. `caf dev` has no business
+// It is the MANIFEST's rules and only the manifest's. `cafe dev` has no business
 // reading an OpenAPI document to start a compose file, so the document's rules
 // are reached through Lint and not through here.
 func CheckData(path string, data []byte) (Manifest, Finding) {

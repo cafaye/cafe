@@ -11,7 +11,7 @@ import (
 )
 
 // The standard library exposes flock on the unix systems and not on Windows,
-// and caf ships a Windows binary (.goreleaser.yml lists goos: windows). So
+// and cafe ships a Windows binary (.goreleaser.yml lists goos: windows). So
 // this file uses the atomic exclusive create every platform provides, which
 // is a weaker primitive and the difference is stated rather than hidden.
 //
@@ -49,7 +49,7 @@ func (s *Store) take() (*storeLock, error) {
 			return nil, fmt.Errorf("run store: take the store lock %s: %w", path, err)
 		}
 		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("%w: the store lock %s is held by another caf, and on this platform a lock left behind by a killed caf has to be removed by hand (rm %s)", ErrHeld, path, path)
+			return nil, fmt.Errorf("%w: the store lock %s is held by another cafe, and on this platform a lock left behind by a killed cafe has to be removed by hand (rm %s)", ErrHeld, path, path)
 		}
 		time.Sleep(5 * time.Millisecond)
 	}

@@ -11,10 +11,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
-// ErrBadCatalog is a registry document caf cannot believe: malformed JSON, a
+// ErrBadCatalog is a registry document cafe cannot believe: malformed JSON, a
 // service that names a different service from the key it is filed under, a port
 // that is not a number. It is a distinct sentinel from a service that is simply
 // absent, because "the catalog is broken" and "the catalog does not know this
@@ -23,7 +23,7 @@ var ErrBadCatalog = errors.New("unusable service catalog")
 
 // Registry answers one question: how is this service run locally.
 //
-// It is the seam `caf dev` and `caf deploy` share, and the shape a registry has
+// It is the seam `cafe dev` and `cafe deploy` share, and the shape a registry has
 // to answer in is written out in the package doc. It is an interface with one
 // method so that the offline catalog, a file on disk, and a network service are
 // the same thing to everything above it.
@@ -72,7 +72,7 @@ type Entry struct {
 	// 5432/<project>`. A catalog that spelled that out would go stale the moment
 	// a developer renamed their checkout, and the failure would be a container
 	// that boots against a database that does not exist. So the catalog names
-	// the VARIABLE and caf renders the address into it.
+	// the VARIABLE and cafe renders the address into it.
 	Connections map[string]string `json:"connections,omitempty"`
 	// Volumes are `source:target` mounts; a bare name is a named volume and is
 	// declared at the top of the compose document.
@@ -213,7 +213,7 @@ func (c Catalog) Names() []string {
 	return names
 }
 
-// extensionPrefix opens a key that a catalog may carry and caf does not model.
+// extensionPrefix opens a key that a catalog may carry and cafe does not model.
 // It is kamal's spelling, borrowed whole, because the reasoning is the same in
 // both places: refusing unknown keys is only safe if there is a way to say
 // something that is not modelled yet, and a prefix is that way. Without it,
@@ -233,9 +233,9 @@ func ReadCatalog(r io.Reader) (Catalog, error) {
 		return nil, fmt.Errorf("%w: read the catalog: %w", ErrBadCatalog, err)
 	}
 
-	// A catalog is the one caf input that is HAND-WRITTEN, COMMITTED, and read
+	// A catalog is the one cafe input that is HAND-WRITTEN, COMMITTED, and read
 	// by a decoder that quietly discards what it does not recognise. Every other
-	// input caf parses is produced by a program that shares caf's types. So a
+	// input cafe parses is produced by a program that shares cafe's types. So a
 	// misspelled key here is a typo a human made, and the default decoder turns
 	// that typo into silence: the key is dropped, the field keeps its zero
 	// value, and the catalog goes on to be believed.
@@ -248,9 +248,9 @@ func ReadCatalog(r io.Reader) (Catalog, error) {
 	// edit a file that is already correct.
 	//
 	// The cost is real, and `x-` is what pays it: a producer that writes a key
-	// caf does not know yet is refused rather than ignored, unless it says so
+	// cafe does not know yet is refused rather than ignored, unless it says so
 	// with the prefix. Refusing is the right way round for a file that is edited
-	// by hand — it is the only caf input where a mistake is a human's typing and
+	// by hand — it is the only cafe input where a mistake is a human's typing and
 	// a machine's silence.
 	cleaned, err := checkCatalogKeys(document)
 	if err != nil {
@@ -284,7 +284,7 @@ func ReadCatalog(r io.Reader) (Catalog, error) {
 	return Catalog(raw), nil
 }
 
-// checkConnections refuses a `connections` declaration caf cannot act on: a key
+// checkConnections refuses a `connections` declaration cafe cannot act on: a key
 // that is not a piece of local infrastructure, or a value that is not a
 // variable name.
 //
@@ -292,10 +292,10 @@ func ReadCatalog(r io.Reader) (Catalog, error) {
 // `checkCatalogKeys` exists for. `connections` is a MAP, so a misspelled key is
 // silent by construction: nothing in the decoder complains about a map key it
 // does not recognise, so `{"postgresql": "PANTRY_DATABASE_URL"}` would decode
-// into a perfectly good entry and caf would then hand the service the default
+// into a perfectly good entry and cafe would then hand the service the default
 // `DATABASE_URL` — the exact defect this declaration was added to remove, back
 // again, with an entry in the catalog that reads like it was fixed. A key that
-// changes nothing and says it is load-bearing is worse than a key caf refused,
+// changes nothing and says it is load-bearing is worse than a key cafe refused,
 // because the catalog is the file a person goes to check.
 //
 // The value is checked for the same reason from the other direction. It names
@@ -327,7 +327,7 @@ func checkConnections(service string, declared map[string]string) error {
 	// Joined with " and " rather than ", ": each offender is a clause, so a
 	// comma reads as one long unfinished clause and the sentence only resolves at
 	// the full stop the format string supplies.
-	return fmt.Errorf("%w: the `connections` of %s carries %s caf cannot act on: %s. A key names a piece of local infrastructure and its value is the variable the service reads that address from; caf would have ignored %s and handed the service the conventional name without saying so",
+	return fmt.Errorf("%w: the `connections` of %s carries %s cafe cannot act on: %s. A key names a piece of local infrastructure and its value is the variable the service reads that address from; cafe would have ignored %s and handed the service the conventional name without saying so",
 		ErrBadCatalog,
 		service,
 		counted(len(offenders), "entry", "entries"),
@@ -421,7 +421,7 @@ func checkCatalogKeys(document []byte) ([]byte, error) {
 		return stripExtensionKeys(services), nil
 	}
 
-	return nil, fmt.Errorf("%w: %s no entry has: %s; caf would have dropped %s without saying so. An entry takes %s; a healthcheck takes %s; and any key may be prefixed %q to carry a note caf does not model",
+	return nil, fmt.Errorf("%w: %s no entry has: %s; cafe would have dropped %s without saying so. An entry takes %s; a healthcheck takes %s; and any key may be prefixed %q to carry a note cafe does not model",
 		ErrBadCatalog,
 		counted(len(offenders), "key", "keys"),
 		strings.Join(offenders, ", "),
@@ -540,7 +540,7 @@ func sortedKeys[V any](m map[string]V) []string {
 // did here until the message was read at three typos and at one.
 //
 // The first version of this also had it the other way round, counting the
-// pronoun: "caf would have dropped 1 it". Both are sentences about nothing, and
+// pronoun: "cafe would have dropped 1 it". Both are sentences about nothing, and
 // they are only visible if the message is read at more than one count, which is
 // why the tests below assert on the whole sentence rather than on the key.
 func counted(n int, one, many string) string {
@@ -569,7 +569,7 @@ func ReadCatalogFile(path string) (Catalog, error) {
 	return ReadCatalog(file)
 }
 
-// infraNames are the local services caf adds itself. They are not cafaye
+// infraNames are the local services cafe adds itself. They are not cafaye
 // services, so they are not in any registry: postgres and redis are third-party
 // images, and a registry of cafaye services has nothing to say about them.
 // A registry entry may still depend on them by name, which is why the planner
@@ -589,7 +589,7 @@ func isInfra(name string) bool {
 }
 
 // languageToolchains is the toolchain each implementation language is built
-// with, which is what `caf doctor` checks a machine for and what a service
+// with, which is what `cafe doctor` checks a machine for and what a service
 // image is named after. The manifest's `language` enum is the only input, so
 // this is the whole table: a language added by core fails loudly here rather
 // than producing a plan with no port and no toolchain nobody checked.
@@ -605,7 +605,7 @@ var languageToolchains = map[string]string{
 
 // languagePorts is the port a service's container listens on, taken from the
 // `EXPOSE` line of the matching base image in cafaye/kit's docker templates —
-// one source for both, so an image and the port caf publishes cannot disagree.
+// one source for both, so an image and the port cafe publishes cannot disagree.
 // `spec` is a repository of documents: it has no process and no port.
 var languagePorts = map[string]int{
 	"go":         8080,
@@ -621,7 +621,7 @@ var languagePorts = map[string]int{
 func LanguagePort(language string) (int, error) {
 	port, known := languagePorts[language]
 	if !known {
-		return 0, fmt.Errorf("no container port is known for language %q; core added a language and caf has not caught up", language)
+		return 0, fmt.Errorf("no container port is known for language %q; core added a language and cafe has not caught up", language)
 	}
 	return port, nil
 }
@@ -631,12 +631,12 @@ func LanguagePort(language string) (int, error) {
 func LanguageToolchain(language string) (string, error) {
 	chain, known := languageToolchains[language]
 	if !known {
-		return "", fmt.Errorf("no toolchain is known for language %q; core added a language and caf has not caught up", language)
+		return "", fmt.Errorf("no toolchain is known for language %q; core added a language and cafe has not caught up", language)
 	}
 	return chain, nil
 }
 
-// Infra is one local service caf adds to a stack: a third-party image with the
+// Infra is one local service cafe adds to a stack: a third-party image with the
 // healthcheck that says when it is ready and the volume that survives a restart.
 type Infra struct {
 	Image       string
@@ -684,8 +684,8 @@ var infra = map[string]Infra{
 // to build the address for a project.
 //
 // The two are separate fields because they answer two different questions and
-// only one of them is caf's to answer. WHERE the address points is a fact about
-// the local stack and caf owns it. WHAT the service calls the variable it reads
+// only one of them is cafe's to answer. WHERE the address points is a fact about
+// the local stack and cafe owns it. WHAT the service calls the variable it reads
 // that address from is a fact about the service's own config loader, and only
 // the service knows it — which is what Entry.Connections is for.
 type Connection struct {
@@ -698,7 +698,7 @@ type Connection struct {
 	Address func(project string) string
 }
 
-// connections is what caf hands a service for each piece of infrastructure it is
+// connections is what cafe hands a service for each piece of infrastructure it is
 // wired to.
 //
 // THE COMMENT THIS REPLACED CLAIMED THE NAMES WERE "the conventional ones every
@@ -708,7 +708,7 @@ type Connection struct {
 // darkroom read `DATABASE_URL`, pantry reads `PANTRY_DATABASE_URL`
 // (`cmd/pantry/main.go:152`) and muse reads `MUSE_DATABASE_URL`. So two of the
 // four services in the platform with a database were handed a variable none of
-// their code looks at, and every `caf dev` run in a project that depends on
+// their code looks at, and every `cafe dev` run in a project that depends on
 // pantry produced a pantry container that exits on boot with an error that —
 // mercifully — names the variable it wanted.
 //
@@ -770,7 +770,7 @@ func connectionEnv(svc Service, kind, project string) (Environment, bool) {
 // so the compose half of the fleet convention is only closeable in the generator
 // that renders the stack.
 //
-// So `caf dev` writes it, for every cafaye service on the stack, and the
+// So `cafe dev` writes it, for every cafaye service on the stack, and the
 // collector address is core's documented default — the same address
 // `internal/gen` emits as `DefaultEndpoint`, read from the same
 // `contract.Endpoint.Default` rather than written down a third time.
@@ -799,9 +799,9 @@ func telemetryEnv(service string) Environment {
 // when it measured courier against courier because both sides were fixtures.
 //
 // A name core's pattern would refuse is written through rather than skipped. It
-// is unreachable through `caf dev` (the manifest schema constrains `name` the
-// same way `caf gen` says it does), and a service with an unspellable endpoint
-// variable is better off rendering one that `caf contract lint` will reject than
+// is unreachable through `cafe dev` (the manifest schema constrains `name` the
+// same way `cafe gen` says it does), and a service with an unspellable endpoint
+// variable is better off rendering one that `cafe contract lint` will reject than
 // rendering a stack with no telemetry at all.
 func endpointVariable(service string) string {
 	return strings.ToUpper(strings.ReplaceAll(service, "-", "")) + "_OTEL_ENDPOINT"

@@ -13,7 +13,7 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// `caf update` merges template work into a checkout that was seeded from it,
+// `cafe update` merges template work into a checkout that was seeded from it,
 // the way Site's README "Pulling template updates" does by hand, and moves
 // the pin in template.yml when the merge commits.
 //
@@ -34,7 +34,7 @@ import (
 // commits: a conflicted merge leaves MERGE_HEAD in place and the pin where it
 // was, with the recovery spelled out.
 
-// updateOptions is the parsed flag state for `caf update`.
+// updateOptions is the parsed flag state for `cafe update`.
 type updateOptions struct {
 	check bool
 }
@@ -46,8 +46,8 @@ const updateLongHelp = `Reads template.yml — the current directory by default 
 template branch it pins into this checkout, the way "Pulling template
 updates" does by hand:
 
-  caf update [path]          merge the selected upstream and move the pin
-  caf update --check [path]  preview only: the source, the tip and what it
+  cafe update [path]          merge the selected upstream and move the pin
+  cafe update --check [path]  preview only: the source, the tip and what it
                              carries. Changes no tracked file and no branch.
 
 Safety, in order: no merge on master or main (--check may still preview),
@@ -72,7 +72,7 @@ func newUpdateCommand() *Command {
 	c := &Command{
 		Name:     "update",
 		Summary:  "merge the template's updates into this checkout and advance the template pin",
-		Usage:    "caf update [flags] [path]",
+		Usage:    "cafe update [flags] [path]",
 		LongHelp: updateLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.check, "check", false, "preview the merge without changing the worktree or the branch")
@@ -85,7 +85,7 @@ func newUpdateCommand() *Command {
 		case 1:
 			dir = args[0]
 		default:
-			return fmt.Errorf("%w: caf %s wants at most 1 argument, a project directory, got %d (usage: %s)",
+			return fmt.Errorf("%w: cafe %s wants at most 1 argument, a project directory, got %d (usage: %s)",
 				errUsage, c.Name, len(args), c.Usage)
 		}
 		return runUpdate(opts, dir, env)
@@ -280,7 +280,7 @@ func shortSHA(sha string) string {
 // the candidates, select one, and either report (--check) or merge.
 func runUpdate(opts *updateOptions, dir string, env *Env) error {
 	if _, err := exec.LookPath("git"); err != nil {
-		return fmt.Errorf("caf update: git is not on PATH: the merge is git's and there is no other one")
+		return fmt.Errorf("cafe update: git is not on PATH: the merge is git's and there is no other one")
 	}
 	manifest, root, err := findUpdateManifest(dir)
 	if err != nil {
@@ -288,28 +288,28 @@ func runUpdate(opts *updateOptions, dir string, env *Env) error {
 	}
 	file, raw, err := loadUpdateFile(manifest)
 	if err != nil {
-		return fmt.Errorf("caf update: %w", err)
+		return fmt.Errorf("cafe update: %w", err)
 	}
 	workRoot, err := updateGit(root, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return fmt.Errorf("caf update: %s is not inside a git checkout: %w", root, err)
+		return fmt.Errorf("cafe update: %s is not inside a git checkout: %w", root, err)
 	}
 	if inside, err := updateGit(workRoot, "rev-parse", "--is-inside-work-tree"); err != nil || inside != "true" {
-		return fmt.Errorf("caf update: %s is not a git worktree: the merge needs files to work on", workRoot)
+		return fmt.Errorf("cafe update: %s is not a git worktree: the merge needs files to work on", workRoot)
 	}
 	branch, err := updateGit(workRoot, "branch", "--show-current")
 	if err != nil || branch == "" {
-		return fmt.Errorf("caf update: this checkout is not on a branch: `git switch -c template/update-<date>` first, then re-run")
+		return fmt.Errorf("cafe update: this checkout is not on a branch: `git switch -c template/update-<date>` first, then re-run")
 	}
 	// A preview changes no tracked file and no branch — the fetch
 	// selectUpdateSource does touches remote-tracking refs only — so it is
 	// allowed where a merge is refused.
 	if (branch == "master" || branch == "main") && !opts.check {
-		return fmt.Errorf("caf update: refusing to merge a template update on %s: updates land on a branch, the way \"Pulling template updates\" says — `git switch -c template/update-<date>` first. --check may still preview", branch)
+		return fmt.Errorf("cafe update: refusing to merge a template update on %s: updates land on a branch, the way \"Pulling template updates\" says — `git switch -c template/update-<date>` first. --check may still preview", branch)
 	}
 	pin := file.Template.Commit
 	if !gitOK(workRoot, "merge-base", "--is-ancestor", pin, "HEAD") {
-		return fmt.Errorf("caf update: the recorded pin %s is not an ancestor of HEAD: this checkout was not built on the commit it claims, so no tip descending from that pin is a safe merge base", pin)
+		return fmt.Errorf("cafe update: the recorded pin %s is not an ancestor of HEAD: this checkout was not built on the commit it claims, so no tip descending from that pin is a safe merge base", pin)
 	}
 
 	selected, skipped, err := selectUpdateSource(workRoot, file)
@@ -331,13 +331,13 @@ func runUpdate(opts *updateOptions, dir string, env *Env) error {
 	}
 
 	if status, err := updateGit(workRoot, "status", "--porcelain"); err != nil {
-		return fmt.Errorf("caf update: %w", err)
+		return fmt.Errorf("cafe update: %w", err)
 	} else if status != "" {
 		lines := strings.Split(status, "\n")
 		if len(lines) > 5 {
 			lines = append(lines[:5], "...")
 		}
-		return fmt.Errorf("caf update: refusing to merge with a dirty worktree (%d path(s)):\n%s\ncommit or stash first; --check previews without touching the tree", len(strings.Split(status, "\n")), strings.Join(lines, "\n"))
+		return fmt.Errorf("cafe update: refusing to merge with a dirty worktree (%d path(s)):\n%s\ncommit or stash first; --check previews without touching the tree", len(strings.Split(status, "\n")), strings.Join(lines, "\n"))
 	}
 
 	return mergeUpdate(workRoot, manifest, file, raw, branch, selected, env)
@@ -348,7 +348,7 @@ func runUpdate(opts *updateOptions, dir string, env *Env) error {
 func findUpdateManifest(dir string) (manifest, root string, err error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		return "", "", fmt.Errorf("caf update: resolve %s: %w", dir, err)
+		return "", "", fmt.Errorf("cafe update: resolve %s: %w", dir, err)
 	}
 	info, statErr := os.Stat(abs)
 	if statErr == nil && !info.IsDir() {
@@ -356,7 +356,7 @@ func findUpdateManifest(dir string) (manifest, root string, err error) {
 	}
 	manifest = filepath.Join(abs, "template.yml")
 	if _, statErr := os.Stat(manifest); statErr != nil {
-		return "", "", fmt.Errorf("caf update: no template.yml in %s: %w", abs, statErr)
+		return "", "", fmt.Errorf("cafe update: no template.yml in %s: %w", abs, statErr)
 	}
 	return manifest, abs, nil
 }
@@ -385,7 +385,7 @@ func selectUpdateSource(workRoot string, file updateFile) (selected updateSource
 		}
 		if kind == "local" {
 			if _, revErr := updateGit(source, "rev-parse", "--verify", t.Branch); revErr != nil {
-				return selected, skipped, fmt.Errorf("caf update: local source %s (%s) has no branch %q: %w", r.Name, r.URL, t.Branch, revErr)
+				return selected, skipped, fmt.Errorf("cafe update: local source %s (%s) has no branch %q: %w", r.Name, r.URL, t.Branch, revErr)
 			}
 		}
 		ref := updateRef(r.Name)
@@ -394,16 +394,16 @@ func selectUpdateSource(workRoot string, file updateFile) (selected updateSource
 				skipped = append(skipped, fmt.Sprintf("skipping unavailable local source %s (%s): the fetch failed; taking the next candidate", r.Name, r.URL))
 				continue
 			}
-			return selected, skipped, fmt.Errorf("caf update: fetch %s (%s) branch %q: %w", r.Name, r.URL, t.Branch, fetchErr)
+			return selected, skipped, fmt.Errorf("cafe update: fetch %s (%s) branch %q: %w", r.Name, r.URL, t.Branch, fetchErr)
 		}
 		tip, revErr := updateGit(workRoot, "rev-parse", "--verify", ref)
 		if revErr != nil {
-			return selected, skipped, fmt.Errorf("caf update: fetch %s (%s) left no %s: %w", r.Name, r.URL, ref, revErr)
+			return selected, skipped, fmt.Errorf("cafe update: fetch %s (%s) left no %s: %w", r.Name, r.URL, ref, revErr)
 		}
 		have = append(have, fetched{remote: r, source: source, tip: tip})
 	}
 	if len(have) == 0 {
-		return selected, skipped, fmt.Errorf("caf update: no usable candidate source: every remote was skipped or failed, so there is nothing to merge")
+		return selected, skipped, fmt.Errorf("cafe update: no usable candidate source: every remote was skipped or failed, so there is nothing to merge")
 	}
 	best := have[0]
 	agree := true
@@ -434,7 +434,7 @@ func selectUpdateSource(workRoot string, file updateFile) (selected updateSource
 	for _, f := range have {
 		parts = append(parts, fmt.Sprintf("%s=%s", f.remote.Name, shortSHA(f.tip)))
 	}
-	return selected, skipped, fmt.Errorf("caf update: candidate sources disagree and neither contains the other: %s. refusing to choose: merge one into the other, or drop it from template.yml remotes, and re-run", strings.Join(parts, " "))
+	return selected, skipped, fmt.Errorf("cafe update: candidate sources disagree and neither contains the other: %s. refusing to choose: merge one into the other, or drop it from template.yml remotes, and re-run", strings.Join(parts, " "))
 }
 
 // previewUpdate reports what a merge would take, changing no tracked file and
@@ -444,7 +444,7 @@ func previewUpdate(workRoot string, file updateFile, branch string, selected upd
 	t := file.Template
 	count, err := updateGit(workRoot, "rev-list", "--count", "HEAD.."+selected.tip)
 	if err != nil {
-		return fmt.Errorf("caf update: %w", err)
+		return fmt.Errorf("cafe update: %w", err)
 	}
 	fmt.Fprintf(env.Stdout, "template pin %s (tracking %s#%s)\n", t.Commit, t.Repository, t.Branch)
 	fmt.Fprintf(env.Stdout, "branch %s in %s\n", branch, workRoot)
@@ -466,7 +466,7 @@ func previewUpdate(workRoot string, file updateFile, branch string, selected upd
 func mergeUpdate(workRoot, manifest string, file updateFile, raw []byte, branch string, selected updateSource, env *Env) error {
 	t := file.Template
 	if !gitOK(workRoot, "merge-base", "--is-ancestor", t.Commit, selected.tip) {
-		return fmt.Errorf("caf update: selected %s from %s does not descend from the recorded pin %s: the pin names work this checkout has not taken, or the source is not this template. refusing", shortSHA(selected.tip), selected.remote.Name, t.Commit)
+		return fmt.Errorf("cafe update: selected %s from %s does not descend from the recorded pin %s: the pin names work this checkout has not taken, or the source is not this template. refusing", shortSHA(selected.tip), selected.remote.Name, t.Commit)
 	}
 	fmt.Fprintf(env.Stdout, "merging %s from %s (%s) into %s\n", selected.tip, selected.remote.Name, selected.remote.URL, branch)
 	if _, err := updateGit(workRoot, "merge", "--no-ff", "--no-edit", selected.tip); err != nil {
@@ -475,21 +475,21 @@ func mergeUpdate(workRoot, manifest string, file updateFile, raw []byte, branch 
 	merged, err := os.ReadFile(manifest)
 	if err != nil {
 		head, _ := updateGit(workRoot, "rev-parse", "--short", "HEAD")
-		return fmt.Errorf("caf update: the merge committed as %s but %s cannot be read: %w. move the commit: line to %s by hand, stage it and `git commit --amend --no-edit`", head, manifest, err, selected.tip)
+		return fmt.Errorf("cafe update: the merge committed as %s but %s cannot be read: %w. move the commit: line to %s by hand, stage it and `git commit --amend --no-edit`", head, manifest, err, selected.tip)
 	}
 	advanced, err := advancePin(merged, selected.tip)
 	if err != nil {
 		head, _ := updateGit(workRoot, "rev-parse", "--short", "HEAD")
-		return fmt.Errorf("caf update: the merge committed as %s but %w. move the commit: line in %s to %s by hand, stage it and `git commit --amend --no-edit`", head, err, manifest, selected.tip)
+		return fmt.Errorf("cafe update: the merge committed as %s but %w. move the commit: line in %s to %s by hand, stage it and `git commit --amend --no-edit`", head, err, manifest, selected.tip)
 	}
 	if err := os.WriteFile(manifest, advanced, 0o644); err != nil {
-		return fmt.Errorf("caf update: write %s: %w. the merge is committed; move the commit: line to %s by hand and amend", manifest, err, selected.tip)
+		return fmt.Errorf("cafe update: write %s: %w. the merge is committed; move the commit: line to %s by hand and amend", manifest, err, selected.tip)
 	}
 	if _, err := updateGit(workRoot, "add", "--", manifest); err != nil {
-		return fmt.Errorf("caf update: %w. the merge is committed; stage %s and `git commit --amend --no-edit` by hand", err, manifest)
+		return fmt.Errorf("cafe update: %w. the merge is committed; stage %s and `git commit --amend --no-edit` by hand", err, manifest)
 	}
 	if _, err := updateGit(workRoot, "commit", "--amend", "--no-edit"); err != nil {
-		return fmt.Errorf("caf update: %w. the merge is committed with a stale pin; move the commit: line to %s, stage it and `git commit --amend --no-edit` by hand", err, selected.tip)
+		return fmt.Errorf("cafe update: %w. the merge is committed with a stale pin; move the commit: line to %s, stage it and `git commit --amend --no-edit` by hand", err, selected.tip)
 	}
 	head, _ := updateGit(workRoot, "rev-parse", "HEAD")
 	fmt.Fprintf(env.Stdout, "merged %s; the pin moved %s -> %s in the merge commit %s\n", selected.tip, t.Commit, selected.tip, shortSHA(head))
@@ -503,13 +503,13 @@ func mergeUpdate(workRoot, manifest string, file updateFile, raw []byte, branch 
 // that, because "a merge is in progress" would then be a lie.
 func reportConflict(workRoot, manifest string, selected updateSource, mergeErr error) error {
 	if !gitOK(workRoot, "rev-parse", "--verify", "MERGE_HEAD") {
-		return fmt.Errorf("caf update: the merge of %s from %s failed before it started: %w. the tree is unchanged and the pin is still what it was", shortSHA(selected.tip), selected.remote.Name, mergeErr)
+		return fmt.Errorf("cafe update: the merge of %s from %s failed before it started: %w. the tree is unchanged and the pin is still what it was", shortSHA(selected.tip), selected.remote.Name, mergeErr)
 	}
 	unmerged, _ := updateGit(workRoot, "diff", "--name-only", "--diff-filter=U")
 	files := strings.Fields(unmerged)
 	head, _ := updateGit(workRoot, "rev-parse", "--short", "HEAD")
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "caf update: the merge of %s from %s stopped on %d conflicted file(s)", shortSHA(selected.tip), selected.remote.Name, len(files))
+	fmt.Fprintf(&sb, "cafe update: the merge of %s from %s stopped on %d conflicted file(s)", shortSHA(selected.tip), selected.remote.Name, len(files))
 	if len(files) > 0 {
 		fmt.Fprintf(&sb, ": %s", strings.Join(files, ", "))
 	}

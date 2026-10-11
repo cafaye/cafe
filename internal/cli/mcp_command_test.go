@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/mcp"
+	"github.com/cafaye/cafe/internal/mcp"
 )
 
-// The wire tests drive `caf mcp` as a child process; these drive the command
+// The wire tests drive `cafe mcp` as a child process; these drive the command
 // surface in process, which is where the flag surface lives. A flag a person
 // types wrong exits 2 and says why, and that is a property of the router rather
 // than of the protocol.
 
-// A transport caf does not serve is the person typing it wrongly, so it is a
+// A transport cafe does not serve is the person typing it wrongly, so it is a
 // usage error and the message names the two that work rather than saying
 // "invalid".
 func TestAnUnknownTransportIsAUsageError(t *testing.T) {
@@ -101,7 +101,7 @@ func TestTheHTTPTransportServesAndAnnouncesItsAddressOnStderr(t *testing.T) {
 func waitForAddress(t *testing.T, buf *syncBuffer) string {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
-	const prefix = "caf mcp: serving streamable HTTP on http://"
+	const prefix = "cafe mcp: serving streamable HTTP on http://"
 	for time.Now().Before(deadline) {
 		for _, line := range strings.Split(buf.String(), "\n") {
 			if after, found := strings.CutPrefix(line, prefix); found {
@@ -120,11 +120,11 @@ func waitForAddress(t *testing.T, buf *syncBuffer) string {
 func TestTheMcpFlagsAreDeclared(t *testing.T) {
 	c, found := lookupCommand(Commands(), "mcp")
 	if !found {
-		t.Fatal("caf mcp is not in the registry")
+		t.Fatal("cafe mcp is not in the registry")
 	}
 	for _, name := range []string{"transport", "addr", "registry"} {
 		if c.FlagSet().Lookup(name) == nil {
-			t.Errorf("caf mcp does not declare -%s", name)
+			t.Errorf("cafe mcp does not declare -%s", name)
 		}
 	}
 
@@ -132,7 +132,7 @@ func TestTheMcpFlagsAreDeclared(t *testing.T) {
 	if code != exitSuccess {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
-	for _, want := range []string{"caf mcp", "Flags:", "-transport", "-addr", "-registry", "stdio", "http"} {
+	for _, want := range []string{"cafe mcp", "Flags:", "-transport", "-addr", "-registry", "stdio", "http"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("help missing %q\ngot:\n%s", want, stdout)
 		}
@@ -158,7 +158,7 @@ func TestTheMcpHelpExplainsTheTransportAndTheTools(t *testing.T) {
 	}
 }
 
-// A positional argument is a usage error: `caf mcp` takes flags and nothing
+// A positional argument is a usage error: `cafe mcp` takes flags and nothing
 // else, and a bare word is somebody's mistake rather than something to ignore.
 func TestMcpTakesNoPositionalArguments(t *testing.T) {
 	code, stdout, stderr := runCLI(t, testVersion, "mcp", "serve")
