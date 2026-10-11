@@ -127,9 +127,11 @@ func publishTestProject(t *testing.T, body string) string {
 
 // publishTestEnv builds the deps one command needs: a directory it owns, an
 // in-memory keyring holding the caller's token under a registered session, a
-// publisher that answers without a network, a confirmation the test controls
-// and a tag derivation that needs no git repository. Nothing here touches the
-// machine's config directory, its keychain, the network or a repository.
+// publisher that answers without a network and a tag derivation that needs
+// no git repository. Nothing here touches the machine's config directory,
+// its keychain, the network, a repository — or a terminal: since the
+// 2026-10-11 ruling there is no confirmation to inject, and a test that
+// could answer a prompt would be a test for a prompt that must not exist.
 func publishTestEnv(t *testing.T, pub *fakePublishPublisher) publishDeps {
 	t.Helper()
 	dir := t.TempDir()
@@ -138,7 +140,6 @@ func publishTestEnv(t *testing.T, pub *fakePublishPublisher) publishDeps {
 		dir:       dir,
 		ring:      ring,
 		publisher: pub,
-		confirm:   func(string) (bool, error) { return true, nil },
 		tags:      func(string) (string, error) { return "v1.0.0", nil },
 	}
 	cfg := agent.Config{
@@ -175,7 +176,7 @@ func decodePublishReport(t *testing.T, stdout string) publish.Report {
 	return report
 }
 
-// The approval-card pattern's first half: a dry run prints the proposal — the
+// The proposal mode: a dry run prints the proposal — the
 // registration, the tag, the edges — and writes nothing. The publisher's call
 // list is the assertion: an empty list is the whole proof.
 func TestDryRunWritesNothing(t *testing.T) {
@@ -239,16 +240,12 @@ func TestDryRunJSONIsOneDocument(t *testing.T) {
 // everything non interactive by default as it shall mostly be used by
 // agents") removed the confirmation from the default path: an agent runs
 // `caf publish`, it publishes. No prompt anywhere in the default path —
-// not even a TTY-gated one. The test hands a confirmation that fails the
-// run if it is ever called, so any code path that can block on a TTY is
-// this test going red.
+// not even a TTY-gated one. There is no confirmation seam left to inject,
+// so a default run that blocked on a TTY would hang this test rather than
+// ask it — and the publisher's call list is the proof the writes ran.
 func TestDefaultPublishesWithoutPrompting(t *testing.T) {
 	pub := &fakePublishPublisher{}
 	deps := publishTestEnv(t, pub)
-	deps.confirm = func(string) (bool, error) {
-		t.Error("the default path asked for a confirmation — publishing is non-interactive by default")
-		return false, errNoPrompt
-	}
 	project := publishTestProject(t, publishFullManifest)
 
 	code, stdout, _ := runPublishCLI(t, deps, "--json", project)
@@ -272,10 +269,6 @@ func TestDefaultPublishesWithoutPrompting(t *testing.T) {
 func TestYesIsAnAcceptedNoOp(t *testing.T) {
 	pub := &fakePublishPublisher{}
 	deps := publishTestEnv(t, pub)
-	deps.confirm = func(string) (bool, error) {
-		t.Error("--yes asked for a confirmation — the flag is an accepted no-op")
-		return false, errNoPrompt
-	}
 	project := publishTestProject(t, publishFullManifest)
 
 	code, stdout, _ := runPublishCLI(t, deps, "--yes", "--json", project)
@@ -293,7 +286,7 @@ func TestYesIsAnAcceptedNoOp(t *testing.T) {
 	}
 }
 
-// --yes is the escape hatch a non-interactive run must use: the three writes
+// A plain publish is the default: the three writes
 // run in order — register, publish the version, declare each edge — the token
 // is presented on every call, and the report says published.
 func TestYesPublishesTheThreeWritesInOrder(t *testing.T) {

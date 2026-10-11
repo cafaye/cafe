@@ -80,7 +80,7 @@ const DefaultPublishTimeout = 30 * time.Second
 // The token is a parameter of every call, for the reason resolve's tier-2 call
 // takes it: the credential is presented for the length of exactly one write
 // and held by nothing. A Publisher that stored the token would be a Publisher
-// that outlives the confirmation the token was minted for.
+// that outlives the run the token was presented for.
 type Publisher interface {
 	// Register is POST /v1/projects: the project's own manifest, as JSON,
 	// stored verbatim so the recorded copy can be diffed against a checkout.
@@ -170,8 +170,8 @@ type Declared struct {
 }
 
 // Proposal is what the command will do, built and printed BEFORE anything is
-// written. The approval-card pattern's whole point: the human confirms a
-// document, not a vibe.
+// written. The proposal is the mint made reviewable: an agent (or a human
+// with --dry-run) reads the document first, and the mint follows by default.
 type Proposal struct {
 	Registration Registration  `json:"registration"`
 	Tag          string        `json:"tag"`
@@ -193,9 +193,8 @@ type Step struct {
 
 // Report is the machine-readable outcome: the proposal, one step per write in
 // order, the verdict, and — when nothing was written — the refusal that says
-// why. The proposal is in the report and not only in the pre-confirmation
-// print, so an agent that ran the command once has the whole story in one
-// document.
+// why. The proposal is in the report and not only in the pre-write print, so
+// an agent that ran the command once has the whole story in one document.
 type Report struct {
 	Proposal  Proposal `json:"proposal"`
 	Steps     []Step   `json:"steps"`
@@ -432,7 +431,7 @@ type HTTPPublisher struct {
 	BaseURL string
 	// Client is the HTTP client. Nil means one with a timeout.
 	Client *http.Client
-	// Timeout bounds each call. The writes are few and a human is waiting.
+	// Timeout bounds each call. The writes are few and the caller is waiting.
 	Timeout time.Duration
 }
 

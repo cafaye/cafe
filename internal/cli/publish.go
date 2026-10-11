@@ -18,9 +18,15 @@ import (
 // publishDeps is what `caf publish` needs from the world, and it is a struct of
 // parameters for the reason resolveDeps and deployDeps are: a test can hand
 // the command a publisher that records calls and answers without a network, a
-// confirmation it controls, a tag derivation that does not need a git
-// repository, and a directory it owns — which is the only reason a dry run, a
-// refusal, a 409 and a successful publish are testable in this repository.
+// tag derivation that does not need a git repository, and a directory it owns
+// — which is the only reason a dry run, a 409 and a successful publish are
+// testable in this repository.
+//
+// There is deliberately NO confirmation seam. Since the 2026-10-11 ruling
+// ("for cafaye i think we should make everything non interactive by default
+// as it shall mostly be used by agents") the default path publishes without
+// asking, and no code path in this command may block on a TTY. A seam for a
+// prompt would be a seam for a prompt that must never be asked.
 type publishDeps struct {
 	// dir is where config.json and the keyring live. Empty means the resolved
 	// default, and a test always sets it.
@@ -32,11 +38,6 @@ type publishDeps struct {
 	// which is why a test always sets it: the whole point of the seam is the
 	// answer.
 	publisher publish.Publisher
-	// confirm asks the operator. It is a seam because a confirmation prompt
-	// read from os.Stdin is a prompt no test can answer and no CI job can
-	// satisfy: `caf publish` in a pipeline must either be given --yes or
-	// refuse, and both of those have to be assertable.
-	confirm func(prompt string) (bool, error)
 	// tags derives the version tag from the project's git repository. Nil
 	// means the real derivation, which is why a test always sets it: a test
 	// that shells out to git is a test that needs a repository to exist.
@@ -65,16 +66,16 @@ func (d publishDeps) withDefaults() publishDeps {
 	if d.publisher == nil {
 		d.publisher = publish.HTTPPublisher{BaseURL: d.pantryURL}
 	}
-	if d.confirm == nil {
-		d.confirm = func(prompt string) (bool, error) { return askOnStdin("caf publish", prompt) }
-	}
 	if d.tags == nil {
 		d.tags = latestSemverTag
 	}
 	return d
 }
 
-// publishOptions is `caf publish`'s flag state.
+// publishOptions is `caf publish`'s flag state. yes is parsed and ignored:
+// publishing is non-interactive by default since the 2026-10-11 ruling, and
+// the flag is retained as an accepted no-op so scripts written while it was
+// the escape hatch keep working.
 type publishOptions struct {
 	dryRun bool
 	yes    bool
@@ -87,15 +88,17 @@ type publishOptions struct {
 // publishLongHelp is the prose under `caf publish`'s usage line. It is the
 // answer to "what do I type", written down where a person reads it before
 // running a command that writes to a public catalog.
-const publishLongHelp = `Publishes a project to the cafaye catalog. The tool proposes; a human
-confirms. That shape is the approval-card pattern, and it is OPS-D7's boundary
-at the level of a command: the customer's own agent reads and proposes freely,
-and only a human approval mints the act. So the proposal is always printed
-first — the registration, the version tag, the dependency edges — and nothing
-is written until somebody says yes.
+const publishLongHelp = `Publishes a project to the cafaye catalog. Publishing is non-interactive
+by default: an agent runs caf publish, it publishes. That shape is the
+user's ruling of 2026-10-11 — everything non-interactive by default, since
+caf is mostly used by agents — and it is OPS-D7's boundary at the level of
+a command: the customer's own agent reads, proposes and mints freely, and
+reviewability is after the fact, in pantry's audit trail (the publisher.minted
+companion packet). The proposal — the registration, the version tag, the
+dependency edges — is always printed first, so the mint is never a surprise.
 
   --dry-run   print the proposal and write nothing
-  --yes       publish without asking; required where nobody can answer
+  --yes       accepted for compatibility; publishing is non-interactive by default since 2026-10-11
   --tag       the git tag to publish, verbatim; without it the repository's
               latest semver tag is derived
   --kind      the project's kind when the manifest declares no contract
@@ -115,20 +118,20 @@ The caller's token is read from the keyring, presented to pantry, and never
 printed.`
 
 // newPublishCommand takes its seams, for the same reason newResolveCommand and
-// newDeployCommand do: a test can hand the command a publisher, a confirmation
-// and a tag derivation it controls, which is the only reason the decision
-// table — dry run, refusal, 409 tolerance, a clean publish — is testable in
-// this repository without a network or a git repository.
+// newDeployCommand do: a test can hand the command a publisher and a tag
+// derivation it controls, which is the only reason the decision table — dry
+// run, a clean publish, 409 tolerance — is testable in this repository
+// without a network or a git repository.
 func newPublishCommand(deps publishDeps) *Command {
 	opts := &publishOptions{}
 	c := &Command{
 		Name:     "publish",
-		Summary:  "publish a project to the cafaye catalog: propose the registration, a human confirms, the three writes run",
+		Summary:  "publish a project to the cafaye catalog: propose the registration, then publish the three writes — non-interactive by default",
 		Usage:    "caf publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api|worker|both|cli>] [--json] [--pantry <url>] <project>",
 		LongHelp: publishLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.dryRun, "dry-run", false, "print the proposal and write nothing")
-			fs.BoolVar(&opts.yes, "yes", false, "publish without asking; required where nobody can answer the prompt")
+			fs.BoolVar(&opts.yes, "yes", false, "accepted for compatibility; publishing is non-interactive by default since 2026-10-11")
 			fs.StringVar(&opts.tag, "tag", "", "the git tag to publish, verbatim; without it the repository's latest semver tag is derived")
 			fs.StringVar(&opts.kind, "kind", "", "the project's kind when the manifest declares no contract surface (api, worker, both, cli)")
 			fs.BoolVar(&opts.json, "json", false, "print the proposal, every step's result and the final state as one JSON document")
@@ -146,7 +149,11 @@ func newPublishCommand(deps publishDeps) *Command {
 
 // runPublish is the command's decision table, in the order the decisions are
 // made: read and validate the manifest, derive the tag, build the proposal,
-// print it, then — and only then — decide whether anything is written.
+// print it, then write — unless --dry-run, which prints the proposal and
+// writes nothing. There is no confirmation step: publishing is
+// non-interactive by default since the 2026-10-11 ruling, and --yes is an
+// accepted no-op kept so scripts written while it was the escape hatch keep
+// working.
 func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env) error {
 	// The flag overrides run BEFORE withDefaults, because withDefaults is
 	// what builds the HTTP client out of the URL. A client built first and a
@@ -177,11 +184,10 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 		return fmt.Errorf("caf publish: %w", err)
 	}
 
-	// The proposal is printed before the question is asked and before
-	// anything is written: the human confirms a document, not a vibe. Under
-	// --json nothing is printed here — the single report at the end is the
-	// document, and a second one before it would be two documents where the
-	// contract is one.
+	// The proposal is printed before anything is written: the mint is never
+	// a surprise. Under --json nothing is printed here — the single report
+	// at the end is the document, and a second one before it would be two
+	// documents where the contract is one.
 	if !opts.json {
 		printProposal(env.Stdout, proposal)
 	}
@@ -192,31 +198,11 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 				return fmt.Errorf("write the proposal: %w", err)
 			}
 		}
-		sayPublish(env.Stderr, "dry run: nothing was published. Run it with --yes when you mean it.")
+		sayPublish(env.Stderr, "dry run: nothing was published. Run it without --dry-run to publish.")
 		return nil
 	}
 
 	token := callerToken("caf publish", deps.dir, deps.ring, env)
-
-	ok, err := confirmPublish(deps, proposal, opts)
-	if err != nil {
-		// There was nobody to ask. The proposal is already on stdout for a
-		// human; under --json the refusal document is the agent-readable
-		// artifact — the proposal, no steps, published false, and the reason
-		// an agent can act on.
-		if opts.json {
-			if werr := writeJSON(publish.Report{Proposal: proposal,
-				Refusal: "no terminal to confirm on — pass --yes to publish without asking"}, env.Stdout); werr != nil {
-				return fmt.Errorf("write the refusal: %w", werr)
-			}
-		}
-		sayPublish(env.Stderr, "nothing was published — there was no terminal to confirm on. Pass --yes to publish without asking.")
-		return errReported
-	}
-	if !ok {
-		sayPublish(env.Stderr, "nothing was published. Run it with --yes when you mean it.")
-		return errReported
-	}
 
 	report := publish.Run(env.Context, deps.publisher, token, proposal)
 
@@ -236,21 +222,10 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 	return nil
 }
 
-// confirmPublish is the confirmation, and it is the only interactive thing
-// this command does. --yes skips it; everything else asks once, naming the
-// project and the tag, because a prompt that does not say what it is about is
-// a prompt people approve without reading.
-func confirmPublish(deps publishDeps, proposal publish.Proposal, opts *publishOptions) (bool, error) {
-	if opts.yes {
-		return true, nil
-	}
-	return deps.confirm(fmt.Sprintf("caf publish: publish %s at %s to the cafaye catalog? [y/N] ",
-		proposal.Registration.Name, proposal.Tag))
-}
-
 // printProposal is the human-readable proposal: the registration's facts, the
-// tag, the edges. It is the document a human confirms, so it names what will
-// be written and nothing about what will happen after.
+// tag, the edges. It is printed before anything is written, so the mint is
+// never a surprise — it names what will be written and nothing about what
+// will happen after.
 func printProposal(w io.Writer, proposal publish.Proposal) {
 	reg := proposal.Registration
 	fmt.Fprintf(w, "caf publish: proposal for `%s`\n", reg.Name)
