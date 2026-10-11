@@ -20,7 +20,7 @@ const (
 	// not been presented". Everything after this point is recoverable by
 	// replaying the redemption.
 	journalPrepared = "prepared"
-	// journalRedeemed is "the capability has been presented and conductor has
+	// journalRedeemed is "the capability has been presented and box has
 	// answered". This is written IMMEDIATELY after the response, before the
 	// identity file and before the key is moved to its permanent account,
 	// because from here on the only thing that must not happen again is the
@@ -29,7 +29,7 @@ const (
 )
 
 // journalPending is the keyring account a not-yet-enrolled keypair is filed
-// under. The box does not know its box_id until conductor says so, so there is
+// under. The box does not know its box_id until box says so, so there is
 // no better name to use before then; afterwards the key moves to
 // `box/<box_id>` and this entry is deleted.
 const journalPending = KeyringAccountPending
@@ -40,7 +40,7 @@ const journalPending = KeyringAccountPending
 // ends up written under one account and read under another.
 const (
 	// KeyringAccountPending is the account a not-yet-enrolled keypair is filed
-	// under, before conductor has said which box it belongs to.
+	// under, before the control plane has said which box it belongs to.
 	KeyringAccountPending = "box/enrollment-pending"
 	// KeyringService is the keyring's service name.
 	KeyringService = "cafe"
@@ -86,20 +86,20 @@ type Store struct {
 	Dir string
 	// Ring holds the private key. See ring.go.
 	Ring Keyring
-	// Conductor redeems the capability. See conductor.go.
-	Conductor Conductor
+	// ControlPlane redeems the capability. See control_plane.go.
+	ControlPlane ControlPlane
 	// now is the clock. It is a field for the reason every other clock in this
 	// repository is: a test that cannot control time is a test that either
 	// sleeps on the wall clock or asserts nothing about it.
 	now func() time.Time
 }
 
-// NewStore defaults the clock and nothing else. A store with no conductor is
+// NewStore defaults the clock and nothing else. A store with no control plane is
 // refused at the moment it is used rather than at construction, so a caller
 // that only inspects state (`cafe box status` on an enrolled box) does not need
 // an endpoint configured at all.
-func NewStore(dir string, ring Keyring, cond Conductor) *Store {
-	return &Store{Dir: dir, Ring: ring, Conductor: cond, now: time.Now}
+func NewStore(dir string, ring Keyring, controlPlane ControlPlane) *Store {
+	return &Store{Dir: dir, Ring: ring, ControlPlane: controlPlane, now: time.Now}
 }
 
 func (s *Store) stamp() time.Time {
@@ -115,15 +115,18 @@ func (s *Store) stamp() time.Time {
 // and, once the redemption has happened, the installation facts that came
 // back — every one of which is a non-secret.
 type journal struct {
-	State      string `json:"state"`
-	PublicKey  string `json:"public_key"`
-	BoxID      string `json:"box_id,omitempty"`
-	AccountID  string `json:"account_id,omitempty"`
-	Status     string `json:"status,omitempty"`
-	Phase      string `json:"phase,omitempty"`
-	Conductor  string `json:"conductor,omitempty"`
-	StartedAt  string `json:"started_at"`
-	RedeemedAt string `json:"redeemed_at,omitempty"`
+	State     string `json:"state"`
+	PublicKey string `json:"public_key"`
+	BoxID     string `json:"box_id,omitempty"`
+	AccountID string `json:"account_id,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Phase     string `json:"phase,omitempty"`
+	// ControlPlane is the box service's origin the capability was redeemed
+	// against. The JSON key stays `conductor`: it is on-disk state, and a new
+	// binary must still read a journal an old one wrote.
+	ControlPlane string `json:"conductor,omitempty"`
+	StartedAt    string `json:"started_at"`
+	RedeemedAt   string `json:"redeemed_at,omitempty"`
 }
 
 // EnrollResult is what one enrollment attempt concluded.
@@ -142,10 +145,10 @@ type EnrollResult struct {
 
 func (s *Store) paths(name string) string { return filepath.Join(s.Dir, name) }
 
-// ErrNoConductor is what an enroll answers when nothing can redeem a
+// ErrNoBox is what an enroll answers when nothing can redeem a
 // capability. It is a sentinel so the CLI can say "configure the endpoint"
 // rather than reporting a failure that names no cause.
-var ErrNoConductor = errors.New("no conductor configured: pass --conductor <url> or set CAF_CONDUCTOR_URL")
+var ErrNoBox = errors.New("no box configured: pass --box <url> or set CAF_BOX_URL")
 
 // Enroll is the whole sequence: make a keypair, present the capability, record
 // what came back. Every step is written down before the next one begins, and
@@ -166,18 +169,18 @@ var ErrNoConductor = errors.New("no conductor configured: pass --conductor <url>
 //
 // Step 3 to step 4 is the one window that cannot be closed from this side, and
 // it is stated rather than hidden: if cafe dies between receiving the response
-// and writing the journal, the retry presents the token again and conductor
-// refuses it, because conductor's single-use is enforced in its own database.
+// and writing the journal, the retry presents the token again and box
+// refuses it, because box's single-use is enforced in its own database.
 // The answer in that case is an honest refusal that names the window and the
 // remedy (`cafe box enroll` with a freshly minted token), which is strictly
 // better than a client that hid the refusal and reported success.
-func (s *Store) Enroll(ctx context.Context, token, conductorURL string) (EnrollResult, error) {
+func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (EnrollResult, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return EnrollResult{Action: ActionRefused}, fmt.Errorf("cafe box enroll: --token is required; it is the single-use capability conductor minted for this box")
+		return EnrollResult{Action: ActionRefused}, fmt.Errorf("cafe box enroll: --token is required; it is the single-use capability minted for this box")
 	}
-	if s.Conductor == nil {
-		return EnrollResult{Action: ActionRefused}, ErrNoConductor
+	if s.ControlPlane == nil {
+		return EnrollResult{Action: ActionRefused}, ErrNoBox
 	}
 
 	if id, ok := s.loadIdentity(); ok {
@@ -197,7 +200,7 @@ func (s *Store) Enroll(ctx context.Context, token, conductorURL string) (EnrollR
 
 	// The convergence branch. A recorded redemption is finished without
 	// touching the network, and the assertion behind it is in
-	// store_test.go's table: a conductor that FAILS if it is called at all
+	// store_test.go's table: a control plane that FAILS if it is called at all
 	// still produces an enrolled box here.
 	if jr != nil && jr.State == journalRedeemed {
 		id, err := s.finish(*jr)
@@ -224,15 +227,15 @@ func (s *Store) Enroll(ctx context.Context, token, conductorURL string) (EnrollR
 		jr = &journal{State: journalPrepared, StartedAt: s.stamp().Format(time.RFC3339Nano)}
 	}
 	jr.PublicKey = publicKeyText(public)
-	jr.Conductor = conductorURL
+	jr.ControlPlane = controlPlaneURL
 	if err := s.writeJournal(jr); err != nil {
 		return EnrollResult{Action: ActionRefused}, err
 	}
 
-	inst, err := s.Conductor.Redeem(ctx, token, public)
+	inst, err := s.ControlPlane.Redeem(ctx, token, public)
 	if err != nil {
 		// The journal is deliberately left in `prepared`: a transient failure
-		// (network, conductor restarting) must be retryable, and a failed
+		// (network, box restarting) must be retryable, and a failed
 		// redemption must not look like a completed one.
 		s.appendEvent("enroll", "", "redemption refused: "+err.Error())
 		return EnrollResult{Action: ActionRefused, Redemptions: 1}, fmt.Errorf("cafe box enroll: %w", err)
@@ -285,7 +288,7 @@ func (s *Store) pendingKey(jr *journal) (ed25519.PrivateKey, error) {
 	}
 	if jr != nil && jr.State == journalRedeemed {
 		// A recorded redemption whose pending key is gone is unrecoverable:
-		// the capability is spent, conductor holds the installation, and the
+		// the capability is spent, box holds the installation, and the
 		// only thing that could finish the job is the key cafe no longer has.
 		return nil, fmt.Errorf("cafe box enroll: the pending box key for box %s is not in the keyring; the capability is spent, so re-enroll with a freshly minted token", jr.BoxID)
 	}
@@ -319,13 +322,13 @@ func (s *Store) finish(jr journal) (*Identity, error) {
 		return nil, fmt.Errorf("cafe box enroll: clear the pending box key: %w", err)
 	}
 	id := &Identity{
-		BoxID:      jr.BoxID,
-		AccountID:  jr.AccountID,
-		PublicKey:  jr.PublicKey,
-		Status:     jr.Status,
-		Phase:      jr.Phase,
-		EnrolledAt: jr.RedeemedAt,
-		Conductor:  jr.Conductor,
+		BoxID:        jr.BoxID,
+		AccountID:    jr.AccountID,
+		PublicKey:    jr.PublicKey,
+		Status:       jr.Status,
+		Phase:        jr.Phase,
+		EnrolledAt:   jr.RedeemedAt,
+		ControlPlane: jr.ControlPlane,
 	}
 	if err := s.writeIdentity(id); err != nil {
 		return nil, err

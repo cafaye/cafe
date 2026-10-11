@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Installation is what conductor answers a redemption with: the facts about
+// Installation is what box answers a redemption with: the facts about
 // the installation a capability bought. Every one of them is a non-secret —
 // they are identifiers and a state word — which is why they can be written to
 // box.json and printed anywhere.
@@ -24,34 +24,34 @@ type Installation struct {
 	Phase     string `json:"current_phase"`
 }
 
-// Conductor is the one call this package makes over the network, and it is an
-// interface so a test can count it.
+// ControlPlane is the one call this package makes over the network, and it is
+// an interface so a test can count it.
 //
 // Counting it is the whole point. The capability is single-use: a second
-// redemption of the same token is refused by conductor, atomically, and a
+// redemption of the same token is refused by box, atomically, and a
 // client that redeems twice has not merely wasted a call — it has proven
 // nothing about idempotence, because the failure it expects is a failure the
 // server was always going to produce. What has to be asserted is the NUMBER of
 // redemptions across a retried sequence, and that is only assertable if the
 // call is a seam with a counter behind it.
-type Conductor interface {
+type ControlPlane interface {
 	// Redeem presents a capability and the box's public key. The public key is
-	// sent so the enrollment binds a key conductor can later verify a signature
+	// sent so the enrollment binds a key box can later verify a signature
 	// from; the private half never leaves the box.
 	Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, error)
 }
 
-// The three honest refusals conductor can answer, mapped to sentinels so a
+// The three honest refusals box can answer, mapped to sentinels so a
 // caller can branch on the cause rather than on a status code. Each is a
 // different instruction to the operator, which is why they are not one error:
 // an expired token means mint a new one; an already-redeemed one means a
 // previous attempt got it, and where that attempt stopped is the question.
 var (
-	// ErrCapabilityUnknown is a token conductor has never heard of: a typo, a
+	// ErrCapabilityUnknown is a token box has never heard of: a typo, a
 	// truncated paste, or a token from another environment.
-	ErrCapabilityUnknown = errors.New("conductor does not know this capability")
+	ErrCapabilityUnknown = errors.New("box does not know this capability")
 	// ErrCapabilityExpired is a token whose minutes ran out. The TTL is
-	// conductor's and it is minutes by design (conductor's Capability::TTL_
+	// box's and it is minutes by design (box's Capability::TTL_
 	// MINUTES), so an expired token is a mint that was never used in time and
 	// needs a fresh one.
 	ErrCapabilityExpired = errors.New("capability has expired")
@@ -62,11 +62,11 @@ var (
 	ErrCapabilityRedeemed = errors.New("capability has already been redeemed")
 )
 
-// HTTPConductor is the real Conductor: one POST against conductor's private
+// HTTPControlPlane is the real ControlPlane: one POST against box's private
 // API, outbound from the box, with the capability as the credential in the
 // body and nothing else in it.
-type HTTPConductor struct {
-	// BaseURL is conductor's origin, e.g. https://conductor.internal:4000.
+type HTTPControlPlane struct {
+	// BaseURL is box's origin, e.g. https://box.internal:4000.
 	// Empty is refused rather than defaulted: a client with no endpoint is a
 	// client that would POST to a relative path and get a confusing answer.
 	BaseURL string
@@ -79,19 +79,19 @@ type HTTPConductor struct {
 	Timeout time.Duration
 }
 
-// DefaultConductorTimeout is what a nil Timeout means. It is generous because
+// DefaultControlPlaneTimeout is what a nil Timeout means. It is generous because
 // the thing being waited on is a human's first enrollment, and stingy enough
 // that a hung connection still ends inside the capability's TTL.
-const DefaultConductorTimeout = 30 * time.Second
+const DefaultControlPlaneTimeout = 30 * time.Second
 
 type redeemRequest struct {
 	Token     string `json:"token"`
 	PublicKey string `json:"public_key"`
 }
 
-// conductorResponse is what comes back. The installation is the whole answer;
+// controlPlaneResponse is what comes back. The installation is the whole answer;
 // there is no token in it, and no secret in any field.
-type conductorResponse struct {
+type controlPlaneResponse struct {
 	Installation struct {
 		ID         string `json:"id"`
 		BoxID      string `json:"box_id"`
@@ -102,18 +102,18 @@ type conductorResponse struct {
 	} `json:"installation"`
 }
 
-// Redeem POSTs the capability and maps conductor's four answers onto the three
+// Redeem POSTs the capability and maps box's four answers onto the three
 // sentinels and success.
 //
-// The mapping is explicit rather than a switch on strings because conductor's
+// The mapping is explicit rather than a switch on strings because box's
 // error vocabulary is not this package's, and a fifth code appearing in a
 // future release should surface as an unrecognised answer rather than being
 // folded into the nearest familiar one. `get` is built by hand rather than
 // unmarshalled lazily so a body that is not JSON at all — a proxy's HTML error
 // page, a captive portal — is reported as what it is.
-func (c HTTPConductor) Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, error) {
+func (c HTTPControlPlane) Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, fmt.Errorf("redeem capability: no conductor URL configured; set it with `cafe box enroll --token … --conductor <url>` or in %s", identityFile)
+		return nil, fmt.Errorf("redeem capability: no box URL configured; set it with `cafe box enroll --token … --box <url>` or in %s", identityFile)
 	}
 	body, err := json.Marshal(redeemRequest{Token: token, PublicKey: publicKeyText(publicKey)})
 	if err != nil {
@@ -139,7 +139,7 @@ func (c HTTPConductor) Redeem(ctx context.Context, token string, publicKey ed255
 
 	switch res.StatusCode {
 	case http.StatusOK:
-		var parsed conductorResponse
+		var parsed controlPlaneResponse
 		if err := json.Unmarshal(raw, &parsed); err != nil {
 			return nil, fmt.Errorf("decode redemption response from %s: %w", url, err)
 		}
@@ -163,13 +163,13 @@ func (c HTTPConductor) Redeem(ctx context.Context, token string, publicKey ed255
 	}
 }
 
-func clientFor(c HTTPConductor) *http.Client {
+func clientFor(c HTTPControlPlane) *http.Client {
 	if c.Client != nil {
 		return c.Client
 	}
 	timeout := c.Timeout
 	if timeout <= 0 {
-		timeout = DefaultConductorTimeout
+		timeout = DefaultControlPlaneTimeout
 	}
 	return &http.Client{Timeout: timeout}
 }

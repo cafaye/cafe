@@ -49,7 +49,7 @@ const phaseEnrolled = "enrolled"
 var Phases = []Phase{
 	{
 		Name: phaseEnrolled, Title: "Enrolled",
-		Summary: "The box has a keypair, has redeemed its capability and is recognised by conductor.",
+		Summary: "The box has a keypair, has redeemed its capability and is recognised by box.",
 		Handoff: "cafe box enroll --token …",
 	},
 	{
@@ -384,7 +384,7 @@ type VerifyFact struct {
 }
 
 // Verify is the box's own report on itself: is there an identity, is there a
-// key that goes with it, and does the key match what conductor was told.
+// key that goes with it, and does the key match what box was told.
 type Verify struct {
 	BoxID  string       `json:"box_id"`
 	OK     bool         `json:"ok"`
