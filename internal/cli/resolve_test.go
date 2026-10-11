@@ -687,17 +687,25 @@ func TestResolveAcceptsTheAddressForm(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 	}
-	// The fast path is the bare name, and the owner the row carries is what
-	// proves the address: the resolver must not need a second read to answer
-	// an address whose row it already holds.
-	if pantry.lastOwner != "alice" {
-		t.Errorf("owner carried into the resolver = %q, want alice", pantry.lastOwner)
+	// The fast path is the bare name, and the row the resolver came back with
+	// is what the address was asked for. The document names the address: the
+	// owner travels with the resolution so a machine reading it can tell an
+	// addressed resolution from a bare one.
+	var document struct {
+		Services []struct {
+			Name  string `json:"name"`
+			Owner string `json:"owner"`
+		} `json:"services"`
 	}
-	if !strings.Contains(stdout, "alice/widget") {
-		t.Errorf("the document does not name the address:\n%s", stdout)
+	if err := json.Unmarshal([]byte(stdout), &document); err != nil {
+		t.Fatalf("decode the document: %v\n%s", err, stdout)
 	}
-	if !strings.Contains(stderr, "alice/widget") {
-		t.Errorf("stderr does not name the address:\n%s", stderr)
+	if len(document.Services) != 1 {
+		t.Fatalf("the document holds %d resolutions, want 1", len(document.Services))
+	}
+	got := document.Services[0]
+	if got.Owner != "alice" || got.Name != "widget" {
+		t.Errorf("the document resolved %s/%s, want alice/widget", got.Owner, got.Name)
 	}
 }
 

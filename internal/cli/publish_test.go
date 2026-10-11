@@ -664,16 +664,20 @@ func TestThePublishOutputNamesTheAddress(t *testing.T) {
 	deps := publishTestEnv(t, pub)
 	project := publishTestProject(t, publishFullManifest)
 
-	code, stdout, stderr := runPublishCLI(t, deps, "--json", project)
-
+	// The sentence half: stderr names the address the 201 body carried.
+	code, _, stderr := runPublishCLI(t, deps, project)
 	if code != exitSuccess {
 		t.Fatalf("exit code = %d, want %d\nstderr:\n%s", code, exitSuccess, stderr)
 	}
+	if !strings.Contains(stderr, "cafaye/app") {
+		t.Errorf("stderr does not name the address:\n%s", stderr)
+	}
+
+	// The document half: the same fact is in the report, so a machine that
+	// piped stdout into a parser learns it too.
+	_, stdout, _ := runPublishCLI(t, deps, "--json", project)
 	report := decodePublishReport(t, stdout)
 	if report.Address != "cafaye/app" {
 		t.Errorf("the document's address = %q, want cafaye/app", report.Address)
-	}
-	if !strings.Contains(stderr, "cafaye/app") {
-		t.Errorf("stderr does not name the address:\n%s", stderr)
 	}
 }

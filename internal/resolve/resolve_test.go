@@ -641,29 +641,32 @@ func TestAnAddressThatMatchesResolvesWithoutASecondRead(t *testing.T) {
 	}
 }
 
-// A paid product addressed by a community owner still clears tier 3: the
-// product vocabulary is about the bare name, not about who owns it.
-func TestAnAddressedPaidProductStillClearsTierThree(t *testing.T) {
+// A paid product addressed by a community owner still reaches tier 3 — the
+// product vocabulary is about the bare name, not about who owns it — and it
+// hits the same range requirement a manifest dependency does: the address form
+// carries no version constraint, so conductor is never asked a question it
+// would answer 422. The failure names what a manifest would have supplied.
+func TestAnAddressedPaidProductStillNeedsARange(t *testing.T) {
 	pantry := &fakePantry{
 		project: &Project{Name: "identity", OwnerSlug: "alice"},
 		coords:  &Coordinates{Name: "identity"},
 	}
-	cond := &fakeConductor{grant: &FetchGrant{
-		Purpose: "artifact.fetch", AccountID: "11111111-1111-4111-8111-111111111111",
-		Artifact: "identity", VersionRange: "^0.1.0", ExpiresAt: "2026-10-09T16:00:00Z",
-	}}
+	cond := &fakeConductor{}
 
-	deps := NewResolver(pantry, cond).ResolveAddress(
+	report := NewResolver(pantry, cond).ResolveAddress(
 		context.Background(), "alice", "identity", "cafaye_token", "11111111-1111-4111-8111-111111111111")
 
-	res := deps.Services[0]
-	if res.Failure != nil {
-		t.Fatalf("failed: %+v", res.Failure)
+	res := report.Services[0]
+	if res.Failure == nil || res.Failure.Code != "version_required" {
+		t.Fatalf("failure = %+v, want the named version_required refusal", res.Failure)
 	}
-	if res.Fetch == nil {
-		t.Errorf("a paid product resolved without a fetch grant")
+	if res.Failure.Tier != 3 {
+		t.Errorf("tier = %d, want 3 — the entitlement check is where the range is needed", res.Failure.Tier)
 	}
-	if cond.artifact != "identity" {
-		t.Errorf("conductor was asked about %q", cond.artifact)
+	if cond.calls != 0 {
+		t.Errorf("conductor calls = %d, want 0 — an unbounded request is a 422 nobody should spend", cond.calls)
+	}
+	if res.Coordinates == nil {
+		t.Errorf("the refusal destroyed the coordinates the first two tiers answered")
 	}
 }
