@@ -90,9 +90,13 @@ func Setup(ctx context.Context, o Options) (Result, error) {
 
 	// Phase 1. The superuser probe is kamal's superuser? asked before anything
 	// is installed, and it is read-only, which is why a dry run may run it.
-	sudo, _, err := probeSuperuser(ctx, o.Host)
+	sudo, canRoot, err := probeSuperuser(ctx, o.Host)
 	if err != nil {
 		return result, fmt.Errorf("cafe box setup %s: %w", o.Name, err)
+	}
+	if !canRoot {
+		result, err := refuseRoot(result)
+		return result, err
 	}
 	result.Sudo = sudo
 	result.Steps = append(result.Steps, StepResult{
@@ -231,25 +235,55 @@ func refuse(result Result, step Step, detail string) (Result, error) {
 
 // probeSuperuser asks the one question kamal asks before installing anything.
 // It answers with the prefix every other command in the walk carries, so that
-// "run this as root" is spelled exactly once rather than in nine commands.
-func probeSuperuser(ctx context.Context, host Host) (string, Output, error) {
-	out, err := host.Run(ctx, `if [ "${EUID:-$(id -u)}" -eq 0 ]; then echo root; `+
-		`elif sudo -n true 2>/dev/null; then echo sudo; else echo none; fi`, nil)
+// "run this as root" is spelled exactly once rather than in nine commands, and
+// with whether the answer was yes at all — a host that cannot get root is
+// refused here rather than failing later on a write with a permission error
+// that names no cause.
+func probeSuperuser(ctx context.Context, host Host) (sudo string, ok bool, err error) {
+	out, err := host.Run(ctx, `if `+superuserCheck+`; then echo yes; else echo no; fi`, nil)
 	if err != nil {
-		return "", Output{}, err
+		return "", false, err
 	}
-	switch strings.TrimSpace(out.Stdout) {
-	case "root":
-		return "", out, nil
-	case "sudo":
-		// -H pins HOME to the target user's, which is what makes
-		// EnrolledJSON a constant: every cafe command this package runs is
-		// root, and root's config directory is where enrollment will write.
-		return "sudo -n -H", out, nil
-	default:
-		return "none", out, nil
+	if strings.TrimSpace(out.Stdout) != "yes" {
+		return "", false, nil
 	}
+	// Which spelling? A second, read-only question distinguishes root from
+	// passwordless sudo, because the prefix the walk carries is different and
+	// the difference is visible in every command it runs.
+	who, err := host.Run(ctx, `if [ "${EUID:-$(id -u)}" -eq 0 ]; then echo root; else echo sudo; fi`, nil)
+	if err != nil {
+		return "", false, err
+	}
+	if strings.TrimSpace(who.Stdout) == "root" {
+		return "", true, nil
+	}
+	// -H pins HOME to the target user's, which is what makes EnrolledJSON a
+	// constant: every cafe command this package runs is root, and root's
+	// config directory is where enrollment will write.
+	return "sudo -n -H", true, nil
 }
+
+// refuseRoot is the first refusal in the walk and the only one that happens
+// before any step runs. It uses the plan's own row for the step's title so the
+// document reads the same whether the refusal came from the probe or from a
+// step.
+func refuseRoot(result Result) (Result, error) {
+	step := plan(Options{}, "", "", nil, nil)[0]
+	result.Steps = append(result.Steps, StepResult{
+		Name: StepSuperuser, Title: step.Title, Action: ActionRefused, Detail: step.Refusal,
+	})
+	result.Log = append(result.Log, "  "+StepSuperuser+": REFUSED — "+clip(step.Refusal, 3))
+	return result, fmt.Errorf("cafe box setup %s: %s", result.Host, StepSuperuser)
+}
+
+// The two checks kamal's bootstrap runs, spelled the way its own command test
+// pins them. They are constants because the walk runs them and the tests assert
+// on them, and a third spelling of either is how a check drifts from the
+// precedence it is supposed to be.
+const (
+	superuserCheck   = `[ "${EUID:-$(id -u)}" -eq 0 ] || sudo -nl usermod >/dev/null 2>&1`
+	dockerGroupCheck = `id -nG "${USER:-$(id -un)}" | grep -qw docker`
+)
 
 // readEnrollment reads the host's own box.json. It is the only fact about the
 // box that ever crosses the seam, and it is read before the walk (so the plan
@@ -281,6 +315,11 @@ func readEnrollment(ctx context.Context, host Host, sudo string) (*identityRead,
 func dryRun(result Result, steps []Step) Result {
 	for _, step := range steps {
 		if step.Name == StepSuperuser {
+			// The probe already ran and its answer is the one fact a plan
+			// needs, so the row is marked planned like the rest rather than
+			// already-done: nothing was installed on this run either.
+			result.Steps[0].Action = ActionPlanned
+			result.Steps[0].Detail = "dry run: the operator can get root; nothing was installed"
 			continue
 		}
 		result.Steps = append(result.Steps, StepResult{

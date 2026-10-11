@@ -132,8 +132,12 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 		{
 			Name:  StepSuperuser,
 			Title: "this operator can install packages and write to /etc",
-			Check: `if [ "${EUID:-$(id -u)}" -eq 0 ]; then echo root; ` +
-				`elif sudo -n true 2>/dev/null; then echo sudo; else echo none; fi`,
+			// Kamal's superuser?, spelled the way its test pins it: root, or a
+			// sudo that may run usermod without a password. It asks about
+			// `usermod` rather than `true` because that is the command the
+			// install path actually needs, and a check that asked a different
+			// question would pass on a host the install then failed on.
+			Check: `[ "${EUID:-$(id -u)}" -eq 0 ] || sudo -nl usermod >/dev/null 2>&1`,
 			Refusal: "installing Docker, writing to /usr/local/bin and enabling a systemd " +
 				"unit all need root; this operator is not root and has no passwordless sudo. " +
 				"Grant passwordless sudo for the install commands, or run this as root.",
@@ -141,37 +145,52 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 		{
 			Name:  StepDockerInstalled,
 			Title: "Docker is installed",
+			// Kamal's installed?: the CLIENT. `docker -v` succeeds on a box whose
+			// socket is not mounted, which is why the daemon is a separate
+			// question below.
 			Check: "docker -v",
-			// Kamal's get_docker, with wget as the fallback and `sh` as the
+			// Kamal's install, with wget as the fallback and `sh` as the
 			// interpreter: the convenience script is upstream's, and this
 			// command is not the place to second-guess it.
 			Apply: apply{Command: "{ curl -fsSL https://get.docker.com || wget -qO - https://get.docker.com; } | sh"},
+		},
+		{
+			Name:  StepDockerGroup,
+			Title: "the login user can use Docker without sudo",
+			// Kamal's bootstrap order: root? OR in_docker_group?, and
+			// add_to_docker_group only when neither holds. Root does not need
+			// the docker group — it can already reach the socket — so a check
+			// that asked only "is the login user in the group" would edit
+			// /etc/group on every root box.
+			Check: `[ "${EUID:-$(id -u)}" -eq 0 ] || ` + dockerGroupCheck,
+			Apply: apply{Command: `sudo -n usermod -aG docker "${USER:-$(id -un)}"`},
+			// Kamal follows this with refresh_session (`kill -HUP $PPID`),
+			// which refreshes the CALLING session's group membership. Over SSH
+			// every command is its own session and each reads /etc/group at
+			// login, so there is no session of ours to refresh: the group takes
+			// effect on the next connection, by itself.
 		},
 		{
 			Name:  StepDockerRunning,
 			Title: "the Docker daemon is running",
 			// `docker -v` is the client; `docker version` asks the daemon as
 			// well, and the difference between them is the one kamal's
-			// docker.rb draws — an installed client on a box whose socket is
-			// not mounted passes the first check and fails the second.
+			// docker.rb draws. Kamal asks this at deploy time, when it creates
+			// the kamal network; asking it here means a box that reports
+			// success cannot be a box whose socket never came up.
 			Check: "docker version",
 			Apply: apply{Command: "systemctl enable --now docker 2>/dev/null || service docker start"},
-		},
-		{
-			Name:  StepDockerGroup,
-			Title: "the login user can use Docker without sudo",
-			// Kamal's spelling, kept verbatim: the docker group belongs to the
-			// human who logs in, not to the root that runs the installer.
-			Check: `id -nG "${USER:-$(id -un)}" | grep -qw docker`,
-			Apply: apply{Command: `sudo -n usermod -aG docker "${USER:-$(id -un)}"`},
 		},
 		{
 			Name:  StepCafeInstalled,
 			Title: "cafe is installed at " + CafeBinPath,
 			// The hash of the BYTES, not a version string: two builds of one
 			// version are not the same binary, and the thing this check is for
-			// is "is the binary on this host the one I am holding".
-			Check: `test -x ` + CafeBinPath + ` && [ "$(sha256sum ` + CafeBinPath + ` | cut -c1-64)" = "` + binaryHash + `" ]`,
+			// is "is the binary on this host the one I am holding". It runs
+			// under the root prefix because the write does, and a check that
+			// could read a file the apply could not write would be a check
+			// that passed on a host the install then failed on.
+			Check: root(`test -x ` + CafeBinPath + ` && [ "$(sha256sum ` + CafeBinPath + ` | cut -c1-64)" = "` + binaryHash + `" ]`),
 			Apply: apply{Path: CafeBinPath, Data: binary, Mode: 0o755},
 		},
 		{

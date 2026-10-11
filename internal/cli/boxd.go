@@ -62,6 +62,7 @@ const defaultBoxStateFile = "boxd-state.json"
 type boxdOptions struct {
 	identity string
 	once     bool
+	report   bool
 }
 
 func newBoxdCommand(deps boxdDeps) *Command {
@@ -91,15 +92,69 @@ func newBoxdCommand(deps boxdDeps) *Command {
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.identity, "identity", "", "path to the enrolled box identity; $CAF_BOX_IDENTITY or the user state directory")
 			fs.BoolVar(&opts.once, "once", false, "redeem at most one capability and exit; one round under an operator's eye")
+			fs.BoolVar(&opts.report, "report", false, "print this box's observe.report document and exit; no dial, no capability, nothing changed")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
 		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
 			return err
 		}
+		if opts.report {
+			return reportBoxd(opts, env, deps)
+		}
 		return runBoxd(opts, env, deps)
 	}
 	return c
+}
+
+// reportBoxd is the one boxd verb that is not a long-running process: it
+// assembles the observation this box would send over the wire and prints it,
+// then exits.
+//
+// It exists because the daemon is outbound-only and a controller therefore has
+// nothing to ask. `cafe box setup` needs to prove the heartbeat — that the
+// daemon loads its enrollment and answers an observe.report — and the only
+// honest place to assemble that document is where the world already can, from
+// the same code the wire path uses. A second reporter would be a second thing
+// that could disagree with the first about what the box's health is.
+//
+// It dials nothing, mints nothing and changes nothing: it is a read, which is
+// why it is safe for a bootstrap log to run it on every setup.
+func reportBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
+	identityPath, err := resolveBoxIdentityPath(opts.identity)
+	if err != nil {
+		return fmt.Errorf("cafe boxd: %w", err)
+	}
+	if _, err := os.Stat(identityPath); err != nil {
+		return fmt.Errorf("cafe boxd: no enrolled identity at %s; run `cafe box enroll --token …` "+
+			"on this box first (enrollment is the W2-P6 packet)", identityPath)
+	}
+	statePath := deps.statePath
+	if statePath == "" {
+		statePath = boxStatePath(identityPath)
+	}
+	// The identity is read from the same document the daemon reads, so a
+	// report says which box it is about rather than which file it came from.
+	store, err := newFileIdentityStore(identityPath)
+	if err != nil {
+		return fmt.Errorf("cafe boxd: %w", err)
+	}
+	doc, err := store.read()
+	if err != nil {
+		return fmt.Errorf("cafe boxd: %w", err)
+	}
+	id := boxd.Identity{BoxID: doc.BoxID, ControlPlane: doc.ControlPlane, Version: doc.Version}
+	var world boxd.World
+	if deps.worldFor != nil {
+		world = deps.worldFor(id)
+	} else {
+		world = newBoxWorld(id, identityPath, statePath)
+	}
+	report, err := world.Observe(env.Context, boxd.ObserveParams{})
+	if err != nil {
+		return fmt.Errorf("cafe boxd: assemble the box's report: %w", err)
+	}
+	return writeJSONDoc(env.Stdout, report)
 }
 
 func runBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
