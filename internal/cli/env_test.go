@@ -551,16 +551,16 @@ func TestAReceiptThatIsNotJSONIsAnError(t *testing.T) {
 
 func receiptLine(encoded []byte) string { return "CAF_RECEIPT=" + string(encoded) }
 
-// cafFlagNames is every flag `env up` declares. The harness pulls these out of
+// cafeFlagNames is every flag `env up` declares. The harness pulls these out of
 // an invocation wherever they appear, so a case can pass `-port` after the
 // command it means to run without the case having to know the grammar — which is
 // what the grammar is for, and what a test should not have to reimplement.
-var cafFlagNames = []string{"-project", "-registry", "-ledger", "-port", "-wait"}
+var cafeFlagNames = []string{"-project", "-registry", "-ledger", "-port", "-wait"}
 
-// cafBoolFlags take no value. They are separate because a boolean flag written
+// cafeBoolFlags take no value. They are separate because a boolean flag written
 // as `-dry-run` is the spelling a person types, and a harness that expected a
 // value after it would report a usage error on correct input.
-var cafBoolFlags = []string{"-dry-run", "-no-infra"}
+var cafeBoolFlags = []string{"-dry-run", "-no-infra"}
 
 // flagsFor strips cafe's own flags out of an invocation, returning what is left
 // and the flag state.
@@ -582,7 +582,7 @@ func flagsFor(args []string, opts envOptions) ([]string, envOptions, error) {
 
 	rest := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		name, value, takesValue := cafFlag(args[i])
+		name, value, takesValue := cafeFlag(args[i])
 		if name == "" {
 			rest = append(rest, args[i])
 			continue
@@ -608,16 +608,16 @@ func flagsFor(args []string, opts envOptions) ([]string, envOptions, error) {
 	return rest, opts, nil
 }
 
-// cafFlag is one cafe flag found in an argument, with its value if it takes one.
+// cafeFlag is one cafe flag found in an argument, with its value if it takes one.
 // A name that is not cafe's returns "", so the caller keeps it — which is how a
 // child's own -test survives.
-func cafFlag(arg string) (name, value string, takesValue bool) {
-	for _, flag := range cafFlagNames {
+func cafeFlag(arg string) (name, value string, takesValue bool) {
+	for _, flag := range cafeFlagNames {
 		if arg == flag {
 			return arg, "", true
 		}
 	}
-	for _, flag := range cafBoolFlags {
+	for _, flag := range cafeBoolFlags {
 		if arg == flag {
 			return arg, "true", false
 		}

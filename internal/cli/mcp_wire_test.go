@@ -35,9 +35,9 @@ import (
 //     a deployment are exercised through their failure path, which is the path
 //     that has to work anyway.
 //
-// cafBinary is built once by TestMain. `go build` is a second of work and
+// cafeBinary is built once by TestMain. `go build` is a second of work and
 // paying it per test would make the suite slow rather than thorough.
-var cafBinary string
+var cafeBinary string
 
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "caf-wire")
@@ -45,8 +45,8 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "cafe wire tests: %v\n", err)
 		os.Exit(1)
 	}
-	cafBinary = filepath.Join(dir, "cafe")
-	build := exec.Command("go", "build", "-o", cafBinary, "./cmd/cafe")
+	cafeBinary = filepath.Join(dir, "cafe")
+	build := exec.Command("go", "build", "-o", cafeBinary, "./cmd/cafe")
 	build.Dir = repoRootForTest()
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "cafe wire tests: build cafe: %v\n%s\n", err, out)
@@ -190,7 +190,7 @@ func (b *lockedBuffer) String() string {
 func startServer(t *testing.T, dir string, args ...string) *wireSession {
 	t.Helper()
 
-	cmd := exec.Command(cafBinary, append([]string{"mcp"}, args...)...)
+	cmd := exec.Command(cafeBinary, append([]string{"mcp"}, args...)...)
 	cmd.Dir = dir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
