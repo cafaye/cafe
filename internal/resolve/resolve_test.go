@@ -18,16 +18,40 @@ type fakePantry struct {
 	coords     *Coordinates
 	coordsErr  error
 
-	projectCalls int
-	coordsCalls  int
-	lastName     string
-	lastToken    string
+	// address is what the ADDRESS read (tier 1's second route) answers, and
+	// addressErr is what it refuses with. The wrong-owner 404 is the case
+	// that matters: the bare name resolves, the address does not.
+	address    *Project
+	addressErr error
+
+	projectCalls  int
+	coordsCalls   int
+	addressCalls  int
+	lastName      string
+	lastOwner     string
+	lastAddressBy string
+	lastToken     string
 }
 
 func (f *fakePantry) Project(_ context.Context, name string) (*Project, error) {
 	f.projectCalls++
 	f.lastName = name
 	return f.project, f.projectErr
+}
+
+// ProjectByAddress is tier 1's address read. It records the pair it was asked
+// for, because the retry semantics are a claim about which read was made: a
+// resolver that merged the two reads into one wrapper would pass every other
+// test in this file while being unable to tell them apart.
+func (f *fakePantry) ProjectByAddress(_ context.Context, owner, name string) (*Project, error) {
+	f.addressCalls++
+	f.lastOwner = owner
+	f.lastName = name
+	f.lastAddressBy = owner + "/" + name
+	if f.addressErr != nil {
+		return nil, f.addressErr
+	}
+	return f.address, nil
 }
 
 func (f *fakePantry) Coordinates(_ context.Context, name, token string) (*Coordinates, error) {
@@ -475,5 +499,171 @@ func TestRequiredFlagTravelsWithTheResolution(t *testing.T) {
 	}
 	if res.Failure == nil {
 		t.Errorf("a soft dependency still records its failure — the caller decides what to do with it")
+	}
+}
+
+// THE AMBIGUITY RETRY. Pantry's bare-name route is documented to answer 404
+// naming the addresses the day `projects_name_key` is relaxed, and until then
+// the state is unreachable — which makes this test a test of a rule the client
+// holds in advance rather than of a server behaviour it can observe. The
+// resolver's job is the retry: an owner is known, so ask the address.
+func TestAnAmbiguousBareNameRetriesByAddressWhenAnOwnerIsKnown(t *testing.T) {
+	pantry := &fakePantry{
+		projectErr: &PantryError{Status: 404, Code: "not_found",
+			Detail: "the name `widget` is registered by more than one owner; address it as `alice/widget` or `bob/widget`"},
+		address: &Project{Name: "widget", OwnerSlug: "alice"},
+		coords:  &Coordinates{Name: "widget", Repository: Repository{URL: "git@github.com:alice/widget.git"}},
+	}
+
+	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+		context.Background(), "alice", "widget", "cafaye_token", "")
+
+	if pantry.addressCalls != 1 {
+		t.Fatalf("address reads = %d, want 1 (the ambiguity retry)", pantry.addressCalls)
+	}
+	if pantry.lastAddressBy != "alice/widget" {
+		t.Errorf("read the address %q, want alice/widget", pantry.lastAddressBy)
+	}
+	res := report.Services[0]
+	if res.Failure != nil {
+		t.Fatalf("the retry failed: %+v", res.Failure)
+	}
+	if res.Owner != "alice" {
+		t.Errorf("owner = %q, want alice — the report names the address it resolved", res.Owner)
+	}
+	if res.Coordinates == nil || res.Coordinates.Repository.URL != "git@github.com:alice/widget.git" {
+		t.Errorf("coordinates = %+v, want the addressed row's", res.Coordinates)
+	}
+}
+
+// A 404 that is only "no such project" does NOT retry: there is nothing an
+// address could resolve that the bare name did not, and a second read would be
+// a round trip spent on a question the server already answered.
+func TestAPlainNotFoundNeverRetriesByAddress(t *testing.T) {
+	pantry := &fakePantry{
+		projectErr: &PantryError{Status: 404, Code: "not_found",
+			Detail: "no official cafaye project is registered under that name"},
+	}
+
+	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+		context.Background(), "alice", "widget", "cafaye_token", "")
+
+	if pantry.addressCalls != 0 {
+		t.Errorf("address reads = %d, want 0 — a plain 404 stays a 404", pantry.addressCalls)
+	}
+	res := report.Services[0]
+	if res.Failure == nil || res.Failure.Code != "not_found" {
+		t.Fatalf("failure = %+v, want pantry's own not_found", res.Failure)
+	}
+	if res.Failure.Status != 404 {
+		t.Errorf("status = %d, want 404", res.Failure.Status)
+	}
+}
+
+// The same plain 404 with NO owner supplied: there is nobody to retry as, so
+// the failure is the 404 and nothing else. This is the fleet's path — a
+// manifest dependency names a bare name and the resolver asks nothing more.
+func TestABareNotFoundWithoutAnOwnerDoesNotRetry(t *testing.T) {
+	pantry := &fakePantry{
+		projectErr: &PantryError{Status: 404, Code: "not_found",
+			Detail: "no official cafaye project is registered under that name"},
+	}
+
+	report := NewResolver(pantry, &fakeConductor{}).Resolve(
+		context.Background(), ".", deps("widget"), "cafaye_token", "")
+
+	if pantry.addressCalls != 0 {
+		t.Errorf("address reads = %d, want 0", pantry.addressCalls)
+	}
+	res := report.Services[0]
+	if res.Failure == nil || res.Failure.Code != "not_found" {
+		t.Fatalf("failure = %+v, want not_found", res.Failure)
+	}
+	if res.Owner != "" {
+		t.Errorf("owner = %q, want empty — nobody addressed this", res.Owner)
+	}
+}
+
+// An address that names the WRONG owner is a refusal, not a resolution. The
+// bare name `widget` exists — under `bob` — so the fast path succeeds with a
+// row that is not the one that was asked for. The owner_slug the row carries
+// is what catches it: answering the bob row would be serving a project at an
+// address that is not its own, which is the thing pantry's own handler
+// refuses to do.
+func TestAnAddressNamingTheWrongOwnerIsARefusal(t *testing.T) {
+	pantry := &fakePantry{
+		project: &Project{Name: "widget", OwnerSlug: "bob"},
+		coords:  &Coordinates{Name: "widget", Repository: Repository{URL: "git@github.com:bob/widget.git"}},
+		addressErr: &PantryError{Status: 404, Code: "not_found",
+			Detail: "no official cafaye project is registered under the address alice/widget"},
+	}
+
+	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+		context.Background(), "alice", "widget", "cafaye_token", "")
+
+	res := report.Services[0]
+	if res.Failure == nil {
+		t.Fatalf("alice/widget resolved from bob's row; the coordinates returned are %+v", res.Coordinates)
+	}
+	if res.Failure.Code != "not_found" {
+		t.Errorf("code = %q, want pantry's own not_found", res.Failure.Code)
+	}
+	if !strings.Contains(res.Failure.Message, "alice/widget") {
+		t.Errorf("message = %q, want the address that was asked for", res.Failure.Message)
+	}
+	if res.Coordinates != nil {
+		t.Errorf("coordinates = %+v, want none — the refused address resolved nothing", res.Coordinates)
+	}
+}
+
+// The address that IS right resolves through the same tiers, and the fast path
+// is enough to prove it: the bare name is globally unique, so a row whose
+// owner_slug matches the address that was asked for is the row the address
+// read would have returned.
+func TestAnAddressThatMatchesResolvesWithoutASecondRead(t *testing.T) {
+	pantry := &fakePantry{
+		project: &Project{Name: "widget", OwnerSlug: "alice"},
+		coords:  &Coordinates{Name: "widget", Repository: Repository{URL: "git@github.com:alice/widget.git"}},
+	}
+
+	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+		context.Background(), "alice", "widget", "cafaye_token", "")
+
+	res := report.Services[0]
+	if res.Failure != nil {
+		t.Fatalf("failed: %+v", res.Failure)
+	}
+	if pantry.addressCalls != 0 {
+		t.Errorf("address reads = %d, want 0 — the fast path answered and the owner matched", pantry.addressCalls)
+	}
+	if res.Owner != "alice" || res.Name != "widget" {
+		t.Errorf("resolution = %s/%s, want alice/widget", res.Owner, res.Name)
+	}
+}
+
+// A paid product addressed by a community owner still clears tier 3: the
+// product vocabulary is about the bare name, not about who owns it.
+func TestAnAddressedPaidProductStillClearsTierThree(t *testing.T) {
+	pantry := &fakePantry{
+		project: &Project{Name: "identity", OwnerSlug: "alice"},
+		coords:  &Coordinates{Name: "identity"},
+	}
+	cond := &fakeConductor{grant: &FetchGrant{
+		Purpose: "artifact.fetch", AccountID: "11111111-1111-4111-8111-111111111111",
+		Artifact: "identity", VersionRange: "^0.1.0", ExpiresAt: "2026-10-09T16:00:00Z",
+	}}
+
+	deps := NewResolver(pantry, cond).ResolveAddress(
+		context.Background(), "alice", "identity", "cafaye_token", "11111111-1111-4111-8111-111111111111")
+
+	res := deps.Services[0]
+	if res.Failure != nil {
+		t.Fatalf("failed: %+v", res.Failure)
+	}
+	if res.Fetch == nil {
+		t.Errorf("a paid product resolved without a fetch grant")
+	}
+	if cond.artifact != "identity" {
+		t.Errorf("conductor was asked about %q", cond.artifact)
 	}
 }

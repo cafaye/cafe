@@ -31,7 +31,11 @@ type fakeResolvePantry struct {
 	coords     *resolve.Coordinates
 	coordsErr  error
 
+	address    *resolve.Project
+	addressErr error
+
 	calls     []string
+	lastOwner string
 	lastToken string
 }
 
@@ -41,6 +45,15 @@ func (f *fakeResolvePantry) Project(_ context.Context, name string) (*resolve.Pr
 		return nil, f.projectErr
 	}
 	return f.project, nil
+}
+
+func (f *fakeResolvePantry) ProjectByAddress(_ context.Context, owner, name string) (*resolve.Project, error) {
+	f.calls = append(f.calls, "tier1addr:"+owner+"/"+name)
+	f.lastOwner = owner
+	if f.addressErr != nil {
+		return nil, f.addressErr
+	}
+	return f.address, nil
 }
 
 func (f *fakeResolvePantry) Coordinates(_ context.Context, name, token string) (*resolve.Coordinates, error) {
@@ -652,5 +665,113 @@ func TestResolveUsage(t *testing.T) {
 	code, _, _ := runResolveCLI(t, deps)
 	if code == 0 {
 		t.Fatalf("no argument exited 0, want a usage error")
+	}
+}
+
+// THE ADDRESS FORM. `caf resolve <owner>/<name>` asks about one project
+// addressed unambiguously, not about a directory: a community project whose
+// bare name another publisher also holds, or whose owner is the only thing
+// the caller knows. The command parses the slash form and hands the resolver
+// the pair, and the report names the address it resolved.
+func TestResolveAcceptsTheAddressForm(t *testing.T) {
+	ring := newAgentTestRing()
+	pantry := &fakeResolvePantry{
+		project: &resolve.Project{Name: "widget", OwnerSlug: "alice"},
+		coords:  &resolve.Coordinates{Name: "widget", Repository: resolve.Repository{URL: "git@github.com:alice/widget.git"}},
+	}
+	cond := &fakeResolveConductor{}
+	deps := resolveTestEnv(t, ring, pantry, cond)
+
+	code, stdout, stderr := runResolveCLI(t, deps, "alice/widget")
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+	}
+	// The fast path is the bare name, and the owner the row carries is what
+	// proves the address: the resolver must not need a second read to answer
+	// an address whose row it already holds.
+	if pantry.lastOwner != "alice" {
+		t.Errorf("owner carried into the resolver = %q, want alice", pantry.lastOwner)
+	}
+	if !strings.Contains(stdout, "alice/widget") {
+		t.Errorf("the document does not name the address:\n%s", stdout)
+	}
+	if !strings.Contains(stderr, "alice/widget") {
+		t.Errorf("stderr does not name the address:\n%s", stderr)
+	}
+}
+
+// An address that names the wrong owner is refused with pantry's own sentence,
+// which names the address — the difference between "there is no `widget`" and
+// "there is no `widget` at alice/", which is the question that was asked.
+func TestResolveAddressFormRefusesTheWrongOwner(t *testing.T) {
+	ring := newAgentTestRing()
+	pantry := &fakeResolvePantry{
+		project: &resolve.Project{Name: "widget", OwnerSlug: "bob"},
+		addressErr: &resolve.PantryError{Status: 404, Code: "not_found",
+			Detail: "no official cafaye project is registered under the address alice/widget"},
+	}
+	deps := resolveTestEnv(t, ring, pantry, &fakeResolveConductor{})
+
+	code, _, stderr := runResolveCLI(t, deps, "alice/widget")
+
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "alice/widget") {
+		t.Errorf("stderr does not name the address that was asked for:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "git@github.com:bob") {
+		t.Errorf("the refusal leaked another publisher's coordinates:\n%s", stderr)
+	}
+}
+
+// A directory that happens to be spelled `owner/name` is still a directory:
+// the address form is the fallback for a path with no manifest in it, never a
+// rule that swallows a real project whose directory has a slash in it.
+func TestResolveTreatsADirectoryWithASlashAsADirectory(t *testing.T) {
+	ring := newAgentTestRing()
+	pantry := &fakeResolvePantry{
+		project: &resolve.Project{Name: "gateway", OwnerSlug: "cafaye"},
+		coords:  &resolve.Coordinates{Name: "gateway", Repository: resolve.Repository{URL: "git@github.com:cafaye/gateway.git"}},
+	}
+	deps := resolveTestEnv(t, ring, pantry, &fakeResolveConductor{})
+
+	base := t.TempDir()
+	project := filepath.Join(base, "alice", "widget")
+	if err := os.MkdirAll(project, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	body := `name: gateway
+description: An application.
+language: go
+core: ^0.2.0
+dependencies:
+  - name: gateway
+    version: ^0.1.0
+repository:
+  url: git@github.com:cafaye/app.git
+  defaultBranch: master
+  visibility: public
+owner:
+  team: app
+  contact: app@cafaye.com
+`
+	if err := os.WriteFile(filepath.Join(project, "cafaye.yml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write the manifest: %v", err)
+	}
+
+	code, stdout, stderr := runResolveCLI(t, deps, project)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "gateway") {
+		t.Errorf("the document does not name the dependency:\n%s", stdout)
+	}
+	for _, call := range pantry.calls {
+		if strings.HasPrefix(call, "tier1addr:") {
+			t.Errorf("a directory was read as an address (%v)", pantry.calls)
+		}
 	}
 }

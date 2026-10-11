@@ -588,3 +588,58 @@ func (f *fakeWriteServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	_, _ = w.Write([]byte(`{"name":"app","tag":"v1.0.0","version":"1.0.0","yanked":false,"dependency":"required"}`))
 }
+
+// Since 1.7.0 pantry's 201 is the Project read back, and it carries the
+// derived `owner_slug`. The report's address is that slug and the name,
+// because "app is in the catalog" is a name and not an address: the whole
+// point of the derived namespace is that a project is ADDRESSED as
+// `<owner>/<name>` from birth, and a publisher that registered a community
+// project needs to be told what it is addressable as.
+func TestThe201BodyCarriesTheAddressTheProjectRegisteredUnder(t *testing.T) {
+	handler := &fakeWriteServer{
+		onPost: func(path, _ string, _ map[string]any) int {
+			if path == "/v1/projects" {
+				return http.StatusCreated
+			}
+			return http.StatusCreated
+		},
+		body: `{"name":"app","owner_slug":"cafaye","tag":"v1.0.0","version":"1.0.0","yanked":false,"dependency":"required"}`,
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	proposal, err := ProposalFor(publishTestManifest(t, publishFullManifest), "v1.0.0", "")
+	if err != nil {
+		t.Fatalf("ProposalFor: %v", err)
+	}
+
+	report := Run(context.Background(), HTTPPublisher{BaseURL: server.URL}, "cafaye_token", proposal)
+
+	if report.Address != "cafaye/app" {
+		t.Errorf("address = %q, want cafaye/app — the 201 body's owner_slug and the name", report.Address)
+	}
+	if !report.Published {
+		t.Errorf("the run is not published: %+v", report.Steps)
+	}
+}
+
+// A re-register answered 409 carries no 201 body, so there is no owner_slug to
+// read and the report says nothing rather than inventing an address from the
+// name. A report that guessed `cafaye/app` would be a report naming an address
+// the server never confirmed.
+func TestAnIdempotentReRegisterHasNoAddressToName(t *testing.T) {
+	fake := &fakePublisher{registerErr: &resolve.PantryError{Status: 409, Code: "conflict",
+		Detail: "a project is already registered under that name. Names are unique across the whole registry"}}
+	proposal, err := ProposalFor(publishTestManifest(t, publishFullManifest), "v1.0.0", "")
+	if err != nil {
+		t.Fatalf("ProposalFor: %v", err)
+	}
+
+	report := Run(context.Background(), fake, "", proposal)
+
+	if report.Address != "" {
+		t.Errorf("address = %q, want empty — the 409 answered no 201 body", report.Address)
+	}
+	if !report.Published {
+		t.Errorf("an idempotent re-run is not published: %+v", report.Steps)
+	}
+}
