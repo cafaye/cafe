@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/caf/internal/deploy"
+	"github.com/cafaye/cafe/internal/deploy"
 )
 
 // Step is one kubectl invocation a rotation makes, and the sentence a reader

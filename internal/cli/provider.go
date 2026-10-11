@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/provider"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/provider"
 )
 
 // providerDeps is what `caf provider` needs from the world, and it is a struct

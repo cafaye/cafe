@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cafaye/caf/internal/deploy"
+	"github.com/cafaye/cafe/internal/deploy"
 )
 
 // deployDeps is what `caf deploy` needs from the world: a way to run Kamal.

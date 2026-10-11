@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/cafaye/caf/internal/lock"
+	"github.com/cafaye/cafe/internal/lock"
 )
 
 // `caf lock <path>` writes `caf.lock` and `caf lock --verify <path>` checks it.

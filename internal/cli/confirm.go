@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/caf/internal/agent"
+	"github.com/cafaye/cafe/internal/agent"
 )
 
 // The one interactive thing caf does, shared by the commands that ask.

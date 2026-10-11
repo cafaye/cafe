@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/resolve"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/resolve"
 )
 
 // publishTestManifest parses one cafaye.yml the way the command does, so the

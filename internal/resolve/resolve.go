@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // Products is the vocabulary conductor's entitlement check accepts

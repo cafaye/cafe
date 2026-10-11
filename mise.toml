@@ -12,4 +12,4 @@ run = "./bin/prime"
 
 [tasks.doctor]
 description = "Build caf and report the local toolchains"
-run = "go run ./cmd/caf doctor"
+run = "go run ./cmd/cafe doctor"

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 // The helpers the reclaim cases share. They are in their own file so the cases

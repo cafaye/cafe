@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // The four ways a stack cannot be planned. Each is a distinct sentinel because

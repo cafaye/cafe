@@ -62,7 +62,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // ErrUnknownTarget is a target caf does not generate. It is a distinct sentinel

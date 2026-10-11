@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/provider"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/provider"
 )
 
 // The seams a provider test needs, in one place and for one reason: the whole

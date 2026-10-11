@@ -19,7 +19,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // This file asserts four things and no more, because those four are the packet's

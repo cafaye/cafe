@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/caf/internal/failure"
+	"github.com/cafaye/cafe/internal/failure"
 )
 
 // failureDeps is what `caf failure check` needs from the world, and it is a

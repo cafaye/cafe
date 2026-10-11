@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 // `caf env up` is the only provisioning verb, and the thing that makes it one

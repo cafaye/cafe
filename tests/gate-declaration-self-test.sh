@@ -241,7 +241,7 @@ install_standin() {
 # breakage costs a second instead of a full suite run. It is NOT evidence that
 # the real gate works: the first control runs the real bin/prime.
 set -euo pipefail
-echo "ok  \tgithub.com/cafaye/caf/internal/example\t0.001s"
+echo "ok  \tgithub.com/cafaye/cafe/internal/example\t0.001s"
 echo 'caf: ${packages} packages, ${passes} top-level passes, ${subtests} subtest passes, 0 failures, 3 skips'
 echo 'caf: live tier: 0 of ${tier} executed; not enabled, so the live tests skipped rather than ran. Set CAF_LIVE_DOCKER=1, CAF_LIVE_RYUK=1 and CAF_LIVE_KAMAL=1, or run bin/prime --live'
 STUB

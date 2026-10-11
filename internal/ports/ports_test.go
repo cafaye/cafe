@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/ledger"
+	"github.com/cafaye/cafe/internal/ledger"
 )
 
 // The block is the whole point: 15000-15999 is where caf publishes from, so two

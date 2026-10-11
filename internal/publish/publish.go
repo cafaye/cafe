@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/resolve"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/resolve"
 )
 
 // The kinds a project can be registered as. They are pantry's ProjectKind

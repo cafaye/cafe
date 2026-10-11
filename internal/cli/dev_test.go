@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/dev"
+	"github.com/cafaye/cafe/internal/dev"
 )
 
 // A recording runtime is what lets the whole command be driven without a

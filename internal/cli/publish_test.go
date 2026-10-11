@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/publish"
-	"github.com/cafaye/caf/internal/resolve"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/publish"
+	"github.com/cafaye/cafe/internal/resolve"
 )
 
 // publishCallerToken is a string no real credential looks like and every fake

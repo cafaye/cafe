@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/dev"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/dev"
 )
 
 // The paths one `caf gen chart` run writes, relative to the output root.

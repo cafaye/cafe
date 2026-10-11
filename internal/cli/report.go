@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/caf/internal/backup"
-	"github.com/cafaye/caf/internal/report"
-	"github.com/cafaye/caf/internal/secret"
+	"github.com/cafaye/cafe/internal/backup"
+	"github.com/cafaye/cafe/internal/report"
+	"github.com/cafaye/cafe/internal/secret"
 )
 
 // reportDeps is what `caf report render` needs from the world. It is a struct

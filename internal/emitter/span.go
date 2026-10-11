@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // Outcome is how an invocation ended, and it is a closed set because core's

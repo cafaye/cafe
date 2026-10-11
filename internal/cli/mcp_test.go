@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/mcp"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/mcp"
 )
 
 // The wire-level tests in mcp_wire_test.go drive a real process and prove the

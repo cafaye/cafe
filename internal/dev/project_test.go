@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // `caf dev` is run in a directory, and the first thing it has to establish is
@@ -92,7 +92,7 @@ func TestLoadResolvesTheDockerfile(t *testing.T) {
 	}{
 		{
 			name:           "no dockerfile at all",
-			files:          []string{"go.mod", "cmd/caf/main.go"},
+			files:          []string{"go.mod", "cmd/cafe/main.go"},
 			wantDockerfile: "",
 		},
 		{
@@ -112,7 +112,7 @@ func TestLoadResolvesTheDockerfile(t *testing.T) {
 		},
 		{
 			name:           "the service name is passed as a build arg",
-			files:          []string{"docker/Dockerfile", "cmd/caf/main.go"},
+			files:          []string{"docker/Dockerfile", "cmd/cafe/main.go"},
 			wantDockerfile: "docker/Dockerfile",
 			wantArgs:       []Env{{Name: "SERVICE_NAME", Value: "caf"}},
 		},

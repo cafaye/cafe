@@ -12,15 +12,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/cafaye/caf/internal/cli"
+	"github.com/cafaye/cafe/internal/cli"
 )
 
 // Build identity, injected at link time:
 //
-//	go build -ldflags "-X main.version=1.2.3 -X main.commit=$(git rev-parse --short HEAD)" ./cmd/caf
+//	go build -ldflags "-X main.version=1.2.3 -X main.commit=$(git rev-parse --short HEAD)" ./cmd/cafe
 //
 // .goreleaser.yml sets both for release builds. Left empty they resolve to the
-// development defaults in internal/cli, so `go run ./cmd/caf` works.
+// development defaults in internal/cli, so `go run ./cmd/cafe` works.
 var (
 	version = ""
 	commit  = ""

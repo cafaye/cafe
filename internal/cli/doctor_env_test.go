@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 // The project section of `caf doctor`.

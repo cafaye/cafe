@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // The endpoint precedence, asserted over the WIRE rather than over a function.

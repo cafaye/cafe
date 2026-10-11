@@ -6,7 +6,7 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"github.com/cafaye/caf/internal/box"
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // The human half of the split. Every doc the box commands produce is rendered

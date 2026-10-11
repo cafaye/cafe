@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cafaye/caf/internal/backup"
+	"github.com/cafaye/cafe/internal/backup"
 )
 
 // `caf backup` at the command layer: flags, the prompt, the exit codes, and the

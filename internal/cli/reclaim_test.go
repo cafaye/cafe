@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 func itoa(i int) string { return strconv.Itoa(i) }

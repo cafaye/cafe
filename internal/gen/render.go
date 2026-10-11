@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // Every file this package writes is rendered by a hand-written function here

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // Tests for the generator itself.

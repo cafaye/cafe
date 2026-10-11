@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/mcp"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/mcp"
 )
 
 // # The remote MCP surface, wired

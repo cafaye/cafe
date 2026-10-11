@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/ledger"
+	"github.com/cafaye/cafe/internal/ledger"
 )
 
 // The command line is the whole risk in this file. A missing `--filter` is not a

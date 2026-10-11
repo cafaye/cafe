@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // The manifest used by most of these cases: a Go API service that depends on

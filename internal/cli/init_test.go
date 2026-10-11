@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // `caf init` is for a project that already exists, so it writes the manifest

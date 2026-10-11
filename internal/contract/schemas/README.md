@@ -123,7 +123,7 @@ Then, in this order:
    lands in caf.
 4. Re-copy the fixtures from core's `examples/` and `cafaye.yml` — see
    [`../testdata/README.md`](../testdata/README.md).
-5. `go test ./...`, then `go run ./cmd/caf contract lint .`
+5. `go test ./...`, then `go run ./cmd/cafe contract lint .`
 
 If a refresh makes a vendored example invalid, core broke backwards
 compatibility in a way its own suite does not catch. That is a **major** core

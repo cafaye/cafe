@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/lock"
+	"github.com/cafaye/cafe/internal/lock"
 )
 
 // `caf.lock` is this repository's own lock, and this file is the check that it
@@ -57,7 +57,7 @@ func TestTheTreeMatchesItsCommittedLock(t *testing.T) {
 		t.Fatalf("%v\n"+
 			"  This repository pins its specs, vendored schemas and generated clients, and the check "+
 			"is this test. To create the lock for the first time, or after a refresh you have read the "+
-			"changelog for, run:\n    go run ./cmd/caf lock .", err)
+			"changelog for, run:\n    go run ./cmd/cafe lock .", err)
 	}
 
 	report, err := lock.Verify(root, committed)
@@ -69,7 +69,7 @@ func TestTheTreeMatchesItsCommittedLock(t *testing.T) {
 	}
 	t.Errorf("caf.lock does not describe this tree:\n%s\n"+
 		"  Two things cause this, and they have opposite remedies:\n"+
-		"    * core moved, or caf gen moved. Re-run `go run ./cmd/caf lock .` after reading core's\n"+
+		"    * core moved, or caf gen moved. Re-run `go run ./cmd/cafe lock .` after reading core's\n"+
 		"      CHANGELOG at the new commit — the drift gate in internal/gen is the check on that half.\n"+
 		"    * somebody edited a pinned file by hand. Revert it. A vendored schema and a generated\n"+
 		"      client are both still plausible and both are wrong, and neither `caf contract lint` nor\n"+

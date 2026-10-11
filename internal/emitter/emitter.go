@@ -16,7 +16,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // shutdownTimeout bounds the flush at the end of a command.

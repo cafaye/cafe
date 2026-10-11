@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cafaye/caf/internal/deploy"
+	"github.com/cafaye/cafe/internal/deploy"
 )
 
 // `caf deploy` is a working command now, so it has left stubCommands. Its

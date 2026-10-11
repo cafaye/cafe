@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/caf/internal/ledger"
+	"github.com/cafaye/cafe/internal/ledger"
 )
 
 // projectLabel is the label compose puts on every container and named volume it

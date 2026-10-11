@@ -16,7 +16,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/cafaye/caf/internal/emitter"
+	"github.com/cafaye/cafe/internal/emitter"
 )
 
 // errUsage marks a mistake in how caf was invoked, as opposed to a command

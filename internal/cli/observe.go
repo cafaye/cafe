@@ -7,9 +7,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cafaye/caf/internal/backup"
-	"github.com/cafaye/caf/internal/boxd"
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/backup"
+	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // The observe stream, box side: the pure facts `caf boxd`'s observe.report

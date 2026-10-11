@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/caf/internal/backup"
-	"github.com/cafaye/caf/internal/boxd"
+	"github.com/cafaye/cafe/internal/backup"
+	"github.com/cafaye/cafe/internal/boxd"
 )
 
 // `caf boxd` — the box daemon.

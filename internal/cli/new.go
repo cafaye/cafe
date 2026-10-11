@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/cafaye/caf/internal/scaffold"
+	"github.com/cafaye/cafe/internal/scaffold"
 )
 
 // newOptions is the parsed flag state for `caf new`.

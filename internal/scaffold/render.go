@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // serviceNamePattern mirrors core's serviceName $defs

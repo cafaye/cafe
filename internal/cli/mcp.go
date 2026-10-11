@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/mcp"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/mcp"
 
 	"github.com/goccy/go-yaml"
 )

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/mcp"
+	"github.com/cafaye/cafe/internal/mcp"
 )
 
 // The wire tests drive `caf mcp` as a child process; these drive the command

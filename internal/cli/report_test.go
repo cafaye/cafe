@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/report"
+	"github.com/cafaye/cafe/internal/report"
 )
 
 // runReport drives the whole path: a document a test writes, the verb over it,

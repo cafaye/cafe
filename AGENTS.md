@@ -5,7 +5,7 @@ anything; the house rules in `moon/PLAN.md` §1 and §3 apply on top of it.
 
 ## What this repository is
 
-`module github.com/cafaye/caf`, Go >= 1.25, one binary. It is the client side of
+`module github.com/cafaye/cafe`, Go >= 1.25, one binary. It is the client side of
 the platform: the manifest, the local stack, the generator, the deploy path and
 the MCP server. The contracts themselves are owned by `cafaye/core`, and the
 shared CI and lint configuration comes from `cafaye/kit` — neither lives here.
@@ -13,7 +13,7 @@ shared CI and lint configuration comes from `cafaye/kit` — neither lives here.
 ## Layout
 
 ```
-cmd/caf/main.go     thin entrypoint: build a cli.Options, exit with its code
+cmd/cafe/main.go     thin entrypoint: build a cli.Options, exit with its code
 internal/cli/       router, registry, one file per subcommand
 internal/box/       caf box: the keypair, the capability redemption, the phases
 internal/run/       the resumable install model: run, steps, events, lease
@@ -203,7 +203,7 @@ the same command with every problem as a row.
 `caf lock` treats it as the tree's one `rule-bundle`: a named, versioned rule set
 owned by core's `gate.schema.json` and checked by core's own checker. So a commit
 that adds tests raises the floor in `gate.yml` AND has to re-run
-`go run ./cmd/caf lock .`, because the floor's hash moved. That is friction, it
+`go run ./cmd/cafe lock .`, because the floor's hash moved. That is friction, it
 is deliberate, and the argument is the same one as for the vendored schemas: a
 declaration that changed without the change being deliberate is the defect. The
 alternative — leaving `gate.yml` out of the lock — would leave the file that
@@ -750,7 +750,7 @@ core publishes a new one:
    moved. Both fail loudly otherwise, which is the point.
 3. Re-copy the fixtures from core's `examples/` and `cafaye.yml` — see
    `internal/contract/testdata/README.md`.
-4. `bin/prime`, and lint the tree: `go run ./cmd/caf contract lint .`
+4. `bin/prime`, and lint the tree: `go run ./cmd/cafe contract lint .`
 
 If a refresh makes a vendored example invalid, core broke backwards
 compatibility. That is a **major** core bump, and the fix belongs in core.

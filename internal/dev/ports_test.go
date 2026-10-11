@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // The allocator is the seam that lets a stack publish ports the caller reserved

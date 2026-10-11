@@ -12,9 +12,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/ledger"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/ledger"
 )
 
 // tool is one row of the doctor report: the name a human reads, and the

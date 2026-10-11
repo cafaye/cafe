@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/resolve"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/resolve"
 )
 
 // resolveDeps is what `caf resolve` needs from the world, and it is a struct of

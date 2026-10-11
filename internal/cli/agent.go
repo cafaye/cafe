@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/box"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // agentDeps is what `caf agent` needs from the world, and it is a struct of

@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	cafBinary = filepath.Join(dir, "caf")
-	build := exec.Command("go", "build", "-o", cafBinary, "./cmd/caf")
+	build := exec.Command("go", "build", "-o", cafBinary, "./cmd/cafe")
 	build.Dir = repoRootForTest()
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "caf wire tests: build caf: %v\n%s\n", err, out)
@@ -60,7 +60,7 @@ func TestMain(m *testing.M) {
 
 // repoRootForTest is the repository root, from this file's own path rather than
 // from the working directory: `go test` runs a package's tests in the package
-// directory, and a test that resolves `./cmd/caf` from wherever it was invoked
+// directory, and a test that resolves `./cmd/cafe` from wherever it was invoked
 // from passes for the wrong reason somewhere.
 func repoRootForTest() string {
 	_, file, _, ok := runtime.Caller(0)

@@ -3,7 +3,7 @@ package emitter
 import (
 	"strings"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // This file is the seam between caf's own wiring and the generated contract.

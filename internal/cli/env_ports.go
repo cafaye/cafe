@@ -4,9 +4,9 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/ledger"
-	"github.com/cafaye/caf/internal/ports"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/cafaye/cafe/internal/ports"
 )
 
 // heldPorts is the real reservation, behind the portReserver seam. It is the

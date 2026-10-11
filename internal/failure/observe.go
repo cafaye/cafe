@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cafaye/caf/internal/boxd"
+	"github.com/cafaye/cafe/internal/boxd"
 )
 
 // Observation is every fact a rule may read. It is a value rather than an

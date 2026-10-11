@@ -10,9 +10,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/gen"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/gen"
 )
 
 // `caf gen` is a verb group, for the same reason `caf contract` is: the words a

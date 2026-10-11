@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/cve"
+	"github.com/cafaye/cafe/internal/cve"
 )
 
 // fakeObserver is the seam a test drives instead of a cluster. It answers

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // fakePantry is the seam a test drives the resolver's tier 1 and tier 2

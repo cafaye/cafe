@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/secret"
+	"github.com/cafaye/cafe/internal/secret"
 )
 
 // fakeSecretRunner records the steps it was handed and answers with whatever

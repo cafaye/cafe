@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/cafaye/caf/internal/deploy"
+	"github.com/cafaye/cafe/internal/deploy"
 )
 
 // KamalRunner is the Kamal engine: it owns the Kamal plan and runs it through

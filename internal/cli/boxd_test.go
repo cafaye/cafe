@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/boxd"
+	"github.com/cafaye/cafe/internal/boxd"
 )
 
 // `caf boxd` at the command layer: the wiring, the refusals, and the file

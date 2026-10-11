@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // ErrBadCatalog is a registry document caf cannot believe: malformed JSON, a

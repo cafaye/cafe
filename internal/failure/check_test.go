@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/boxd"
+	"github.com/cafaye/cafe/internal/boxd"
 )
 
 // The whole seed against one box — the box the doc's table describes, where

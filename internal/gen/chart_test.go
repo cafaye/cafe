@@ -8,7 +8,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/cafaye/caf/internal/dev"
+	"github.com/cafaye/cafe/internal/dev"
 	"github.com/goccy/go-yaml"
 )
 

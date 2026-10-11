@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/dev"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/dev"
 )
 
 // The catalog resolves every entry it indexes. An index that names a template

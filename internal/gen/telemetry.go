@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cafaye/caf/internal/contract"
+	"github.com/cafaye/cafe/internal/contract"
 )
 
 // The paths one `caf gen telemetry` run writes, relative to the output root.

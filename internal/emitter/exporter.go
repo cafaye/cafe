@@ -8,7 +8,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/cafaye/caf/internal/telemetry"
+	"github.com/cafaye/cafe/internal/telemetry"
 )
 
 // newGRPCExporter is the one real exporter.

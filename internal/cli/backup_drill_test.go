@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/caf/internal/backup"
+	"github.com/cafaye/cafe/internal/backup"
 )
 
 // `caf backup drill` at the command layer: the outcome is recorded, the machine

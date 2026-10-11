@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/agent"
+	"github.com/cafaye/cafe/internal/agent"
 )
 
 // agentRegisterAttemptsForTest is the retry budget the store is allowed to

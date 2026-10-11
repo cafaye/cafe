@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cafaye/caf/internal/agent"
-	"github.com/cafaye/caf/internal/box"
-	"github.com/cafaye/caf/internal/publish"
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/publish"
 )
 
 // publishDeps is what `caf publish` needs from the world, and it is a struct of

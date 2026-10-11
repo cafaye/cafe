@@ -11,7 +11,7 @@ import (
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"github.com/cafaye/caf/internal/emitter"
+	"github.com/cafaye/cafe/internal/emitter"
 )
 
 // These are the tests that answer the packet's question at the level that

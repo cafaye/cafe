@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cafaye/caf/internal/box"
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // boxDeps is what `caf box` needs from the world, and it is a struct of

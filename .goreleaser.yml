@@ -17,7 +17,7 @@ before:
 
 builds:
   - id: caf
-    main: ./cmd/caf
+    main: ./cmd/cafe
     binary: caf
     flags:
       - -trimpath

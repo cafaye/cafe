@@ -13,7 +13,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cafaye/caf/internal/dev"
+	"github.com/cafaye/cafe/internal/dev"
 )
 
 // devDeps is what `caf dev` needs from the world. It is a parameter rather than

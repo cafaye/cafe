@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/caf/internal/backup"
+	"github.com/cafaye/cafe/internal/backup"
 )
 
 // backupDeps is what `caf backup` needs from the world: the backup engine.

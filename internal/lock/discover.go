@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cafaye/caf/internal/contract"
-	"github.com/cafaye/caf/internal/dev"
-	"github.com/cafaye/caf/internal/gen"
+	"github.com/cafaye/cafe/internal/contract"
+	"github.com/cafaye/cafe/internal/dev"
+	"github.com/cafaye/cafe/internal/gen"
 )
 
 // The places a tree puts the four kinds, named once.

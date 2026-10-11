@@ -39,14 +39,14 @@ Deploy it for real with:
 ## Install
 
 ```sh
-go install github.com/cafaye/caf/cmd/caf@latest
+go install github.com/cafaye/cafe/cmd/cafe@latest
 ```
 
 Or build from source:
 
 ```sh
 bin/prime              # go mod download && go build ./... && go test -v ./... , then say what ran
-go build ./cmd/caf
+go build ./cmd/cafe
 ```
 
 `bin/prime` is the gate, and it is declared rather than guessed: [`gate.yml`](gate.yml)
@@ -1284,7 +1284,7 @@ when caf cannot read what you typed.
 ## Layout
 
 ```
-cmd/caf/main.go     thin entrypoint: process in, exit code out
+cmd/cafe/main.go     thin entrypoint: process in, exit code out
 internal/cli/       the router, the registry, one file per subcommand
 internal/contract/  manifest loading, schema validation, version resolution
 internal/deploy/    the deploy: the pure plan, the exposure refusal, the one seam

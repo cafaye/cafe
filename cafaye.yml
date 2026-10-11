@@ -7,7 +7,7 @@
 #
 # Checked with:
 #
-#   go run ./cmd/caf contract lint .
+#   go run ./cmd/cafe contract lint .
 name: caf
 description: The cafaye platform CLI. One binary, one manifest, one set of contracts.
 

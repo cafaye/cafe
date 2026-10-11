@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/caf/internal/box"
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // The seams a box test needs, in one place: a keyring the test owns and a
