@@ -103,7 +103,7 @@ func TestAManifestWithNoSurfaceNamesTheKindFlag(t *testing.T) {
 
 // `spec` is core's language for specification-only repositories, and it is
 // deliberately absent from the registry's vocabulary: a specification is not a
-// project. The refusal is caf-side, because a 400 from the server would blame
+// project. The refusal is cafe-side, because a 400 from the server would blame
 // the publisher for a rule the manifest schema already states.
 func TestLanguageSpecIsRefused(t *testing.T) {
 	_, err := ProposalFor(publishTestManifest(t, "name: app\nlanguage: spec\ncore: ^0.2.0\n"), "v1.0.0", "")

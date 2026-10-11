@@ -95,7 +95,7 @@ type FetchGrant struct {
 type Failure struct {
 	// Tier is the tier that failed: 1, 2 or 3.
 	Tier int `json:"tier"`
-	// Status is the HTTP status the service answered, and 0 for a caf-side
+	// Status is the HTTP status the service answered, and 0 for a cafe-side
 	// refusal that never reached the wire. It is carried because the pair
 	// (status, code) is what a reader greps against the server's log, and a
 	// code alone loses the class of the answer: 403 and 422 both carry a
@@ -106,7 +106,7 @@ type Failure struct {
 	// surfaced verbatim so a grep for the code finds both this report and
 	// the server's log.
 	Code string `json:"code"`
-	// Message is the server's detail, verbatim. For a caf-side failure (a
+	// Message is the server's detail, verbatim. For a cafe-side failure (a
 	// missing account, a transport error) it is cafe's own sentence.
 	Message string `json:"message"`
 }
@@ -437,7 +437,7 @@ func (r *Resolver) isProduct(name string) bool {
 
 // failureFrom maps a client error to a Failure, surfacing the server's own
 // code and detail. An error that is neither a PantryError nor a ConductorError
-// is a transport failure or a caf-side refusal, and it becomes a failure whose
+// is a transport failure or a cafe-side refusal, and it becomes a failure whose
 // code names that, so a network outage is never reported as "the service
 // said no".
 func failureFrom(tier int, err error) *Failure {

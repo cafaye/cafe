@@ -455,7 +455,7 @@ func runExit(err error) int {
 	default:
 		var coded exitCoder
 		if errors.As(err, &coded) {
-			return coded.cafExitCode()
+			return coded.cafeExitCode()
 		}
 		if errors.Is(err, errUsage) {
 			return exitUsage

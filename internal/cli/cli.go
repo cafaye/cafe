@@ -38,11 +38,11 @@ var errReported = errors.New("reported")
 // exists to make impossible.
 //
 // It is an interface rather than a sentinel because the code is the child's, not
-// one of cafe's three, and inventing a fourth caf-wide code for it would be worse
+// one of cafe's three, and inventing a fourth cafe-wide code for it would be worse
 // than a command that passes one through.
 type exitCoder interface {
 	error
-	cafExitCode() int
+	cafeExitCode() int
 }
 
 // Options is one CLI invocation. main fills it from the process; tests fill it
@@ -127,7 +127,7 @@ func codeFor(env Env, err error) int {
 	// is reading once.
 	var coded exitCoder
 	if errors.As(err, &coded) {
-		return coded.cafExitCode()
+		return coded.cafeExitCode()
 	}
 	// The command already printed its own report; the exit code is all that is
 	// left to say, and stderr stays empty so the report is not duplicated.

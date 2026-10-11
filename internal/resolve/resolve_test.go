@@ -298,7 +298,7 @@ func TestVersionNotGrantedNamesBothRanges(t *testing.T) {
 	}
 }
 
-// A paid dependency with no account named is a caf-side failure, and the
+// A paid dependency with no account named is a cafe-side failure, and the
 // remedy is the flag that names it.
 func TestPaidDependencyWithoutAccountIsNamed(t *testing.T) {
 	pantry := &fakePantry{

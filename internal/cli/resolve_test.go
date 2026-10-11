@@ -432,7 +432,7 @@ owner:
 	}
 }
 
-// A paid dependency with no --account is a caf-side refusal that names the
+// A paid dependency with no --account is a cafe-side refusal that names the
 // flag, not a silent skip and not a call to conductor with an empty account.
 func TestResolvePaidDependencyWithoutAccountNamesTheFlag(t *testing.T) {
 	ring := newAgentTestRing()

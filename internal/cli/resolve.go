@@ -230,7 +230,7 @@ func reportResolve(report resolve.Report, env *Env) error {
 		//   tier 3, 403 entitlement_required: product `identity` needs an
 		//   entitlement — start one at https://cafaye.com
 		//
-		// A caf-side refusal that never reached the wire carries no status,
+		// A cafe-side refusal that never reached the wire carries no status,
 		// and the tier is what distinguishes "the name is wrong" from "you
 		// are not entitled" without parsing the code.
 		line := "tier " + strconv.Itoa(res.Failure.Tier)
