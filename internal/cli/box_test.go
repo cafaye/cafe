@@ -502,7 +502,7 @@ func TestBareBoxIsAQuestionNotAMistake(t *testing.T) {
 	if err := newBoxCommand(boxDeps{}).Execute(env, nil); err != nil {
 		t.Fatalf("bare `cafe box` failed: %v", err)
 	}
-	if !strings.Contains(out.String(), "cafe box <enroll|status|plan|apply|logs|verify>") {
+	if !strings.Contains(out.String(), "cafe box <enroll|status|plan|apply|logs|verify|deploy|rollback>") {
 		t.Errorf("help does not carry its usage line:\n%s", out.String())
 	}
 	for _, verb := range []string{"enroll", "status", "plan", "apply", "logs", "verify"} {

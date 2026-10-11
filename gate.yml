@@ -86,10 +86,12 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^cafe: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 28, measured with `go list ./...` on this tree: internal/publish landed with W11 (cafe publish).
+      # 29, measured with `go list ./...` on this tree: internal/publish landed with W11
+      # (cafe publish), and internal/stack (the boxed stack, `cafe box deploy`
+      # and `cafe box rollback`) with the deploy packet.
       # The security and substance packages are pinned by name and existence:
       # emitter, box, boxd, agent, provider, run, resolve, scaffold, publish.
-      minimum: 28
+      minimum: 29
     - id: suite
       match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
       # 1259, measured with `./bin/prime` on this tree (28 packages, 1234 subtests, 8 skips).
@@ -101,13 +103,19 @@ gate:
       # internal/publish. W13 (cafe owner addressing) added top-level tests in
       # internal/resolve (the address read, the ambiguity retry, the wrong-owner
       # refusal), internal/publish (the 201 body's address) and internal/cli
-      # (the slash form).
-      minimum: 1259
+      # (the slash form). The deploy packet (internal/stack and its CLI
+      # verbs) added top-level tests in internal/stack — the shape on disk,
+      # the exclusive stage, the atomic switch, the flip-back, the keep count,
+      # the history document — and in internal/cli, where the two verbs are
+      # driven through the real router against an injected runner and a
+      # loopback edge rather than against a container runtime.
+      minimum: 1284
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # 1234, measured: internal/cve's classification tables, the cve CLI
-      # verbs, and W11's table-driven publish cases.
-      minimum: 1234
+      # 1240, measured: internal/cve's classification tables, the cve CLI
+      # verbs, W11's table-driven publish cases, and the deploy packet's
+      # refusal table and its end-to-end host-name cases.
+      minimum: 1240
 
     - id: live-tier
       match: '^cafe: live tier: [0-9]+ of 7 executed'

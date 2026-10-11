@@ -94,7 +94,10 @@ a run in which they passed.
 | `cafe box plan --json` | the install, phase by phase, with this box's position marked | **works** |
 | `cafe box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
 | `cafe box logs --json` | the box's own log: what happened, when, and to which phase | **works** |
+| `cafe box logs --release <id>` | one release's own log, followed by name | **works** |
 | `cafe box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
+| `cafe box deploy --build <name@sha256:…> --host <name>` | ship a pantry build to this box: stage it, switch traffic to it, roll back if it does not answer | **works** |
+| `cafe box rollback [<release-id>] [--service <name>]` | put the previous release back: one symlink, no rebuild, no control plane | **works** |
 | `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to box — the agent never sees the value | **works** |
 | `cafe provider status --json` | which providers this box is connected to, as box reports it; opens no envelope | **works** |
 | `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the ten documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |

@@ -201,7 +201,7 @@ func Deploy(ctx context.Context, s *Store, box Box, req Request) (Report, error)
 		return rep, fmt.Errorf("%s: %w %q — this box's edge has no route for it; add the route, or point the name at this box, before deploying", StepEdge, ErrNoRoute, req.Host)
 	}
 	if !host.ValidNow(now) {
-		return rep, fmt.Errorf("%s: %w for %q (routed %v, certificate valid until %s) — a deploy over an expired certificate proves rollback by breaking the site a second time", StepEdge, ErrNoCert, req.Host, host.Routed, certUntil(host))
+		return rep, fmt.Errorf("%s: %w for %q — %s — a deploy over an expired certificate proves rollback by breaking the site a second time", StepEdge, ErrNoCert, req.Host, certSentence(host))
 	}
 
 	before, err := s.History()
@@ -240,7 +240,8 @@ func Deploy(ctx context.Context, s *Store, box Box, req Request) (Report, error)
 		// as failed rather than deleted, because the operator's first
 		// question is "what broke" and the answer is on disk.
 		rel.Outcome = Failed
-		rel.EndedAt = now
+		ended := now
+		rel.EndedAt = &ended
 		if err := s.mark(rel); err != nil {
 			return rep, err
 		}
@@ -268,6 +269,10 @@ func Deploy(ctx context.Context, s *Store, box Box, req Request) (Report, error)
 		rep2, err2 := s.flipBack(rel, prev, err)
 		return rep2, err2
 	}
+	// The release that passed its gate is LIVE, and the report says so: a
+	// report that still read "staged" for a serving release would be a
+	// sentence nobody could act on during an incident.
+	rel.Outcome = Live
 
 	h, err := s.History()
 	if err != nil {
@@ -294,7 +299,8 @@ func Deploy(ctx context.Context, s *Store, box Box, req Request) (Report, error)
 // is serving now.
 func (s *Store) flipBack(failed Release, previous string, why error) (Report, error) {
 	failed.Outcome = Failed
-	failed.EndedAt = time.Now().UTC()
+	ended := time.Now().UTC()
+	failed.EndedAt = &ended
 	if err := s.mark(failed); err != nil {
 		return Report{}, err
 	}
@@ -338,14 +344,17 @@ func previousGood(h History) string {
 	return ""
 }
 
-// certUntil renders a certificate's expiry for a message, including the case
-// where there is none. "no certificate" and "expired at X" are different
-// sentences a reader acts on differently.
-func certUntil(h Host) string {
+// certSentence says which of the three host states applies, because "not
+// routed" and "routed but the certificate expired" send an operator to two
+// different places and a message that named neither would send them nowhere.
+func certSentence(h Host) string {
+	if !h.Routed {
+		return "the edge does not route it at all"
+	}
 	if h.CertNotAfter.IsZero() {
 		return "the edge holds no certificate for it"
 	}
-	return h.CertNotAfter.UTC().Format(time.RFC3339)
+	return "its certificate expired at " + h.CertNotAfter.UTC().Format(time.RFC3339)
 }
 
 // Rollback flips the pointer back, and that is the entire operation. It
@@ -399,7 +408,8 @@ func (s *Store) Rollback(target string, now time.Time) (Release, Report, error) 
 	for i := range h.Releases {
 		if h.Releases[i].ID == current {
 			h.Releases[i].Outcome = RolledBack
-			h.Releases[i].EndedAt = now
+			ended := now
+			h.Releases[i].EndedAt = &ended
 		}
 	}
 	if err := s.save(h); err != nil {

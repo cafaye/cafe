@@ -22,6 +22,19 @@ const (
 	logsDir     = "logs"
 )
 
+// ServiceDir is the directory one service's stack lives in, under the box's
+// stack root. It is a function of the service name and nothing else, so a box
+// that runs api and auth has two pointers and two histories and neither can
+// move the other.
+func ServiceDir(root, service string) string {
+	return filepath.Join(root, service)
+}
+
+// ReleasesDirName is the releases directory's name, exported because the box
+// needs to name it — the release directory a container mounts — and a caller
+// that rebuilt the path from a literal would be a second copy of the layout.
+const ReleasesDirName = releasesDir
+
 // historyVersion is the format of history.json. It exists so a box running an
 // older cafe can be told its history is in a shape it does not understand
 // rather than silently reading a field that moved.
@@ -79,8 +92,12 @@ type Release struct {
 	Secrets string `json:"secrets,omitempty"`
 	// StartedAt is when the release was staged.
 	StartedAt time.Time `json:"started_at"`
-	// EndedAt is when it stopped being current. Zero while it is live.
-	EndedAt time.Time `json:"ended_at,omitempty"`
+	// EndedAt is when it stopped being current. Nil while it is live, and a
+	// POINTER rather than a zero time because omitempty does not work on a
+	// time.Time struct — the zero value would be serialised into every
+	// release record as 0001-01-01T00:00:00Z, which is a date nobody can read
+	// and a fact nobody asked for.
+	EndedAt *time.Time `json:"ended_at,omitempty"`
 	// Outcome is what became of it.
 	Outcome Outcome `json:"outcome"`
 }
@@ -435,10 +452,24 @@ func (s *Store) Releases() ([]Release, error) {
 	return h.Releases, nil
 }
 
-// Switch flips the pointer. The link is written under a temporary name and
-// renamed over `current`, and that rename is the atomic step: at no instant
-// does the pointer name a directory that does not exist, which is what makes
-// a deploy have no window in which requests hit nothing.
+// Switch flips the pointer. The new content is written to a temporary file in
+// the same directory and renamed over the pointer, and that rename is the
+// atomic step: a concurrent reader sees either the old release id or the new
+// one, and never a partially written or absent pointer.
+//
+// # Why the pointer is a FILE and not a symlink
+//
+// Kamal's answer is a `current` symlink, and this repository's first
+// arrangement copied it — and a race test watching the pointer from another
+// goroutine went RED, which is what a ratchet is for. On APFS (any macOS box,
+// and therefore every developer machine this runs on) `rename()` over a
+// symlink has a window in which `readlink` on the destination returns EINVAL:
+// the swap is not a single atomic link operation there. A regular file
+// renamed over a regular file is atomic on every POSIX filesystem, because
+// rename is defined to be — so the pointer is a file holding the release id,
+// which is also more readable on the box (`cat current`) than a symlink a
+// person has to resolve. The release directory stays the immutable artifact;
+// only the pointer's representation changed.
 //
 // An empty id removes the pointer, which is a real state and not a failure:
 // a first deploy that failed its health gate leaves the box serving nothing
@@ -460,7 +491,7 @@ func (s *Store) Switch(id string) (Release, error) {
 	if !ok {
 		return Release{}, fmt.Errorf("%w: %s", ErrNoSuchRelease, id)
 	}
-	if err := switchLink(link, filepath.Join(releasesDir, id)); err != nil {
+	if err := writePointer(s.CurrentPath(), id); err != nil {
 		return Release{}, err
 	}
 	now := time.Now().UTC()
@@ -470,11 +501,12 @@ func (s *Store) Switch(id string) (Release, error) {
 			h.Releases[i].Outcome = Live
 			// A release that is serving again has not ended, whatever it was
 			// marked when it was switched away from.
-			h.Releases[i].EndedAt = time.Time{}
+			h.Releases[i].EndedAt = nil
 		default:
 			if h.Releases[i].Outcome == Live {
 				h.Releases[i].Outcome = Good
-				h.Releases[i].EndedAt = now
+				ended := now
+				h.Releases[i].EndedAt = &ended
 			}
 		}
 	}
@@ -485,47 +517,46 @@ func (s *Store) Switch(id string) (Release, error) {
 	return rel, nil
 }
 
-// switchLink is the atomic pointer write. The temporary name is in the same
+// writePointer is the atomic pointer write. The temporary file is in the same
 // directory as the pointer so the rename is within one filesystem — a
 // cross-device rename is not atomic and, on Linux, not permitted at all.
-func switchLink(link, target string) error {
+func writePointer(link, id string) error {
 	dir := filepath.Dir(link)
 	tmp, err := os.CreateTemp(dir, ".current-*")
 	if err != nil {
 		return fmt.Errorf("switch the current pointer: %w", err)
 	}
 	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if _, err := tmp.WriteString(id + "\n"); err != nil {
+		tmp.Close()
+		return fmt.Errorf("switch the current pointer: %w", err)
+	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
 		return fmt.Errorf("switch the current pointer: %w", err)
 	}
-	if err := os.Remove(tmpName); err != nil {
-		return fmt.Errorf("switch the current pointer: %w", err)
-	}
-	if err := os.Symlink(target, tmpName); err != nil {
-		os.Remove(tmpName)
+	if err := os.Chmod(tmpName, 0o644); err != nil {
 		return fmt.Errorf("switch the current pointer: %w", err)
 	}
 	if err := os.Rename(tmpName, link); err != nil {
-		os.Remove(tmpName)
-		return fmt.Errorf("switch the current pointer to %s: %w", target, err)
+		return fmt.Errorf("switch the current pointer to %s: %w", id, err)
 	}
 	return nil
 }
 
-// SwitchTarget is what the pointer says, read through the symlink rather
-// than the history. It exists so a test can prove the two agree: a history
-// that names one release while the symlink names another is the exact
-// disagreement that would serve traffic nobody asked for.
+// SwitchTarget is what the pointer says. It exists so a test can prove the
+// history and the pointer agree: a history that names one release while the
+// pointer names another is the exact disagreement that would serve traffic
+// nobody asked for.
 func (s *Store) SwitchTarget() (string, error) {
-	dst, err := os.Readlink(s.CurrentPath())
+	raw, err := os.ReadFile(s.CurrentPath())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return "", nil
 		}
 		return "", fmt.Errorf("read the current pointer: %w", err)
 	}
-	return filepath.Base(dst), nil
+	return strings.TrimSpace(string(raw)), nil
 }
 
 // Prune drops releases of one service beyond the keep count, newest-first,

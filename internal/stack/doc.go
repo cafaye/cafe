@@ -14,17 +14,28 @@
 // # The shape on disk
 //
 //	<root>/releases/<id>/release.json   one per release, written once
-//	<root>/current -> releases/<id>      the traffic pointer, switched atomically
+//	<root>/current                    the traffic pointer: one release id, switched by rename
 //	<root>/history.json                 every release, in order, plus last_good
 //	<root>/logs/<id>.log                one release's own log
 //
-// The pointer is a RELATIVE symlink, so the whole tree can be moved, archived
-// or rsynced elsewhere and still resolve. The switch is a symlink to a
-// temporary name followed by a rename over the pointer: rename is atomic on
-// the POSIX filesystems a box runs, and that is the entire mechanism by which
-// a deploy has no downtime window. There is no moment at which `current` is
-// missing or half-written, which is why the deploy can flip traffic on a live
-// host without staging a second copy of anything.
+// A ROOT IS ONE SERVICE'S. A box runs several — gateway, identity, pantry —
+// and each one has its own current pointer, its own history and its own keep
+// count, because a release of one is not a release of another: the rollback
+// of api must not move auth's traffic, and a single pointer over both would
+// make that impossible. So the box's stack root holds one directory per
+// service and Open is handed the service's own, which is what `cafe box
+// deploy` derives from the build it was given.
+//
+// The pointer is a FILE holding one release id, switched by writing a temporary
+// file and renaming it over it. Rename of a regular file within one filesystem
+// is atomic on every POSIX filesystem — a reader sees the old id or the new
+// one and never a partial write — which is the entire mechanism by which a
+// deploy has no downtime window and a rollback takes the time a rename takes.
+// The first arrangement was Kamal's: a `current` symlink, and a race test
+// watching it from another goroutine went red, because `rename()` over a
+// symlink has a measurable EINVAL window on APFS. The file is also the more
+// readable shape: `cat current` is the answer, not a symlink a person has to
+// resolve.
 //
 // # Never overwrite in place
 //

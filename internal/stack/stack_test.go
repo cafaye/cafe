@@ -17,16 +17,23 @@ import (
 // a release for a host the edge does not route would show up as a release
 // directory on disk.
 type fakeBox struct {
-	// dir is the stack this box serves. The box installs the secret set INTO
-	// the release directory, which is the whole point: the value lives where
-	// the release reads it and nowhere else.
-	dir         *Store
+	// dirs holds one stack per service, for a box that runs several. The box
+	// installs the secret set INTO the release directory of the service the
+	// release belongs to, which is the whole point: the value lives where the
+	// release reads it and nowhere else.
+	dirs        map[string]*Store
 	hosts       map[string]Host
 	served      int
 	ready       int
 	failReady   string
 	failServe   string
 	secretValue string
+	// content is what each release serves, keyed by the DIGEST of its image,
+	// because Serve writes the bytes while the deploy runs and a test can only
+	// know the release id afterwards. It is how a test makes a "service
+	// change": the second release serves different bytes, and the edge answers
+	// with whatever `current` resolves to.
+	content map[string]string
 }
 
 func (f *fakeBox) Host(name string) (Host, bool) {
@@ -36,15 +43,32 @@ func (f *fakeBox) Host(name string) (Host, bool) {
 
 func (f *fakeBox) Serve(_ context.Context, rel Release) error {
 	f.served++
-	if f.failServe != "" && f.failServe == rel.ID {
+	if f.failServe != "" && f.failServe == digestOf(rel.Image) {
 		return errors.New("the container would not start")
 	}
-	return os.WriteFile(filepath.Join(f.dir.releaseDir(rel.ID), "env"), []byte(f.secretValue), 0o600)
+	dir := f.dirs[rel.Service].releaseDir(rel.ID)
+	if err := os.WriteFile(filepath.Join(dir, "env"), []byte(f.secretValue), 0o600); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "index.html"), []byte(f.content[digestOf(rel.Image)]), 0o644)
+}
+
+// digestOf is the digest half of a pinned reference, which is what a build is
+// identified by — so the content a release serves is keyed by the artifact and
+// not by the release, which a test only learns after the deploy has run.
+func digestOf(image string) string {
+	if at := strings.Index(image, "@"); at >= 0 {
+		return image[at+1:]
+	}
+	return image
 }
 
 func (f *fakeBox) Ready(_ context.Context, rel Release) error {
 	f.ready++
-	if f.failReady != "" && f.failReady == rel.ID {
+	// The gate fails on the ARTIFACT, not on the release id: a release id
+	// carries the clock, and a test that computed the expected id would be
+	// asserting a fact about the second the deploy happened to run in.
+	if f.failReady != "" && f.failReady == digestOf(rel.Image) {
 		return errors.New("readiness probe timed out")
 	}
 	return nil
@@ -59,18 +83,17 @@ func routed(name string) Host {
 	return Host{Name: name, Routed: true, CertSubject: name, CertNotAfter: time.Now().Add(90 * 24 * time.Hour)}
 }
 
-func newBox(t *testing.T, s *Store, hosts ...string) *fakeBox {
+// newBox is a box serving SEVERAL stacks — the real shape, where one box runs
+// gateway and identity and pantry and each has its own releases. The stack a
+// release is staged into is chosen by its service, so a test can deploy two
+// services through one seam.
+func newBox(t *testing.T, byService map[string]*Store, hosts ...string) *fakeBox {
 	t.Helper()
-	b := &fakeBox{dir: s, hosts: map[string]Host{}, secretValue: "s3cret-value-never-recorded"}
+	b := &fakeBox{dirs: byService, hosts: map[string]Host{}, secretValue: "s3cret-value-never-recorded"}
 	for _, h := range hosts {
 		b.hosts[h] = routed(h)
 	}
 	return b
-}
-
-func testBuild(t *testing.T, digest string) Build {
-	t.Helper()
-	return Build{Registry: "ghcr.io", Name: "cafaye/api", Tag: "1.4.0", Digest: digest}
 }
 
 var (
@@ -81,7 +104,15 @@ var (
 
 func openStack(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(t.TempDir())
+	return openStackIn(t, t.TempDir(), "api")
+}
+
+// openStackIn is one service's stack under a shared box root, which is the
+// shape a real box has: several services, each with its own pointer, and none
+// of them able to move another's traffic.
+func openStackIn(t *testing.T, root, service string) *Store {
+	t.Helper()
+	s, err := Open(ServiceDir(root, service))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -106,7 +137,7 @@ func request(host string, digest string) Request {
 // box and is served on the host name it answers on.
 func TestADeployStagesAServesBAndSwitchesC(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 
 	if _, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA)); err != nil {
 		t.Fatalf("first deploy: %v", err)
@@ -114,20 +145,21 @@ func TestADeployStagesAServesBAndSwitchesC(t *testing.T) {
 	if b.served != 1 {
 		t.Fatalf("the box served %d releases, want 1", b.served)
 	}
-	// The pointer is a RELATIVE symlink, so the tree can be moved.
-	dst, err := os.Readlink(s.CurrentPath())
-	if err != nil {
-		t.Fatalf("read the pointer: %v", err)
-	}
-	if !strings.HasPrefix(dst, releasesDir+string(filepath.Separator)) {
-		t.Fatalf("the pointer is %q, which is not relative to the releases directory", dst)
-	}
-	if _, err := os.Stat(filepath.Join(s.Root, dst)); err != nil {
-		t.Fatalf("the pointer does not resolve inside the tree: %v", err)
-	}
 	cur, err := s.Current()
 	if err != nil {
 		t.Fatalf("current: %v", err)
+	}
+	// The pointer is a FILE naming the release, and the release directory it
+	// names is really there.
+	tgt, err := s.SwitchTarget()
+	if err != nil {
+		t.Fatalf("read the pointer: %v", err)
+	}
+	if tgt != cur.ID {
+		t.Fatalf("the pointer names %q and the current release is %q", tgt, cur.ID)
+	}
+	if _, err := os.Stat(s.ReleasePath(tgt)); err != nil {
+		t.Fatalf("the pointer does not resolve to a release on disk: %v", err)
 	}
 	if cur.Outcome != Live {
 		t.Fatalf("the current release is %q, want %q", cur.Outcome, Live)
@@ -149,7 +181,7 @@ func TestADeployStagesAServesBAndSwitchesC(t *testing.T) {
 // purpose, and the history says so afterwards.
 func TestAReleaseThatFailsItsGateFlipsBack(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 
 	first, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
 	if err != nil {
@@ -158,7 +190,7 @@ func TestAReleaseThatFailsItsGateFlipsBack(t *testing.T) {
 
 	req := request("api.cafaye.test", digestB)
 	req.Now = req.Now.Add(time.Minute)
-	b.failReady = "20261011T120100Z-" + shortDigest(digestB)
+	b.failReady = digestB
 
 	rep, err := Deploy(context.Background(), s, b, req)
 	if err == nil {
@@ -224,7 +256,7 @@ func TestAReleaseThatFailsItsGateFlipsBack(t *testing.T) {
 // count is the whole proof.
 func TestRollbackFlipsThePointerAndNothingElse(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 
 	one, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
 	if err != nil {
@@ -276,7 +308,7 @@ func TestRollbackFlipsThePointerAndNothingElse(t *testing.T) {
 // cannot express: going back two releases, by id.
 func TestARollbackToANamedReleaseGoesBackTwo(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 
 	one := request("api.cafaye.test", digestA)
 	if _, err := Deploy(context.Background(), s, b, one); err != nil {
@@ -307,7 +339,7 @@ func TestARollbackToANamedReleaseGoesBackTwo(t *testing.T) {
 // costs nothing and says which host.
 func TestARefusalLeavesNothingStaged(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 
 	for name, tc := range map[string]struct {
 		req  Request
@@ -349,7 +381,7 @@ func TestARefusalLeavesNothingStaged(t *testing.T) {
 // rollback by breaking the site a second time.
 func TestAnExpiredCertificateIsARefusal(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 	// The clock the deploy runs against is the one its request carries, so an
 	// expiry in the FUTURE of the wall clock can still be in the past of the
 	// deploy — and a test that forgot that would prove nothing.
@@ -400,7 +432,7 @@ func TestAReleaseIsNeverOverwrittenInPlace(t *testing.T) {
 func TestKeepNReleasesAndNeverThePointer(t *testing.T) {
 	s := openStack(t)
 	s.Keep = 3
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 
 	first, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
 	if err != nil {
@@ -460,7 +492,7 @@ func TestKeepNReleasesAndNeverThePointer(t *testing.T) {
 // anything would pass by leaking nothing at all.
 func TestTheReleaseRecordCarriesNoSecretValue(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 
 	rep, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
 	if err != nil {
@@ -506,8 +538,8 @@ func TestTheReleaseRecordCarriesNoSecretValue(t *testing.T) {
 // rather than serving the release that just failed.
 func TestAFailedFirstDeployServesNothing(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
-	b.failReady = "20261011T120000Z-" + shortDigest(digestA)
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b.failReady = digestA
 
 	rep, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
 	if !errors.Is(err, ErrGateFailed) {
@@ -528,8 +560,8 @@ func TestAFailedFirstDeployServesNothing(t *testing.T) {
 // not even be brought up: never in front of traffic, still on the record.
 func TestAFailedServeIsRecordedAndNothingServes(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
-	b.failServe = "20261011T120000Z-" + shortDigest(digestA)
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b.failServe = digestA
 
 	_, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
 	if !errors.Is(err, ErrGateFailed) {
@@ -552,7 +584,7 @@ func TestAFailedServeIsRecordedAndNothingServes(t *testing.T) {
 // the disagreement that would serve traffic nobody asked for.
 func TestThePointerAndTheHistoryAgree(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 	for _, d := range []string{digestA, digestB} {
 		req := request("api.cafaye.test", d)
 		req.Now = req.Now.Add(time.Minute)
@@ -577,7 +609,7 @@ func TestThePointerAndTheHistoryAgree(t *testing.T) {
 // with `cat` has a version, a current, a last_good and the releases.
 func TestTheHistoryIsAWholeDocument(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 	if _, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA)); err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
@@ -627,7 +659,7 @@ func TestTheKeepCountSurvivesAReopen(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	s.Keep = 7
-	b := newBox(t, s, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
 	if _, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA)); err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
