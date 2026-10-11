@@ -11,7 +11,7 @@ import (
 
 // The rule names in a Violation. A JSON Schema keyword ("pattern", "enum",
 // "additionalProperties") means core's schema rejected the field; a
-// `convention.` name means a caf rule rejected a combination of fields. The
+// `convention.` name means a cafe rule rejected a combination of fields. The
 // prefix is the whole point: a caller can tell which contract is unhappy by
 // string alone, and neither set can be mistaken for the other.
 const (
@@ -38,7 +38,7 @@ const (
 
 	// RuleAPIDocumentMissing is the decidable rest of core's openapi-conventions
 	// versioning rule: a manifest that names an OpenAPI document names one that
-	// exists. Every downstream reader resolves that same path — `caf gen`, the
+	// exists. Every downstream reader resolves that same path — `cafe gen`, the
 	// contract tests, pantry — and a path that resolves to nothing is a contract
 	// surface that is declared and not there, which is the failure mode core's
 	// rule 3 exists to prevent and the one this package could not otherwise see.
@@ -55,7 +55,7 @@ const (
 // Violation is one reason a manifest is not acceptable. Exactly one of these
 // reaches a terminal: the first one, in the order the schema reports.
 type Violation struct {
-	// Keyword is the JSON Schema keyword that failed, or a caf rule name.
+	// Keyword is the JSON Schema keyword that failed, or a cafe rule name.
 	Keyword string
 	// Path is where in the manifest it failed, in the dotted form a manifest
 	// reader uses (exposes/events/0). Empty is the document itself.
@@ -87,7 +87,7 @@ func keywordOf(e *jsonschema.ValidationError) string {
 // messageOf renders the validator's typed error as a sentence. The library
 // formats these through a golang.org/x/text message printer, which would make
 // a CLI's output depend on a translation catalogue; every kind a manifest can
-// fail is formatted here instead, in words caf chose.
+// fail is formatted here instead, in words cafe chose.
 func messageOf(e *jsonschema.ValidationError) string {
 	switch k := e.ErrorKind.(type) {
 	case *kind.Type:

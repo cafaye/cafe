@@ -26,7 +26,7 @@ const (
 )
 
 // String is the report word. The leading colon is deliberate: it is what makes
-// `caf reclaim | grep :failed` a usable one-liner, and it cannot collide with a
+// `cafe reclaim | grep :failed` a usable one-liner, and it cannot collide with a
 // resource name.
 func (o Outcome) String() string {
 	switch o {

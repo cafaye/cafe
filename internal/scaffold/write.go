@@ -15,7 +15,7 @@ import (
 // that ordering is the whole point: a writer that stopped halfway would leave
 // a half-scaffolded project whose next run refuses the half it had already
 // done, which is a project a human has to reason about. This is the same
-// contract `caf gen` holds — refused before anything is written, so the report
+// contract `cafe gen` holds — refused before anything is written, so the report
 // is about every file at once rather than about whichever happened to be
 // first.
 func Write(root string, files []File, force bool) error {
@@ -71,9 +71,9 @@ func writeOne(root string, file File) error {
 // destroy work, and a scaffolder that can do it silently is a scaffolder
 // nobody runs twice.
 func errRefusedExisting(existing []string) error {
-	return fmt.Errorf("nothing was written; %s already exist. caf does not overwrite a scaffolded project "+
+	return fmt.Errorf("nothing was written; %s already exist. cafe does not overwrite a scaffolded project "+
 		"without being told to, and it cannot tell a generated one from one somebody wrote under the same "+
-		"name — so look at %s first, then re-run with -force if they are caf's",
+		"name — so look at %s first, then re-run with -force if they are cafe's",
 		plural(len(existing), "file"), strings.Join(existing, ", "))
 }
 

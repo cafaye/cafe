@@ -37,7 +37,7 @@ import (
 //
 // # The credential is the agent token, and invariant 2 applies to it
 //
-// `caf agent token create` (W1-P4) mints a scoped, rotatable token and the
+// `cafe agent token create` (W1-P4) mints a scoped, rotatable token and the
 // claim screen (W2-P1) picks its scopes. `Authority` is the seam that turns
 // one into a Principal; the real implementation forwards the bearer to
 // identity's introspection, which is the same thing identity does for every
@@ -53,7 +53,7 @@ import (
 // The scope vocabulary. These are the strings a claim screen grants and a
 // token carries, and they are written down here rather than transcribed into
 // the handlers because a scope a tool needs is a decision about the tool.
-// Identity owns the set; caf's table says which of them answers which tool.
+// Identity owns the set; cafe's table says which of them answers which tool.
 const (
 	// ScopeRead is health, logs, rollout state and status: the facts an agent
 	// reads to decide what to do. It is the default scope a claimed agent is
@@ -169,7 +169,7 @@ func bearerVerifier(a Authority, skew time.Duration) auth.TokenVerifier {
 	return func(ctx context.Context, token string, _ *http.Request) (*auth.TokenInfo, error) {
 		if strings.TrimSpace(token) == "" {
 			return nil, fmt.Errorf("%w: no bearer token; pass `Authorization: Bearer <token>` "+
-				"with a token `caf agent token create` minted", auth.ErrInvalidToken)
+				"with a token `cafe agent token create` minted", auth.ErrInvalidToken)
 		}
 		principal, err := a.Authenticate(ctx, token)
 		if err != nil {
@@ -182,7 +182,7 @@ func bearerVerifier(a Authority, skew time.Duration) auth.TokenVerifier {
 			// a credential would put it in a response body, and this repository
 			// already holds that a token never appears in one.
 			return nil, fmt.Errorf("%w: the token was not accepted (%s). Pass `Authorization: Bearer <token>` "+
-				"with a token `caf agent token create` minted, or `caf agent token rotate` if this one was "+
+				"with a token `cafe agent token create` minted, or `cafe agent token rotate` if this one was "+
 				"rotated or revoked", auth.ErrInvalidToken, redactToken(err.Error(), token))
 		}
 		if principal == nil {
@@ -202,7 +202,7 @@ func bearerVerifier(a Authority, skew time.Duration) auth.TokenVerifier {
 				"credential handed to an agent to be short-TTL, so this one is refused", auth.ErrInvalidToken)
 		}
 		if principal.expired(skew) {
-			return nil, fmt.Errorf("%w: the token expired at %s; run `caf agent token rotate`",
+			return nil, fmt.Errorf("%w: the token expired at %s; run `cafe agent token rotate`",
 				auth.ErrInvalidToken, principal.Expires.Format(time.RFC3339))
 		}
 		return principal.tokenInfo(), nil
@@ -225,11 +225,11 @@ func authenticate(a Authority, next http.Handler, skew time.Duration) http.Handl
 		return next
 	}
 	sdkLayer := auth.RequireBearerToken(bearerVerifier(a, skew), &auth.RequireBearerTokenOptions{
-		// Every scope decision is caf's, per tool. A blanket list here would
+		// Every scope decision is cafe's, per tool. A blanket list here would
 		// refuse a read-only agent before it could call the one tool it is
 		// allowed to call, and the refusal would name the wrong scope.
 		Scopes: nil,
-		// ResourceMetadataURL is OAuth's discovery document. caf's caller
+		// ResourceMetadataURL is OAuth's discovery document. cafe's caller
 		// already holds a token and already knows how to mint one, so the
 		// header would advertise a flow nobody is going to run.
 		ResourceMetadataURL: "",
@@ -237,14 +237,14 @@ func authenticate(a Authority, next http.Handler, skew time.Duration) http.Handl
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimSpace(r.Header.Get("Authorization")) == "" {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="caf mcp"`)
+			w.Header().Set("WWW-Authenticate", `Bearer realm="cafe mcp"`)
 			w.WriteHeader(http.StatusUnauthorized)
 			// The body is the actionable half. An agent that asked for a
 			// remote tool with no credential already has the command that
 			// fixes it, so naming it ends the interaction in one round trip
 			// rather than after a trip to a log.
-			_, _ = w.Write([]byte("caf mcp: no bearer token. Pass `Authorization: Bearer <token>` " +
-				"with a token `caf agent token create` minted; an unauthenticated caller is refused " +
+			_, _ = w.Write([]byte("cafe mcp: no bearer token. Pass `Authorization: Bearer <token>` " +
+				"with a token `cafe agent token create` minted; an unauthenticated caller is refused " +
 				"because this transport answers reads about a box that is running something.\n"))
 			return
 		}
@@ -269,7 +269,7 @@ func principalFor(req *sdk.CallToolRequest, standing *Principal) *auth.TokenInfo
 
 // principalOf reads a Principal back out of a resolved *auth.TokenInfo. The
 // subject and the scopes are carried in Extra because TokenInfo has nowhere
-// else to put a caf principal subject, and the round trip is asserted rather
+// else to put a cafe principal subject, and the round trip is asserted rather
 // than assumed — the one place a nil map would be read as "no scopes".
 func principalOf(info *auth.TokenInfo) *Principal {
 	if info == nil {
@@ -311,22 +311,22 @@ func (s *Server) checkScope(toolName string, req *sdk.CallToolRequest) error {
 	info := principalFor(req, s.standing)
 	switch {
 	case s.authority == nil && info == nil:
-		return fmt.Errorf("%w: caf mcp %s needs the %q scope and this server was started with no "+
+		return fmt.Errorf("%w: cafe mcp %s needs the %q scope and this server was started with no "+
 			"authority to authenticate a caller with; point it at an identity origin (CAF_IDENTITY_URL) "+
 			"so the transport can verify a bearer", ErrDenied, toolName, scope)
 	case info == nil:
-		return fmt.Errorf("%w: caf mcp %s needs the %q scope and this caller presented no token; "+
-			"run `caf agent token create` on the agent that holds the credential", ErrDenied, toolName, scope)
+		return fmt.Errorf("%w: cafe mcp %s needs the %q scope and this caller presented no token; "+
+			"run `cafe agent token create` on the agent that holds the credential", ErrDenied, toolName, scope)
 	}
 
 	principal := principalOf(info)
 	if principal.expired(s.skew) {
-		return fmt.Errorf("%w: caf mcp %s: %s's token expired at %s; run `caf agent token rotate`",
+		return fmt.Errorf("%w: cafe mcp %s: %s's token expired at %s; run `cafe agent token rotate`",
 			ErrDenied, toolName, principal.Subject, principal.Expires.Format(time.RFC3339))
 	}
 	if !principal.Allows(scope) {
-		return fmt.Errorf("%w: caf mcp %s needs the %q scope and %s holds %s; a human grants it on the "+
-			"claim screen (`caf agent register` prints the URL), or run `caf agent token create` for a "+
+		return fmt.Errorf("%w: cafe mcp %s needs the %q scope and %s holds %s; a human grants it on the "+
+			"claim screen (`cafe agent register` prints the URL), or run `cafe agent token create` for a "+
 			"token carrying it",
 			ErrDenied, toolName, scope, principal.Subject, scopeWords(principal.Scopes))
 	}

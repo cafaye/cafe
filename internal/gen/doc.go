@@ -1,4 +1,4 @@
-// Package gen is `caf gen`: what caf writes out of a manifest, derived from
+// Package gen is `cafe gen`: what cafe writes out of a manifest, derived from
 // the contracts cafaye/core owns.
 //
 // The package exists so that a tool reading a manifest and a tool writing files
@@ -12,7 +12,7 @@
 //
 // ONE TARGET, and the reason is a division of labour rather than an omission.
 //
-// `caf gen telemetry` emits the OpenTelemetry setup a service needs in order to
+// `cafe gen telemetry` emits the OpenTelemetry setup a service needs in order to
 // honour core's telemetry contract: the per-signal attribute allowlists, the
 // prohibition on unbounded identifiers, the resource attributes, the
 // `error.type` vocabulary, the span-name bound, the `*_OTEL_ENDPOINT` variable
@@ -20,10 +20,10 @@
 // vendored at `internal/contract/schemas/telemetry/` rather than written down
 // here — see that file's header and `contract.Telemetry`.
 //
-// What caf deliberately does NOT emit, and the reasons are the substance of
+// What cafe deliberately does NOT emit, and the reasons are the substance of
 // this package rather than gaps in it:
 //
-//   - An SDK client. core's `docs/manifest-conventions.md` says `caf gen`
+//   - An SDK client. core's `docs/manifest-conventions.md` says `cafe gen`
 //     generates SDKs, and that is still true — but a typed client means
 //     transpiling an OpenAPI document, and no manifest field records one. The
 //     contract a manifest carries is the API path, and what is behind that path
@@ -35,7 +35,7 @@
 //     generators of the same file is precisely the drift core's manifest
 //     conventions exist to prevent: "six tools answering six questions by
 //     reading six bespoke config files is how cross-drift starts". Go is
-//     implemented here because caf is Go and a generator whose only output
+//     implemented here because cafe is Go and a generator whose only output
 //     nothing compiles is a generator with a bug in it; the other five are
 //     refused by name, with a sentence naming where the template is.
 //
@@ -44,7 +44,7 @@
 //     `examples/valid/telemetry/redaction.json` rather than in the schema. A
 //     schema says the list has at least six entries; it does not say what they
 //     are. Emitting a policy would mean inventing the one document in this area
-//     that is a manager's to write. What caf emits instead is the part that IS
+//     that is a manager's to write. What cafe emits instead is the part that IS
 //     in the schema and is mechanically the valuable half — the list of words
 //     that may not appear inside an allowlisted name — as a check the generated
 //     setup performs on itself.
@@ -65,7 +65,7 @@ import (
 	"github.com/cafaye/cafe/internal/contract"
 )
 
-// ErrUnknownTarget is a target caf does not generate. It is a distinct sentinel
+// ErrUnknownTarget is a target cafe does not generate. It is a distinct sentinel
 // so a caller can exit 2 for it — the person typed something that is not a
 // target, which is a usage mistake — while an unsupported language for a real
 // target is a refusal about the project and exits 1.
@@ -76,7 +76,7 @@ import (
 // ignore one of them.
 var ErrUnknownTarget = errors.New("unknown target")
 
-// ErrUnsupportedLanguage is a target caf implements for some languages and not
+// ErrUnsupportedLanguage is a target cafe implements for some languages and not
 // for others. A refusal rather than a silent no-op and rather than an English
 // file written into a service whose toolchain cannot build it.
 var ErrUnsupportedLanguage = errors.New("unsupported language")
@@ -88,7 +88,7 @@ var ErrUnsupportedLanguage = errors.New("unsupported language")
 // this target generates for" and the other is "add `exposes.api` to the
 // manifest, or this target is not the one you want".
 //
-// caf's own tree is in this state: caf is a binary, not a service, and its
+// cafe's own tree is in this state: cafe is a binary, not a service, and its
 // manifest says so by omitting `exposes` entirely.
 var ErrNoHTTPSurface = errors.New("no HTTP surface")
 
@@ -98,7 +98,7 @@ var ErrNoHTTPSurface = errors.New("no HTTP surface")
 // Bytes rather than a template is the whole rendering decision. The alternative
 // is a template language, which would put a second thing to learn between the
 // person reading a generated file and the person reading the generator, and
-// whose error messages would name a line in a string nobody can diff. caf
+// whose error messages would name a line in a string nobody can diff. cafe
 // writes its compose document by hand for the same reason (`internal/dev/
 // render.go`), and a generated file is read and diffed exactly as much.
 type File struct {
@@ -137,7 +137,7 @@ func (o Output) Paths() []string {
 	return paths
 }
 
-// targets is every target `caf gen` knows, and what each one is for.
+// targets is every target `cafe gen` knows, and what each one is for.
 //
 // One entry per target, and each carries the word that names the thing it did
 // not do — because a help line that says "generate telemetry" and a body that
@@ -162,7 +162,7 @@ var targets = []struct {
 	},
 }
 
-// TargetNames are the targets `caf gen` knows, sorted.
+// TargetNames are the targets `cafe gen` knows, sorted.
 func TargetNames() []string {
 	names := make([]string, 0, len(targets))
 	for _, target := range targets {
@@ -179,7 +179,7 @@ func TargetNames() []string {
 // vendored core contract, `chart` reads the service's environment as
 // NAME=VALUE pairs from repeated -env flags. A target ignores the field it
 // does not use, and a caller with none of either passes the zero value —
-// which is what `caf gen chart` does when no -env flag was given.
+// which is what `cafe gen chart` does when no -env flag was given.
 type TargetOptions struct {
 	// Spec is the vendored core telemetry contract. Only `telemetry` reads
 	// it; a caller that already holds one passes it rather than paying for a
@@ -201,7 +201,7 @@ func Generate(target string, manifest contract.Manifest, opts TargetOptions) (Ou
 	case "telemetry":
 		return telemetry(manifest, opts.Spec)
 	default:
-		return Output{}, fmt.Errorf("%w: caf gen %s (run \"caf gen\" for the target list)", ErrUnknownTarget, target)
+		return Output{}, fmt.Errorf("%w: cafe gen %s (run \"cafe gen\" for the target list)", ErrUnknownTarget, target)
 	}
 }
 
@@ -223,13 +223,13 @@ func refuses(target string, manifest contract.Manifest, note string) (Output, er
 	language := manifest.Language()
 	supported := supportedLanguages(target)
 	if slicesContains(supported, language) {
-		return Output{}, fmt.Errorf("caf gen %s: %w: %s", target, ErrUnsupportedLanguage, language)
+		return Output{}, fmt.Errorf("cafe gen %s: %w: %s", target, ErrUnsupportedLanguage, language)
 	}
 	if note != "" {
-		return Output{}, fmt.Errorf("caf gen %s: %w: this manifest is written in %s. caf generates %s for %s only; %s",
+		return Output{}, fmt.Errorf("cafe gen %s: %w: this manifest is written in %s. cafe generates %s for %s only; %s",
 			target, ErrUnsupportedLanguage, language, target, strings.Join(supported, ", "), note)
 	}
-	return Output{}, fmt.Errorf("caf gen %s: %w: this manifest is written in %s. caf generates %s for %s only",
+	return Output{}, fmt.Errorf("cafe gen %s: %w: this manifest is written in %s. cafe generates %s for %s only",
 		target, ErrUnsupportedLanguage, language, target, strings.Join(supported, ", "))
 }
 

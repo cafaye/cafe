@@ -7,7 +7,7 @@ import (
 	"github.com/cafaye/cafe/internal/lock"
 )
 
-// `caf lock <path>` writes `caf.lock` and `caf lock --verify <path>` checks it.
+// `cafe lock <path>` writes `caf.lock` and `cafe lock --verify <path>` checks it.
 //
 // One command with a flag rather than two commands, because they are the same
 // question asked at two moments — "what do this tree's declarations add up to?"
@@ -32,13 +32,13 @@ func newLockCommand() *Command {
 	c := &Command{
 		Name:    "lock",
 		Summary: "pin this tree's specs, vendored schemas and generated clients, and check the pins",
-		Usage:   "caf lock <path> [--verify]",
+		Usage:   "cafe lock <path> [--verify]",
 		LongHelp: `Writes ` + lock.FileName + ` at the root of the tree: one entry per file the tree
 DECLARES, with its kind and the SHA-256 of its bytes.
 
   spec             ` + "`cafaye.yml`" + `, and the OpenAPI document ` + "`exposes.api`" + ` names
   vendored-schema  every *.json under ` + "`internal/contract/schemas`" + `
-  generated-client every path ` + "`caf gen`" + ` writes for THIS manifest
+  generated-client every path ` + "`cafe gen`" + ` writes for THIS manifest
   rule-bundle      ` + "`gate.yml`" + `, when the tree has one
 
 Nothing here is guessed from a filename. The generated paths are read out of
@@ -62,7 +62,7 @@ diff between two locks is a diff between two trees, not between two runs.`,
 	}
 	c.Run = func(args []string, env *Env) error {
 		// Exactly one argument, and it is required rather than defaulting to
-		// ".". `caf doctor [path]` defaults because a doctor run in the wrong
+		// ".". `cafe doctor [path]` defaults because a doctor run in the wrong
 		// directory still reports something useful; a lock written to the wrong
 		// directory is a lockfile that is wrong from the moment it is created,
 		// and a default would make that the easy path.
@@ -81,13 +81,13 @@ diff between two locks is a diff between two trees, not between two runs.`,
 func runLockWrite(root string, env *Env) error {
 	built, err := lock.Build(root, toolVersion(env))
 	if err != nil {
-		return fmt.Errorf("caf lock: %w", err)
+		return fmt.Errorf("cafe lock: %w", err)
 	}
 	path, err := lock.Write(root, built)
 	if err != nil {
-		return fmt.Errorf("caf lock: %w", err)
+		return fmt.Errorf("cafe lock: %w", err)
 	}
-	fmt.Fprintf(env.Stdout, "caf lock: wrote %s — %s\n", path, built.Describe())
+	fmt.Fprintf(env.Stdout, "cafe lock: wrote %s — %s\n", path, built.Describe())
 	return nil
 }
 
@@ -96,16 +96,16 @@ func runLockWrite(root string, env *Env) error {
 // `errReported` rather than an error: the report IS the output, it has already
 // been said in full on stdout, and putting it on stderr as well would duplicate
 // every sentence into the stream CI greps. It still exits 1 — something was
-// checked and it did not pass, which is the whole claim `caf lock --verify`
+// checked and it did not pass, which is the whole claim `cafe lock --verify`
 // makes.
 func runLockVerify(root string, env *Env) error {
 	existing, err := lock.Read(root)
 	if err != nil {
-		return fmt.Errorf("caf lock --verify: %w", err)
+		return fmt.Errorf("cafe lock --verify: %w", err)
 	}
 	report, err := lock.Verify(root, existing)
 	if err != nil {
-		return fmt.Errorf("caf lock --verify: %w", err)
+		return fmt.Errorf("cafe lock --verify: %w", err)
 	}
 	fmt.Fprint(env.Stdout, report.String())
 	if !report.OK() {
@@ -114,15 +114,15 @@ func runLockVerify(root string, env *Env) error {
 	return nil
 }
 
-// toolVersion is what goes in a lock's `tool` field: the caf that wrote it.
+// toolVersion is what goes in a lock's `tool` field: the cafe that wrote it.
 //
 // The semver and NOT `Version.String()`, which also carries the commit. Two
 // reasons, and the first is the one that matters: `0.0.0-dev` already says the
-// half a reader needs, which is whether this lock was written by a released caf
+// half a reader needs, which is whether this lock was written by a released cafe
 // or by a working tree of one, and a commit adds a second thing that changes on
 // every commit without changing what was pinned. A lock is a record about
 // bytes; the bytes are the sha256 fields, and a second field that churns makes
 // the diff of two locks noisier than the difference it is describing.
 func toolVersion(env *Env) string {
-	return fmt.Sprintf("caf %s", env.Version.Semver)
+	return fmt.Sprintf("cafe %s", env.Version.Semver)
 }

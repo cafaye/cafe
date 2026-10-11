@@ -22,7 +22,7 @@ import (
 	"github.com/cafaye/cafe/internal/boxd"
 )
 
-// `caf boxd` at the command layer: the wiring, the refusals, and the file
+// `cafe boxd` at the command layer: the wiring, the refusals, and the file
 // contract the enrollment flow (W2-P6) writes against. The daemon itself, the
 // whitelist and the mTLS are proven in internal/boxd — these cases are about
 // this binary behaving like every other subcommand: flags parsed, a usage
@@ -202,8 +202,8 @@ func TestBoxdRefusesAnUnenrolledBox(t *testing.T) {
 	if err == nil {
 		t.Fatal("an unenrolled box was allowed to run the daemon")
 	}
-	if !strings.Contains(err.Error(), "caf box enroll --token") {
-		t.Errorf("err = %q; want it to name `caf box enroll --token …` as the fix", err)
+	if !strings.Contains(err.Error(), "cafe box enroll --token") {
+		t.Errorf("err = %q; want it to name `cafe box enroll --token …` as the fix", err)
 	}
 	if !strings.Contains(err.Error(), missing) {
 		t.Errorf("err = %q; want it to name the identity path it looked for", err)
@@ -242,7 +242,7 @@ func TestBoxdBadInvocationsAreUsageErrors(t *testing.T) {
 	}
 }
 
-// TestTheIdentityFileIsTheSeam pins the document `caf box enroll` writes and
+// TestTheIdentityFileIsTheSeam pins the document `cafe box enroll` writes and
 // this daemon reads. It is the contract between the two packets: a document
 // with a certificate and key beside it loads as the enrolled identity, and
 // the key source serves the pair for one handshake. When W2-P6 lands, this is
@@ -400,7 +400,7 @@ func TestBoxdHelpRendersTheDaemonShape(t *testing.T) {
 	var out bytes.Buffer
 	printHelp(&out, newBoxdCommand(boxdDeps{}))
 
-	for _, want := range []string{"caf boxd", "no listener", "caf box enroll", "-identity", "-once"} {
+	for _, want := range []string{"cafe boxd", "no listener", "cafe box enroll", "-identity", "-once"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("help does not mention %q:\n%s", want, out.String())
 		}

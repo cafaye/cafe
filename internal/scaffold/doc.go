@@ -1,6 +1,6 @@
-// Package scaffold is the template catalog behind `caf new` and `caf init`.
+// Package scaffold is the template catalog behind `cafe new` and `cafe init`.
 //
-// The W6 plan calls caf "the rails command": `caf new` is `rails new`, and a
+// The W6 plan calls cafe "the rails command": `cafe new` is `rails new`, and a
 // generator is only as good as the catalog behind it. This package is that
 // catalog. It holds the templates, the index that names them, the pure render
 // that turns a template plus a name into files, and the one write that puts
@@ -24,7 +24,7 @@
 //   - **The manifest is validated by the same code that lints it.** Every
 //     render ends in contract.CheckData before a byte is written, so a template
 //     that emits a manifest core's schema rejects is a red test rather than a
-//     scaffolded project that fails `caf contract lint` on a developer's
+//     scaffolded project that fails `cafe contract lint` on a developer's
 //     machine. It is also the credential rule: the schema is
 //     `additionalProperties: false`, so a manifest carrying a token does not
 //     validate, and the generator has no path to write one that passes.

@@ -31,7 +31,7 @@ owner:
 `
 
 // alphaRegistry is a registry with one service, alpha, that itself depends on
-// the infrastructure. The closure caf walks is the registry's own graph, so a
+// the infrastructure. The closure cafe walks is the registry's own graph, so a
 // dependency declared here is a dependency the plan must render.
 func alphaRegistry() Catalog {
 	return Catalog{
@@ -119,7 +119,7 @@ func depsOf(svc Service) map[string]string {
 	return deps
 }
 
-// The whole point of `caf dev`: a manifest in, a compose document out, with
+// The whole point of `cafe dev`: a manifest in, a compose document out, with
 // every field the manifest and the registry implied actually present. The
 // document is asserted whole, because a compose file is read as a file — a
 // per-field assertion would pass with the keys in the wrong order and produce
@@ -127,7 +127,7 @@ func depsOf(svc Service) map[string]string {
 func TestPlanRendersTheComposeDocument(t *testing.T) {
 	stack := mustPlan(t, stackManifest, alphaRegistry(), Options{Build: buildGo})
 
-	want := `# caf dev — the local stack for "stack-dev", generated from cafaye.yml.
+	want := `# cafe dev — the local stack for "stack-dev", generated from cafaye.yml.
 # Do not edit: every run rewrites this file. The manifest is the
 # source of truth; this is what it turned into.
 name: stack-dev
@@ -668,7 +668,7 @@ func TestPlanIsDeterministic(t *testing.T) {
 }
 
 // The compose project name is what keeps two stacks apart, and it defaults to
-// the service name so `caf dev` twice in a row reconciles the same project
+// the service name so `cafe dev` twice in a row reconciles the same project
 // instead of starting a second copy beside the first.
 func TestPlanProjectName(t *testing.T) {
 	tests := []struct {
@@ -710,7 +710,7 @@ func TestPlanWithNoImageAndNoDockerfile(t *testing.T) {
 	}
 }
 
-// A service the registry knows how to run needs no Dockerfile: `caf dev` in a
+// A service the registry knows how to run needs no Dockerfile: `cafe dev` in a
 // repository that is not checked out — a machine running the stack for a
 // colleague — uses the published image.
 func TestPlanUsesTheRegistryImageForTheProjectService(t *testing.T) {
@@ -790,7 +790,7 @@ func TestPlanWiresTheConnectionURLs(t *testing.T) {
 }
 
 // A registry entry that sets its own environment keeps it: the registry is
-// where a service's real configuration lives, and caf's local default is a
+// where a service's real configuration lives, and cafe's local default is a
 // floor, not an override.
 func TestPlanKeepsRegistryEnvironmentOverTheLocalDefault(t *testing.T) {
 	registry := alphaRegistry()
@@ -1039,7 +1039,7 @@ func coreFixture(t *testing.T, name string) []byte {
 }
 
 // A published port is a promise that something answers on it. A repository that
-// declares no OpenAPI document is a binary, a worker or a library — caf itself
+// declares no OpenAPI document is a binary, a worker or a library — cafe itself
 // is one — and printing localhost:8080 for it is a URL that refuses every
 // connection. The container port is still the language's, so anything on the
 // stack network can reach it.
@@ -1070,14 +1070,14 @@ owner:
 		},
 		{
 			name: "a binary publishes nothing",
-			document: `name: caf
+			document: `name: cafe
 description: A command line, not a service.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/caf.git
+  url: git@github.com:cafaye/cafe.git
 owner:
-  team: caf
+  team: cafe
 `,
 			wantPort:     8080,
 			wantPublish:  0,
@@ -1122,17 +1122,17 @@ owner:
 // for a service that declares no HTTP surface. It is the flag the port-conflict
 // message points at, so it has to reach a service with no port of its own.
 func TestPlanPortOverridePublishesEvenWithoutAnHTTPSurface(t *testing.T) {
-	stack := mustPlan(t, `name: caf
+	stack := mustPlan(t, `name: cafe
 description: A command line.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/caf.git
+  url: git@github.com:cafaye/cafe.git
 owner:
-  team: caf
+  team: cafe
 `, alphaRegistry(), Options{Build: buildGo, HostPort: 8080})
 
-	root := service(t, stack, "caf")
+	root := service(t, stack, "cafe")
 	if root.Published != 8080 {
 		t.Errorf("published = %d, want 8080", root.Published)
 	}
@@ -1147,7 +1147,7 @@ owner:
 // `dependencies: ["postgres"]` is what anybody writes for a service that needs
 // a database, and it was refused:
 //
-//	caf dev: unknown dependency: postgres depends on postgres, and no
+//	cafe dev: unknown dependency: postgres depends on postgres, and no
 //	registry says how to run it
 //
 // Postgres is not a cafaye service, so no catalog can answer for it and none
@@ -1332,12 +1332,12 @@ func between(t *testing.T, document, after, before string) string {
 // ---------------------------------------------------------------------------
 // The variable a service reads its database address from.
 //
-// The defect these cover was measured, not imagined. `caf dev` hardcoded
+// The defect these cover was measured, not imagined. `cafe dev` hardcoded
 // `DATABASE_URL` for every service wired to postgres and its comment said the
 // name was "the conventional one every language in the platform already reads".
 // Reading each service's own config loader on 2026-10-04 says otherwise:
 // identity and darkroom read `DATABASE_URL`, pantry reads `PANTRY_DATABASE_URL`
-// and muse reads `MUSE_DATABASE_URL`. So every `caf dev` run in a project that
+// and muse reads `MUSE_DATABASE_URL`. So every `cafe dev` run in a project that
 // depends on pantry produced a pantry container that exited on boot.
 //
 // The fix is that the catalog entry names the variable. These four tests are the
@@ -1395,7 +1395,7 @@ func TestAServiceThatDeclaresItsDatabaseVariableIsHandedThatName(t *testing.T) {
 	// moved — a fix that also changed the address would be a second defect
 	// wearing this one's clothes.
 	if _, present := env["DATABASE_URL"]; present {
-		t.Errorf("pantry was also handed DATABASE_URL = %q; caf handed it two names for one address and the service reads neither of the wrong ones", env["DATABASE_URL"])
+		t.Errorf("pantry was also handed DATABASE_URL = %q; cafe handed it two names for one address and the service reads neither of the wrong ones", env["DATABASE_URL"])
 	}
 	// Scoped to pantry's own block. A document-wide `DATABASE_URL` search would
 	// be red here for the right behaviour rather than the wrong one: `stack`
@@ -1441,7 +1441,7 @@ func TestAServiceThatDeclaresNothingStillGetsTheConventionalName(t *testing.T) {
 		}
 	}
 	// The count, and it is a count rather than a set because the point is that
-	// caf adds no name beyond the ones it means to add. ALPHA_OTEL_ENDPOINT is
+	// cafe adds no name beyond the ones it means to add. ALPHA_OTEL_ENDPOINT is
 	// one of those — it is core's only endpoint contract, rendered for every
 	// cafaye service — so it is in the four and its absence would be the defect
 	// `internal/dev/telemetry_test.go` covers. What must not appear is a fifth
@@ -1578,7 +1578,7 @@ func TestADeclaredNameAppliesToAnyPieceOfInfrastructure(t *testing.T) {
 }
 
 // A catalog entry's own `environment` still wins over the address, because a
-// service that hands caf a literal connection string has said more than a
+// service that hands cafe a literal connection string has said more than a
 // declaration of what to call one. The declaration chooses the NAME; it does not
 // outrank a value the registry supplied.
 func TestARegistryValueStillOutranksTheDeclaredAddress(t *testing.T) {

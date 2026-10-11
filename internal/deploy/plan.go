@@ -6,25 +6,25 @@ import (
 	"strings"
 )
 
-// The plan is the whole decision `caf deploy` makes: which commands run, in what
+// The plan is the whole decision `cafe deploy` makes: which commands run, in what
 // order, and what each one is for.
 //
 // It is pure. It reads no file, opens no socket and runs no command, which is
 // what lets a test assert the exact argv of a dry run without a container
 // runtime, a registry or an SSH connection anywhere in sight.
 
-// Deployment is everything caf knows about a deployment before it asks Kamal
+// Deployment is everything cafe knows about a deployment before it asks Kamal
 // anything: where the project is, which Kamal config describes it, and which
 // secrets file supplies its values. It is a fact about files that exist, not
 // about a config that has been resolved — resolving one is Kamal's job and needs
 // Kamal, because the config is an ERB template.
 type Deployment struct {
-	// Dir is the absolute project directory. Everything caf names to the user is
+	// Dir is the absolute project directory. Everything cafe names to the user is
 	// absolute so a message is unambiguous about which project it is about.
 	Dir string
 	// Service is the service being deployed. It came from the manifest, not from
 	// the Kamal config: Kamal's `service:` is the container name and the two are
-	// not required to agree, so caf reads the contract it owns.
+	// not required to agree, so cafe reads the contract it owns.
 	Service string
 	// Env is the Kamal destination — the environment overlay. Empty means no
 	// overlay, which is a different thing from an overlay named "default".
@@ -45,7 +45,7 @@ type Deployment struct {
 	// .kamal/secrets.staging and does NOT read .kamal/secrets. Measured on kamal
 	// 2.12.0: a project with only .kamal/secrets and an environment set fails at
 	// boot with "Secret 'x' not found, no secret files (.kamal/secrets-common,
-	// .kamal/secrets.staging) provided". So caf resolves and names them rather
+	// .kamal/secrets.staging) provided". So cafe resolves and names them rather
 	// than assuming the one `kamal init` creates.
 	Secrets []string
 
@@ -56,7 +56,7 @@ type Deployment struct {
 	//
 	// A deploy under Argo is a values commit: the image tag in chart/values.yaml
 	// and the version in Chart.yaml ride inside the OCI chart artifact, and the
-	// only lever caf has is a commit to the service repository. See argo.go.
+	// only lever cafe has is a commit to the service repository. See argo.go.
 	// Values is chart/values.yaml, the values the OCI chart ships.
 	Values string
 	// Chart is Chart.yaml, the chart's own version document.
@@ -88,13 +88,13 @@ type Deployment struct {
 	Account string
 }
 
-// Options is one `caf deploy` invocation's choices, after flag parsing.
+// Options is one `cafe deploy` invocation's choices, after flag parsing.
 type Options struct {
 	// Env is the Kamal destination, "" for none.
 	Env string
 	// Version pins the release. Empty means Kamal decides — in practice the short
 	// commit hash of the repository it is run from — and the plan says so rather
-	// than inventing one, because a version caf guessed is a version nobody can
+	// than inventing one, because a version cafe guessed is a version nobody can
 	// roll back to by name.
 	Version string
 }
@@ -227,10 +227,10 @@ func (p Plan) Step(name string) Step {
 
 // PlanFor builds the ordered command sequence for one invocation.
 //
-// # The shape of it is the answer to "does caf reimplement Kamal's deploy?"
+// # The shape of it is the answer to "does cafe reimplement Kamal's deploy?"
 //
 // It does not. Kamal owns build, push, proxy boot, the rolling rollout, the
-// health gate and the rollback, and caf runs exactly one Kamal command that
+// health gate and the rollback, and cafe runs exactly one Kamal command that
 // changes anything: `kamal setup`. Everything else here either proves the deploy
 // engine is present, reads back what it resolved, or reports.
 //
@@ -240,7 +240,7 @@ func (p Plan) Step(name string) Step {
 // and `deploy` is the last of those three alone. Choosing `deploy` would mean a
 // customer following the recommended path on a fresh VPS and getting a service
 // with no database — a failure whose message is a connection refused from
-// inside the app and whose cause is a step caf chose not to take. `setup` is
+// inside the app and whose cause is a step cafe chose not to take. `setup` is
 // idempotent about the accessories (Kamal skips an accessory whose container
 // already exists, `Kamal::Cli::Accessory#boot`), so it is also the right command
 // for every deploy after the first, and there is exactly one path to tell
@@ -312,15 +312,15 @@ func PlanFor(dep Deployment, o Options) Plan {
 // state to read — the sync-wait already reads the Application's status, so a
 // failure is reported from what it saw rather than from a second question.
 //
-// # The lever, and the second move caf cannot make
+// # The lever, and the second move cafe cannot make
 //
 // The deploy lever is the chart version: bump the image tag, bump Chart.yaml,
 // commit, push. The Application's targetRevision must then move to the new
-// version — which is a second commit in kit, or an operator action, and caf
-// does not make it. caf writes commits, never the cluster, and never another
+// version — which is a second commit in kit, or an operator action, and cafe
+// does not make it. cafe writes commits, never the cluster, and never another
 // repository's tree. So the sync-wait refuses to claim a deploy that leaves
 // targetRevision behind: it polls until the Application's synced revision
-// matches the version caf committed, and reports the status it stopped at
+// matches the version cafe committed, and reports the status it stopped at
 // when it does not.
 func PlanForArgo(dep Deployment, o Options) Plan {
 	newVersion := o.Version
@@ -336,7 +336,7 @@ func PlanForArgo(dep Deployment, o Options) Plan {
 		"in Chart.yaml from %s to %s. The chart version is the OCI tag: the publish workflow\n"+
 		"pushes it, and the Application's targetRevision must move to it for Argo to sync\n"+
 		"the new revision. That second move is a commit in kit or an operator action —\n"+
-		"caf writes commits, never the cluster, and never another repository's tree.",
+		"cafe writes commits, never the cluster, and never another repository's tree.",
 		dep.Service, newVersion, dep.Commit,
 		dep.ChartVersion, newVersion, dep.ChartVersion, newVersion)
 
@@ -396,7 +396,7 @@ func PlanForArgo(dep Deployment, o Options) Plan {
 }
 
 // bumpPatch bumps the patch component of a semantic version, which is the
-// release caf derives when the operator pins none. A chart version is a
+// release cafe derives when the operator pins none. A chart version is a
 // semantic version (helm refuses to package one that is not), so the bump is
 // the third dot-separated number. It is a derivation and not a judgement
 // call: the operator's --version outranks it, and the default only has to be
@@ -472,7 +472,7 @@ func destinationArgs(env string) []string {
 
 // versionArgs pins the release when the operator asked for one. Kamal's default
 // is the short commit hash of the repository it runs in, which is a good default
-// and not one caf should second-guess.
+// and not one cafe should second-guess.
 func versionArgs(version string) []string {
 	if version == "" {
 		return nil

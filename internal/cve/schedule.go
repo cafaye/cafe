@@ -11,7 +11,7 @@ import (
 )
 
 // Schedule is how often the CVE surface is computed. It is a duration rather
-// than a cron expression because the substrate has no cron daemon caf can
+// than a cron expression because the substrate has no cron daemon cafe can
 // drive, and the mechanism that puts this on a schedule is a line the
 // operator installs (see CronLine), which cron itself interprets.
 //
@@ -61,7 +61,7 @@ func ParseSchedule(text string) (Schedule, error) {
 }
 
 // String is the schedule as written, so a report prints what the caller asked
-// for rather than what caf parsed.
+// for rather than what cafe parsed.
 //
 // It expresses the interval in the largest unit that divides it evenly, so a
 // 90-minute schedule prints "90m" rather than Go's "1h30m0s". That is not
@@ -144,7 +144,7 @@ type State struct {
 	ScanSeconds float64 `json:"scan_seconds,omitempty"`
 }
 
-// StatePath is where the state lives, beside the other caf state. It follows
+// StatePath is where the state lives, beside the other cafe state. It follows
 // internal/cli/boxd.go's own resolution: the flag, then the environment, then
 // the user state directory.
 func StatePath(flagPath string) (string, error) {
@@ -158,7 +158,7 @@ func StatePath(flagPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("find the home directory: %w", err)
 	}
-	return filepath.Join(dir, ".config", "caf", "cve-state.json"), nil
+	return filepath.Join(dir, ".config", "cafe", "cve-state.json"), nil
 }
 
 // LoadState reads the schedule state. A missing file is the zero state, not an
@@ -174,7 +174,7 @@ func LoadState(path string) (State, error) {
 	}
 	var s State
 	if err := json.Unmarshal(raw, &s); err != nil {
-		// A torn state file is not a reason to refuse to scan. caf starts
+		// A torn state file is not a reason to refuse to scan. cafe starts
 		// over, which recomputes once, rather than failing forever on a file
 		// it cannot read — and it says so, because a schedule that silently
 		// restarted would be a schedule whose staleness nobody could see.
@@ -216,8 +216,8 @@ func SaveState(path string, s State) error {
 // CronLine is the line an operator installs to put this on a schedule.
 //
 // It is rendered rather than written to a crontab, and the reason is the
-// boundary this package stays inside: caf runs on the box's operator machine
-// and on the box, and a caf that edited root's crontab would be a caf that
+// boundary this package stays inside: cafe runs on the box's operator machine
+// and on the box, and a cafe that edited root's crontab would be a cafe that
 // changed how a box boots without being asked. The line is printed; the
 // operator installs it. That is also the Attended tier's own promise —
 // upgrade RECOMMENDATIONS the customer applies — applied to the schedule

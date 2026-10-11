@@ -28,7 +28,7 @@ const templatesRoot = "templates"
 const indexFile = "index.json"
 
 // Template is one entry in the catalog: the name a person types after
-// -template and the one line `caf new --help` lists.
+// -template and the one line `cafe new --help` lists.
 type Template struct {
 	Name    string `json:"name"`
 	Summary string `json:"summary"`
@@ -60,7 +60,7 @@ func LoadCatalog() (Catalog, error) {
 }
 
 // Names are the template names, in catalog order. They are what an unknown
-// name is answered with and what `caf new -template` offers.
+// name is answered with and what `cafe new -template` offers.
 func (c Catalog) Names() []string {
 	names := make([]string, 0, len(c.templates))
 	for _, t := range c.templates {

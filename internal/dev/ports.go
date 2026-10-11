@@ -17,7 +17,7 @@ type PortAllocator func(service string) (int, error)
 
 // AllocatorOver builds a PortAllocator from a held reservation. It is exported
 // because the wiring that satisfies the seam lives with the thing it is wired to
-// — `caf env up`, which owns the ledger and the registry — and the planner is
+// — `cafe env up`, which owns the ledger and the registry — and the planner is
 // not allowed to know about either.
 //
 // It hands out the reserved ports in order and refuses the (n+1)th request,

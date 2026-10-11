@@ -14,7 +14,7 @@ import (
 // process killed between the create and the close leaves a lock nobody can
 // release. flock has no such state because the kernel owns it.
 //
-// caf ships a Windows binary (.goreleaser.yml lists goos: windows), and rather
+// cafe ships a Windows binary (.goreleaser.yml lists goos: windows), and rather
 // than add a module for one syscall this is the weaker primitive, exactly as
 // internal/ledger's lock_other.go is. A drill store on Windows therefore needs
 // a person to delete store.lock after a crash, and every error says so in the
@@ -47,7 +47,7 @@ func (s *DrillStore) lockWith(int) (*drillLock, error) {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
-			return nil, fmt.Errorf("%w: another caf is writing the drill store at %s, and on this platform a lock left behind by a killed caf has to be removed by hand (rm %s)", ErrDrillHeld, s.dir, path)
+			return nil, fmt.Errorf("%w: another cafe is writing the drill store at %s, and on this platform a lock left behind by a killed cafe has to be removed by hand (rm %s)", ErrDrillHeld, s.dir, path)
 		}
 		return nil, fmt.Errorf("drill store: take the store lock: %w", err)
 	}

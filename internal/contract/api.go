@@ -36,7 +36,7 @@ const reservedPropertiesKey = "x-cafaye-reserved-properties"
 
 // httpMethods are the keys of a path item that are operations. Everything else
 // under a path — `parameters`, `summary`, `$ref`, an extension — is not one, and
-// treating one of those as a method would make `caf contract breaking` report a
+// treating one of those as a method would make `cafe contract breaking` report a
 // removal for every vendor extension anybody adds.
 var httpMethods = []string{"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 
@@ -333,7 +333,7 @@ func renderType(node map[string]any, schemas map[string]any, depth int) string {
 const maxRefDepth = 16
 
 // schemaAt resolves `#/components/schemas/NAME` against the document's own
-// schemas. Any other ref is not resolved: caf never fetches anything
+// schemas. Any other ref is not resolved: cafe never fetches anything
 // (AGENTS.md, "no network"), so a ref it cannot read is a ref it reports as
 // written.
 func schemaAt(ref string, schemas map[string]any) (any, bool) {

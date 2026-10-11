@@ -31,7 +31,7 @@ import (
 // routes from the `services` family to the `projects` family; this type is
 // the client half of that rename. The fields are otherwise UNCHANGED — `kind`,
 // `core`, `basePath`, `exposes`, `consumes`, `dependencies` and `owner` are in
-// pantry's schema and are not decoded here, because caf asks tier 1 for one
+// pantry's schema and are not decoded here, because cafe asks tier 1 for one
 // thing only (does this name exist, and is it public) and a struct that
 // carried the whole schema would be a second copy of it.
 //
@@ -89,7 +89,7 @@ func (e *PantryError) Error() string {
 }
 
 // HTTPPantry is the real Pantry: one GET against pantry per method, tier 1
-// anonymous and tier 2 behind the caller's caf token.
+// anonymous and tier 2 behind the caller's cafe token.
 type HTTPPantry struct {
 	// BaseURL is pantry's origin, e.g. https://pantry.cafaye.com. Empty is
 	// refused rather than defaulted: a client with no endpoint is a client
@@ -154,7 +154,7 @@ func (c HTTPPantry) ProjectByAddress(ctx context.Context, owner, name string) (*
 }
 
 // Coordinates is tier 2: one project's repository coordinates, behind the
-// caller's caf token. The token is presented as a bearer and kept for the
+// caller's cafe token. The token is presented as a bearer and kept for the
 // length of exactly this call.
 func (c HTTPPantry) Coordinates(ctx context.Context, name, token string) (*Coordinates, error) {
 	var coords Coordinates

@@ -58,7 +58,7 @@ type Accessory struct {
 //     YAML — a one-entry mapping — so parsing it is not recognising it, and
 //     "there are no accessories, therefore fine" is the one reading that must
 //     never be reached by accident.
-//   - An `:accessories:` block that is not a mapping of names. A shape caf cannot
+//   - An `:accessories:` block that is not a mapping of names. A shape cafe cannot
 //     understand is not a shape with nothing in it.
 //   - An `env.secret` that is not a list. Skipping it produces an EMPTY list, and
 //     an empty list on one side makes "every secret the config names is declared"
@@ -100,7 +100,7 @@ func InspectResolved(resolved, configFile string) (map[string]Accessory, error) 
 	block, ok := raw.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("kamal's resolved configuration for %s has an `:accessories:` block that is not a "+
-			"mapping of accessory names, so caf cannot read it", configFile)
+			"mapping of accessory names, so cafe cannot read it", configFile)
 	}
 
 	accessories := map[string]Accessory{}
@@ -108,7 +108,7 @@ func InspectResolved(resolved, configFile string) (map[string]Accessory, error) 
 		body, ok := block[name].(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("the %s accessory in kamal's resolved configuration for %s is not a mapping, "+
-				"so caf cannot read its `env.secret` or its `files:`", name, configFile)
+				"so cafe cannot read its `env.secret` or its `files:`", name, configFile)
 		}
 		secrets, err := secretList(body, name, configFile)
 		if err != nil {
@@ -132,7 +132,7 @@ func secretList(body map[string]any, accessory, configFile string) ([]string, er
 	envBody, ok := env.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("the %s accessory in kamal's resolved configuration for %s has an `env` that is "+
-			"not a mapping, so caf cannot read its `env.secret` list", accessory, configFile)
+			"not a mapping, so cafe cannot read its `env.secret` list", accessory, configFile)
 	}
 	raw, found := envBody["secret"]
 	if !found || raw == nil {
@@ -142,7 +142,7 @@ func secretList(body map[string]any, accessory, configFile string) ([]string, er
 	if !ok {
 		return nil, fmt.Errorf("the %s accessory in kamal's resolved configuration for %s has an `env.secret` "+
 			"that is not a list (%s).\n"+
-			"  kamal accepts a list of names, so anything else is either a typo or a kamal feature caf has not read. "+
+			"  kamal accepts a list of names, so anything else is either a typo or a kamal feature cafe has not read. "+
 			"Reading it as an empty list instead would make \"every secret is declared\" hold for the wrong reason",
 			accessory, configFile, strings.TrimSpace(scalar(raw)))
 	}

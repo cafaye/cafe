@@ -22,7 +22,7 @@ identity the sha256 pins; this file is the header instead.
 same way. `caf gen telemetry` reads the attribute allowlists, the prohibition,
 the resource contract, the `error.type` vocabulary, the span-name pattern and
 the endpoint/no-op contract out of **these files**, so every fact it emits is a
-fact core wrote rather than a fact somebody typed into caf. That is the whole
+fact core wrote rather than a fact somebody typed into cafe. That is the whole
 mechanism behind the generated artifact not drifting: a core bump that adds an
 `error.type` value or drops `db.operation` changes the bytes caf emits, and
 `internal/gen`'s drift gate turns red on the committed golden.
@@ -120,7 +120,7 @@ Then, in this order:
    `docs/manifest-conventions.md`, and check whether any cross-field rule
    changed meaning. A tightening that lands as prose first and as a pattern
    later is the normal shape of a core bump, and `conventions.go` is where it
-   lands in caf.
+   lands in cafe.
 4. Re-copy the fixtures from core's `examples/` and `cafaye.yml` — see
    [`../testdata/README.md`](../testdata/README.md).
 5. `go test ./...`, then `go run ./cmd/cafe contract lint .`

@@ -115,7 +115,7 @@ func with(t *testing.T, j job, name string) string {
 }
 
 // jobCallingKit is the one job that calls the shared workflow. The jobs that
-// do not are caf's own, and the difference is the whole point of this file.
+// do not are cafe's own, and the difference is the whole point of this file.
 func jobCallingKit(t *testing.T, wf workflow) (string, job) {
 	t.Helper()
 
@@ -277,7 +277,7 @@ func TestTheCoverageGateIsAboveZero(t *testing.T) {
 // TestTheGateJobRunsTheGateAndTheLockfileGuard is the one that keeps CI and a
 // developer from disagreeing. kit's shared go job runs its own three steps; the
 // repository's gate is `bin/prime`; and the two are not the same command. So
-// caf runs the gate itself, and the lockfile guard has to be in the *same* job —
+// cafe runs the gate itself, and the lockfile guard has to be in the *same* job —
 // a `git diff --exit-code` on a different runner is diffing a different tree,
 // which is a guard that can never fail and looks exactly like one that passed.
 func TestTheGateJobRunsTheGateAndTheLockfileGuard(t *testing.T) {

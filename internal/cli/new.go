@@ -7,7 +7,7 @@ import (
 	"github.com/cafaye/cafe/internal/scaffold"
 )
 
-// newOptions is the parsed flag state for `caf new`.
+// newOptions is the parsed flag state for `cafe new`.
 //
 // The first version of this command said the template catalog "lands with the
 // generator packet"; this is that packet, and the catalog is real: an embedded
@@ -23,14 +23,14 @@ func newNewCommand() *Command {
 	c := &Command{
 		Name:    "new",
 		Summary: "scaffold a new cafaye service or app",
-		Usage:   "caf new [flags] <name>",
+		Usage:   "cafe new [flags] <name>",
 		LongHelp: "Scaffolds a project into <name>/ from the template catalog embedded in this\n" +
 			"binary. The catalog is read from internal/scaffold: one directory per template,\n" +
 			"one index naming them, so adding a template is adding a directory and a row\n" +
 			"rather than a recompile of a table written beside the code.\n" +
 			"\n" +
 			"The scaffolded cafaye.yml is validated against core's manifest schema before\n" +
-			"anything is written — the same check `caf contract lint` runs — so a scaffolded\n" +
+			"anything is written — the same check `cafe contract lint` runs — so a scaffolded\n" +
 			"project cannot be one the contract rejects.\n" +
 			"\n" +
 			"<name> is the cafaye namespace name: lowercase kebab-case, 2-40 characters.\n" +
@@ -38,7 +38,7 @@ func newNewCommand() *Command {
 			"carries unless -name overrides it (a repository whose directory is not its\n" +
 			"service name is exactly that case).\n" +
 			"\n" +
-			"A second `caf new` over an existing project is refused rather than clobbered:\n" +
+			"A second `cafe new` over an existing project is refused rather than clobbered:\n" +
 			"the file in the way may be a manifest somebody wrote by hand, and -force is\n" +
 			"the deliberate override.",
 		Flags: func(fs *flag.FlagSet) {
@@ -58,7 +58,7 @@ func newNewCommand() *Command {
 			Force:    opts.force,
 		})
 		if err != nil {
-			return fmt.Errorf("caf new: %w", err)
+			return fmt.Errorf("cafe new: %w", err)
 		}
 		printScaffolded(env.Stdout, "new", out)
 		return nil

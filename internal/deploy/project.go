@@ -18,7 +18,7 @@ const (
 // about it, refusing with a message that names the file that is missing.
 //
 // It checks existence and nothing else. Whether a config is *valid* is
-// Kamal's answer and not caf's: caf has no ERB interpreter, and a caf that
+// Kamal's answer and not cafe's: cafe has no ERB interpreter, and a cafe that
 // guessed at a template would be a second opinion about a document it cannot
 // read.
 func Read(dir, service, env string) (Deployment, error) {
@@ -29,10 +29,10 @@ func Read(dir, service, env string) (Deployment, error) {
 
 	info, err := os.Stat(abs)
 	if err != nil {
-		return Deployment{}, fmt.Errorf("caf deploy: %s is not a directory caf can read: %w", abs, err)
+		return Deployment{}, fmt.Errorf("cafe deploy: %s is not a directory cafe can read: %w", abs, err)
 	}
 	if !info.IsDir() {
-		return Deployment{}, fmt.Errorf("caf deploy: %s is not a directory", abs)
+		return Deployment{}, fmt.Errorf("cafe deploy: %s is not a directory", abs)
 	}
 
 	dep := Deployment{
@@ -43,7 +43,7 @@ func Read(dir, service, env string) (Deployment, error) {
 	}
 
 	if !fileExists(dep.Config) {
-		return Deployment{}, fmt.Errorf("caf deploy: %s has no %s, so there is nothing to deploy.\n"+
+		return Deployment{}, fmt.Errorf("cafe deploy: %s has no %s, so there is nothing to deploy.\n"+
 			"  Copy it from cafaye/kit at the ref your kit.ref names: kit/templates/kamal/deploy.yml.erb -> config/deploy.yml\n"+
 			"  It is a Kamal configuration and needs the KIT_* variables in the shell that runs the deploy",
 			abs, filepath.Join("config", configName))
@@ -52,7 +52,7 @@ func Read(dir, service, env string) (Deployment, error) {
 	if env != "" {
 		dep.Overlay = filepath.Join(abs, "config", strings.TrimSuffix(configName, ".yml")+"."+env+".yml")
 		if !fileExists(dep.Overlay) {
-			return Deployment{}, fmt.Errorf("caf deploy: -env %s reads %s, which does not exist.\n"+
+			return Deployment{}, fmt.Errorf("cafe deploy: -env %s reads %s, which does not exist.\n"+
 				"  Kamal merges config/deploy.yml with that overlay, so the environment is a file and not a flag on its own.\n"+
 				"  Write it, or deploy without -env to use config/deploy.yml alone",
 				env, dep.Overlay)
@@ -71,7 +71,7 @@ func Read(dir, service, env string) (Deployment, error) {
 // project, in Kamal's own order. An empty environment means no destination, and
 // Kamal then reads the single default path.
 //
-// This is Kamal's rule, not caf's, and it is the one a caf that guessed would get
+// This is Kamal's rule, not cafe's, and it is the one a cafe that guessed would get
 // wrong in the way that hurts: telling an operator their credentials are in
 // .kamal/secrets when the environment they just asked for means Kamal will not
 // open it.

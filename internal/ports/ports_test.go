@@ -13,7 +13,7 @@ import (
 	"github.com/cafaye/cafe/internal/ledger"
 )
 
-// The block is the whole point: 15000-15999 is where caf publishes from, so two
+// The block is the whole point: 15000-15999 is where cafe publishes from, so two
 // parallel workers cannot land on the same port by accident and a port in the
 // block is recognisable as ours by looking at it.
 
@@ -28,7 +28,7 @@ func TestBlockBoundaries(t *testing.T) {
 		{name: "the last port", block: CAF, port: 15999, want: true},
 		{name: "one below", block: CAF, port: 14999, want: false},
 		{name: "one above", block: CAF, port: 16000, want: false},
-		{name: "the sprawl caf was fixing", block: CAF, port: 16001, want: false},
+		{name: "the sprawl cafe was fixing", block: CAF, port: 16001, want: false},
 		{name: "the other sprawl", block: CAF, port: 21101, want: false},
 		{name: "and the other", block: CAF, port: 55432, want: false},
 		{name: "a custom block's first", block: Block{2000, 2009}, port: 2000, want: true},
@@ -44,7 +44,7 @@ func TestBlockBoundaries(t *testing.T) {
 	}
 }
 
-// The block caf actually publishes from, stated as a test rather than only as a
+// The block cafe actually publishes from, stated as a test rather than only as a
 // variable, because the block is a contract with every other worker on the
 // machine: 15000-15999 is the range they all look at. Changing it is a decision
 // that has to be made in a diff, not an edit to a constant.
@@ -58,7 +58,7 @@ func TestTheBlockIsOneThousandFifteenThousandPorts(t *testing.T) {
 }
 
 // Every test below reserves real ports, and the machine this ran on has a
-// sibling worker publishing 15001 — inside the caf block. A unit test that
+// sibling worker publishing 15001 — inside the cafe block. A unit test that
 // reserves inside the block would be testing against a live neighbour's
 // database, so the registry's own cases use a scratch block far outside it and
 // only CAF itself is asserted to be 15000-15999.
@@ -124,7 +124,7 @@ func TestEveryReservedPortIsInsideTheBlock(t *testing.T) {
 	}
 }
 
-// A reservation is held. A second caf — a sibling worker in the same block, a
+// A reservation is held. A second cafe — a sibling worker in the same block, a
 // second repository on the same machine — must not be able to take the port
 // while the first is alive, and that is the property the whole design exists
 // for. It is a held lock rather than a probe, because a probe answers at one
@@ -141,7 +141,7 @@ func TestAReservationIsHeldForTheLifeOfTheSession(t *testing.T) {
 	defer func() { _ = held[0].Release() }()
 
 	if _, err := second.TryReserve(port); err == nil {
-		t.Fatal("a sibling caf took a port that is held; the hold is the mechanism and it did not hold")
+		t.Fatal("a sibling cafe took a port that is held; the hold is the mechanism and it did not hold")
 	} else if !errors.Is(err, ErrHeld) {
 		t.Errorf("err = %v, want it to wrap ErrHeld", err)
 	}
@@ -156,7 +156,7 @@ func TestAReservationIsHeldForTheLifeOfTheSession(t *testing.T) {
 	_ = taken.Release()
 }
 
-// A crashed caf's reservation has to be reclaimable without a janitor deciding
+// A crashed cafe's reservation has to be reclaimable without a janitor deciding
 // whose lock is stale. flock is owned by the open file description, so the
 // kernel releases it when the process dies — and the only way to prove that is
 // to have a process die holding it, which is why this test spawns one.
@@ -189,7 +189,7 @@ func TestAHolderThatDiesDoesNotStrandItsPort(t *testing.T) {
 
 // TestHolderChildReservesAndExits is the process the test above kills. It
 // reserves a port through the real registry, releases nothing, and returns —
-// which in a test binary is the closest thing there is to a caf that was killed
+// which in a test binary is the closest thing there is to a cafe that was killed
 // mid-session.
 func TestHolderChildReservesAndExits(t *testing.T) {
 	port := os.Getenv("CAF_PORT_HOLD_TEST_PORT")
@@ -378,7 +378,7 @@ func TestTheProberReportsItsOwnFailure(t *testing.T) {
 }
 
 // The registry has to be able to answer a caller's own port, not only pick one
-// for it. `caf dev -port N` is a developer's decision and caf does not override
+// for it. `cafe dev -port N` is a developer's decision and cafe does not override
 // it — it checks the port, refuses to be outside the block, and says what is
 // there.
 func TestTryReserveChecksAChosenPort(t *testing.T) {
@@ -400,7 +400,7 @@ func TestTryReserveChecksAChosenPort(t *testing.T) {
 	}
 }
 
-// A port the caller chose outside the block is refused by name. caf picking a
+// A port the caller chose outside the block is refused by name. cafe picking a
 // port outside the block is how 21101 and 55432 happened, and the check has to
 // be somewhere rather than in a convention.
 func TestAPortOutsideTheBlockIsRefused(t *testing.T) {
@@ -416,7 +416,7 @@ func TestAPortOutsideTheBlockIsRefused(t *testing.T) {
 }
 
 // The registry writes a ledger entry for the port it is holding, before anyone
-// can act on the port, so that a caf killed after reserving still has a record
+// can act on the port, so that a cafe killed after reserving still has a record
 // saying who had it. The reverse order is the leak this package exists to stop.
 func TestReserveRecordsThePortInTheLedger(t *testing.T) {
 	r := registryIn(t, Block{42000, 42009})
@@ -443,7 +443,7 @@ func TestReserveRecordsThePortInTheLedger(t *testing.T) {
 }
 
 // Releasing the reservation has to clear the ledger entry too, or a long
-// afternoon of `caf env up` leaves a ledger full of ports nobody holds.
+// afternoon of `cafe env up` leaves a ledger full of ports nobody holds.
 func TestReleaseClearsTheLedgerEntry(t *testing.T) {
 	r := registryIn(t, scratch)
 
@@ -487,7 +487,7 @@ func TestReserveIsAllOrNothing(t *testing.T) {
 }
 
 // The context is honoured. A sweep or a reservation that outlives its caller
-// has to stop, and the seam is the same one every other command in caf uses.
+// has to stop, and the seam is the same one every other command in cafe uses.
 func TestReserveStopsWhenTheContextIsDone(t *testing.T) {
 	r := registryIn(t, scratch)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -506,7 +506,7 @@ func registryIn(t *testing.T, block Block) *Registry {
 	return first
 }
 
-// twoRegistriesIn is two caf processes: two Registry values over one ledger
+// twoRegistriesIn is two cafe processes: two Registry values over one ledger
 // directory, which is exactly the state a worker and its sibling are in. The
 // hold has to be visible across them, so they must not get separate ledgers —
 // that would be two machines, which is a different test and an easier one.

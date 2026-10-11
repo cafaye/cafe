@@ -13,7 +13,7 @@ import (
 	"github.com/cafaye/cafe/internal/backup"
 )
 
-// `caf backup drill` at the command layer: the outcome is recorded, the machine
+// `cafe backup drill` at the command layer: the outcome is recorded, the machine
 // document is the machine document, and a failure is audible.
 //
 // The store itself is asserted in internal/backup; what is asserted here is
@@ -30,7 +30,7 @@ func drillEnv(t *testing.T, dir string, deps backupDeps, args ...string) (string
 	t.Chdir(dir)
 	err := c.Execute(env, append([]string{"drill"}, args...))
 	// codeFor first, and then the buffers are read: it is what prints the
-	// router's `caf: ...` line, so a helper that snapshotted stderr before
+	// router's `cafe: ...` line, so a helper that snapshotted stderr before
 	// calling it would assert on a stream that had not been written yet.
 	code := codeFor(*env, err)
 	return out.String(), errOut.String(), code
@@ -132,7 +132,7 @@ func TestADrillThatFailsIsRecordedWithTheReasonItFailedFor(t *testing.T) {
 	}
 	// The human half: one line naming the reason and where the record went.
 	for _, want := range []string{
-		"caf backup drill: caf-backup/drill-failed: identity did not prove a restore (failed)",
+		"cafe backup drill: caf-backup/drill-failed: identity did not prove a restore (failed)",
 		"recorded in " + drills,
 	} {
 		if !strings.Contains(stderr, want) {
@@ -169,12 +169,12 @@ func TestARefusedDrillIsRecordedAsARefusalAndNamesTheClause(t *testing.T) {
 	if !strings.Contains(stdout, string(backup.SecretNotDeclared)) {
 		t.Errorf("the refusal report is not on stdout:\n%s", stdout)
 	}
-	if !strings.Contains(stderr, "caf backup drill:") {
+	if !strings.Contains(stderr, "cafe backup drill:") {
 		t.Errorf("no alert line on stderr:\n%s", stderr)
 	}
 }
 
-// --json writes ONE document to stdout and moves caf's report to stderr, so a
+// --json writes ONE document to stdout and moves cafe's report to stderr, so a
 // script pipes stdout into a parser without skipping a line of prose. The
 // document is the record, and every field a consumer needs is in it.
 func TestJSONEmitsOneDocumentOnStdoutAndTheReportOnStderr(t *testing.T) {
@@ -187,7 +187,7 @@ func TestJSONEmitsOneDocumentOnStdoutAndTheReportOnStderr(t *testing.T) {
 		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
 	if !strings.Contains(stderr, "the snapshot restored") {
-		t.Errorf("caf's report is not on stderr, where a person reads it:\n%s", stderr)
+		t.Errorf("cafe's report is not on stderr, where a person reads it:\n%s", stderr)
 	}
 
 	var doc backup.DrillRecord
@@ -296,7 +296,7 @@ func TestARecordThatCannotBeWrittenFailsLoudly(t *testing.T) {
 	}
 }
 
-// A plain `caf backup` records too, so a manual drill is not forgotten either
+// A plain `cafe backup` records too, so a manual drill is not forgotten either
 // — and it says nothing on stderr, because that contract is the cycle's and not
 // this packet's to change.
 func TestAPlainBackupRecordsAndKeepsStderrEmpty(t *testing.T) {
@@ -324,7 +324,7 @@ func TestAPlainBackupRecordsAndKeepsStderrEmpty(t *testing.T) {
 }
 
 // The verb is dispatched by name, and the service is what is left after it — so
-// `caf backup drill <service>` and `caf backup <service>` cannot be confused
+// `cafe backup drill <service>` and `cafe backup <service>` cannot be confused
 // about which one ran.
 func TestTheDrillVerbIsDispatchedByName(t *testing.T) {
 	dir := project(t)
@@ -338,7 +338,7 @@ func TestTheDrillVerbIsDispatchedByName(t *testing.T) {
 	if !errors.Is(err, errUsage) {
 		t.Fatalf("err = %v, want errUsage", err)
 	}
-	if !strings.Contains(err.Error(), "caf backup drill") {
+	if !strings.Contains(err.Error(), "cafe backup drill") {
 		t.Errorf("the usage error does not read as the words the user typed: %v", err)
 	}
 }
@@ -396,7 +396,7 @@ func TestTwoDrillsBothLand(t *testing.T) {
 
 // The help a person reads before wiring a schedule has to say the four things
 // that are not obvious from the flags: where the record goes, that it is state
-// and not config, that caf is not a scheduler, and that the drill is what a
+// and not config, that cafe is not a scheduler, and that the drill is what a
 // schedule RUNS.
 func TestTheDrillHelpSaysWhatIsNotObvious(t *testing.T) {
 	for _, want := range []string{

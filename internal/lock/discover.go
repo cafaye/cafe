@@ -20,13 +20,13 @@ import (
 //	cafaye.yml               every project, and the manifest schema is core's
 //	internal/contract/schemas  schemas/README.md states the convention and the
 //	                          refresh procedure that is allowed to change them
-//	(whatever caf gen writes)  internal/gen is the single source of truth for
+//	(whatever cafe gen writes)  internal/gen is the single source of truth for
 //	                          its own output paths
 //	gate.yml                 core owns gate.schema.json and the checker; this is
 //	                          the document it checks
 //
 // The generated one is the only one read out of another package rather than
-// written here, and that is deliberate: a list of "the three files caf gen
+// written here, and that is deliberate: a list of "the three files cafe gen
 // writes" in this file would be a second copy of `internal/gen`'s idea of its
 // own output, and the failure when the two disagree is a lockfile that pins two
 // of three generated files, which is exactly the half-landed bump this package
@@ -91,11 +91,11 @@ func discover(root string) ([]Entry, error) {
 // Walked rather than listed, and that is the whole point: `schemas/README.md`
 // already carries a table of these files with their hashes, and a walk means
 // dropping core's seventh telemetry schema into the directory pins it on the
-// next `caf lock` with no second list to edit. A walk also means a stray
+// next `cafe lock` with no second list to edit. A walk also means a stray
 // `.DS_Store` is not pinned, because the extension filter is the filter.
 //
 // An absent directory is not an error. Most service repositories do not vendor
-// core's schemas — they consume them through `caf` — and a lock command that
+// core's schemas — they consume them through `cafe` — and a lock command that
 // refused a tree with no `internal/contract/schemas` would refuse almost every
 // tree it is meant to serve.
 func vendoredSchemas(root string) ([]Entry, error) {
@@ -141,15 +141,15 @@ func vendoredSchemas(root string) ([]Entry, error) {
 //
 // Every target `internal/gen` knows, so a second target needs no change here —
 // and that is the property being bought. `internal/gen.TargetNames()` is the
-// registry the `caf gen` help table is rendered from, so this walks exactly the
+// registry the `cafe gen` help table is rendered from, so this walks exactly the
 // set of targets a user can type.
 //
 // Two refusals are not errors, and both are refusals about a project rather
 // than about this tree:
 //
 //	ErrUnknownTarget          a target in the registry this build cannot
-//	                          generate; skipping it keeps `caf lock` working
-//	                          on a caf that is older than the generator list
+//	                          generate; skipping it keeps `cafe lock` working
+//	                          on a cafe that is older than the generator list
 //	ErrUnsupportedLanguage    the manifest is written in a language this target
 //	                          does not emit for, and kit's templates own that
 //	                          file instead. Nothing declared, nothing pinned —
@@ -158,7 +158,7 @@ func vendoredSchemas(root string) ([]Entry, error) {
 //	                          a file to a rule from somewhere else
 //
 // The file is hashed on disk, not from the generator's output, and that is
-// deliberate. `caf lock` is not a drift gate: it records what is there. Whether
+// deliberate. `cafe lock` is not a drift gate: it records what is there. Whether
 // what is there is what the generator WOULD emit is `internal/gen`'s question,
 // it already has a test for it, and a second implementation of it here would be
 // two answers to one question.
@@ -175,13 +175,13 @@ func generatedFiles(root string, manifest contract.Manifest) ([]Entry, error) {
 			// A target that has nothing to say about this project is skipped,
 			// and that is three different reasons: the target does not exist,
 			// the project's language is not one it generates for, and the
-			// project declares no surface the target generates against. caf's
+			// project declares no surface the target generates against. cafe's
 			// own tree is the third case — it is a binary, not a service, so
-			// `caf gen chart` refuses it and there is no chart/ to pin.
+			// `cafe gen chart` refuses it and there is no chart/ to pin.
 			if errors.Is(err, gen.ErrUnknownTarget) || errors.Is(err, gen.ErrUnsupportedLanguage) || errors.Is(err, gen.ErrNoHTTPSurface) {
 				continue
 			}
-			return nil, fmt.Errorf("caf gen %s: %w", target, err)
+			return nil, fmt.Errorf("cafe gen %s: %w", target, err)
 		}
 		for _, path := range out.Paths() {
 			entries = append(entries, Entry{Path: path, Kind: KindGeneratedClient})
@@ -191,12 +191,12 @@ func generatedFiles(root string, manifest contract.Manifest) ([]Entry, error) {
 	// A generated file that is not on disk cannot be hashed, and the honest
 	// answer is to refuse rather than to pin a zero. A tree whose manifest
 	// says `language: go` and which has no `internal/telemetry/` has not run
-	// `caf gen telemetry`, and a lock that pretended otherwise would go green
+	// `cafe gen telemetry`, and a lock that pretended otherwise would go green
 	// on a tree with nothing in it.
 	for _, entry := range entries {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(entry.Path))); err != nil {
-			return nil, fmt.Errorf("%s is pinned as generated but is not in the tree: run `caf gen %s` "+
-				"before `caf lock`, or the lock is recording a file nobody has", entry.Path, "telemetry")
+			return nil, fmt.Errorf("%s is pinned as generated but is not in the tree: run `cafe gen %s` "+
+				"before `cafe lock`, or the lock is recording a file nobody has", entry.Path, "telemetry")
 		}
 	}
 	return entries, nil

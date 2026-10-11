@@ -3,34 +3,34 @@
 # The schema is owned by cafaye/core, not by this repository: this file is
 # validated against the copy vendored at internal/contract/schemas. Do not add
 # fields here that core does not define — `additionalProperties: false` means a
-# field core has not declared is an error, and `caf contract lint` reports it.
+# field core has not declared is an error, and `cafe contract lint` reports it.
 #
 # Checked with:
 #
 #   go run ./cmd/cafe contract lint .
-name: caf
+name: cafe
 description: The cafaye platform CLI. One binary, one manifest, one set of contracts.
 
-# The language decides the container port caf publishes and the toolchain
-# `caf doctor` checks for: both are read from this field rather than from a list
+# The language decides the container port cafe publishes and the toolchain
+# `cafe doctor` checks for: both are read from this field rather than from a list
 # written beside the command, so the image and the port cannot disagree.
 language: go
 
-# The version of the core contract this was written against. `caf contract
+# The version of the core contract this was written against. `cafe contract
 # resolve` answers whether a given core version is inside it, and service CI
 # pins core to a release that is.
 core: ^0.2.0
 
-# caf is a binary, not a service: it exposes no HTTP surface and publishes no
+# cafe is a binary, not a service: it exposes no HTTP surface and publishes no
 # events, so `exposes` is omitted entirely. A repository that declares a
 # contract surface must declare a real one, and this one has none.
 dependencies: []
 
 repository:
-  url: git@github.com:cafaye/caf.git
+  url: git@github.com:cafaye/cafe.git
   defaultBranch: master
   visibility: public
 
 owner:
-  team: caf
-  contact: caf@cafaye.com
+  team: cafe
+  contact: cafe@cafaye.com

@@ -12,7 +12,7 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// Tests for `caf gen chart`.
+// Tests for `cafe gen chart`.
 //
 // The thing being defended here is the content of the chart, not the existence
 // of its files: a test that asserted "templates/ is non-empty" would pass
@@ -30,11 +30,11 @@ import (
 // the in-process render is the half that runs everywhere.
 
 // chartManifest is a minimal cafaye.yml with an HTTP surface, which is the
-// kind of project `caf gen chart` generates for.
+// kind of project `cafe gen chart` generates for.
 //
 // Written as a literal rather than read from this repository's own manifest so
-// a change to caf's `cafaye.yml` cannot quietly move every table in this file.
-// caf's own manifest declares no `exposes` at all — it is a binary, not a
+// a change to cafe's `cafaye.yml` cannot quietly move every table in this file.
+// cafe's own manifest declares no `exposes` at all — it is a binary, not a
 // service — which is itself one of the refusal cases below.
 const chartManifest = `name: courier
 description: Transactional email and push delivery.
@@ -64,7 +64,7 @@ func generateChart(t *testing.T, document string, env map[string]string) Output 
 
 	out, err := Generate("chart", loadManifest(t, document), TargetOptions{Env: env})
 	if err != nil {
-		t.Fatalf("caf gen chart: %v", err)
+		t.Fatalf("cafe gen chart: %v", err)
 	}
 	return out
 }
@@ -136,7 +136,7 @@ func TestTheGeneratorEmitsNoArgoApplication(t *testing.T) {
 
 	for _, file := range out.Files {
 		if file.Path == "chart/templates/application.yaml" {
-			t.Errorf("caf gen chart emitted %s — the substrate owns the Application "+
+			t.Errorf("cafe gen chart emitted %s — the substrate owns the Application "+
 				"(moon/DEPLOYMENT.md, \"Who owns the Application\"): one static per service, "+
 				"OCI-sourced, applied by install.sh. A generated one is a second Application "+
 				"of the same name in the same namespace, and the later apply wins", file.Path)
@@ -277,7 +277,7 @@ func TestResourcesAreSet(t *testing.T) {
 	}
 }
 
-// The container port is the language's, read from the same table `caf dev`
+// The container port is the language's, read from the same table `cafe dev`
 // uses — the two cannot disagree, because a chart whose port is a guess is a
 // chart whose Service points at nothing.
 func TestTheContainerPortComesFromTheLanguageTable(t *testing.T) {
@@ -332,7 +332,7 @@ func TestEnvFlagsReachValuesInNameOrder(t *testing.T) {
 }
 
 // A manifest with no env flags gets an empty env block, not a guess: a
-// service's configuration is its own, and caf will not invent it.
+// service's configuration is its own, and cafe will not invent it.
 func TestNoEnvFlagsMeansAnEmptyEnvBlock(t *testing.T) {
 	out := generateChart(t, chartManifest, nil)
 	values := string(findChartFile(t, out, chartValuesPath).Content)
@@ -350,7 +350,7 @@ func TestNoEnvFlagsMeansAnEmptyEnvBlock(t *testing.T) {
 // branch is currently reachable only for a specification repository — a
 // schema-valid `cobol` manifest cannot exist, and a test built on one would
 // be testing a document that cannot exist. The branch stays because core
-// adding a language is a schema change, not a caf change.
+// adding a language is a schema change, not a cafe change.
 func TestChartRefusesWhatItCannotDoAndSaysWhy(t *testing.T) {
 	for _, row := range []struct {
 		name     string
@@ -375,7 +375,7 @@ owner:
   contact: specs@cafaye.com
 `,
 			sentinel: ErrUnsupportedLanguage,
-			want:     []string{"caf gen chart", "spec"},
+			want:     []string{"cafe gen chart", "spec"},
 		},
 		{
 			name: "a library has no HTTP surface",
@@ -394,13 +394,13 @@ owner:
   contact: core@cafaye.com
 `,
 			sentinel: ErrNoHTTPSurface,
-			want:     []string{"caf gen chart", "exposes"},
+			want:     []string{"cafe gen chart", "exposes"},
 		},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			_, err := Generate("chart", loadManifest(t, row.document), TargetOptions{})
 			if err == nil {
-				t.Fatalf("caf gen chart accepted it and would have written files")
+				t.Fatalf("cafe gen chart accepted it and would have written files")
 			}
 			if !errors.Is(err, row.sentinel) {
 				t.Errorf("err = %v, want it to wrap %v", err, row.sentinel)
@@ -697,7 +697,7 @@ func TestTheIngressRendersFromValues(t *testing.T) {
 		for key, want := range map[string]string{
 			"app.kubernetes.io/name":       "courier",
 			"app.kubernetes.io/instance":   "courier",
-			"app.kubernetes.io/managed-by": "caf",
+			"app.kubernetes.io/managed-by": "cafe",
 		} {
 			if got := doc.Metadata.Labels[key]; got != want {
 				t.Errorf("label %s = %q, want %q — the Ingress and the Service must carry the same labels",

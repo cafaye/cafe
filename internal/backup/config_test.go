@@ -141,7 +141,7 @@ func TestReadConfigReadsTheRealShape(t *testing.T) {
 	// than through a `{ secret: }` in the config. An accessory declaring a secret
 	// the config does not use is not a failure — `TestAnAccessoryMayDeclareASecret
 	// TheConfigDoesNotUse` is the other direction, and it is the one that catches a
-	// caf that compares the two as sets.
+	// cafe that compares the two as sets.
 	t.Run("the four secrets it names", func(t *testing.T) {
 		want := []string{
 			"DATABASE_PASSWORD",
@@ -280,16 +280,16 @@ func TestReadConfigRefusesALegacyKeyByName(t *testing.T) {
 	}
 }
 
-// A `paths:` block turns the two-file contract into a three-file one, and caf
+// A `paths:` block turns the two-file contract into a three-file one, and cafe
 // refuses to claim it can check a file backup it has not read the rules for.
 // The refusal has to be loud rather than silent, because a service that adds
-// `paths:` after this packet would otherwise get a green `caf backup` over a
+// `paths:` after this packet would otherwise get a green `cafe backup` over a
 // snapshot of a database while believing it also covered the disk.
 func TestReadConfigSaysItCannotCheckPaths(t *testing.T) {
 	_, err := readConfigSource(fixtureIdentityBackup,
 		"app: identity\naccessory: backup\npaths:\n  - path: /var/lib/app\ndatabases:\n  - name: primary\n    adapter: postgres\n    url:\n      secret: DATABASE_URL\n")
 	if err == nil {
-		t.Fatal("a config with `paths:` was accepted, so `caf backup` would claim a coverage it does not check")
+		t.Fatal("a config with `paths:` was accepted, so `cafe backup` would claim a coverage it does not check")
 	}
 	if !strings.Contains(err.Error(), "paths") {
 		t.Errorf("the refusal does not name the key it cannot check:\n%v", err)
@@ -297,7 +297,7 @@ func TestReadConfigSaysItCannotCheckPaths(t *testing.T) {
 }
 
 // The allowed top-level set is written out here rather than imported from the
-// gem, because it is the contract caf enforces and the gem is a moving target.
+// gem, because it is the contract cafe enforces and the gem is a moving target.
 func TestTopLevelKeysIsExactlyTheGemsClosedSet(t *testing.T) {
 	want := []string{"accessory", "app", "backup", "databases", "paths", "restore_from", "restic", "state"}
 	if len(topLevelKeys) != len(want) {
@@ -311,7 +311,7 @@ func TestTopLevelKeysIsExactlyTheGemsClosedSet(t *testing.T) {
 }
 
 // The real file uses keys this reader accepts. If identity ever grows a top-level
-// key, this fails on the side of "caf refuses a file the gem accepts", which is
+// key, this fails on the side of "cafe refuses a file the gem accepts", which is
 // the direction that makes somebody read the diff.
 func TestTheRealConfigUsesOnlyKeysTheReaderAccepts(t *testing.T) {
 	var doc map[string]any
@@ -327,7 +327,7 @@ func TestTheRealConfigUsesOnlyKeysTheReaderAccepts(t *testing.T) {
 		if !topLevelKeys[key] {
 			t.Errorf("identity's config has top-level key %q, which ReadConfig refuses.\n"+
 				"  kamal-backup 0.5.2's TOP_LEVEL_KEYS is app, accessory, databases, paths, restore_from, restic, backup, state.\n"+
-				"  Decide whether caf should accept it, and say so in topLevelKeys or here — not in neither.", key)
+				"  Decide whether cafe should accept it, and say so in topLevelKeys or here — not in neither.", key)
 		}
 	}
 }

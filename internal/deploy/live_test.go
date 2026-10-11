@@ -17,7 +17,7 @@ import (
 
 // The honest test of this package, and the reason the rest of it exists.
 //
-// Everything above this line runs with a fake and proves that caf drives the
+// Everything above this line runs with a fake and proves that cafe drives the
 // right commands in the right order. That is not the same claim as "a deploy
 // happened". So this one deploys something, to something, and reads back what
 // answered.
@@ -35,7 +35,7 @@ import (
 //
 // WHAT IT PROVES, in the order the claims get harder:
 //
-//	1. `caf deploy` builds an image, pushes it and rolls it out.
+//	1. `cafe deploy` builds an image, pushes it and rolls it out.
 //	2. The rollout is healthcheck-gated: a release that never answers /up is
 //	   refused and the previous one stays up. (the failure rehearsal)
 //	3. Something ANSWERS through kamal-proxy afterwards.
@@ -53,8 +53,8 @@ import (
 // runs a real rollout. So:
 //
 //   - every port is outside 15000-15999, the block internal/ports owns, so this
-//     cannot collide with a caf reservation or with another live test;
-//   - everything it creates is labelled caf.live-deploy=1 and torn down by the
+//     cannot collide with a cafe reservation or with another live test;
+//   - everything it creates is labelled cafe.live-deploy=1 and torn down by the
 //     same label, so a run that panics cannot leave a container behind for the
 //     next run to trip over;
 //   - `kamal-docker-registry` is a FIXED GLOBAL NAME that Kamal itself creates
@@ -64,7 +64,7 @@ import (
 // Read this before running it on a machine that is not yours.
 
 const (
-	liveLabel    = "caf.live-deploy=1"
+	liveLabel    = "cafe.live-deploy=1"
 	liveSSHPort  = 12222
 	liveRegPort  = 5555
 	liveAppImage = "caf-rehearsal/web"
@@ -78,7 +78,7 @@ func TestADeployReachesAServerAndAnswers(t *testing.T) {
 	}
 	rig := newRehearsal(t)
 
-	// caf deploy. No flags beyond the environment, so this exercises the command a
+	// cafe deploy. No flags beyond the environment, so this exercises the command a
 	// customer types.
 	rig.deploy(t, rig.release)
 
@@ -198,7 +198,7 @@ type rehearsal struct {
 	regPort  int
 	release  string
 	sshImage string
-	// transcript is everything caf itself printed, across every deploy in this
+	// transcript is everything cafe itself printed, across every deploy in this
 	// test. A failure assertion reads it; the log is for the reader.
 	transcript *safeBuffer
 }
@@ -229,7 +229,7 @@ func newRehearsal(t *testing.T) *rehearsal {
 		transcript: &safeBuffer{},
 	}
 	// HOME is scoped to the rehearsal's own directory for the whole test, not
-	// only for the commands the harness runs. caf deploy shells out to kamal, and
+	// only for the commands the harness runs. cafe deploy shells out to kamal, and
 	// kamal reads ~/.ssh/known_hosts to trust the host key of the container this
 	// test just created; with the real HOME it would find no entry for it and
 	// refuse to connect. The alternative is teaching the production runner about
@@ -265,12 +265,12 @@ func (r *rehearsal) checkPortsFree() {
 // with no repository ("Can't use commit hash as version, no git repository
 // found"). Every real deployment directory is a repository, so a rehearsal
 // without one would be rehearsing a failure a customer never hits — and would
-// hide the fact that caf deploy works with kamal's own default version.
+// hide the fact that cafe deploy works with kamal's own default version.
 func (r *rehearsal) gitInitProject() {
 	r.t.Helper()
 	r.runIn(r.project, "git", "init", "--quiet", "--initial-branch=main")
 	r.runIn(r.project, "git", "config", "user.email", "caf-live-deploy@example.invalid")
-	r.runIn(r.project, "git", "config", "user.name", "caf live deploy")
+	r.runIn(r.project, "git", "config", "user.name", "cafe live deploy")
 	r.commit(r.t, "the release under test")
 }
 
@@ -586,11 +586,11 @@ func (r *rehearsal) containerNamed(t *testing.T, label string) string {
 	return ""
 }
 
-// deploy runs `caf deploy` the way a customer does, through the real runner.
+// deploy runs `cafe deploy` the way a customer does, through the real runner.
 func (r *rehearsal) deploy(t *testing.T, release string) {
 	t.Helper()
 	if err := r.tryDeploy(t, release); err != nil {
-		t.Fatalf("caf deploy %s: %v\n%s", release, err, tail(r.transcript.String(), 4000))
+		t.Fatalf("cafe deploy %s: %v\n%s", release, err, tail(r.transcript.String(), 4000))
 	}
 }
 
@@ -621,7 +621,7 @@ func (r *rehearsal) tryDeploy(t *testing.T, release string) error {
 	}, r.writer(), r.writer())
 }
 
-// writer returns caf's output, captured AND logged.
+// writer returns cafe's output, captured AND logged.
 //
 // It is both because the two uses are different. `go test -v` shows a live
 // deployment as it happened, which is the evidence; and the failure assertions
@@ -940,7 +940,7 @@ server {
   }
   location / {
     default_type text/plain;
-    return 200 "caf live deploy
+    return 200 "cafe live deploy
 release=$release
 served=$served
 db=$db

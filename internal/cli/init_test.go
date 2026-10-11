@@ -9,7 +9,7 @@ import (
 	"github.com/cafaye/cafe/internal/contract"
 )
 
-// `caf init` is for a project that already exists, so it writes the manifest
+// `cafe init` is for a project that already exists, so it writes the manifest
 // and only the manifest — and the file it refuses to touch is the whole point
 // of the command.
 

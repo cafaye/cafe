@@ -55,7 +55,7 @@ func answerText(answer any) string {
 }
 
 // tools builds the served table with the seams a test needs. The seams are the
-// same ones `caf dev` has: a registry and a container runtime. A fake runtime is
+// same ones `cafe dev` has: a registry and a container runtime. A fake runtime is
 // a dozen lines, which is the whole reason `internal/dev` has that interface.
 func mcpTestTools(t *testing.T, registry string) (*mcpTools, *recordingRuntime) {
 	t.Helper()
@@ -68,7 +68,7 @@ func mcpTestTools(t *testing.T, registry string) (*mcpTools, *recordingRuntime) 
 			runtime: runtime,
 			// The real registry resolution, because the catalog a test supplies
 			// is a file on disk and the thing being tested is that this tool
-			// reads the same document `caf dev -registry` reads.
+			// reads the same document `cafe dev -registry` reads.
 			registry: registryAt,
 			sleep:    func(context.Context, time.Duration) error { return nil },
 		},
@@ -143,7 +143,7 @@ func TestTheManifestToolRefusesADirectoryWithNoManifest(t *testing.T) {
 	if !errors.Is(err, dev.ErrNoManifest) {
 		t.Errorf("err = %v, want it to wrap ErrNoManifest", err)
 	}
-	if !strings.Contains(err.Error(), "caf init") {
+	if !strings.Contains(err.Error(), "cafe init") {
 		t.Errorf("err = %q, want it to say how to create a manifest", err)
 	}
 }
@@ -264,7 +264,7 @@ func TestTheDoctorToolReportsBothHalvesOfTheDoctorReport(t *testing.T) {
 	}
 
 	if len(report.Tools) != len(wantTools) {
-		t.Errorf("the toolchain table has %d rows, want the %d `caf doctor` reports", len(report.Tools), len(wantTools))
+		t.Errorf("the toolchain table has %d rows, want the %d `cafe doctor` reports", len(report.Tools), len(wantTools))
 	}
 	if report.ToolsTotal != len(report.Tools) {
 		t.Errorf("tools_total = %d, want %d", report.ToolsTotal, len(report.Tools))
@@ -378,7 +378,7 @@ func TestTheDoctorToolReportsAProjectItCannotRead(t *testing.T) {
 }
 
 // A project with no argument is the server's working directory, which is what an
-// agent host spawns caf in. Asserted as a fact about the answer rather than by
+// agent host spawns cafe in. Asserted as a fact about the answer rather than by
 // reading the source: the field the agent gets back says which directory was
 // actually checked.
 func TestTheToolsDefaultToTheServersWorkingDirectory(t *testing.T) {
@@ -428,7 +428,7 @@ func TestTheDevUpToolIsSafeToCallTwice(t *testing.T) {
 		t.Errorf("the two calls used different documents: %q and %q", runtime.upCalls[0].file, runtime.upCalls[1].file)
 	}
 	if runtime.downCall != 0 {
-		t.Errorf("a successful bring-up tore the stack down %d times; caf dev leaves it up", runtime.downCall)
+		t.Errorf("a successful bring-up tore the stack down %d times; cafe dev leaves it up", runtime.downCall)
 	}
 }
 
@@ -481,7 +481,7 @@ func TestTheDevUpToolRefusesADirectoryWithNoManifest(t *testing.T) {
 }
 
 // A project that declares a dependency the catalog does not know is refused the
-// way `caf dev` refuses it, with the same sentence. Two opinions about the same
+// way `cafe dev` refuses it, with the same sentence. Two opinions about the same
 // catalog is the one divergence a single CLI cannot have.
 func TestTheDevToolsAgreeWithCafDevAboutAnUnresolvableDependency(t *testing.T) {
 	dir := dependingProject(t)
@@ -522,9 +522,9 @@ func TestTheDevUpToolReportsAStackThatDidNotSettle(t *testing.T) {
 	}
 }
 
-// An API document caf cannot read is an error rather than a blank version. An
+// An API document cafe cannot read is an error rather than a blank version. An
 // agent that reads "version: " concludes the service publishes one, and the
-// difference between "the document says 0.4.2" and "caf could not read the
+// difference between "the document says 0.4.2" and "cafe could not read the
 // document" is the difference between a fact and a guess.
 func TestTheManifestToolRefusesAnUnreadableAPIDocument(t *testing.T) {
 	tests := []struct {
@@ -582,7 +582,7 @@ func TestTheManifestToolReadsTheAPIInfoFieldsIndependently(t *testing.T) {
 }
 
 // The manifest's core constraint is reported through the resolver, so a
-// constraint caf cannot read is reported as the absence of one rather than as
+// constraint cafe cannot read is reported as the absence of one rather than as
 // the raw string — the string is in the file, and the parsed form is what
 // everything else in the platform compares against.
 func TestTheManifestToolReportsTheResolvedCoreConstraint(t *testing.T) {
@@ -743,7 +743,7 @@ func TestEveryToolNameIsOneCafWouldShip(t *testing.T) {
 	}
 	for _, name := range got {
 		if !want[name] {
-			t.Errorf("%q is served but is not one caf would ship; every tool added needs a reason in the report", name)
+			t.Errorf("%q is served but is not one cafe would ship; every tool added needs a reason in the report", name)
 		}
 	}
 	for name := range want {

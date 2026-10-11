@@ -9,7 +9,7 @@ import (
 )
 
 // KamalRunner is the Kamal engine: it owns the Kamal plan and runs it through
-// kamal, which stays the only place caf knows how to execute kamal — including
+// kamal, which stays the only place cafe knows how to execute kamal — including
 // the "kamal is not installed" sentence, which is this engine's shape of the
 // missing-tool refusal.
 //
@@ -90,7 +90,7 @@ var ErrKamalMissing = fmt.Errorf("kamal is not installed")
 // the one that surprises people: the service image never needs Ruby, but the
 // machine you deploy *from* does.
 func installNote(binary string) string {
-	return "kamal is the deploy engine caf drives, and it is not on PATH (" + binary + " could not be run).\n" +
+	return "kamal is the deploy engine cafe drives, and it is not on PATH (" + binary + " could not be run).\n" +
 		"  Install it with:  gem install kamal\n" +
 		"  It is a Ruby gem, so the machine you deploy from needs Ruby. The deployed service does not:\n" +
 		"  kamal-proxy and kamal-secrets are standalone binaries kamal puts on the server."

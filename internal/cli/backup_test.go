@@ -14,7 +14,7 @@ import (
 	"github.com/cafaye/cafe/internal/backup"
 )
 
-// `caf backup` at the command layer: flags, the prompt, the exit codes, and the
+// `cafe backup` at the command layer: flags, the prompt, the exit codes, and the
 // fact that a refusal is a report on stdout rather than an error on stderr.
 //
 // The behaviour of the cycle itself is asserted in internal/backup through the
@@ -113,7 +113,7 @@ func runBackup(t *testing.T, dir string, deps backupDeps, args ...string) (strin
 }
 
 // A refusal is a report. It exits 1 and stderr stays empty, because the refusal
-// is the paragraph on stdout and a `caf: ...` line in the place a CI log greps
+// is the paragraph on stdout and a `cafe: ...` line in the place a CI log greps
 // would be a truncated copy of it — the copy without the advice in it.
 func TestARefusalIsReportedOnStdoutAndStderrStaysEmpty(t *testing.T) {
 	dir := project(t)
@@ -136,7 +136,7 @@ func TestARefusalIsReportedOnStdoutAndStderrStaysEmpty(t *testing.T) {
 }
 
 // A failed cycle is NOT a refusal, and the difference is what the exit means to a
-// caller: errReported means "the report is above", anything else means caf failed
+// caller: errReported means "the report is above", anything else means cafe failed
 // and its one-line cause belongs on stderr.
 func TestAFailedCycleIsNotAReport(t *testing.T) {
 	dir := project(t)
@@ -155,7 +155,7 @@ func TestAFailedCycleIsNotAReport(t *testing.T) {
 }
 
 // A cycle with no --table is a usage error with exit 2, not a refusal with exit 1,
-// because it is caf being invoked wrongly rather than a configuration being
+// because it is cafe being invoked wrongly rather than a configuration being
 // wrong.
 func TestNoTableIsAUsageErrorAndNotARefusal(t *testing.T) {
 	dir := project(t)
@@ -246,7 +246,7 @@ func TestTheEngineFlagSelectsTheCNPGEngine(t *testing.T) {
 }
 
 // An unknown engine is a usage error with exit 2, not a silent default: a typo
-// in --engine is the operator invoking caf wrongly, and the wrong answer to it
+// in --engine is the operator invoking cafe wrongly, and the wrong answer to it
 // is a drill run against the wrong substrate.
 func TestAnUnknownEngineIsAUsageError(t *testing.T) {
 	dir := project(t)
@@ -300,7 +300,7 @@ func TestWithoutYesItAsksOnceAndThePromptNamesWhatItIsAbout(t *testing.T) {
 }
 
 // A closed stdin is an instruction, not a hang, and the instruction names the
-// flag. The same is true of `caf deploy`, which is why the prompt is one function
+// flag. The same is true of `cafe deploy`, which is why the prompt is one function
 // in confirm.go rather than two.
 func TestAnUnanswerablePromptFailsWithTheFlagToPass(t *testing.T) {
 	dir := project(t)
@@ -314,7 +314,7 @@ func TestAnUnanswerablePromptFailsWithTheFlagToPass(t *testing.T) {
 	if err == nil {
 		t.Fatal("an unanswerable prompt reported success")
 	}
-	if !strings.Contains(err.Error(), "--yes") || !strings.Contains(err.Error(), "caf backup") {
+	if !strings.Contains(err.Error(), "--yes") || !strings.Contains(err.Error(), "cafe backup") {
 		t.Errorf("the error does not name the command and the flag to pass: %v", err)
 	}
 	if errors.Is(err, errReported) {
@@ -386,7 +386,7 @@ func TestATableNameThatCannotBeCarriedIsRefusedBeforeAnythingRuns(t *testing.T) 
 
 	_, _, err := runBackup(t, dir, backupDeps{runner: runner}, "--table", "user events", "identity")
 	if err == nil {
-		t.Fatal("caf accepted a table name with a space, which is passed to the accessory unquoted")
+		t.Fatal("cafe accepted a table name with a space, which is passed to the accessory unquoted")
 	}
 	if len(runner.ran) != 0 {
 		t.Errorf("kamal was run %d times before the name was refused", len(runner.ran))
@@ -394,7 +394,7 @@ func TestATableNameThatCannotBeCarriedIsRefusedBeforeAnythingRuns(t *testing.T) 
 }
 
 // An empty --table value names no table, and the flag package's own error is the
-// right place for it to fail: caf was invoked wrongly.
+// right place for it to fail: cafe was invoked wrongly.
 func TestAnEmptyTableValueIsAUsageError(t *testing.T) {
 	dir := project(t)
 	runner := &backupRunner{out: fixtureResolved(t)}

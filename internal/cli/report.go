@@ -16,7 +16,7 @@ import (
 	"github.com/cafaye/cafe/internal/secret"
 )
 
-// reportDeps is what `caf report render` needs from the world. It is a struct
+// reportDeps is what `cafe report render` needs from the world. It is a struct
 // of parameters for the reason failureDeps is: a test hands the command a
 // reader it owns and a scratch directory, and drives the whole path — a document
 // or a state directory in, one page out — without a file the test cannot see.
@@ -24,8 +24,8 @@ type reportDeps struct {
 	stdin io.Reader
 	// drillDir is where the drill journals live. A test sets it; a real run
 	// leaves it empty and resolves it from the environment, exactly as
-	// backup.DefaultDrillDir does — so `caf report` reads the same store
-	// `caf backup` wrote, and no second opinion about where that is.
+	// backup.DefaultDrillDir does — so `cafe report` reads the same store
+	// `cafe backup` wrote, and no second opinion about where that is.
 	drillDir string
 	// secretStateDir is the directory holding the rotation schedule. A test
 	// sets it for the reason drillDir is one.
@@ -49,7 +49,7 @@ func (d reportDeps) withDefaults() reportDeps {
 	return d
 }
 
-// reportLongHelp is the prose under `caf report`'s usage line.
+// reportLongHelp is the prose under `cafe report`'s usage line.
 //
 // It says where the page comes from and what the page is honest about, because
 // the second is the part a reader will ask about: a section with no source
@@ -58,11 +58,11 @@ const reportLongHelp = `Assembles the one-page monthly report (OPS-P13) from the
 own outputs, and renders it in two forms: markdown for a reader, JSON for the
 box agent and the website.
 
-The report is an ASSEMBLER, not a collector. A caf process on a workstation
+The report is an ASSEMBLER, not a collector. A cafe process on a workstation
 cannot reach the box — it lives behind the outbound mTLS channel
 (internal/boxd/daemon.go:101-162) — so the page is a function of a document and
 of the state directories this box has already written, the same boundary
-` + "`caf failure check`" + ` holds. Pass a document on the command line or on stdin; every section the
+` + "`cafe failure check`" + ` holds. Pass a document on the command line or on stdin; every section the
 document does not carry is filled from the local state when there is any, and
 reported as a gap when there is not.
 
@@ -82,7 +82,7 @@ Exit status: 0 when the page was written, including when sections are gaps.
 Nonzero when the input could not be read or decoded.`
 
 // newReportCommand is the parent. It holds one verb and dispatches to it the way
-// `caf failure` and `caf gen` do, because a command that groups verbs never
+// `cafe failure` and `cafe gen` do, because a command that groups verbs never
 // registers itself in Commands() as the verb — the parent does, and the parent's
 // row is what stub_test.go's workingCommands carries.
 func newReportCommand(deps reportDeps) *Command {
@@ -91,7 +91,7 @@ func newReportCommand(deps reportDeps) *Command {
 	c := &Command{
 		Name:     "report",
 		Summary:  "assemble the one-page monthly report",
-		Usage:    "caf report render [flags] [<input.json>]",
+		Usage:    "cafe report render [flags] [<input.json>]",
 		LongHelp: reportLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -100,7 +100,7 @@ func newReportCommand(deps reportDeps) *Command {
 			return nil
 		}
 		if args[0] != "render" {
-			return fmt.Errorf("%w: unknown caf report verb %q (usage: caf report render)", errUsage, args[0])
+			return fmt.Errorf("%w: unknown cafe report verb %q (usage: cafe report render)", errUsage, args[0])
 		}
 		return reportRenderCommand(deps).Execute(env, args[1:])
 	}
@@ -122,10 +122,10 @@ func reportRenderCommand(deps reportDeps) *Command {
 	c := &Command{
 		Name:    "report render",
 		Summary: "assemble one month of facts and print the page",
-		Usage:   "caf report render [--json] [--period <period>] [<input.json>]",
+		Usage:   "cafe report render [--json] [--period <period>] [<input.json>]",
 		LongHelp: "Reads the report input — the four packets' outputs plus the facts\n" +
 			"the box's observation surface owes — and writes the page. With no path\n" +
-			"(or \"-\") the document is read from stdin. Run `caf report` for what\n" +
+			"(or \"-\") the document is read from stdin. Run `cafe report` for what\n" +
 			"the document carries, and what is honest about a section with no data.",
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&machine, "json", false, "write the machine form (one JSON document) instead of markdown")
@@ -147,12 +147,12 @@ func reportRenderCommand(deps reportDeps) *Command {
 
 		window, err := parseReportPeriod(period)
 		if err != nil {
-			return fmt.Errorf("caf report render: %w", err)
+			return fmt.Errorf("cafe report render: %w", err)
 		}
 
 		in, err := readReportInput(args[0], deps.stdin)
 		if err != nil {
-			return fmt.Errorf("caf report render: %w", err)
+			return fmt.Errorf("cafe report render: %w", err)
 		}
 		// The flags are defaults and the document is the source, so a caller
 		// who wrote the window into the document is not overridden by the
@@ -165,7 +165,7 @@ func reportRenderCommand(deps reportDeps) *Command {
 			in.Box = box
 		}
 
-		// The state directories are the one thing a caf process on this box CAN
+		// The state directories are the one thing a cafe process on this box CAN
 		// read, so the two packets that left files get filled rather than
 		// gapped. Both are absent by default and neither is an error: a report
 		// on a machine that has never drilled is a report that says so.
@@ -189,7 +189,7 @@ func reportRenderCommand(deps reportDeps) *Command {
 		// internal/agent holds: machine JSON on stdout, human prose on stderr,
 		// and no flag that chooses which stream gets the words.
 		if len(rep.Gaps) > 0 {
-			fmt.Fprintf(env.Stderr, "caf report: %d section(s) could not be filled; they are named in the page\n", len(rep.Gaps))
+			fmt.Fprintf(env.Stderr, "cafe report: %d section(s) could not be filled; they are named in the page\n", len(rep.Gaps))
 		}
 		if machine {
 			// One indented document, the contract internal/agent holds — so a
@@ -198,7 +198,7 @@ func reportRenderCommand(deps reportDeps) *Command {
 			return report.Encode(env.Stdout, rep)
 		}
 		if err := report.Render(env.Stdout, rep); err != nil {
-			return fmt.Errorf("caf report render: %w", err)
+			return fmt.Errorf("cafe report render: %w", err)
 		}
 		return nil
 	}
@@ -207,8 +207,8 @@ func reportRenderCommand(deps reportDeps) *Command {
 
 // defaultSecretStateDir is where the rotation schedule lives when nothing says
 // otherwise. It is the same resolution secret.StatePath assumes — a directory
-// beside the other caf state — and the CLI resolves it so a report is not
-// silently reading a different file from the one `caf secret rotate` wrote.
+// beside the other cafe state — and the CLI resolves it so a report is not
+// silently reading a different file from the one `cafe secret rotate` wrote.
 func defaultSecretStateDir() (string, error) {
 	if dir := os.Getenv("CAF_SECRET_STATE_DIR"); dir != "" {
 		return dir, nil
@@ -217,7 +217,7 @@ func defaultSecretStateDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "caf", "secrets"), nil
+	return filepath.Join(dir, "cafe", "secrets"), nil
 }
 
 // readDrillRecords flattens every service's journal in a directory into one list,
@@ -257,7 +257,7 @@ func readDrillRecords(dir string) []backup.DrillRecord {
 }
 
 // readReportInput decodes the report input. A path of "" or "-" is stdin, so the
-// verb composes: `caf cve scan --json | caf report render`-style pipelines have a
+// verb composes: `cafe cve scan --json | cafe report render`-style pipelines have a
 // document in the shape they already print.
 //
 // A document that does not decode is refused with the JSON error's own sentence

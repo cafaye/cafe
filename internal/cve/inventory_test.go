@@ -12,7 +12,7 @@ import (
 // and a transcription nobody can check is a transcription nobody has checked.
 // So every row names the file:line it was read from, and this asserts it —
 // not the specific lines, which would be a test that breaks when kit moves a
-// pin for a reason that has nothing to do with caf, but the shape: a path
+// pin for a reason that has nothing to do with cafe, but the shape: a path
 // with a colon and a number in it.
 //
 // The negative control is the row that gets the citation removed: the test
@@ -99,7 +99,7 @@ func TestEveryPinnedComponentNamesWhatAFixTouches(t *testing.T) {
 // TestClassification covers the matcher against the three answers and the one
 // it must never give.
 //
-// The last row is the load-bearing one. A version caf cannot read is unknown,
+// The last row is the load-bearing one. A version cafe cannot read is unknown,
 // and rendering it as unaffected is the single failure that leaves a box
 // unpatched: the report says "we do not know" and a person goes and looks.
 func TestClassification(t *testing.T) {
@@ -229,7 +229,7 @@ func TestAnUnreadableVersionIsAReportRowNotASilence(t *testing.T) {
 		t.Errorf("class = %q, want %q", findings[0].Class, ClassUnknown)
 	}
 	if findings[0].ReleaseTo != "" {
-		t.Errorf("release_to = %q, want empty — caf cannot tell an operator to move to a version it cannot compare", findings[0].ReleaseTo)
+		t.Errorf("release_to = %q, want empty — cafe cannot tell an operator to move to a version it cannot compare", findings[0].ReleaseTo)
 	}
 	if findings[0].ImpactUnknown != true {
 		t.Error("a component with no characterised blast radius must say so rather than printing an empty impact block")

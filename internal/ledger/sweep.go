@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// ErrNoRuntime is a container runtime caf cannot ask. It is distinct from a
-// removal that failed, because nothing was attempted: "caf reclaim" reporting
+// ErrNoRuntime is a container runtime cafe cannot ask. It is distinct from a
+// removal that failed, because nothing was attempted: "cafe reclaim" reporting
 // "reclaimed 0 things" because the daemon was not answering is how a sweeper
 // becomes a thing people stop running.
 var ErrNoRuntime = errors.New("no container runtime")
@@ -120,7 +120,7 @@ type Report struct {
 	DryRun     bool
 	EntryCount int
 	// Ledger is where the sweep read from, so "nothing to reclaim" can name the
-	// place it looked. "Nothing to reclaim" and "caf reclaim looked somewhere
+	// place it looked. "Nothing to reclaim" and "cafe reclaim looked somewhere
 	// else" are different sentences and a report that cannot tell them apart is
 	// the report that sends somebody to check their CAF_LEDGER_DIR.
 	Ledger string
@@ -296,7 +296,7 @@ func sweepStack(ctx context.Context, report *Report, l *Ledger, docker Docker, e
 	}
 	// A volume the entry names and the runtime does not have is `:missing` and
 	// not nothing. This is the case the ledger exists for: the entry was written
-	// before the volume was created, and a caf that died in between leaves
+	// before the volume was created, and a cafe that died in between leaves
 	// exactly this row. Printing no action for it would make "nothing to
 	// reclaim" and "the thing is already gone" the same sentence, which is the
 	// mistake yamine's `clean` made.
@@ -382,13 +382,13 @@ func removalFix(kind, id string) string {
 	case "volume":
 		return "docker volume rm " + id
 	default:
-		return "caf reclaim --yes"
+		return "cafe reclaim --yes"
 	}
 }
 
 // reclaimPort releases a port reservation whose holder is gone.
 //
-// A port entry outlives its holder whenever a caf is killed: the flock is
+// A port entry outlives its holder whenever a cafe is killed: the flock is
 // released by the kernel, but the row is on disk. Liveness is the lock and
 // nothing else — a file that says "held by session X" is wrong the moment X
 // exits — so the only question is whether the lock can be taken. A port held by

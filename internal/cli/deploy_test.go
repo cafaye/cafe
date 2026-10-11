@@ -15,7 +15,7 @@ import (
 	"github.com/cafaye/cafe/internal/deploy"
 )
 
-// `caf deploy` is a working command now, so it has left stubCommands. Its
+// `cafe deploy` is a working command now, so it has left stubCommands. Its
 // behaviour is pinned here instead, and the table in stub_test.go is the single
 // source of truth for which commands are still stubs.
 //
@@ -55,7 +55,7 @@ const deployResolvedConfig = `---
       - POSTGRES_PASSWORD
 `
 
-// deployResolvedWithPublishedPort is the same document with the one line caf
+// deployResolvedWithPublishedPort is the same document with the one line cafe
 // refuses, which is what cafaye/kit's deploy.yml.erb ships today.
 const deployResolvedWithPublishedPort = `---
 :roles:
@@ -151,7 +151,7 @@ func (r *recordingRunner) ranCommand(command string) bool {
 	return false
 }
 
-// deployProject is a directory caf will deploy: a Kamal config, and whatever else
+// deployProject is a directory cafe will deploy: a Kamal config, and whatever else
 // a case needs.
 func deployProject(t *testing.T, files map[string]string) string {
 	t.Helper()
@@ -188,10 +188,10 @@ func runDeployAskingWith(t *testing.T, runner deploy.Runner, confirm func(string
 	case errors.Is(err, errReported):
 		return exitFailure, stdout.String(), stderr.String()
 	case errors.Is(err, errUsage):
-		fmt.Fprintf(&stderr, "caf: %v\n", err)
+		fmt.Fprintf(&stderr, "cafe: %v\n", err)
 		return exitUsage, stdout.String(), stderr.String()
 	default:
-		fmt.Fprintf(&stderr, "caf: %v\n", err)
+		fmt.Fprintf(&stderr, "cafe: %v\n", err)
 		return exitFailure, stdout.String(), stderr.String()
 	}
 }
@@ -217,10 +217,10 @@ func runDeployAsking(t *testing.T, runner *recordingRunner, confirm func(string)
 		// on stdout and it is the whole answer.
 		return exitFailure, stdout.String(), stderr.String()
 	case errors.Is(err, errUsage):
-		fmt.Fprintf(&stderr, "caf: %v\n", err)
+		fmt.Fprintf(&stderr, "cafe: %v\n", err)
 		return exitUsage, stdout.String(), stderr.String()
 	default:
-		fmt.Fprintf(&stderr, "caf: %v\n", err)
+		fmt.Fprintf(&stderr, "cafe: %v\n", err)
 		return exitFailure, stdout.String(), stderr.String()
 	}
 }
@@ -416,7 +416,7 @@ func TestARefusedConfirmationDeploysNothingAndSaysSo(t *testing.T) {
 		t.Errorf("exit code = %d, want %d: a refused deploy that exits 0 is a deploy that reports success", code, exitFailure)
 	}
 	if len(runner.ran) != 0 {
-		t.Errorf("caf ran something after the confirmation was refused: %v", runner.commands())
+		t.Errorf("cafe ran something after the confirmation was refused: %v", runner.commands())
 	}
 	if !strings.Contains(stdout, "nothing was deployed") {
 		t.Errorf("stdout does not say what did not happen:\n%s", stdout)
@@ -483,7 +483,7 @@ func TestDeployEnvWithNoOverlayIsRefusedByName(t *testing.T) {
 		}
 	}
 	if len(runner.ran) != 0 {
-		t.Errorf("caf ran something before refusing the environment: %v", runner.commands())
+		t.Errorf("cafe ran something before refusing the environment: %v", runner.commands())
 	}
 }
 
@@ -576,7 +576,7 @@ func TestDeployRemoteAsksNamingTheAccount(t *testing.T) {
 // The same prompt with no --account says there is no account, and names the flag
 // that fills it. "deploy identity to the operated platform, account ?" is a
 // sentence with a hole in it: the reader cannot tell whether they forgot the
-// flag or caf lost it.
+// flag or cafe lost it.
 func TestDeployRemoteWithNoAccountDoesNotPromptWithAHoleInIt(t *testing.T) {
 	runner := &remoteRunner{}
 	var prompt string
@@ -641,7 +641,7 @@ func TestDeployWithNoKamalInstalledSaysHowToInstallIt(t *testing.T) {
 		t.Errorf("stderr does not tell the user how to install kamal:\n%s", stderr)
 	}
 	if runner.ranCommand("kamal setup") {
-		t.Errorf("caf deployed with no deploy engine present: %v", runner.commands())
+		t.Errorf("cafe deployed with no deploy engine present: %v", runner.commands())
 	}
 }
 
@@ -670,7 +670,7 @@ func TestAFailedDeploySaysWhatIsRunningAndWhatToDo(t *testing.T) {
 			t.Errorf("the failure report does not contain %q:\n%s", want, stdout)
 		}
 	}
-	// kamal already wrote its own reason, so caf does not repeat it on stderr.
+	// kamal already wrote its own reason, so cafe does not repeat it on stderr.
 	if strings.Contains(stderr, "failed to become healthy") {
 		t.Errorf("stderr repeats the reason kamal already printed:\n%s", stderr)
 	}
@@ -693,7 +693,7 @@ func TestDeployRefusesADirectoryWithNoKamalConfig(t *testing.T) {
 		}
 	}
 	if len(runner.ran) != 0 {
-		t.Errorf("caf ran something before refusing a project with no config: %v", runner.commands())
+		t.Errorf("cafe ran something before refusing a project with no config: %v", runner.commands())
 	}
 }
 
@@ -708,7 +708,7 @@ func TestNoSecretValueReachesADryRun(t *testing.T) {
 	})
 	runner := newRecordingRunner()
 	// kamal names the secret, and a third party echoing its value back is not a
-	// bug caf can prevent — it is a bug caf must catch.
+	// bug cafe can prevent — it is a bug cafe must catch.
 	runner.out = deployResolvedConfig + "  :secret:\n  - " + secretValue + "\n"
 
 	code, stdout, stderr := runDeployIn(t, runner, dir, "-dry-run", "identity")
@@ -749,7 +749,7 @@ func TestDeployRejectsABadArgumentCount(t *testing.T) {
 }
 
 // An unknown engine is a usage error and exits 2, not a silent default: a typo
-// in --engine is the operator invoking caf wrongly, and the wrong answer to it
+// in --engine is the operator invoking cafe wrongly, and the wrong answer to it
 // is a deploy run against the wrong substrate — which is the one outcome a
 // deploy command must never produce by accident.
 func TestDeployRefusesAnUnknownEngine(t *testing.T) {
@@ -776,7 +776,7 @@ func TestDeployHelpNamesTheOnePathAndWhatADryRunDoes(t *testing.T) {
 		t.Fatalf("exit code = %d, want %d", code, exitSuccess)
 	}
 	for _, want := range []string{
-		"caf deploy <service> --engine <engine> --yes", // the one path
+		"cafe deploy <service> --engine <engine> --yes", // the one path
 		"dry-run",
 		"executes nothing",             // what a dry run does not do
 		"kamal setup",                  // the command kamal actually runs

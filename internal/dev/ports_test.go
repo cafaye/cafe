@@ -70,7 +70,7 @@ func TestTheAllocatorOwnsTheHostEndOfAPublishedPort(t *testing.T) {
 	}
 }
 
-// Without an allocator the plan is exactly what it was, because `caf dev` has no
+// Without an allocator the plan is exactly what it was, because `cafe dev` has no
 // reservation and changing its ports would change every document it has already
 // written.
 func TestNoAllocatorMeansTheServicesOwnPort(t *testing.T) {
@@ -81,7 +81,7 @@ func TestNoAllocatorMeansTheServicesOwnPort(t *testing.T) {
 	}
 }
 
-// An explicit -port is the developer's decision and wins over the allocator. caf
+// An explicit -port is the developer's decision and wins over the allocator. cafe
 // checks a port it was given; it does not move it.
 func TestAnExplicitPortWinsOverTheAllocator(t *testing.T) {
 	stack := planWithAllocator(t, AllocatorOver([]int{15020}), 18080)

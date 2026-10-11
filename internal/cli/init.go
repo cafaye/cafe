@@ -7,7 +7,7 @@ import (
 	"github.com/cafaye/cafe/internal/scaffold"
 )
 
-// initOptions is the parsed flag state for `caf init`.
+// initOptions is the parsed flag state for `cafe init`.
 type initOptions struct {
 	dir   string
 	name  string
@@ -19,9 +19,9 @@ func newInitCommand() *Command {
 	c := &Command{
 		Name:    "init",
 		Summary: "create a cafaye.yml manifest for the current project",
-		Usage:   "caf init [flags]",
+		Usage:   "cafe init [flags]",
 		LongHelp: "Writes a cafaye.yml into -dir and nothing else: the manifest, validated\n" +
-			"against core's schema exactly as `caf contract lint` will check it.\n" +
+			"against core's schema exactly as `cafe contract lint` will check it.\n" +
 			"\n" +
 			"The name is derived from the directory unless -name overrides it, which is the\n" +
 			"case for a repository whose directory is not its service name — a worktree\n" +
@@ -31,7 +31,7 @@ func newInitCommand() *Command {
 			"one somebody wrote by hand. -force is the deliberate override.\n" +
 			"\n" +
 			"For a whole project scaffold — the service, the image, the README — see\n" +
-			"`caf new`.",
+			"`cafe new`.",
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.dir, "dir", ".", "directory to initialize")
 			fs.StringVar(&opts.name, "name", "", "override the service name; the directory's base name by default")
@@ -48,7 +48,7 @@ func newInitCommand() *Command {
 			Force: opts.force,
 		})
 		if err != nil {
-			return fmt.Errorf("caf init: %w", err)
+			return fmt.Errorf("cafe init: %w", err)
 		}
 		printScaffolded(env.Stdout, "init", out)
 		return nil

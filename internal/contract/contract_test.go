@@ -12,7 +12,7 @@ import (
 )
 
 // fixture reads a vendored manifest. The fixtures are copies of core's own
-// examples, so a failure here is a disagreement between caf and core about the
+// examples, so a failure here is a disagreement between cafe and core about the
 // same bytes, not a hypothetical.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
@@ -23,7 +23,7 @@ func fixture(t *testing.T, name string) []byte {
 	return data
 }
 
-// Every manifest core ships as valid must survive a full caf check: the JSON
+// Every manifest core ships as valid must survive a full cafe check: the JSON
 // Schema and the cross-field rules. The set is the shape of the platform — an
 // API service, a worker that publishes, a worker that only consumes, and a
 // spec repository with no contract surface at all.
@@ -84,7 +84,7 @@ func TestCheckReportsCoreInvalidExampleExactly(t *testing.T) {
 	}
 }
 
-// The first violation is what `caf contract lint` prints. It has to name the
+// The first violation is what `cafe contract lint` prints. It has to name the
 // field and the rule, because the person reading the line is fixing a file,
 // not reading a validator's internals.
 func TestFirstViolationNamesTheFieldAndTheRule(t *testing.T) {
@@ -105,7 +105,7 @@ func TestFirstViolationNamesTheFieldAndTheRule(t *testing.T) {
 
 // The rules JSON Schema cannot state, from core's docs/manifest-conventions.md.
 // Every fixture here is schema-valid: the only thing that can reject them is a
-// caf rule, so deleting the convention checks fails this test.
+// cafe rule, so deleting the convention checks fails this test.
 func TestCheckReportsCrossFieldViolations(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -159,7 +159,7 @@ func TestCheckReportsCrossFieldViolations(t *testing.T) {
 				t.Errorf("message = %q, want %q", got[0].Message, tt.wantMessage)
 			}
 			if !strings.HasPrefix(got[0].Keyword, RuleConventionPrefix) {
-				t.Errorf("keyword %q is not a caf rule; caf rules are namespaced so they cannot be confused with schema keywords", got[0].Keyword)
+				t.Errorf("keyword %q is not a cafe rule; cafe rules are namespaced so they cannot be confused with schema keywords", got[0].Keyword)
 			}
 		})
 	}
@@ -367,7 +367,7 @@ func TestManifestFacts(t *testing.T) {
 }
 
 // Every constraint the schema's semverRange pattern accepts must also parse
-// here, or a manifest core calls valid could not be resolved by caf. This is
+// here, or a manifest core calls valid could not be resolved by cafe. This is
 // the seam between the two halves of the package.
 func TestEveryCoreConstraintResolves(t *testing.T) {
 	tests := []struct {
@@ -399,8 +399,8 @@ func TestEveryCoreConstraintResolves(t *testing.T) {
 	}
 }
 
-// A manifest whose core constraint the schema accepts but caf cannot parse
-// would be a schema/caf disagreement. The schema's own pattern is the list of
+// A manifest whose core constraint the schema accepts but cafe cannot parse
+// would be a schema/cafe disagreement. The schema's own pattern is the list of
 // forms that must work, so it is asserted here against the parser directly.
 func TestSchemaAcceptedConstraintFormsAllParse(t *testing.T) {
 	forms := []string{
@@ -465,7 +465,7 @@ func TestVendoredSchemaCompilesAsDraft202012(t *testing.T) {
 }
 
 // Core asserts in its own suite that the envelope and the manifest agree on
-// the event type pattern. caf vendors only the manifest half, so caf pins the
+// the event type pattern. cafe vendors only the manifest half, so cafe pins the
 // pattern itself: a refresh that changes it is a contract change, not a
 // cleanup, and must move manifest-0.1.json to a new version.
 func TestVendoredSchemaPinsTheEventTypePattern(t *testing.T) {

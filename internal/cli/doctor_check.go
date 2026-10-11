@@ -92,7 +92,7 @@ type Finding struct {
 //
 // The order is the order a person has to fix things in: the toolchain, then the
 // runtime (without which the machine's own facts are unanswerable), then the
-// machine, then the project, then the state caf left behind.
+// machine, then the project, then the state cafe left behind.
 var doctorChecks = []Check{
 	{Name: "toolchain", Section: sectionToolchain, Probe: probeToolchain},
 	{Name: "runtime", Section: sectionProject, Probe: probeRuntime},
@@ -130,7 +130,7 @@ const (
 //	                   nothing; a false alarm is worse than no alarm
 //	memory      fail  as cpu: a number that is genuinely too small
 //	port        fail  the stack cannot start, or cannot be reserved
-//	block-crowd warn  a stranger in the block is not caf's to fail over, and it is
+//	block-crowd warn  a stranger in the block is not cafe's to fail over, and it is
 //	                   exactly the collision worth reporting
 //	block-full  fail  every port in the block is held, so the next `env up` fails
 //	container   fail  installed and not answering is invisible from PATH
@@ -387,18 +387,18 @@ func probeMachine(d *doctor) Finding {
 	}
 }
 
-// probePorts is the plan's own published ports, from the same plan `caf dev`
+// probePorts is the plan's own published ports, from the same plan `cafe dev`
 // would build. A check written from its own list of ports drifts from the thing
 // it checks, and then it passes on a machine where the stack cannot start.
 //
 // It asks one question per port: is it held. A held port means the stack cannot
 // start, which is a failure, and the fix names the command that arbitrates.
 //
-// It deliberately does *not* complain about a port outside caf's block. `caf dev`
+// It deliberately does *not* complain about a port outside cafe's block. `cafe dev`
 // publishes a service on its own port by design, and a developer's explicit
-// -port is a decision caf checks rather than overrides. The block is what `caf
+// -port is a decision cafe checks rather than overrides. The block is what `cafe
 // env up` reserves from, and the check that watches it is `port block`; a
-// warning here would fire on every ordinary `caf doctor` and be turned off.
+// warning here would fire on every ordinary `cafe doctor` and be turned off.
 func probePorts(d *doctor) Finding {
 	if d.toolsOnly {
 		return Finding{Name: "ports", Severity: SeverityOK, Detail: "not run (-tools-only)"}
@@ -426,22 +426,22 @@ func probePorts(d *doctor) Finding {
 			Name:     "ports",
 			Severity: classify("ports", "port"),
 			Detail:   "held: " + strings.Join(busy, ", "),
-			Fix:      "caf env up " + d.tierHint() + " -- <command>   # reserves from " + ports.CAF.String() + " and holds them",
+			Fix:      "cafe env up " + d.tierHint() + " -- <command>   # reserves from " + ports.CAF.String() + " and holds them",
 		}
 	}
 	if len(outside) > 0 {
 		// A port outside the block is free and working, and it is also invisible
 		// to every sibling worker on this machine — which is exactly how the
-		// sprawl got here (15001, 16001, 21101, 55432). caf honours an explicit
+		// sprawl got here (15001, 16001, 21101, 55432). cafe honours an explicit
 		// -port rather than overriding it, so this is a warning that names the
-		// consequence, not a refusal. `caf dev` publishing a service on its own
+		// consequence, not a refusal. `cafe dev` publishing a service on its own
 		// port is the default and is not wrong; it is just not arbitrated.
 		return Finding{
 			Name:     "ports",
 			Severity: classify("ports", "outside"),
-			Detail: fmt.Sprintf("free, but published outside caf's block %s: %s; a parallel worker cannot see these and will not avoid them",
+			Detail: fmt.Sprintf("free, but published outside cafe's block %s: %s; a parallel worker cannot see these and will not avoid them",
 				ports.CAF, strings.Join(outside, ", ")),
-			Fix: "caf env up " + d.tierHint() + " -- <command>   # reserves from " + ports.CAF.String() + " and holds them for the session",
+			Fix: "cafe env up " + d.tierHint() + " -- <command>   # reserves from " + ports.CAF.String() + " and holds them for the session",
 		}
 	}
 	return Finding{Name: "ports", Severity: SeverityOK, Detail: "every published port is free and inside " + ports.CAF.String()}
@@ -479,14 +479,14 @@ func probePlan(d *doctor) Finding {
 			Name:     "plan",
 			Severity: classify("plan", "manifest"),
 			Detail:   "could not be planned: " + firstLine(d.planErr),
-			Fix:      "caf contract lint " + d.projectDir,
+			Fix:      "cafe contract lint " + d.projectDir,
 		}
 	case d.stack != nil && len(d.stack.Services) == 0:
 		return Finding{
 			Name:     "plan",
 			Severity: SeverityWarn,
 			Detail:   "a document-only repository: there is no local stack to run",
-			Fix:      "caf doctor -tools-only   # the toolchain table does not need a project",
+			Fix:      "cafe doctor -tools-only   # the toolchain table does not need a project",
 		}
 	}
 	return Finding{
@@ -501,7 +501,7 @@ func probePlan(d *doctor) Finding {
 //
 // It is a `warn` and not a `fail` on purpose: there is un-reclaimed state, and
 // nothing is broken right now. A CI job that failed for it would be failing for
-// a thing the next `caf reclaim` fixes, and a check that fails for something a
+// a thing the next `cafe reclaim` fixes, and a check that fails for something a
 // developer can fix with one command gets disabled.
 func probeReclaimable(d *doctor) Finding {
 	if d.book == nil {
@@ -520,7 +520,7 @@ func probeReclaimable(d *doctor) Finding {
 			Name:     "reclaimable",
 			Severity: classify("reclaimable", "unreadable"),
 			Detail:   "the ledger at " + d.book.Dir() + " could not be read: " + firstLine(err),
-			Fix:      "ls -la " + d.book.Dir() + " && caf reclaim -ledger " + d.book.Dir(),
+			Fix:      "ls -la " + d.book.Dir() + " && cafe reclaim -ledger " + d.book.Dir(),
 		}
 	}
 	if len(entries) == 0 {
@@ -547,13 +547,13 @@ func probeReclaimable(d *doctor) Finding {
 	return Finding{
 		Name:     "reclaimable",
 		Severity: classify("reclaimable", "reclaim"),
-		// The ledger's own path is in the detail, not only in the fix: "caf
-		// reclaim found nothing" and "caf reclaim looked somewhere else" are
+		// The ledger's own path is in the detail, not only in the fix: "cafe
+		// reclaim found nothing" and "cafe reclaim looked somewhere else" are
 		// different sentences, and a person who cannot tell them apart goes to
 		// check CAF_LEDGER_DIR instead of the answer.
 		Detail: fmt.Sprintf("%d entr(ies) in %s nothing has reclaimed: %d stack(s), %d port reservation(s), oldest %s",
 			len(entries), d.book.Dir(), stacks, reservations, humanAge(oldest.Created, d.now())),
-		Fix: "caf reclaim          # a dry run; add -yes to remove",
+		Fix: "cafe reclaim          # a dry run; add -yes to remove",
 	}
 }
 
@@ -596,7 +596,7 @@ func plural(n int, unit string) string {
 // probePortBlock is the collision check, and it is the one whose absence this
 // packet is really about.
 //
-// caf publishes from 15000-15999 so that every worker on a machine can see which
+// cafe publishes from 15000-15999 so that every worker on a machine can see which
 // ports are ours. A stranger in that range is not an error — the stranger may be
 // perfectly entitled to it — but it is exactly the thing that produces the
 // silent collision, where a container is published onto a port a host process
@@ -614,12 +614,12 @@ func probePortBlock(d *doctor) Finding {
 	}
 	if len(held) >= ports.CAF.Size() {
 		// Every port in the block is taken, so a reservation cannot succeed. That
-		// is a failure and not a warning: the next `caf env up` will fail.
+		// is a failure and not a warning: the next `cafe env up` will fail.
 		return Finding{
 			Name:     "port block",
 			Severity: classify("port block", "block-full"),
 			Detail:   fmt.Sprintf("all %d ports in %s are held; no reservation can succeed", ports.CAF.Size(), ports.CAF),
-			Fix:      "caf reclaim --yes   # frees what the ledger accounts for; anything else is not caf's to remove",
+			Fix:      "cafe reclaim --yes   # frees what the ledger accounts for; anything else is not cafe's to remove",
 		}
 	}
 	return Finding{
@@ -627,7 +627,7 @@ func probePortBlock(d *doctor) Finding {
 		Severity: classify("port block", "block-crowd"),
 		Detail: fmt.Sprintf("%d port(s) in %s are held by something the ledger does not account for: %s",
 			len(held), ports.CAF, strings.Join(held, ", ")),
-		Fix: "lsof -nP -iTCP -sTCP:LISTEN   # caf will not publish onto one of these; the registry refuses it",
+		Fix: "lsof -nP -iTCP -sTCP:LISTEN   # cafe will not publish onto one of these; the registry refuses it",
 	}
 }
 

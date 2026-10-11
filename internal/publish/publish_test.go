@@ -80,7 +80,7 @@ func TestTheKindIsDerivedFromTheContractSurface(t *testing.T) {
 	}
 }
 
-// The curated case: no contract surface at all. caf cannot derive the kind, and
+// The curated case: no contract surface at all. cafe cannot derive the kind, and
 // the refusal names the flag rather than guessing — a guessed kind is a claim
 // the publisher never made, and the registry stores claims.
 func TestAManifestWithNoSurfaceNamesTheKindFlag(t *testing.T) {
@@ -117,7 +117,7 @@ func TestLanguageSpecIsRefused(t *testing.T) {
 
 // A dependency with no version cannot become an edge: the registry resolves a
 // range against the target's releases at write time, and an unbounded edge is
-// refused there. caf refuses here, naming the field to add, rather than
+// refused there. cafe refuses here, naming the field to add, rather than
 // sending a request whose only possible answer is a 400.
 func TestADependencyWithoutAVersionIsRefused(t *testing.T) {
 	withUnbounded := strings.Replace(publishFullManifest,
@@ -463,7 +463,7 @@ func TestOneFailingEdgeDoesNotStopTheOthers(t *testing.T) {
 
 // The HTTP publisher speaks pantry's wire: the three routes, the bearer, the
 // body fields. This is the test that would catch a client whose request shape
-// drifted from the server's — the fake above can only prove caf asked its own
+// drifted from the server's — the fake above can only prove cafe asked its own
 // fake correctly.
 func TestTheHTTPPublisherPostsPantrysWireShape(t *testing.T) {
 	var paths []string

@@ -15,7 +15,7 @@ import (
 	"github.com/cafaye/cafe/internal/ports"
 )
 
-// The project section of `caf doctor`.
+// The project section of `cafe doctor`.
 //
 // It answers a different question from the toolchain table: not which tools this
 // machine has, but whether this machine can run *this project*. A Ruby project on
@@ -50,7 +50,7 @@ func TestDoctorWithAReadyEnvironment(t *testing.T) {
 	dir := doctorProject(t, "go")
 	probes := readyTriMachine(t)
 	probes.mem, probes.cores = 32<<30, 16
-	// A block port, because "ready" for a caf-managed stack means one caf
+	// A block port, because "ready" for a caf-managed stack means one cafe
 	// arbitrated. A Go project on its own 8080 is fine and is separately reported
 	// as un-arbitrated, which is the next case.
 	probes.publishOn = ports.CAF.First + 1
@@ -293,7 +293,7 @@ func TestDoctorWithoutAManifest(t *testing.T) {
 }
 
 // A manifest that breaks the contract is reported by the linter, in the
-// linter's words. `caf doctor` has no second opinion about what a valid manifest
+// linter's words. `cafe doctor` has no second opinion about what a valid manifest
 // is, and the check that would be derived from a manifest nobody trusts is not
 // run.
 func TestDoctorWithAnInvalidManifest(t *testing.T) {
@@ -392,7 +392,7 @@ func TestDoctorWithNothingToRun(t *testing.T) {
 }
 
 // The plan is what the port check is derived from, so doctor asks the same
-// planner `caf dev` asks rather than a second list of ports. A check built from
+// planner `cafe dev` asks rather than a second list of ports. A check built from
 // its own list is a check that drifts from the thing it is checking.
 func TestDoctorPortsComeFromThePlan(t *testing.T) {
 	dir := doctorProject(t, "go")
@@ -414,7 +414,7 @@ func TestDoctorPortsComeFromThePlan(t *testing.T) {
 	}
 }
 
-// A port the plan publishes outside caf's block works, and it is also invisible
+// A port the plan publishes outside cafe's block works, and it is also invisible
 // to every sibling worker on the machine. That is the sprawl — 15001, 16001,
 // 21101, 55432 — and a warn that names it is the check earning its place.
 func TestAPortOutsideTheBlockIsWarnedNotRefused(t *testing.T) {
@@ -428,19 +428,19 @@ func TestAPortOutsideTheBlockIsWarnedNotRefused(t *testing.T) {
 		t.Errorf("ports = %s, want warn: an explicit -port is a developer's decision, and the check's job is to say what it costs", finding.Severity)
 	}
 	if code != exitSuccess {
-		t.Errorf("exit code = %d, want 0: caf honours an explicit port rather than overriding it", code)
+		t.Errorf("exit code = %d, want 0: cafe honours an explicit port rather than overriding it", code)
 	}
 	if !strings.Contains(finding.Detail, "15000-15999") {
 		t.Errorf("the detail does not name the block: %q", finding.Detail)
 	}
-	if !strings.Contains(finding.Fix, "caf env up") {
+	if !strings.Contains(finding.Fix, "cafe env up") {
 		t.Errorf("the fix does not name the command that arbitrates: %q", finding.Fix)
 	}
 }
 
 // A port the plan publishes is held by something else, and the fix names the tool
 // that arbitrates rather than "try something else". A developer's explicit
-// -port is a decision caf checks rather than overrides.
+// -port is a decision cafe checks rather than overrides.
 func TestAHeldPublishedPortSaysHowToGetOneFromTheBlock(t *testing.T) {
 	dir := doctorProject(t, "go")
 	probes := readyTriMachine(t)
@@ -454,7 +454,7 @@ func TestAHeldPublishedPortSaysHowToGetOneFromTheBlock(t *testing.T) {
 	if !strings.Contains(finding.Detail, strconv.Itoa(busy)) {
 		t.Errorf("the detail does not name the port: %q", finding.Detail)
 	}
-	if !strings.Contains(finding.Fix, "caf env up") {
+	if !strings.Contains(finding.Fix, "cafe env up") {
 		t.Errorf("the fix does not name the command that arbitrates: %q", finding.Fix)
 	}
 	if !strings.Contains(finding.Fix, ports.CAF.String()) {
@@ -462,7 +462,7 @@ func TestAHeldPublishedPortSaysHowToGetOneFromTheBlock(t *testing.T) {
 	}
 }
 
-// A port outside the block is not caf's business. The block exists so that a port
+// A port outside the block is not cafe's business. The block exists so that a port
 // in it is recognisable as ours, and a check that scanned all 65535 would be a
 // check reporting on every developer's machine.
 func TestTheBlockCheckOnlyLooksAtTheBlock(t *testing.T) {
@@ -526,7 +526,7 @@ func runDoctorIn(t *testing.T, dir string, m *triMachine, args ...string) (int, 
 	case errors.Is(err, errReported):
 		code = exitFailure
 	default:
-		errOut.WriteString("caf: " + err.Error() + "\n")
+		errOut.WriteString("cafe: " + err.Error() + "\n")
 		code = exitFailure
 	}
 	return code, out.String(), errOut.String()

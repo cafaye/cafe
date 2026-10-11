@@ -260,7 +260,7 @@ func Classify(previous, current *APIDocument) Breakage {
 			// Unreachable while the two tables agree, and
 			// `TestEveryRuleHasAFunctionAndEveryFunctionHasARule` is what holds
 			// them together. Silently skipping would make a mismatch invisible.
-			panic("caf: breaking rule " + rule.ID + " has no function")
+			panic("cafe: breaking rule " + rule.ID + " has no function")
 		}
 		found = append(found, run(previous, current)...)
 	}
@@ -272,7 +272,7 @@ func Classify(previous, current *APIDocument) Breakage {
 func breakOf(ruleID, path, message string) Break {
 	rule, found := breakingRuleByID[ruleID]
 	if !found {
-		panic("caf: no breaking rule named " + ruleID)
+		panic("cafe: no breaking rule named " + ruleID)
 	}
 	return Break{Rule: ruleID, Path: path, Message: message, Tiers: rule.Tiers}
 }

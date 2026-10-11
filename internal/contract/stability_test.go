@@ -41,7 +41,7 @@ func TestStabilityOfADocumentPath(t *testing.T) {
 	}
 }
 
-// The string is what a message and `caf contract breaking --help` print, and it
+// The string is what a message and `cafe contract breaking --help` print, and it
 // has to agree with buf's own String(): stable is the empty suffix, so naming it
 // explicitly is what makes a sentence read.
 func TestStabilityNamesItselfTheWayBufDoes(t *testing.T) {

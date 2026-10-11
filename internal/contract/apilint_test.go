@@ -299,7 +299,7 @@ func TestOneDocumentCarriesOneVersionedPrefix(t *testing.T) {
 
 // A manifest that names a document which is not there has a contract surface
 // nobody can generate from, read or test against. Silence there is the one
-// outcome a contract linter cannot afford: `caf gen`, the contract tests and
+// outcome a contract linter cannot afford: `cafe gen`, the contract tests and
 // pantry all resolve the same path and find nothing.
 func TestLintingAManifestChecksTheDocumentItNames(t *testing.T) {
 	dir := t.TempDir()
@@ -344,7 +344,7 @@ func TestLintingAManifestLintsTheDocumentWithItsOwnRules(t *testing.T) {
 //
 // pantry's registry holds a byte-identical copy of every fleet service's manifest
 // and each copy names a document that lives in the SERVICE's repository. Before
-// this test, `caf contract lint pantry` printed six `exposes/api is not a
+// this test, `cafe contract lint pantry` printed six `exposes/api is not a
 // readable OpenAPI document` lines — measured, not assumed — on a repository that
 // is behaving correctly, because a copy is not the repository the path is relative
 // to.

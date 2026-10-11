@@ -187,7 +187,7 @@ func TestWaitAcceptsRunningAsSettledForAServiceWithoutAHealthcheck(t *testing.T)
 	}
 }
 
-// A failure is a settled state, not a reason to keep waiting. `caf dev` reports
+// A failure is a settled state, not a reason to keep waiting. `cafe dev` reports
 // what came up and what did not, and a container that exited is a fact the
 // developer needs now.
 func TestWaitSettlesOnFailure(t *testing.T) {
@@ -309,7 +309,7 @@ func TestParseContainerStates(t *testing.T) {
 		{name: "restarting", state: "restarting", health: "", wantStatus: StatusStarting},
 		{name: "paused", state: "paused", health: "", wantStatus: StatusUnhealthy},
 		{name: "dead", state: "dead", health: "", wantStatus: StatusExited},
-		{name: "a state this caf has never heard of", state: "levitating", health: "", wantStatus: StatusPending},
+		{name: "a state this cafe has never heard of", state: "levitating", health: "", wantStatus: StatusPending},
 	}
 
 	for _, tt := range tests {
@@ -363,7 +363,7 @@ func TestParseAcceptsBothShapesComposePrints(t *testing.T) {
 }
 
 // An empty `ps` is a stack that is not up, not a parse failure: a developer who
-// runs `caf dev` twice and stops the first one sees exactly this.
+// runs `cafe dev` twice and stops the first one sees exactly this.
 func TestParseAnEmptyContainerList(t *testing.T) {
 	for _, document := range []string{"", "\n", "[]\n", "null\n"} {
 		got, err := parsePS([]byte(document))
@@ -404,7 +404,7 @@ func TestParseRejectsGarbage(t *testing.T) {
 
 // The compose command line is a contract with the runtime binary: a wrong flag
 // order or a missing `-p` produces a stack in the wrong project name, which
-// means `up` and `down` disagree and the second `caf dev` starts a second copy
+// means `up` and `down` disagree and the second `cafe dev` starts a second copy
 // beside the first.
 func TestComposeCommandLine(t *testing.T) {
 	tests := []struct {
@@ -453,7 +453,7 @@ func TestComposeCommandLine(t *testing.T) {
 
 // The runtime is reached by a binary on PATH, and a stack is brought up by
 // running it. Nothing in this file starts a container: the runtime's own
-// behaviour belongs to `docker compose`, and what caf owes it is the command
+// behaviour belongs to `docker compose`, and what cafe owes it is the command
 // line above and the state mapping, both pinned here.
 func TestComposeRuntimeUsesTheResolvedBinary(t *testing.T) {
 	ran := &recordedRunner{}
@@ -507,9 +507,9 @@ func TestComposeRuntimeSnapshot(t *testing.T) {
 	}
 }
 
-// psLine is one line of `docker compose ps --format json`. Only the fields caf
+// psLine is one line of `docker compose ps --format json`. Only the fields cafe
 // reads are here, because a fixture that copies all twenty would change on
-// every compose release and fail for reasons that have nothing to do with caf.
+// every compose release and fail for reasons that have nothing to do with cafe.
 func psLine(service, state, health string, exitCode int) string {
 	return `{"Name":"stack-dev-` + service + `-1","Service":"` + service +
 		`","State":"` + state + `","Health":"` + health +
@@ -529,7 +529,7 @@ func itoa(n int) string {
 }
 
 // recordedRunner stands in for exec. It records the command line and answers
-// with a canned result, so a test can assert what caf would have run without
+// with a canned result, so a test can assert what cafe would have run without
 // running it.
 type recordedRunner struct {
 	calls  int

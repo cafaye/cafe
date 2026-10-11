@@ -1,4 +1,4 @@
-// Package reclaim is the container-runtime half of `caf reclaim`: the ledger's
+// Package reclaim is the container-runtime half of `cafe reclaim`: the ledger's
 // Docker seam, implemented over the runtime's command line.
 //
 // It exists as its own package so the sweep's *decisions* — the order, the
@@ -16,7 +16,7 @@
 //
 // Every call here is filtered by `com.docker.compose.project`, which is the label
 // compose puts on everything it creates for a project. Two consequences worth
-// stating: a resource caf did not create through compose is unreachable by this
+// stating: a resource cafe did not create through compose is unreachable by this
 // sweeper (correct — the ledger does not name it), and the project name carries
 // the ledger entry's generation, so the filter is also the fence.
 package reclaim

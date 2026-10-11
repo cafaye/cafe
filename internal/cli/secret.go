@@ -14,10 +14,10 @@ import (
 	"github.com/cafaye/cafe/internal/secret"
 )
 
-// `caf secret` is a verb group, for the same reason `caf contract` and `caf gen`
+// `cafe secret` is a verb group, for the same reason `cafe contract` and `cafe gen`
 // are: the words a person types and the command that runs them are different
-// strings, and a help line or a usage error that reads `caf inventory` instead
-// of `caf secret inventory` has made a person go and look for a command that
+// strings, and a help line or a usage error that reads `cafe inventory` instead
+// of `cafe secret inventory` has made a person go and look for a command that
 // does not exist.
 //
 // Each verb below is a Command named with its full invocation. They are
@@ -43,13 +43,13 @@ func newSecretCommand(deps secretDeps) *Command {
 	c := &Command{
 		Name:     "secret",
 		Summary:  "what secrets this box holds, which can be rotated, and rotate them",
-		Usage:    "caf secret <inventory|rotate> [flags] [arguments]",
+		Usage:    "cafe secret <inventory|rotate> [flags] [arguments]",
 		LongHelp: secretVerbTable(verbs) + secretLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
-		// Bare `caf secret` is a question ("what can this do?"), not a mistake,
-		// so it answers instead of exiting 2 — the same call `caf contract` and
-		// `caf gen` make.
+		// Bare `cafe secret` is a question ("what can this do?"), not a mistake,
+		// so it answers instead of exiting 2 — the same call `cafe contract` and
+		// `cafe gen` make.
 		if len(args) == 0 {
 			printHelp(env.Stdout, c)
 			return nil
@@ -79,12 +79,12 @@ func unknownSecretVerb(name string, verbs []secretVerb) error {
 	for _, verb := range verbs {
 		names = append(names, verb.name)
 	}
-	return fmt.Errorf("%w: unknown secret subcommand %q (usage: caf secret <%s>)",
+	return fmt.Errorf("%w: unknown secret subcommand %q (usage: cafe secret <%s>)",
 		errUsage, name, strings.Join(names, "|"))
 }
 
 // secretVerbTable is the verb list in a command's help. It is one string rather
-// than a rendering hook so `caf secret`, `caf secret --help` and `caf help
+// than a rendering hook so `cafe secret`, `cafe secret --help` and `cafe help
 // secret` cannot drift into three different answers.
 func secretVerbTable(verbs []secretVerb) string {
 	var table strings.Builder
@@ -111,7 +111,7 @@ conditional — the rotation needs a second write, a re-mint against identity's
 API, an ALTER ROLE in Postgres, or a change at the provider. not-rotatable — the
 rotation is a fork or a cutover.
 
-A REFUSAL IS NOT A SKIP. caf secret rotate names every entry it did not touch,
+A REFUSAL IS NOT A SKIP. cafe secret rotate names every entry it did not touch,
 with the reason and the file and line the reason comes from, and exits non-zero.
 An inventory that answered "nothing to do" would be how the weekend happens.
 
@@ -122,7 +122,7 @@ would publish it. Nothing in this command can print, log or base64-decode a
 value, because no field holds one.
 
 THE SCHEDULE IS A STATE FILE, NOT A CRON LINE. --state-dir records when each
-entry was last rotated, and caf secret inventory reports what is due from it. A
+entry was last rotated, and cafe secret inventory reports what is due from it. A
 timer nobody can see is not a schedule.
 
 `
@@ -157,14 +157,14 @@ func (d secretDeps) withDefaults(env *Env) secretDeps {
 	return d
 }
 
-// --- caf secret inventory --------------------------------------------------
+// --- cafe secret inventory --------------------------------------------------
 
 func newSecretInventoryCommand(deps secretDeps) *Command {
 	opts := &secretInventoryOptions{}
 	c := &Command{
 		Name:    "secret inventory",
 		Summary: "every secret this box holds, its class, and why — as JSON",
-		Usage:   "caf secret inventory [flags]",
+		Usage:   "cafe secret inventory [flags]",
 		LongHelp: `WHAT IT PRINTS. One JSON document on stdout, with an entry per secret the box holds: its
 name, the Kubernetes Secret and key it lives at, its class, the reason for that
 class, the file and line the reason comes from, and when this box last rotated
@@ -181,7 +181,7 @@ reads one.`,
 	}
 	c.Run = func(args []string, env *Env) error {
 		if len(args) != 0 {
-			return fmt.Errorf("%w: caf secret inventory takes no arguments (usage: %s)", errUsage, c.Usage)
+			return fmt.Errorf("%w: cafe secret inventory takes no arguments (usage: %s)", errUsage, c.Usage)
 		}
 		d := deps.withDefaults(env)
 		d.stateDir = opts.stateDir
@@ -200,14 +200,14 @@ type secretInventoryOptions struct {
 	boxID    string
 }
 
-// --- caf secret rotate -----------------------------------------------------
+// --- cafe secret rotate -----------------------------------------------------
 
 func newSecretRotateCommand(deps secretDeps) *Command {
 	opts := &secretRotateOptions{}
 	c := &Command{
 		Name:    "secret rotate",
 		Summary: "rotate the rotatable class on its schedule, and refuse the rest by name",
-		Usage:   "caf secret rotate [flags] [name]",
+		Usage:   "cafe secret rotate [flags] [name]",
 		LongHelp: `WHAT IT DOES. Rotates the entries whose class is rotatable: it replaces the key
 in the Kubernetes Secret with a freshly generated value in the installer's own
 spelling and restarts the deployment that reads it, then records the rotation in
@@ -236,7 +236,7 @@ than no dry run at all.`,
 	}
 	c.Run = func(args []string, env *Env) error {
 		if len(args) > 1 {
-			return fmt.Errorf("%w: caf secret rotate wants at most one name (usage: %s)", errUsage, c.Usage)
+			return fmt.Errorf("%w: cafe secret rotate wants at most one name (usage: %s)", errUsage, c.Usage)
 		}
 		return (secretRotateRun{opts: *opts, name: argAt(args, 0), deps: deps, env: env}).run()
 	}
@@ -296,7 +296,7 @@ func (r secretRotateRun) run() error {
 	// quiet because there is nothing to say: the schedule is not behind on
 	// anything.
 	if len(targets) == 0 && len(refused) == 0 {
-		fmt.Fprint(r.out(), "caf secret: nothing is due. caf secret inventory says what is held and when each was last rotated.\n")
+		fmt.Fprint(r.out(), "cafe secret: nothing is due. cafe secret inventory says what is held and when each was last rotated.\n")
 		return nil
 	}
 
@@ -318,7 +318,7 @@ func (r secretRotateRun) run() error {
 		return err
 	}
 	if !ok {
-		fmt.Fprint(r.out(), "caf secret: nothing was rotated. Run it with --yes when you mean it.\n")
+		fmt.Fprint(r.out(), "cafe secret: nothing was rotated. Run it with --yes when you mean it.\n")
 		return errReported
 	}
 
@@ -432,7 +432,7 @@ func (r secretRotateRun) ctx() context.Context { return context.Background() }
 // thing the value-on-stdin discipline exists to prevent.
 func (r secretRotateRun) printPlan(plan secret.Plan) error {
 	for _, step := range plan.Steps {
-		if _, err := fmt.Fprintf(r.out(), "caf secret: %s\n", step.Name); err != nil {
+		if _, err := fmt.Fprintf(r.out(), "cafe secret: %s\n", step.Name); err != nil {
 			return err
 		}
 		if step.Stdin == "" {
@@ -444,14 +444,14 @@ func (r secretRotateRun) printPlan(plan secret.Plan) error {
 			fmt.Fprintf(r.out(), "    %s\n", line)
 		}
 	}
-	fmt.Fprintf(r.out(), "caf secret: %s (dry run — nothing was changed)\n", plan.Report)
+	fmt.Fprintf(r.out(), "cafe secret: %s (dry run — nothing was changed)\n", plan.Report)
 	return nil
 }
 
 // ask is the confirmation, and it is the only interactive thing this command
 // does. --yes skips it. A dry run never reaches it.
 //
-// It is here for the reason it is in `caf backup`: a rotation replaces a live
+// It is here for the reason it is in `cafe backup`: a rotation replaces a live
 // secret and restarts the deployment that reads it, which is worth one question
 // about. The prompt names the entries, because a prompt that does not say what it
 // is about is a prompt people approve without reading.
@@ -466,8 +466,8 @@ func (r secretRotateRun) ask(targets []secret.Entry) (bool, error) {
 	for _, e := range targets {
 		names = append(names, e.Name)
 	}
-	return askOnStdin("caf secret", fmt.Sprintf(
-		"caf secret: rotate %s, replacing the secret and restarting the deployment? [y/N] ",
+	return askOnStdin("cafe secret", fmt.Sprintf(
+		"cafe secret: rotate %s, replacing the secret and restarting the deployment? [y/N] ",
 		strings.Join(names, ", ")))
 }
 

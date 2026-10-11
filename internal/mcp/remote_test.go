@@ -148,7 +148,7 @@ func TestAReadScopedAgentReadsAndCannotMutate(t *testing.T) {
 		}
 		// The world was asked, which is the half that distinguishes a read
 		// from an answer assembled from nothing. A tool that answered without
-		// reaching the box would be a tool reporting caf's opinion of a box.
+		// reaching the box would be a tool reporting cafe's opinion of a box.
 		var asked string
 		switch name {
 		case "caf_health":

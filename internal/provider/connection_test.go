@@ -211,7 +211,7 @@ func TestStatusReportsConnectionsAndOpensNothing(t *testing.T) {
 }
 
 // Status with an empty answer is an empty list, not an error: "this box has no
-// providers" is the honest answer to the question ` + "`caf provider status`" + `
+// providers" is the honest answer to the question ` + "`cafe provider status`" + `
 // asks, and it is what a fresh box should hear.
 func TestStatusWithNoConnectionsIsEmptyNotAnError(t *testing.T) {
 	cond := &recordingConductor{}

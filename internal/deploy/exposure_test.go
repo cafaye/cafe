@@ -10,7 +10,7 @@ import (
 // `net/http` service named identity and the accessory's `port:` line present and
 // then deleted. They are literals rather than generated because the property
 // under test is a property of KAMAL's output format: a fixture assembled from
-// caf's own assumptions agrees with the code by construction, which is exactly
+// cafe's own assumptions agrees with the code by construction, which is exactly
 // how the first version of this check shipped parsing `:port` — a key Kamal
 // never prints inside an accessory block — and would have reported every
 // database in the fleet as safely unpublished.
@@ -129,12 +129,12 @@ func TestInspectResolvedRefusesAnAccessoryPublishedOnEveryInterface(t *testing.T
 		t.Errorf("published = %q, want 5432", got.Published)
 	}
 	// The name app containers must use to reach the database. Kamal's own default
-	// is "<service>-<accessory>" (Accessory#service_name); caf cannot read the
+	// is "<service>-<accessory>" (Accessory#service_name); cafe cannot read the
 	// resolved service name out of this document, so it falls back to the part of
 	// the default it does know. The refusal has to name something an operator can
 	// act on, and "reachable by name" without the name is not that.
 	if got.Service != "postgres" {
-		t.Errorf("service = %q, want the accessory key caf can know", got.Service)
+		t.Errorf("service = %q, want the accessory key cafe can know", got.Service)
 	}
 	if got.File != resolvedFrom {
 		t.Errorf("file = %q, want %q so the refusal names a document to edit", got.File, resolvedFrom)
@@ -189,7 +189,7 @@ func TestTheRefusalNamesTheMechanismAndTheRightFix(t *testing.T) {
 // Deleting the port must silence it, and that is the whole claim of the fix: the
 // database stays reachable, because it is on the kamal network by name. The
 // reachability half of that claim is measured by the rehearsal, not here; what
-// is assertable here is that caf's own check agrees the config is clean.
+// is assertable here is that cafe's own check agrees the config is clean.
 func TestRemovingThePortSilencesTheRefusal(t *testing.T) {
 	exposures, err := InspectResolved(resolvedWithoutPublishedPort, resolvedFrom)
 	if err != nil {
@@ -246,7 +246,7 @@ func TestAPortProducedByAnInterpolationIsStillRefused(t *testing.T) {
 }
 
 // A service with no database has nothing published and must not be refused. A
-// shape caf does not understand must not read as "clean" either, because that is
+// shape cafe does not understand must not read as "clean" either, because that is
 // how an exposure passes unnoticed — so an accessories block that is not a
 // mapping is an error and not a pass.
 func TestInspectResolvedIsQuietOnlyOnShapesThatPublishNothing(t *testing.T) {

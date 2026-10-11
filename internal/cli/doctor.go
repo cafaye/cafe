@@ -45,7 +45,7 @@ var tools = []tool{
 // doctor answers three questions, in this order.
 //
 // Which toolchains does this machine have? That is the tool table, and it is
-// the question `caf doctor` answered before: it resolves binaries on PATH and
+// the question `cafe doctor` answered before: it resolves binaries on PATH and
 // never executes them, so it is safe on a bare CI runner.
 //
 // Can this machine run this project? That is the environment section, and it
@@ -56,7 +56,7 @@ var tools = []tool{
 // and a service at once.
 //
 // What has this machine not reclaimed? That is the reclamation section, and it
-// is the third question because it is the only one whose answer is about caf
+// is the third question because it is the only one whose answer is about cafe
 // rather than about the machine. It is here so that cleanup stops depending on
 // somebody remembering: a check nobody can be reminded of is a check nobody runs.
 //
@@ -76,7 +76,7 @@ type doctor struct {
 	// loader reads the project, so a test can hand it a directory it built.
 	load func(dir string) (dev.Project, error)
 	// planner builds the local stack for the project. The port check reads the
-	// ports from the same plan `caf dev` would build, rather than from a list
+	// ports from the same plan `cafe dev` would build, rather than from a list
 	// written here that would drift from it.
 	plan func(project dev.Project) (dev.Stack, error)
 	// book is the reclamation ledger, or nil when the caller did not open one.
@@ -119,7 +119,7 @@ func newDoctorCommand() *Command {
 	c := &Command{
 		Name:    "doctor",
 		Summary: "report which cafaye toolchains this machine has, and whether it can run this project",
-		Usage:   "caf doctor [flags] [path]",
+		Usage:   "cafe doctor [flags] [path]",
 		LongHelp: "Three tables, each row in one of three states: ok, warn, fail.\n" +
 			"\n" +
 			"The first is the toolchain: every binary resolved on PATH, one row\n" +
@@ -130,11 +130,11 @@ func newDoctorCommand() *Command {
 			"and answering, whether the machine has the memory and CPUs a local\n" +
 			"stack needs, whether the ports the stack publishes are free, and\n" +
 			"whether the manifest is one that plans. The ports come from the same\n" +
-			"plan `caf dev` would build, so the two cannot disagree.\n" +
+			"plan `cafe dev` would build, so the two cannot disagree.\n" +
 			"\n" +
 			"The third is reclamation: whether the ledger holds stacks and port\n" +
 			"reservations nothing has reclaimed, and whether anything outside\n" +
-			"caf's ledger is holding a port in 15000-15999. It is here so that\n" +
+			"cafe's ledger is holding a port in 15000-15999. It is here so that\n" +
 			"cleanup stops depending on somebody remembering.\n" +
 			"\n" +
 			"Every row that is not ok carries the exact command that fixes it.\n" +
@@ -142,7 +142,7 @@ func newDoctorCommand() *Command {
 			"<path> is a project directory, the current one by default. The project\n" +
 			"and reclamation sections are skipped with -tools-only.\n" +
 			"\n" +
-			"-registry is the catalog caf dev would use. A project that declares a\n" +
+			"-registry is the catalog cafe dev would use. A project that declares a\n" +
 			"dependency cannot be planned without one, and a report that said so\n" +
 			"without saying how would send a developer to the help output.\n" +
 			"\n" +
@@ -150,20 +150,20 @@ func newDoctorCommand() *Command {
 			"it. A boolean gate would force a choice between failing on warnings\n" +
 			"(noisy, and the first thing a team disables) and ignoring them (a\n" +
 			"report that lies), so there is a third state and it costs nothing.\n" +
-			"This is a change from caf 0.x, where doctor always exited 0.",
+			"This is a change from cafe 0.x, where doctor always exited 0.",
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.toolsOnly, "tools-only", false, "print only the toolchain table")
 			fs.StringVar(&opts.project, "project", ".", "project directory to check")
-			fs.StringVar(&opts.registry, "registry", "", "service catalog to plan against; the same one caf dev uses")
+			fs.StringVar(&opts.registry, "registry", "", "service catalog to plan against; the same one cafe dev uses")
 			fs.StringVar(&opts.ledger, "ledger", "", "the reclamation ledger to read; $CAF_LEDGER_DIR or the user state directory")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
-		// An optional project directory, so `caf doctor` alone checks this one
-		// and `caf doctor ../billing` checks that one. Two paths is a usage
+		// An optional project directory, so `cafe doctor` alone checks this one
+		// and `cafe doctor ../billing` checks that one. Two paths is a usage
 		// error: there is one project per report and a flag for the usual case.
 		if len(args) > 1 {
-			return fmt.Errorf("%w: caf %s wants at most 1 argument, a project directory, got %d (usage: %s)",
+			return fmt.Errorf("%w: cafe %s wants at most 1 argument, a project directory, got %d (usage: %s)",
 				errUsage, c.Name, len(args), c.Usage)
 		}
 		dir := opts.project
@@ -175,7 +175,7 @@ func newDoctorCommand() *Command {
 	return c
 }
 
-// doctorOptions is the parsed flag state for `caf doctor`.
+// doctorOptions is the parsed flag state for `cafe doctor`.
 type doctorOptions struct {
 	project   string
 	registry  string
@@ -326,7 +326,7 @@ func (d *doctor) find(t tool) string {
 
 // findTool is find by name, for the environment section: the toolchain a
 // project needs is one of the rows above, so the same resolution answers both
-// and a language caf maps to a tool it does not list reports as missing rather
+// and a language cafe maps to a tool it does not list reports as missing rather
 // than as a second opinion.
 func (d *doctor) findTool(name string) (string, bool) {
 	for _, t := range tools {
@@ -341,7 +341,7 @@ func (d *doctor) findTool(name string) (string, bool) {
 }
 
 // plannerFor is the plan the port check is derived from. It takes the same
-// catalog `caf dev` would: a project that declares a dependency cannot be
+// catalog `cafe dev` would: a project that declares a dependency cannot be
 // planned without one, and doctor reporting "nothing to run" for a project
 // that runs perfectly well would be a false alarm about a machine.
 func plannerFor(path string) func(dev.Project) (dev.Stack, error) {

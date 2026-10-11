@@ -13,7 +13,7 @@ import (
 	"github.com/cafaye/cafe/internal/dev"
 )
 
-// This file is the machine side of `caf doctor`: the facts that need something
+// This file is the machine side of `cafe doctor`: the facts that need something
 // outside the process, behind one interface so a test can arrange a machine state
 // it cannot otherwise produce.
 //
@@ -146,7 +146,7 @@ func (m *machineProbes) portFree(port int) bool {
 }
 
 // probeTimeout bounds the one probe that runs a command. A container runtime
-// that is still starting takes seconds to answer, and `caf doctor` is a command
+// that is still starting takes seconds to answer, and `cafe doctor` is a command
 // a developer runs while wondering whether things work — it must not become the
 // thing that hangs.
 const probeTimeout = 5 * time.Second

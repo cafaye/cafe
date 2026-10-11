@@ -13,14 +13,14 @@ import (
 // The catalog resolves every entry it indexes. An index that names a template
 // with no directory is a catalog entry that cannot be scaffolded, and the
 // failure would otherwise meet a person as "unknown template" for a template
-// `caf new --help` advertised.
+// `cafe new --help` advertised.
 func TestTheCatalogResolvesEveryIndexedTemplate(t *testing.T) {
 	catalog, err := LoadCatalog()
 	if err != nil {
 		t.Fatalf("LoadCatalog: %v", err)
 	}
 	if len(catalog.Names()) == 0 {
-		t.Fatal("the catalog is empty: caf new has nothing to offer")
+		t.Fatal("the catalog is empty: cafe new has nothing to offer")
 	}
 	for _, name := range catalog.Names() {
 		t.Run(name, func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestTheCatalogResolvesEveryIndexedTemplate(t *testing.T) {
 				t.Fatalf("template %q writes no files", name)
 			}
 			// Every template scaffolds a manifest: it is the one file a
-			// project is identified by, and `caf contract lint` refuses a
+			// project is identified by, and `cafe contract lint` refuses a
 			// tree without one.
 			if !hasFile(files, manifestPath) {
 				t.Errorf("template %q does not write a %s", name, manifestPath)
@@ -66,7 +66,7 @@ func TestAnUnknownTemplateNamesWhatIsAvailable(t *testing.T) {
 }
 
 // The generated project validates against core's manifest schema AND passes
-// caf contract lint — the packet's whole claim, tested rather than asserted.
+// cafe contract lint — the packet's whole claim, tested rather than asserted.
 //
 // Two levels, because they are two different claims. CheckData validates the
 // manifest bytes against the vendored schema and the cross-field conventions;
@@ -132,7 +132,7 @@ func TestTheScaffoldedManifestDeclaresNoCredentialShapedKey(t *testing.T) {
 // Rendering is deterministic: two runs over one template and one name produce
 // the same bytes. It is what makes a diff between two scaffolds a diff between
 // two inputs rather than a diff between two runs — the same property
-// `caf dev`'s compose document holds.
+// `cafe dev`'s compose document holds.
 func TestRenderingIsDeterministic(t *testing.T) {
 	catalog, err := LoadCatalog()
 	if err != nil {
@@ -171,7 +171,7 @@ func TestAScaffoldRefusesToClobberAnExistingProject(t *testing.T) {
 	if _, err := New(Options{Template: "app", Name: "acme", Dir: dir}); err != nil {
 		t.Fatalf("first New: %v", err)
 	}
-	edited := []byte("# hand-edited by somebody who is not caf\n")
+	edited := []byte("# hand-edited by somebody who is not cafe\n")
 	if err := os.WriteFile(filepath.Join(dir, manifestPath), edited, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestAScaffoldRefusesToClobberAnExistingProject(t *testing.T) {
 	}
 }
 
-// caf init writes the manifest and only the manifest: the project already
+// cafe init writes the manifest and only the manifest: the project already
 // exists, and laying a main.go over somebody's working tree is the clobber
 // this command exists to avoid.
 func TestInitWritesOnlyTheManifest(t *testing.T) {
@@ -245,7 +245,7 @@ func TestInitWritesOnlyTheManifest(t *testing.T) {
 }
 
 // The name is derived from the directory when none is given, which is what
-// makes `caf init` usable without flags — and a directory whose base name is
+// makes `cafe init` usable without flags — and a directory whose base name is
 // not a service name is refused by name, with the rules stated.
 func TestInitDerivesTheNameFromTheDirectory(t *testing.T) {
 	t.Run("a directory that is a service name", func(t *testing.T) {
@@ -274,16 +274,16 @@ func TestInitDerivesTheNameFromTheDirectory(t *testing.T) {
 // An illegal name is refused before anything is rendered, and the refusal
 // names what a legal one looks like. The schema has the final word — the rows
 // below render each name through CheckData as well, and the two agree, except
-// for the reserved names, which the schema admits and caf refuses. That
+// for the reserved names, which the schema admits and cafe refuses. That
 // divergence is deliberate and pinned here: the schema's serviceName $defs
-// documents the reservation but cannot enforce it, so caf refuses them at the
+// documents the reservation but cannot enforce it, so cafe refuses them at the
 // only place it can.
 func TestAnIllegalNameIsRefusedAndTheSchemaAgrees(t *testing.T) {
 	tests := []struct {
 		name string
 		// legal is the schema's own answer.
 		legal bool
-		// reserved is a name the schema accepts and caf refuses.
+		// reserved is a name the schema accepts and cafe refuses.
 		reserved bool
 	}{
 		{name: "acme", legal: true},
@@ -296,7 +296,7 @@ func TestAnIllegalNameIsRefusedAndTheSchemaAgrees(t *testing.T) {
 		{name: "a"},
 		{name: strings.Repeat("a", 41)},
 		{name: "cafaye", legal: true, reserved: true},
-		{name: "caf", legal: true, reserved: true},
+		{name: "cafe", legal: true, reserved: true},
 		{name: "core", legal: true, reserved: true},
 		{name: "kit", legal: true, reserved: true},
 	}
@@ -319,7 +319,7 @@ func TestAnIllegalNameIsRefusedAndTheSchemaAgrees(t *testing.T) {
 }
 
 // A scaffold that cannot produce a linting manifest never reaches the disk.
-// This is the gate `caf gen` already holds for its own output: generate into
+// This is the gate `cafe gen` already holds for its own output: generate into
 // memory, refuse, then write.
 func TestAnInvalidManifestIsRefusedBeforeAnythingIsWritten(t *testing.T) {
 	// The name is the one input a caller controls that reaches the manifest,
@@ -365,13 +365,13 @@ func TestThePlatformTemplateComposesTheLaunchFour(t *testing.T) {
 	}
 }
 
-// The platform app's `caf dev` story: the manifest composes the four services
+// The platform app's `cafe dev` story: the manifest composes the four services
 // into a runnable stack. This is the extent the story is testable headlessly —
 // the compose document renders, the services are present, and the wiring
 // (depends_on, connection environment) is correct. What it cannot prove is
 // that the containers actually start: the registry entries below are fixtures
 // with the four services' real shapes (language, port) and placeholder images,
-// and a live `caf dev` needs the real catalog from pantry and a container
+// and a live `cafe dev` needs the real catalog from pantry and a container
 // runtime.
 func TestThePlatformTemplatePlansAStackWithTheLaunchFour(t *testing.T) {
 	manifest, err := renderedManifest(t, "acme", "platform")
@@ -414,7 +414,7 @@ func TestThePlatformTemplatePlansAStackWithTheLaunchFour(t *testing.T) {
 	// The platform template includes a Dockerfile, so the app builds from the
 	// working tree. We are testing the plan in memory rather than writing the
 	// scaffolded files to disk, so the Build is passed directly — the same
-	// shape `caf dev` resolves when it finds docker/Dockerfile in the project.
+	// shape `cafe dev` resolves when it finds docker/Dockerfile in the project.
 	stack, err := dev.Plan(parsed, reg, dev.Options{
 		Build: &dev.Build{Context: ".", Dockerfile: "docker/Dockerfile"},
 	})
@@ -423,7 +423,7 @@ func TestThePlatformTemplatePlansAStackWithTheLaunchFour(t *testing.T) {
 	}
 
 	// The stack has the app plus the four plus the two pieces of local
-	// infrastructure (postgres and redis) that caf adds to every runnable
+	// infrastructure (postgres and redis) that cafe adds to every runnable
 	// service.
 	want := []string{"acme", "courier", "gateway", "identity", "parlor", "postgres", "redis"}
 	if len(stack.Services) != len(want) {

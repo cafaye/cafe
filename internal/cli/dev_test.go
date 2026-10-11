@@ -179,7 +179,7 @@ func alphaCatalog() dev.Catalog {
 }
 
 // A project with no manifest is refused in one sentence that says what to do
-// about it. `caf dev` in the wrong directory is a mistake a developer makes
+// about it. `cafe dev` in the wrong directory is a mistake a developer makes
 // once; the sentence is what they read while making it.
 func TestDevWithoutAManifest(t *testing.T) {
 	dir := t.TempDir()
@@ -192,7 +192,7 @@ func TestDevWithoutAManifest(t *testing.T) {
 	if !strings.Contains(stderr, "no cafaye.yml in "+dir) {
 		t.Errorf("stderr does not name the missing manifest and where it looked\ngot:\n%s", stderr)
 	}
-	if !strings.Contains(stderr, "caf init") {
+	if !strings.Contains(stderr, "cafe init") {
 		t.Errorf("stderr does not say how to create one\ngot:\n%s", stderr)
 	}
 	if stdout != "" {
@@ -201,7 +201,7 @@ func TestDevWithoutAManifest(t *testing.T) {
 }
 
 // An invalid manifest is reported by the linter that owns the rules, in the
-// linter's words. `caf dev` refusing a manifest `caf contract lint` accepts
+// linter's words. `cafe dev` refusing a manifest `cafe contract lint` accepts
 // would be the one divergence this CLI cannot have.
 func TestDevWithAnInvalidManifest(t *testing.T) {
 	dir := projectDir(t, map[string]string{
@@ -219,9 +219,9 @@ func TestDevWithAnInvalidManifest(t *testing.T) {
 	}
 	// The same file, the same sentence.
 	_, _, lintStderr := runCLI(t, testVersion, "contract", "lint", filepath.Join(dir, "cafaye.yml"))
-	if !strings.Contains(stderr, strings.TrimPrefix(lintStderr, "caf: ")) &&
-		!strings.Contains(lintStderr, strings.TrimPrefix(stderr, "caf: ")) {
-		t.Errorf("caf dev and caf contract lint disagree about the same file\nlint: %s\ndev:  %s", lintStderr, stderr)
+	if !strings.Contains(stderr, strings.TrimPrefix(lintStderr, "cafe: ")) &&
+		!strings.Contains(lintStderr, strings.TrimPrefix(stderr, "cafe: ")) {
+		t.Errorf("cafe dev and cafe contract lint disagree about the same file\nlint: %s\ndev:  %s", lintStderr, stderr)
 	}
 }
 
@@ -293,7 +293,7 @@ func TestDevOutFlag(t *testing.T) {
 	}
 }
 
-// Running `caf dev` twice must reconcile one stack, not start a second beside
+// Running `cafe dev` twice must reconcile one stack, not start a second beside
 // the first. Two things make that true and both are asserted here: the compose
 // project name is the same both times, and the document is byte-identical, so
 // the runtime's own config hash does not change and it has nothing to recreate.
@@ -383,7 +383,7 @@ func TestDevBringsUpTheStackAndReportsIt(t *testing.T) {
 			}
 			// It names the file it wrote, as an absolute path: the runtime
 			// resolves a relative one against its own working directory, and
-			// `caf dev ../billing` must bring up the same stack.
+			// `cafe dev ../billing` must bring up the same stack.
 			if got := filepath.Base(runtime.upCalls[0].file); got != "caf.dev.compose.yaml" {
 				t.Errorf("brought up %q, want the file the command wrote", runtime.upCalls[0].file)
 			}
@@ -600,7 +600,7 @@ func TestDevWithNothingToRun(t *testing.T) {
 	}
 }
 
-// A repository of documents has no process, so the plan is empty. `caf dev`
+// A repository of documents has no process, so the plan is empty. `cafe dev`
 // says so and succeeds: there was nothing to start and nothing wrong.
 func TestDevInASpecRepository(t *testing.T) {
 	dir := projectDir(t, map[string]string{
@@ -677,7 +677,7 @@ func TestDevSaysWhereItWrote(t *testing.T) {
 	}
 }
 
-// Everything `caf dev` writes is inside the project directory unless the
+// Everything `cafe dev` writes is inside the project directory unless the
 // developer named somewhere else. A command that reaches outside it mutates
 // something nobody pointed it at, and the only defence is that it says so —
 // which is why the report names the file, and why a relative `-out` is taken
@@ -734,7 +734,7 @@ func TestDevWriteLocation(t *testing.T) {
 func TestDevHonoursAnAbsoluteOut(t *testing.T) {
 	dir := buildableProject(t)
 	elsewhere := t.TempDir()
-	target := filepath.Join(elsewhere, "caf.compose.yaml")
+	target := filepath.Join(elsewhere, "cafe.compose.yaml")
 
 	code, stdout, stderr := runCLI(t, testVersion, "dev", "-dry-run", "-out", target, dir)
 
@@ -860,7 +860,7 @@ func TestDevReportsARuntimeFailure(t *testing.T) {
 // `exitCoder` was declared with an EXPORTED `ExitCode() int` — which is also the
 // method on `*os/exec.ExitError`. Every real runtime error wraps one, so
 // `errors.As` matched it, `Run` took the pass-through branch meant for
-// `caf env up`'s child, and the command exited non-zero having printed nothing
+// `cafe env up`'s child, and the command exited non-zero having printed nothing
 // at all. `errors.New("no such image: ...")` cannot satisfy that interface, so
 // the test above passed against the broken code and the defect shipped.
 //
@@ -899,7 +899,7 @@ func TestDevReportsASubprocessFailureTheRouterWouldSwallow(t *testing.T) {
 	}
 
 	// And the router's mapping, which is where the error was lost: with the
-	// interface matching on an exported `ExitCode() int` this succeeds, and caf
+	// interface matching on an exported `ExitCode() int` this succeeds, and cafe
 	// exits with the child's code having printed nothing.
 	//
 	// Asserted as a property of the error rather than by calling the method, so
@@ -909,11 +909,11 @@ func TestDevReportsASubprocessFailureTheRouterWouldSwallow(t *testing.T) {
 	var coded exitCoder
 	if errors.As(err, &coded) {
 		t.Error("a wrapped *exec.ExitError satisfied exitCoder, so Run would take the " +
-			"pass-through branch and print nothing; only caf's own childStatus may match it")
+			"pass-through branch and print nothing; only cafe's own childStatus may match it")
 	}
 }
 
-// caf's own child status still passes through, which is the half of the
+// cafe's own child status still passes through, which is the half of the
 // pass-through branch that is supposed to work. The fix above narrows what can
 // match; this is what is left matching, and losing it would be a different bug.
 //
@@ -924,7 +924,7 @@ func TestAChildStatusStillPassesThrough(t *testing.T) {
 
 	var coded exitCoder
 	if !errors.As(error(child), &coded) {
-		t.Fatal("childStatus no longer satisfies exitCoder: `caf env up` lost its pass-through")
+		t.Fatal("childStatus no longer satisfies exitCoder: `cafe env up` lost its pass-through")
 	}
 	if child.Code != 3 {
 		t.Errorf("child code = %d, want 3", child.Code)
@@ -979,7 +979,7 @@ func TestDevFlagsAreDeclared(t *testing.T) {
 	}
 }
 
-// `caf dev` takes an optional project directory, so `caf dev` with no argument
+// `cafe dev` takes an optional project directory, so `cafe dev` with no argument
 // works in the current directory. Two arguments is still a usage mistake.
 func TestDevArgumentCount(t *testing.T) {
 	tests := []struct {
@@ -1078,7 +1078,7 @@ func writeTestFile(t *testing.T, path, contents string) {
 
 // A stack that failed to come up is a stack nobody asked to keep. The runtime
 // makes networks and containers before it discovers the failure, so without a
-// teardown the next `caf dev` starts from a partial one — and a second run
+// teardown the next `cafe dev` starts from a partial one — and a second run
 // reconciles it rather than replacing it, so the mess is permanent.
 func TestDevTearsDownWhenTheStackFailsToStart(t *testing.T) {
 	dir := buildableProject(t)

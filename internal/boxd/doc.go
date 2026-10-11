@@ -32,7 +32,7 @@
 // refusal is reported back to conductor rather than swallowed — a refused
 // capability the daemon agreed to is the failure mode this exists to prevent.
 //
-// No route may return a Secret-shaped value. `caf boxd`'s job on the box is
+// No route may return a Secret-shaped value. `cafe boxd`'s job on the box is
 // to receive sealed envelopes and act on them, never to hand credentials back
 // out over the channel — the envelope is opened on the box and installed as a
 // Kubernetes Secret, and what goes back to conductor is a status saying that
@@ -51,7 +51,7 @@
 //
 // # What this package deliberately is not
 //
-// It is not the enrollment flow — `caf box enroll` (W2-P6) creates the box
+// It is not the enrollment flow — `cafe box enroll` (W2-P6) creates the box
 // identity and owns the keyring, and this package reads what that flow wrote
 // through a seam so the two can be developed against each other rather than
 // merged by hope. It is not a container runtime: the World seam is how the

@@ -11,7 +11,7 @@ import (
 	"github.com/cafaye/cafe/internal/failure"
 )
 
-// failureDeps is what `caf failure check` needs from the world, and it is a
+// failureDeps is what `cafe failure check` needs from the world, and it is a
 // struct of parameters for the reason resolveDeps and deployDeps are: a test
 // hands the command a reader it owns and drives the whole path — a document
 // in, ten rules over it, a report out — without a file, a box, or a stream the
@@ -30,7 +30,7 @@ func (d failureDeps) withDefaults() failureDeps {
 	return d
 }
 
-// failureLongHelp is the prose under `caf failure`'s usage line.
+// failureLongHelp is the prose under `cafe failure`'s usage line.
 //
 // The exit code is stated in the help because it is the part a script gets
 // wrong. It is zero unless the observation itself could not be read: a
@@ -56,7 +56,7 @@ name's presence and a probe's answer, which is why the library can be checked
 with no credential anywhere in this process.
 
 WHY THE INPUT IS A DOCUMENT. The box daemon's World is the seam that would
-answer this on a real box, and it is not reachable from a caf process on a
+answer this on a real box, and it is not reachable from a cafe process on a
 workstation: it lives behind the outbound mTLS channel
 (internal/boxd/daemon.go:101-162). A verb that read the box directly would be
 a verb that only worked on a box, so this one takes the facts as data, and
@@ -73,7 +73,7 @@ Exit status: 0 when the report was printed, including when conditions hold.
 Nonzero when the observation could not be read or decoded.`
 
 // newFailureCommand is the parent. It holds one verb and dispatches to it the
-// way `caf gen` does, because a command that groups verbs never registers
+// way `cafe gen` does, because a command that groups verbs never registers
 // itself in Commands() as the verb — the parent does, and the parent's row is
 // what stub_test.go's workingCommands carries.
 func newFailureCommand(deps failureDeps) *Command {
@@ -82,19 +82,19 @@ func newFailureCommand(deps failureDeps) *Command {
 	c := &Command{
 		Name:     "failure",
 		Summary:  "check a box against the cafaye failure-mode library",
-		Usage:    "caf failure check [<observation.json>]",
+		Usage:    "cafe failure check [<observation.json>]",
 		LongHelp: failureLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
-		// Bare `caf failure` is a question ("what can this do?"), not a
-		// mistake, so it answers rather than exiting 2 — the same call `caf
+		// Bare `cafe failure` is a question ("what can this do?"), not a
+		// mistake, so it answers rather than exiting 2 — the same call `cafe
 		// gen` makes.
 		if len(args) == 0 {
 			printHelp(env.Stdout, c)
 			return nil
 		}
 		if args[0] != "check" {
-			return fmt.Errorf("%w: unknown caf failure verb %q (usage: caf failure check)", errUsage, args[0])
+			return fmt.Errorf("%w: unknown cafe failure verb %q (usage: cafe failure check)", errUsage, args[0])
 		}
 		return failureCheckCommand(deps).Execute(env, args[1:])
 	}
@@ -107,12 +107,12 @@ func failureCheckCommand(deps failureDeps) *Command {
 	c := &Command{
 		Name:    "failure check",
 		Summary: "evaluate the library's rules against an observation document",
-		Usage:   "caf failure check [<observation.json>]",
+		Usage:   "cafe failure check [<observation.json>]",
 		LongHelp: "Reads an observation document — the facts the failure-mode library's rules read,\n" +
 			"as JSON — evaluates the library's ten rules against it, and prints which\n" +
 			"conditions hold, which do not, and which the observation could not answer.\n" +
 			"\n" +
-			"With no path (or \"-\") the document is read from stdin. Run `caf failure` for\n" +
+			"With no path (or \"-\") the document is read from stdin. Run `cafe failure` for\n" +
 			"what the document carries and why nothing configured is ever read.",
 		Flags: func(fs *flag.FlagSet) {
 			// No flags, and that is a decision rather than an omission: there
@@ -127,18 +127,18 @@ func failureCheckCommand(deps failureDeps) *Command {
 		}
 		obs, err := readObservation(args[0], deps.stdin)
 		if err != nil {
-			return fmt.Errorf("caf failure check: %w", err)
+			return fmt.Errorf("cafe failure check: %w", err)
 		}
 		report := failure.Evaluate(failure.Library(), obs)
 		fmt.Fprint(env.Stdout, report.String())
-		fmt.Fprintf(env.Stdout, "caf failure: %s\n", report.Describe())
+		fmt.Fprintf(env.Stdout, "cafe failure: %s\n", report.Describe())
 		return nil
 	}
 	return c
 }
 
 // readObservation decodes the observation document. A path of "" or "-" is
-// stdin, so the verb composes: `caf box observe | caf failure check` is the
+// stdin, so the verb composes: `cafe box observe | cafe failure check` is the
 // shape the substrate packet's verb completes.
 //
 // A document that does not decode is refused with the JSON error's own

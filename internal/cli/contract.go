@@ -14,7 +14,7 @@ import (
 // contractVerb pairs the word a person types with the command that runs it.
 // The two are different strings on purpose: the word is what the dispatcher
 // looks up, and the command is named with its full invocation so that its help
-// and its usage errors read as `caf contract lint` rather than `caf lint`.
+// and its usage errors read as `cafe contract lint` rather than `cafe lint`.
 type contractVerb struct {
 	name string
 	cmd  *Command
@@ -33,11 +33,11 @@ func newContractCommand() *Command {
 	c := &Command{
 		Name:     "contract",
 		Summary:  "validate cafaye manifests and resolve core version constraints",
-		Usage:    "caf contract <breaking|lint|resolve> [flags] [arguments]",
+		Usage:    "cafe contract <breaking|lint|resolve> [flags] [arguments]",
 		LongHelp: contractVerbTable(verbs),
 	}
 	c.Run = func(args []string, env *Env) error {
-		// Bare `caf contract` is a question ("what can this do?"), not a
+		// Bare `cafe contract` is a question ("what can this do?"), not a
 		// mistake, so it answers instead of exiting 2.
 		if len(args) == 0 {
 			printHelp(env.Stdout, c)
@@ -68,13 +68,13 @@ func unknownContractVerb(name string, verbs []contractVerb) error {
 	for _, verb := range verbs {
 		names = append(names, verb.name)
 	}
-	return fmt.Errorf("%w: unknown contract subcommand %q (usage: caf contract <%s>)",
+	return fmt.Errorf("%w: unknown contract subcommand %q (usage: cafe contract <%s>)",
 		errUsage, name, strings.Join(names, "|"))
 }
 
 // contractVerbTable is the verb list in a command's help. It is one string
-// rather than a rendering hook so `caf contract`, `caf contract --help` and
-// `caf help contract` cannot drift into three different answers.
+// rather than a rendering hook so `cafe contract`, `cafe contract --help` and
+// `cafe help contract` cannot drift into three different answers.
 func contractVerbTable(verbs []contractVerb) string {
 	var table strings.Builder
 	table.WriteString("Commands:\n")
@@ -128,7 +128,7 @@ func newContractBreakingCommand() *Command {
 	c := &Command{
 		Name:    "contract breaking",
 		Summary: "compare two revisions of an OpenAPI document and report which tiers each change breaks",
-		Usage:   "caf contract breaking <previous> <current>",
+		Usage:   "cafe contract breaking <previous> <current>",
 		LongHelp: "Compares two revisions of one OpenAPI document and reports every breaking\n" +
 			"change, each tagged with the tiers it breaks:\n" +
 			"\n" +
@@ -152,7 +152,7 @@ func newContractBreakingCommand() *Command {
 			"    x-cafaye-reserved-properties: [old_name]\n" +
 			"\n" +
 			"Exits 1 if anything selected is breaking, and 0 if nothing is. A document\n" +
-			"caf cannot parse is exit 1 with the parse error on stderr: an unreadable\n" +
+			"cafe cannot parse is exit 1 with the parse error on stderr: an unreadable\n" +
 			"revision has not been shown to be compatible with anything.",
 	}
 	c.Flags = func(fs *flag.FlagSet) {
@@ -164,7 +164,7 @@ func newContractBreakingCommand() *Command {
 		}
 		tiers, err := options.selected()
 		if err != nil {
-			return fmt.Errorf("%w: caf contract breaking --tiers: %w", errUsage, err)
+			return fmt.Errorf("%w: cafe contract breaking --tiers: %w", errUsage, err)
 		}
 		return runContractBreaking(args[0], args[1], tiers, env.Stdout)
 	}
@@ -174,17 +174,17 @@ func newContractBreakingCommand() *Command {
 // runContractBreaking prints the report and reports whether it passed.
 //
 // The tier selection is read by the caller rather than here, because whether a
-// selection can be read decides the exit code: a flag caf cannot read is a
+// selection can be read decides the exit code: a flag cafe cannot read is a
 // person mistyping it and exits 2, and everything else about this function is a
 // verdict on a contract.
 func runContractBreaking(previousPath, currentPath string, tiers contract.Tier, out io.Writer) error {
 	previous, err := parseAPIDocumentAt(previousPath)
 	if err != nil {
-		return fmt.Errorf("caf contract breaking: %w", err)
+		return fmt.Errorf("cafe contract breaking: %w", err)
 	}
 	current, err := parseAPIDocumentAt(currentPath)
 	if err != nil {
-		return fmt.Errorf("caf contract breaking: %w", err)
+		return fmt.Errorf("cafe contract breaking: %w", err)
 	}
 
 	reported := contract.Classify(previous, current).Selected(tiers)
@@ -220,7 +220,7 @@ func newContractLintCommand() *Command {
 	c := &Command{
 		Name:    "contract lint",
 		Summary: "validate cafaye.yml manifests against the core schema",
-		Usage:   "caf contract lint <path>",
+		Usage:   "cafe contract lint <path>",
 		LongHelp: "Validates every cafaye.yml under <path>, which is a file or a directory,\n" +
 			"against the manifest schema vendored from cafaye/core, plus the rules the\n" +
 			"schema cannot state. One line per manifest:\n" +
@@ -245,7 +245,7 @@ func newContractLintCommand() *Command {
 func runContractLint(root string, out io.Writer) error {
 	report, err := contract.Lint(root)
 	if err != nil {
-		return fmt.Errorf("caf contract lint: %w", err)
+		return fmt.Errorf("cafe contract lint: %w", err)
 	}
 
 	invalid := 0
@@ -268,7 +268,7 @@ func newContractResolveCommand() *Command {
 	c := &Command{
 		Name:    "contract resolve",
 		Summary: "resolve a core version constraint against a version",
-		Usage:   "caf contract resolve <constraint> <version>",
+		Usage:   "cafe contract resolve <constraint> <version>",
 		LongHelp: "Resolves a cafaye core constraint against a core version, and says why.\n" +
 			"The constraint is MAJOR.MINOR.PATCH, optionally prefixed by\n" +
 			"\n" +
@@ -286,9 +286,9 @@ func newContractResolveCommand() *Command {
 		}
 		resolution, err := contract.Resolve(args[0], args[1])
 		if err != nil {
-			// A constraint caf cannot read is the user typing it wrongly, not a
+			// A constraint cafe cannot read is the user typing it wrongly, not a
 			// service being broken: usage, exit 2.
-			return fmt.Errorf("%w: caf %s: %w", errUsage, c.Name, err)
+			return fmt.Errorf("%w: cafe %s: %w", errUsage, c.Name, err)
 		}
 		fmt.Fprintf(env.Stdout, "%-3s  %s allows %s: %s\n",
 			verdict(resolution.Satisfied), resolution.Constraint, resolution.Version, resolution.Rationale)

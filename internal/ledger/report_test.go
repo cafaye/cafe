@@ -102,7 +102,7 @@ func TestTheSummaryCarriesEachKindsThreeWords(t *testing.T) {
 }
 
 // The ledger's location goes in the "nothing to reclaim" sentence, because
-// "nothing to reclaim" and "caf reclaim looked somewhere else" are different
+// "nothing to reclaim" and "cafe reclaim looked somewhere else" are different
 // sentences and a report that cannot tell them apart sends a person to check
 // CAF_LEDGER_DIR instead of the answer.
 func TestNothingToReclaimNamesWhereItLooked(t *testing.T) {
@@ -422,7 +422,7 @@ func TestDefaultDirResolvesInOrder(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := filepath.Join("/tmp/xdg", "caf", "ledger"); got != want {
+		if want := filepath.Join("/tmp/xdg", "cafe", "ledger"); got != want {
 			t.Errorf("DefaultDir = %q, want %q", got, want)
 		}
 	})
@@ -438,7 +438,7 @@ func TestDefaultDirResolvesInOrder(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := filepath.Join(home, ".local", "state", "caf", "ledger"); got != want {
+		if want := filepath.Join(home, ".local", "state", "cafe", "ledger"); got != want {
 			t.Errorf("DefaultDir = %q, want %q", got, want)
 		}
 	})

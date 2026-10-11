@@ -12,7 +12,7 @@ import (
 	"github.com/cafaye/cafe/internal/contract"
 )
 
-// The observe stream, box side: the pure facts `caf boxd`'s observe.report
+// The observe stream, box side: the pure facts `cafe boxd`'s observe.report
 // route assembles. This file holds the helpers that are functions of their
 // inputs — which releases are pending against a range, what a set of facts
 // says about health, how a backup.DrillRecord flattens to the boxd DrillFact —
@@ -25,7 +25,7 @@ import (
 // library, and internal/boxd's own test fails the build if it imports os/exec
 // or syscall). The world is assembled in cli alongside the other commands'
 // own helpers (backup_drill.go, boxd.go); the version-range match is a call
-// into the SAME constraint grammar caf contract resolve uses, not a second
+// into the SAME constraint grammar cafe contract resolve uses, not a second
 // copy of it.
 
 // pendingAgainstRange classifies conductor's candidate releases against this
@@ -211,7 +211,7 @@ func observeRange() (string, bool) {
 // is made here, in internal/cli, rather than in internal/boxd: boxd is
 // stdlib-only by the house rule and the standard library exposes no disk usage
 // on any platform, while this package already owns the platform probes
-// `caf doctor` reads and is permitted syscall behind them. The observation's
+// `cafe doctor` reads and is permitted syscall behind them. The observation's
 // type lives in boxd next to the document it belongs to; the measurement lives
 // where the platform is allowed to be named.
 //

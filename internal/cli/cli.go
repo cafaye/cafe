@@ -1,4 +1,4 @@
-// Package cli implements the caf command line: the hand-rolled router, the
+// Package cli implements the cafe command line: the hand-rolled router, the
 // subcommand registry and one file per subcommand.
 //
 // The layout follows the pipeline-stage pattern the GoReleaser CLI uses: the
@@ -19,7 +19,7 @@ import (
 	"github.com/cafaye/cafe/internal/emitter"
 )
 
-// errUsage marks a mistake in how caf was invoked, as opposed to a command
+// errUsage marks a mistake in how cafe was invoked, as opposed to a command
 // that ran and failed. It is what separates exit code 2 from exit code 1.
 var errUsage = errors.New("usage")
 
@@ -32,13 +32,13 @@ var errUsage = errors.New("usage")
 var errReported = errors.New("reported")
 
 // exitCoder is an error that names the process exit code itself, for the one
-// case where caf is a parent rather than the thing being judged: `caf env up`
+// case where cafe is a parent rather than the thing being judged: `cafe env up`
 // runs a command under test, and a CI job that read 0 out of a red suite would
 // be a green badge for a red run — the exact invisible red run this binary
 // exists to make impossible.
 //
 // It is an interface rather than a sentinel because the code is the child's, not
-// one of caf's three, and inventing a fourth caf-wide code for it would be worse
+// one of cafe's three, and inventing a fourth caf-wide code for it would be worse
 // than a command that passes one through.
 type exitCoder interface {
 	error
@@ -48,7 +48,7 @@ type exitCoder interface {
 // Options is one CLI invocation. main fills it from the process; tests fill it
 // from buffers.
 type Options struct {
-	// Version is the build identity reported by `caf version`.
+	// Version is the build identity reported by `cafe version`.
 	Version Version
 	// Args is the argument list without the program name.
 	Args []string
@@ -70,7 +70,7 @@ type Env struct {
 	Stderr  io.Writer
 	// Context is cancelled when the process is interrupted. It is optional: a
 	// caller that only wants an exit code passes nothing, and the router fills
-	// in a background context. `caf dev` is the one command that reads it, and
+	// in a background context. `cafe dev` is the one command that reads it, and
 	// it is there rather than read from a package-level variable so a test can
 	// cancel it without sending itself a signal.
 	Context context.Context
@@ -80,7 +80,7 @@ type Env struct {
 //
 //	0  the command succeeded, or the user asked for help
 //	1  the command ran and failed
-//	2  caf was invoked wrongly (unknown command or flag, bad argument count)
+//	2  cafe was invoked wrongly (unknown command or flag, bad argument count)
 //
 // This is where the invocation's one span is opened and closed, and the reason it
 // is HERE rather than in `main` is that `Run` is where the outcome is known. A
@@ -102,7 +102,7 @@ func Run(opts Options) int {
 		// swallowing it silently would make a broken exporter indistinguishable
 		// from a disabled one, which is the confusion core's
 		// otel-endpoint.schema.json exists to prevent.
-		fmt.Fprintf(env.Stderr, "caf: could not end the invocation span: %v\n", spanErr)
+		fmt.Fprintf(env.Stderr, "cafe: could not end the invocation span: %v\n", spanErr)
 	}
 	// A flush error is not printed. `emitter.Shutdown` already returns nil for
 	// the one failure a developer hits constantly — a collector that is not
@@ -110,7 +110,7 @@ func Run(opts Options) int {
 	// which core's noOp.warnings rule cannot mean for a CLI whose every command
 	// would then carry it.
 	if err := session.Shutdown(ctx); err != nil {
-		fmt.Fprintf(env.Stderr, "caf: could not flush telemetry: %v\n", err)
+		fmt.Fprintf(env.Stderr, "cafe: could not flush telemetry: %v\n", err)
 	}
 	return code
 }
@@ -135,7 +135,7 @@ func codeFor(env Env, err error) int {
 		return exitFailure
 	}
 
-	fmt.Fprintf(env.Stderr, "caf: %v\n", err)
+	fmt.Fprintf(env.Stderr, "cafe: %v\n", err)
 	if errors.Is(err, errUsage) {
 		return exitUsage
 	}
@@ -147,9 +147,9 @@ func codeFor(env Env, err error) int {
 // A usage error is `invalid_request` because the person typed the command
 // wrongly, which is the one class where the cause is outside the process — see
 // emitter.OutcomeUsage for why filing it as an internal error would put a typo
-// in the same dashboard bucket as a caf bug.
+// in the same dashboard bucket as a cafe bug.
 //
-// A cancelled context is `cancelled` for the same reason `caf dev`'s Ctrl-C is:
+// A cancelled context is `cancelled` for the same reason `cafe dev`'s Ctrl-C is:
 // an operator stopping a long command is not an error an alert should page on.
 func outcomeForCode(code int, err error) emitter.Outcome {
 	switch {
@@ -167,7 +167,7 @@ func outcomeForCode(code int, err error) emitter.Outcome {
 // installTelemetry wires the SDK for this process.
 //
 // It reads the switches BEFORE any command runs and cannot fail the invocation:
-// core's endpoint contract makes the endpoint `required: false`, so a caf whose
+// core's endpoint contract makes the endpoint `required: false`, so a cafe whose
 // collector is unreachable still runs every command it has always run. The
 // function exists as a seam rather than being inlined into Run because a test
 // has to be able to prove the no-op path, and the only way to prove that is to
@@ -179,7 +179,7 @@ func installTelemetry(env Env) emitter.Session {
 		TenantID:    os.Getenv("TENANT_ID"),
 	})
 	if err != nil {
-		fmt.Fprintf(env.Stderr, "caf: telemetry is unavailable (%v); running without it.\n", err)
+		fmt.Fprintf(env.Stderr, "cafe: telemetry is unavailable (%v); running without it.\n", err)
 	}
 	return session
 }
@@ -229,7 +229,7 @@ func writerOrDiscard(w io.Writer) io.Writer {
 	return w
 }
 
-// root routes "caf <command> [flags] [arguments]" to the registry. It knows
+// root routes "cafe <command> [flags] [arguments]" to the registry. It knows
 // nothing about individual commands.
 type root struct {
 	env      Env
@@ -255,7 +255,7 @@ func (r *root) execute(env Env, args []string) error {
 	return r.run(env, args[0], args[1:])
 }
 
-// help implements `caf help` and `caf help <command>`. It prints; it never runs
+// help implements `cafe help` and `cafe help <command>`. It prints; it never runs
 // anything.
 func (r *root) help(env Env, args []string) error {
 	if len(args) == 0 || args[0] == "help" {
@@ -279,14 +279,14 @@ func (r *root) run(env Env, name string, args []string) error {
 }
 
 func unknownCommand(name string) error {
-	return fmt.Errorf("%w: unknown command %q (run \"caf help\" for the command list)", errUsage, name)
+	return fmt.Errorf("%w: unknown command %q (run \"cafe help\" for the command list)", errUsage, name)
 }
 
-// printRootHelp writes the top-level usage: what caf is, the command table and
+// printRootHelp writes the top-level usage: what cafe is, the command table and
 // the two global flags.
 func printRootHelp(commands []*Command, w io.Writer) {
-	fmt.Fprint(w, "caf - the cafaye platform CLI\n\n")
-	fmt.Fprint(w, "Usage:\n  caf <command> [flags] [arguments]\n  caf help <command>\n\n")
+	fmt.Fprint(w, "cafe - the cafaye platform CLI\n\n")
+	fmt.Fprint(w, "Usage:\n  cafe <command> [flags] [arguments]\n  cafe help <command>\n\n")
 	fmt.Fprint(w, "Commands:\n")
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
@@ -299,13 +299,13 @@ func printRootHelp(commands []*Command, w io.Writer) {
 	fmt.Fprint(w, "\nFlags:\n")
 	fmt.Fprint(w, "  -h, --help      show this help\n")
 	fmt.Fprint(w, "  -v, --version   print the version\n\n")
-	fmt.Fprint(w, "Every subcommand has its own help: caf help <command>\n")
+	fmt.Fprint(w, "Every subcommand has its own help: cafe help <command>\n")
 }
 
 // printHelp writes one command's help: its summary, its usage line, any prose
 // the command adds, and every flag it declares, with defaults.
 func printHelp(w io.Writer, c *Command) {
-	fmt.Fprintf(w, "caf %s - %s\n\n", c.Name, c.Summary)
+	fmt.Fprintf(w, "cafe %s - %s\n\n", c.Name, c.Summary)
 	fmt.Fprintf(w, "Usage:\n  %s\n", c.Usage)
 	if c.LongHelp != "" {
 		fmt.Fprintf(w, "\n%s", c.LongHelp)

@@ -21,7 +21,7 @@ import (
 // `WithDialOption(WithBlock())` is deliberately ABSENT, and this is the single
 // most consequential line in the package. Without it the gRPC dial is
 // asynchronous: constructing an exporter starts no connection, blocks on
-// nothing, and fails nowhere. With it, `caf --help` on a machine with no
+// nothing, and fails nowhere. With it, `cafe --help` on a machine with no
 // collector — which is every machine that has not started the stack — would wait
 // out a context timeout before printing anything, and would do so in the one
 // place core's no-op block says must cost nothing ("startupCost: none. No dial
@@ -54,7 +54,7 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 	// the standard variable the cafaye one is documented to beat. MEASURED, over
 	// the wire, on a plain socket reading the first bytes a dial produces:
 	//
-	//	CAF_OTEL_ENDPOINT=https://127.0.0.1:PORT     (caf's own answer: TLS)
+	//	CAFE_OTEL_ENDPOINT=https://127.0.0.1:PORT     (cafe's own answer: TLS)
 	//	OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:PORT
 	//	-> first bytes on the wire: 50 52 49 20 2a 20 48 54 54 50 2f 32 2e
 	//	   which is "PRI * HTTP/2.0" — the plaintext h2 client preface.
@@ -82,12 +82,12 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 	// before this packet. The
 	// gRPC exporter defaults to TLS, and core's shipped default is
 	// `http://otel-collector:4317` — plaintext gRPC on the collector's 4317.
-	// Without this, `caf` opened NO connection at all: `lsof` against a real
+	// Without this, `cafe` opened NO connection at all: `lsof` against a real
 	// OTLP receiver listening on the configured port showed the listener and
 	// nothing else, on every command, forever. The exporter's TLS handshake
 	// could not complete against a plaintext collector, the failure was dropped
 	// by the error handler installed for noOp.warnings, and the observable
-	// result was a caf that exported nothing and said nothing about it.
+	// result was a cafe that exported nothing and said nothing about it.
 	//
 	// So the scheme is not decoration on core's default — it is the only thing
 	// that says whether the bytes are encrypted, and a reader who strips it
@@ -106,7 +106,7 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 // `telemetry.Secure` rather than a second implementation of it.
 //
 // The three rules that answer are core's and are now in the generated file, which
-// is where a service that adopts `caf gen telemetry` will read them: only `https`
+// is where a service that adopts `cafe gen telemetry` will read them: only `https`
 // encrypts; a bare host:port is plaintext, because an operator who writes no
 // scheme is saying "the address" and not "the encryption"; and the comparison is
 // case-folded, because a person typing `HTTPS://` means what they mean by
@@ -125,6 +125,6 @@ const exportTimeout = 2 * time.Second
 // The batch processor is the SDK default rather than an explicit choice here,
 // and kit's pins.md says why in one line worth repeating: "Batch processors,
 // never simple ones, in any production path. One export per span makes the
-// collector the bottleneck and drops spans on a slow network." A caf run
+// collector the bottleneck and drops spans on a slow network." A cafe run
 // produces exactly one span, so the batch never fills — and Shutdown flushes it
 // on the way out, which is the property the exporter would otherwise lack.

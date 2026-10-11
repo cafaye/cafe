@@ -21,7 +21,7 @@ type diskReading struct {
 // split from its caller: the conversion belongs where the platform's unit is
 // known rather than in a caller that has to remember which spelling applies.
 //
-// `syscall` here is the same trade `caf doctor`'s memory probe makes and the
+// `syscall` here is the same trade `cafe doctor`'s memory probe makes and the
 // package doc's own comment records: the standard library has no cross-platform
 // way to ask for a filesystem's size, and a fourth module in go.mod for two
 // numbers in a report is not a trade AGENTS.md lets this package make.

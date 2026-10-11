@@ -13,11 +13,11 @@ import (
 // writes.
 const FileName = "caf.lock"
 
-// LockVersion is the format version, carried in the document so a caf that
-// writes lockfiles this shape and a caf that writes a different one can say so
+// LockVersion is the format version, carried in the document so a cafe that
+// writes lockfiles this shape and a cafe that writes a different one can say so
 // rather than each parsing the other's under rules it was not written under.
 //
-// It is the wholesale-invalidation field. It is NOT the tool version: a caf
+// It is the wholesale-invalidation field. It is NOT the tool version: a cafe
 // patch release that changes nothing about what is pinned must not invalidate
 // every lock in the fleet, and a change to the format must invalidate all of
 // them without asking.
@@ -31,7 +31,7 @@ type Kind string
 
 // The four kinds. A fifth is a refusal rather than a passthrough, because an
 // unknown kind means the lock was written by something that knows things this
-// caf does not, and treating it as a plain file would silently drop the one
+// cafe does not, and treating it as a plain file would silently drop the one
 // fact that made it worth pinning.
 const (
 	// KindSpec is the project's own declaration: `cafaye.yml`, and the OpenAPI
@@ -41,7 +41,7 @@ const (
 	// convention `internal/contract/schemas` documents. Changed by a refresh
 	// procedure with a core commit attached; never by a patch.
 	KindVendoredSchema Kind = "vendored-schema"
-	// KindGeneratedClient is a file `caf gen` writes for this manifest. It is
+	// KindGeneratedClient is a file `cafe gen` writes for this manifest. It is
 	// in the tree on purpose and it is compiled by the gate; this pin is what
 	// says it is still byte-identical to what the generator emits.
 	KindGeneratedClient Kind = "generated-client"
@@ -51,13 +51,13 @@ const (
 	KindRuleBundle Kind = "rule-bundle"
 )
 
-// kinds is every kind, in the order `caf lock` prints its summary.
+// kinds is every kind, in the order `cafe lock` prints its summary.
 //
 // A map elsewhere and a slice here would be two lists to keep in step; this is
 // the only one, and `KnownKinds` reads it.
 var kinds = []Kind{KindSpec, KindVendoredSchema, KindGeneratedClient, KindRuleBundle}
 
-// KnownKind reports whether a kind is one this caf wrote a rule for.
+// KnownKind reports whether a kind is one this cafe wrote a rule for.
 func KnownKind(k Kind) bool {
 	for _, known := range kinds {
 		if known == k {
@@ -82,7 +82,7 @@ type Entry struct {
 type Lock struct {
 	// LockVersion is the format version. See the constant.
 	LockVersion int `json:"lockVersion"`
-	// Tool is the caf that wrote this, for the same reason a fingerprint
+	// Tool is the cafe that wrote this, for the same reason a fingerprint
 	// carries the version of the thing that made it: a reader holding a lock
 	// needs to know what wrote it before deciding whether its complaint about
 	// that lock is the lock's fault or theirs.
@@ -102,7 +102,7 @@ const HashSHA256 = "sha256"
 
 // Build walks a tree and returns the lock its declarations imply.
 //
-// `tool` is the caf version string, recorded verbatim. The walk reads the
+// `tool` is the cafe version string, recorded verbatim. The walk reads the
 // manifest, the vendored-schema directory, the generator's own output list and
 // the gate declaration, in that order, and each of those can refuse — so this
 // returns an error rather than a lock that silently pins less than the tree
@@ -148,7 +148,7 @@ func Write(root string, l Lock) (string, error) {
 // only place that order is decided.
 //
 // Indented and newline-terminated because this is a committed file a person
-// reads in a diff, which is the same reason `caf gen` emits readable Go rather
+// reads in a diff, which is the same reason `cafe gen` emits readable Go rather
 // than minified Go.
 func Marshal(l Lock) ([]byte, error) {
 	var out []byte
@@ -172,7 +172,7 @@ func Marshal(l Lock) ([]byte, error) {
 
 	// Check the hand-shaped bytes are the same document the struct describes.
 	// A marshaler that disagrees with its own type is a writer that writes
-	// something `caf lock --verify` cannot read back, and the only moment
+	// something `cafe lock --verify` cannot read back, and the only moment
 	// anybody would find out is on a machine that cannot regenerate.
 	var round Lock
 	if err := json.Unmarshal(out, &round); err != nil {
@@ -187,7 +187,7 @@ func Marshal(l Lock) ([]byte, error) {
 // Read reads `<root>/caf.lock`.
 //
 // The two refusals it can make are both about the document rather than the
-// files: a lock whose `lockVersion` this caf does not implement, and a lock
+// files: a lock whose `lockVersion` this cafe does not implement, and a lock
 // that is not JSON. Both name the file and both say what to do, because "the
 // lock is wrong" with no remedy is the output that teaches people to delete
 // the lock.
@@ -196,7 +196,7 @@ func Read(root string) (Lock, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return Lock{}, fmt.Errorf("%s does not exist in %s. `caf lock` writes it, and nothing else does: "+
+			return Lock{}, fmt.Errorf("%s does not exist in %s. `cafe lock` writes it, and nothing else does: "+
 				"a lockfile is a claim about this tree's bytes, and a hand-written one is a claim about "+
 				"bytes nobody checked", path, root)
 		}
@@ -205,15 +205,15 @@ func Read(root string) (Lock, error) {
 
 	var l Lock
 	if err := json.Unmarshal(raw, &l); err != nil {
-		return Lock{}, fmt.Errorf("%s is not a lockfile this caf wrote: %w", path, err)
+		return Lock{}, fmt.Errorf("%s is not a lockfile this cafe wrote: %w", path, err)
 	}
 	if l.LockVersion != LockVersion {
-		return Lock{}, fmt.Errorf("%s declares lockVersion %d and this caf writes %d. A lockfile format "+
+		return Lock{}, fmt.Errorf("%s declares lockVersion %d and this cafe writes %d. A lockfile format "+
 			"change invalidates every lock wholesale on purpose — the alternative is every older lock being "+
-			"parsed under rules it was not written under. Re-run `caf lock`", path, l.LockVersion, LockVersion)
+			"parsed under rules it was not written under. Re-run `cafe lock`", path, l.LockVersion, LockVersion)
 	}
 	if l.Hash != HashSHA256 {
-		return Lock{}, fmt.Errorf("%s declares hash %q and this caf only computes %s. Re-run `caf lock`",
+		return Lock{}, fmt.Errorf("%s declares hash %q and this cafe only computes %s. Re-run `cafe lock`",
 			path, l.Hash, HashSHA256)
 	}
 	return l, nil

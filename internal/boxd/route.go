@@ -75,7 +75,7 @@ type Route struct {
 	run func(ctx context.Context, w World, params json.RawMessage) (any, error)
 }
 
-// Table is the whitelist, in the order `caf boxd routes` renders it. It is a
+// Table is the whitelist, in the order `cafe boxd routes` renders it. It is a
 // value rather than a map because order is part of the answer: the list a
 // human reads to find out what their box can be told to do should not change
 // between two runs of one binary.

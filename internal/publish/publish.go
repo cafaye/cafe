@@ -38,7 +38,7 @@ const (
 )
 
 // The state a first submission registers. Docker Hub's model (MD28): push and it
-// is public — there is no review queue, and a `caf publish` that left the
+// is public — there is no review queue, and a `cafe publish` that left the
 // project pantry's default `draft` would be a command that published nothing
 // visible. Pantry defaults to draft only when the body says nothing; this
 // command is the caller saying so.
@@ -241,10 +241,10 @@ type Report struct {
 //     one, and required from the publisher when it does not — the two curated
 //     values are a judgement the manifest cannot make (pantry's ProjectKind).
 //   - the manifest is normalized through encoding/json and hashed, so the
-//     bytes caf sends and the bytes pantry re-encodes to check manifest_sha256
+//     bytes cafe sends and the bytes pantry re-encodes to check manifest_sha256
 //     are the same bytes. A hash of the YAML-to-JSON conversion would be a
 //     hash of bytes the server never sees, and the 400 it produced would blame
-//     the publisher for caf's encoding.
+//     the publisher for cafe's encoding.
 //   - a dependency with no version is refused here rather than sent: pantry
 //     resolves a range against a target's releases at write time, and an
 //     unbounded edge is a 400 whose detail names a rule the manifest already
@@ -262,7 +262,7 @@ func ProposalFor(manifest contract.Manifest, tag, kind string) (Proposal, error)
 		// cannot say whether it is a binary or a server — and a `worker` with
 		// nothing to derive from is a claim somebody has to make.
 		if kind == "" {
-			return Proposal{}, fmt.Errorf("the manifest declares no contract surface, so caf cannot derive whether this " +
+			return Proposal{}, fmt.Errorf("the manifest declares no contract surface, so cafe cannot derive whether this " +
 				"project is a binary, a server or an event worker — pass --kind with what it is (api, worker, both, cli)")
 		}
 		derived = kind
@@ -355,7 +355,7 @@ func deriveKind(manifest contract.Manifest) (string, bool) {
 //
 // The round trip is through encoding/json on purpose. The YAML-to-JSON
 // conversion's byte order and escaping are goccy's; the bytes on the wire are
-// Go's; pantry hashes the re-encode of what it decoded, so the bytes caf hashes
+// Go's; pantry hashes the re-encode of what it decoded, so the bytes cafe hashes
 // must be the bytes a Go json.Marshal of the decoded document produces.
 // Diverging here is a 400 that blames the publisher for a bug in the client.
 func manifestDocument(manifest contract.Manifest) (map[string]any, []byte, error) {
@@ -453,7 +453,7 @@ func idempotent(err error, phrase string) bool {
 }
 
 // HTTPPublisher is the real Publisher: one POST per operation against pantry's
-// write routes, publisher-authenticated through the caller's caf token. It is
+// write routes, publisher-authenticated through the caller's cafe token. It is
 // the write half of the same client resolve reads the catalog with — same
 // origin, same bearer, same problem envelope — because a registry client that
 // had two ideas about pantry's wire shape would eventually have two shapes.

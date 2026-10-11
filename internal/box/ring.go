@@ -57,7 +57,7 @@ func ringAccount(boxID string) string { return ringAccountPrefix + boxID }
 // production box is what systemd's own credential handling does anyway. The
 // reason it is the default rather than a shell-out to `security` or
 // `secret-tool` is the rule this repository holds everywhere else: a
-// subprocess is not free, and the one thing caf must never do is fail to store
+// subprocess is not free, and the one thing cafe must never do is fail to store
 // a key because a keychain helper was not on PATH. The interface is the
 // contract; an OS-keychain ring is a later packet that changes this file's
 // constructor call and nothing else.
@@ -110,7 +110,7 @@ func (r FileRing) Get(service, account string) (string, error) {
 
 // Set writes one entry, atomically and with the mode the secret requires.
 //
-// The write is a temp file plus a rename, not a truncate-and-write: a caf that
+// The write is a temp file plus a rename, not a truncate-and-write: a cafe that
 // died mid-write would otherwise leave a half key on disk, and a half key is
 // worse than no key because the next run cannot tell a truncated base64 string
 // from a valid one.
@@ -162,7 +162,7 @@ func ensureRingDir(dir string) error {
 			return fmt.Errorf("keyring path %s is not a directory", dir)
 		}
 		if st.Mode().Perm()&0o077 != 0 {
-			return fmt.Errorf("keyring directory %s is %#o and is writable or readable by others; caf will not store a key there", dir, st.Mode().Perm())
+			return fmt.Errorf("keyring directory %s is %#o and is writable or readable by others; cafe will not store a key there", dir, st.Mode().Perm())
 		}
 		return nil
 	}

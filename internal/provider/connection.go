@@ -20,7 +20,7 @@ var Providers = []string{"smtp", "cloudflare"}
 
 // Connection is one email provider a box's account uses, as conductor records
 // it. Every field but SealedCredential is a non-secret: they say WHICH provider
-// and WHICH account, and those facts are what ` + "`caf provider status`" + `
+// and WHICH account, and those facts are what ` + "`cafe provider status`" + `
 // prints. SealedCredential is the envelope — ciphertext conductor cannot open
 // and the box can — and it is the one field no status report ever echoes.
 type Connection struct {
@@ -31,7 +31,7 @@ type Connection struct {
 	SealedCredential string            `json:"sealed_credential"`
 }
 
-// ConnectRequest is what ` + "`caf provider connect`" + ` seals and posts. The
+// ConnectRequest is what ` + "`cafe provider connect`" + ` seals and posts. The
 // credential is in plaintext here and ONLY here: it is sealed by Connect and
 // the envelope is what reaches conductor. The request is a parameter rather
 // than three arguments because the day a fourth field lands, a caller that
@@ -68,7 +68,7 @@ type Conductor interface {
 // The two honest refusals a connect can meet before it reaches the network.
 var (
 	// ErrUnknownProvider is a provider conductor does not accept. It is a
-	// usage error in the CLI's sense: the person typed a word caf does not
+	// usage error in the CLI's sense: the person typed a word cafe does not
 	// have, and the answer is the list of the ones it does.
 	ErrUnknownProvider = fmt.Errorf("unknown provider (the providers are %s)", strings.Join(Providers, ", "))
 	// ErrEmptyCredential is a connect whose credential is blank. Refusing it
@@ -93,7 +93,7 @@ func Connect(ctx context.Context, c Conductor, req ConnectRequest) (*Connection,
 		return nil, ErrEmptyCredential
 	}
 	if strings.TrimSpace(req.BoxID) == "" {
-		return nil, errors.New("no box: run `caf box enroll --token …` first")
+		return nil, errors.New("no box: run `cafe box enroll --token …` first")
 	}
 
 	envelope, err := Seal(req.Credential, req.BoxPublic)
@@ -176,7 +176,7 @@ func (c HTTPConductor) client() *http.Client {
 // credential in it — the envelope is the only thing the credential became.
 func (c HTTPConductor) Connect(ctx context.Context, conn Connection) (*Connection, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, errors.New("no conductor URL configured; set it with `caf provider connect --conductor <url>` or in the box identity")
+		return nil, errors.New("no conductor URL configured; set it with `cafe provider connect --conductor <url>` or in the box identity")
 	}
 	body, err := json.Marshal(conn)
 	if err != nil {
@@ -216,10 +216,10 @@ func (c HTTPConductor) Connect(ctx context.Context, conn Connection) (*Connectio
 // Status GETs the connections conductor holds for one box. A 404 is reported
 // as no connections rather than an error, because "conductor has never heard
 // of this box" and "this box has no providers" are the same answer to the
-// question ` + "`caf provider status`" + ` asks.
+// question ` + "`cafe provider status`" + ` asks.
 func (c HTTPConductor) Status(ctx context.Context, boxID string) ([]Connection, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, errors.New("no conductor URL configured; set it with `caf provider status --conductor <url>` or in the box identity")
+		return nil, errors.New("no conductor URL configured; set it with `cafe provider status --conductor <url>` or in the box identity")
 	}
 	url := strings.TrimSuffix(c.BaseURL, "/") + connectPath + "?box_id=" + boxID
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

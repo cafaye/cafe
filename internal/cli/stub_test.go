@@ -55,7 +55,7 @@ func TestStubReturnsNotImplemented(t *testing.T) {
 			if !errors.Is(err, errNotImplemented) {
 				t.Fatalf("err = %v, want it to wrap errNotImplemented", err)
 			}
-			if want := "caf " + stub.name + ": " + errNotImplemented.Error(); err.Error() != want {
+			if want := "cafe " + stub.name + ": " + errNotImplemented.Error(); err.Error() != want {
 				t.Errorf("err = %q, want %q", err, want)
 			}
 		})
@@ -72,7 +72,7 @@ func TestStubExitsOneWithItsReason(t *testing.T) {
 			if code != exitFailure {
 				t.Errorf("exit code = %d, want %d (stderr: %s)", code, exitFailure, stderr)
 			}
-			if want := "caf " + stub.name + ": " + errNotImplemented.Error(); !strings.Contains(stderr, want) {
+			if want := "cafe " + stub.name + ": " + errNotImplemented.Error(); !strings.Contains(stderr, want) {
 				t.Errorf("stderr missing %q\ngot:\n%s", want, stderr)
 			}
 			if stdout != "" {
@@ -195,7 +195,7 @@ func TestStubHelpRendersFlags(t *testing.T) {
 			if code != exitSuccess {
 				t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 			}
-			if !strings.Contains(stdout, "caf "+stub.name) {
+			if !strings.Contains(stdout, "cafe "+stub.name) {
 				t.Errorf("help does not name the command\ngot:\n%s", stdout)
 			}
 			if !strings.Contains(stdout, "Flags:") {

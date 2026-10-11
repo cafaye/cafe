@@ -11,7 +11,7 @@ import (
 )
 
 // The four ways a stack cannot be planned. Each is a distinct sentinel because
-// each is a different problem with a different fix, and `caf dev` reports them
+// each is a different problem with a different fix, and `cafe dev` reports them
 // differently: a cycle is a bug in a service graph, a port conflict is a
 // decision the developer has to make, a missing dependency is a catalog that
 // does not know something the manifest requires, and no image is a repository
@@ -34,7 +34,7 @@ var (
 // directory or on what is listening on 8080.
 type Options struct {
 	// Project is the compose project name. Empty means the service name with a
-	// -dev suffix, which is what makes a second `caf dev` reconcile the first
+	// -dev suffix, which is what makes a second `cafe dev` reconcile the first
 	// instead of starting a copy beside it.
 	Project string
 	// Build is what to build the project service from, resolved from the
@@ -45,8 +45,8 @@ type Options struct {
 	// The container port is a property of the image and is never rewritten.
 	HostPort int
 	// PortAllocator decides the host end of a publishing service's port. It is
-	// how `caf env up` hands the stack ports it reserved from 15000-15999 and
-	// held for the life of the session, and it is nil for `caf dev`, which takes
+	// how `cafe env up` hands the stack ports it reserved from 15000-15999 and
+	// held for the life of the session, and it is nil for `cafe dev`, which takes
 	// the service's own port. It is a field rather than a global so the planner
 	// stays pure: a reservation is a fact about the machine, and Plan is not
 	// allowed to know about machines.
@@ -75,7 +75,7 @@ const (
 	OriginProject Origin = "project"
 	// OriginRegistry is a service the manifest depends on.
 	OriginRegistry Origin = "registry"
-	// OriginInfra is a local service caf added.
+	// OriginInfra is a local service cafe added.
 	OriginInfra Origin = "infrastructure"
 )
 
@@ -165,7 +165,7 @@ func (s Stack) Names() []string {
 	return names
 }
 
-// PublishedPorts are the host ports the stack asks for, sorted. `caf doctor`
+// PublishedPorts are the host ports the stack asks for, sorted. `cafe doctor`
 // checks them against the machine before anything is started, so a conflict is
 // found while it is still cheap.
 func (s Stack) PublishedPorts() []int {
@@ -181,7 +181,7 @@ func (s Stack) PublishedPorts() []int {
 
 // Plan is the whole decision: a manifest and a registry in, a rendered compose
 // document and a start order out. It reads no file, opens no socket and runs
-// no command, which is what lets the interesting behaviour of `caf dev` be
+// no command, which is what lets the interesting behaviour of `cafe dev` be
 // tested without a container runtime anywhere in sight.
 //
 // The order of the checks is the order a developer needs them in. The closure
@@ -351,7 +351,7 @@ func (r *resolver) dependenciesOf(name string) ([]dependency, error) {
 	// docker-compose.yml describes. `dependencies: ["postgres"]` is the obvious
 	// thing to write for a service that needs a database, and it was refused:
 	//
-	//	caf dev: unknown dependency: postgres depends on postgres, and no
+	//	cafe dev: unknown dependency: postgres depends on postgres, and no
 	//	registry says how to run it
 	//
 	// "postgres depends on postgres" is not a thing anybody wrote. It is this
@@ -489,7 +489,7 @@ func (r *resolver) addProject(name string) error {
 	} else if svc.Published > 0 && r.opts.PortAllocator != nil {
 		// The allocator owns the host end, and it owns it for a reason: it holds
 		// the port. An explicit -port is the developer's decision and wins,
-		// because caf checks a port it was given rather than moving it.
+		// because cafe checks a port it was given rather than moving it.
 		port, err := r.opts.PortAllocator(name)
 		if err != nil {
 			r.allocErr = fmt.Errorf("%w: %w", ErrPortConflict, err)
@@ -541,7 +541,7 @@ func (r *resolver) wire() {
 			deps = append(deps, Dep{Name: dep, Condition: r.condition(dep)})
 		}
 		// The registry's own values are merged last, so a service the registry
-		// knows about keeps its real configuration and caf's local default is
+		// knows about keeps its real configuration and cafe's local default is
 		// only a floor for a service nobody has described. The address of each
 		// piece of infrastructure goes in under the variable THIS service reads
 		// it from — a declared name when the catalog entry gave one, and the
@@ -589,7 +589,7 @@ func (r *resolver) wire() {
 //
 // YAML permits a repeated key and the compose spec does not define what the
 // second one means, so which condition wins is the parser's business rather
-// than caf's. Both entries were identical here, which is why it looked
+// than cafe's. Both entries were identical here, which is why it looked
 // harmless — and why it would have stayed harmless right up until a catalog
 // spelled out a condition that differed, which nothing lets a catalog do yet.
 // A document that is merely redundant is still a document two readers disagree

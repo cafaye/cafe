@@ -1,7 +1,7 @@
-// Package emitter wires the OpenTelemetry SDK to one caf invocation, and is
-// what makes a caf run visible in HyperDX under service.name=caf.
+// Package emitter wires the OpenTelemetry SDK to one cafe invocation, and is
+// what makes a cafe run visible in HyperDX under service.name=cafe.
 //
-// # Why caf emits at all
+// # Why cafe emits at all
 //
 // core's contract does not say "HTTP services". Three things in it imply a CLI
 // is in scope, and the implication is the whole justification for this package:
@@ -30,9 +30,9 @@
 // # What this package deliberately does not emit
 //
 // **No metrics and no logs.** core's otel-endpoint.schema.json lists three
-// signals and this emits the first. A caf invocation is a span with a duration
+// signals and this emits the first. A cafe invocation is a span with a duration
 // and an outcome; a CLI counter would be a number that exists once and is
-// aggregated by whoever runs caf, and a CLI log line is the terminal the user is
+// aggregated by whoever runs cafe, and a CLI log line is the terminal the user is
 // already reading. Emitting them would mean two more processors, two more
 // shutdown paths, and two more failure modes in the one code path that has to
 // not be the reason a command fails.

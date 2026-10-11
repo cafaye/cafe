@@ -8,7 +8,7 @@ import (
 )
 
 // ErrBusy is a port somebody is already using. It is distinct from ErrHeld
-// because the two have different owners: ErrHeld is another caf's live session,
+// because the two have different owners: ErrHeld is another cafe's live session,
 // which is the design working, and ErrBusy is a stranger on the machine, which
 // is the case that needs saying out loud.
 var ErrBusy = errors.New("port in use by something the ledger does not know about")

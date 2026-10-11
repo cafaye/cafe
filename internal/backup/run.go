@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-// ErrRefused is the sentinel for "caf checked the service and would not touch
+// ErrRefused is the sentinel for "cafe checked the service and would not touch
 // it". It is a sentinel rather than a string so a caller can tell a refusal
 // apart from a cycle that ran and failed: the first is fixed by editing a file,
 // the second by reading a log, and a message that merged them would be advice for
 // the wrong one.
-var ErrRefused = errors.New("caf backup: refusing to back up")
+var ErrRefused = errors.New("cafe backup: refusing to back up")
 
 // ErrCycleFailed is the sentinel for "the cycle ran and something in it failed,
 // and the report has already been printed".
@@ -24,18 +24,18 @@ var ErrRefused = errors.New("caf backup: refusing to back up")
 // It exists so the caller does not print the reason twice. The failure report is
 // several sentences — what failed, that the scratch database was dropped, that
 // the accessory is still running — and every one of them is on stdout already;
-// a `caf: ...` line on stderr repeating the cause puts a truncated copy of the
+// a `cafe: ...` line on stderr repeating the cause puts a truncated copy of the
 // report in the place a CI log greps, and the truncated copy is the one without
 // the advice in it.
-var ErrCycleFailed = errors.New("caf backup: the cycle failed")
+var ErrCycleFailed = errors.New("cafe backup: the cycle failed")
 
-// Request is one `caf backup` invocation, before the plan is built.
+// Request is one `cafe backup` invocation, before the plan is built.
 type Request struct {
 	// Dir is the project directory. Empty means the current one.
 	Dir string
 	// Service is the service being backed up. It comes from the cafaye.yml
 	// manifest, not from the Kamal config: Kamal's `service:` is the container
-	// name and the contract caf owns is the service name.
+	// name and the contract cafe owns is the service name.
 	Service string
 	// Env is the Kamal destination — the environment overlay.
 	Env string
@@ -62,7 +62,7 @@ type Request struct {
 //
 //  1. Preflight. If the deploy engine is not installed, stop. Nothing is started
 //     before that, so a machine without kamal finds out before anything exists.
-//  2. Resolve. Kamal reads its config with the ERB evaluated. caf reads that
+//  2. Resolve. Kamal reads its config with the ERB evaluated. cafe reads that
 //     resolved document and the project's own backup configuration and refuses a
 //     pair that disagrees — BEFORE the accessory is booted, because every clause
 //     of the contract is a claim about what will happen at deploy time, and a
@@ -96,7 +96,7 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 	if err != nil {
 		// A backup configuration that says nothing usable is a refusal and not a
 		// crash: every way ReadConfig fails is a file an operator has to edit, and
-		// none of them is caf's fault to report on stderr.
+		// none of them is cafe's fault to report on stderr.
 		fmt.Fprintf(stdout, "\n%s\n\n%s\n", ErrRefused, err)
 		return fmt.Errorf("%w: %s", ErrRefused, relativeTo(cover.Dir, filepath.Join(cover.Dir, "config", backupConfigName)))
 	}
@@ -177,10 +177,10 @@ func preflight(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (stri
 // resolve runs the read-only step that turns a template into a document, and
 // returns what Kamal printed.
 //
-// It is separate because two different things happen with the output: caf parses
+// It is separate because two different things happen with the output: cafe parses
 // it for the contract check, and the dry run reports on it. Both need the
 // resolved document and neither needs a second run — `kamal config` evaluates the
-// ERB, so caf cannot produce this by itself, and running it twice would be two
+// ERB, so cafe cannot produce this by itself, and running it twice would be two
 // answers to one question.
 func resolve(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string, error) {
 	step := plan.Step(Resolve)
@@ -195,7 +195,7 @@ func resolve(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string
 		// directory with no git repository to take a release name from — and
 		// asserting one of them sends the reader to edit a file that was never
 		// the problem. The command is what tells them which it is.
-		return "", fmt.Errorf("caf backup: kamal could not read the deployment, so there is nothing to back up: %w\n"+
+		return "", fmt.Errorf("cafe backup: kamal could not read the deployment, so there is nothing to back up: %w\n"+
 			"  %s reads config/deploy.yml as an ERB template and names the release from\n"+
 			"  the git repository, so the two usual causes are a KIT_* variable that is not\n"+
 			"  exported in this shell, and a directory that is not a git repository.\n"+
@@ -210,11 +210,11 @@ func resolve(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string
 func refuseContract(stdout io.Writer, backupDoc Config, resolved, configFile, service string) error {
 	accessories, err := InspectResolved(resolved, configFile)
 	if err != nil {
-		// An unreadable resolved configuration is not a pass. It is a document caf
+		// An unreadable resolved configuration is not a pass. It is a document cafe
 		// could not check, and treating it as checked is how a broken pair gets
 		// through.
 		fmt.Fprintf(stdout, "\n%s\n\n%v\n", ErrRefused, err)
-		return fmt.Errorf("%w: caf could not check %s against %s: %w", ErrRefused, backupDoc.File, configFile, err)
+		return fmt.Errorf("%w: cafe could not check %s against %s: %w", ErrRefused, backupDoc.File, configFile, err)
 	}
 	violations := Check(backupDoc, accessories, configFile, service)
 	if len(violations) == 0 {
@@ -250,7 +250,7 @@ func runAll(ctx context.Context, r Runner, plan Plan, names []string, stdout, st
 	for _, name := range names {
 		step := plan.Step(name)
 		if step.Argv == nil {
-			return fmt.Errorf("caf backup: the plan has no %q step, so the cycle stopped there rather than pretending", name)
+			return fmt.Errorf("cafe backup: the plan has no %q step, so the cycle stopped there rather than pretending", name)
 		}
 		fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 		switch {
@@ -303,7 +303,7 @@ func run(ctx context.Context, r Runner, plan Plan, step Step, stdout, stderr io.
 	defer cancel()
 	err := r.Run(bounded, plan.Dir, step, stdout, stderr)
 	if err != nil && errors.Is(bounded.Err(), context.DeadlineExceeded) {
-		return fmt.Errorf("%w (caf stopped waiting after %s; raise it with -timeout if the step is genuinely slower)",
+		return fmt.Errorf("%w (cafe stopped waiting after %s; raise it with -timeout if the step is genuinely slower)",
 			err, plan.Timeout)
 	}
 	return err
@@ -313,7 +313,7 @@ func run(ctx context.Context, r Runner, plan Plan, step Step, stdout, stderr io.
 // again.
 //
 // It is a CADENCE and not the assertion, and the difference is the point: the
-// assertion is that the lock is gone, the budget is how long caf will keep asking,
+// assertion is that the lock is gone, the budget is how long cafe will keep asking,
 // and a cadence of half a second is how often a question is cheap to ask. A test
 // that asserted on the cadence would be a test asserting on a scheduler.
 var pollInterval = 500 * time.Millisecond
@@ -365,7 +365,7 @@ func waitForFreeRepository(ctx context.Context, r Runner, plan Plan, step Step, 
 				"  Booting a backup accessory starts its scheduler, and the scheduler's first cycle holds\n"+
 				"  the lock while it runs — on a large database that first dump is minutes, not seconds. Its\n"+
 				"  own log says which cycle it is on:\n    kamal accessory logs %s\n"+
-				"  Either wait for that cycle and run caf backup again, or raise the budget with -timeout.",
+				"  Either wait for that cycle and run cafe backup again, or raise the budget with -timeout.",
 				step.Command(), plan.Timeout, plan.Accessory)
 		}
 		asked++
@@ -421,7 +421,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 		}
 		if time.Now().After(deadline) {
 			return fmt.Errorf("%s failed: %w\n"+
-				"  and caf retried it %d time(s) because the restic repository was locked each time, which is the\n"+
+				"  and cafe retried it %d time(s) because the restic repository was locked each time, which is the\n"+
 				"  cycle this command's own boot started. Its log says where it is:\n    kamal accessory logs %s\n"+
 				"  Raise the budget with -timeout if that cycle is genuinely slower than %s.",
 				step.Command(), err, attempt-1, plan.Accessory, plan.Timeout)
@@ -434,7 +434,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 		} else {
 			locked, lockErr := repositoryLocked(ctx, r, plan, settle, stdout, stderr)
 			if lockErr != nil {
-				return fmt.Errorf("%s failed: %w\n  and caf could not read the lock to tell a race from a fault: %w",
+				return fmt.Errorf("%s failed: %w\n  and cafe could not read the lock to tell a race from a fault: %w",
 					step.Command(), err, lockErr)
 			}
 			if !locked {
@@ -504,7 +504,7 @@ func failureReport(plan Plan, stdout io.Writer, cause error) error {
 	fmt.Fprint(stdout, "  one is due. If the snapshot step is the one that failed, the repository has nothing new in it.\n")
 	fmt.Fprint(stdout, "  the reason is the command's own, above.\n")
 	// ErrCycleFailed is a sentinel so the caller can tell "the report is above"
-	// from "caf failed before it could report anything" — the first is errReported
+	// from "cafe failed before it could report anything" — the first is errReported
 	// (exit 1, stderr empty), the second is an error that belongs there.
 	return fmt.Errorf("%w: %s", ErrCycleFailed, plan.Service)
 }
@@ -514,10 +514,10 @@ func failureReport(plan Plan, stdout io.Writer, cause error) error {
 //
 // The two read-only steps really do run, because `config/deploy.yml` is an ERB
 // template only Kamal can evaluate, and because the contract check reads what
-// Kamal resolved. Printing a plan caf had to guess at would be a template with
+// Kamal resolved. Printing a plan cafe had to guess at would be a template with
 // extra steps, and a dry run that does not refuse is worse than no dry run.
 func printDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what caf backup would run:\n\n")
+	fmt.Fprintf(stdout, "\nthis is what cafe backup would run:\n\n")
 	for _, step := range plan.Steps {
 		fmt.Fprintf(stdout, "  %s\n", step.Command())
 		fmt.Fprintf(stdout, "      %s\n", step.Why)
@@ -531,7 +531,7 @@ func printDryRun(stdout io.Writer, plan Plan) {
 		plan.Step(Create).Command(), plan.Step(Drill).Command(), plan.Step(Drop).Command())
 	fmt.Fprintf(stdout, "was taken, no scratch database was created or dropped, no file in %s was written,\n", plan.Dir)
 	fmt.Fprintf(stdout, "and no secret was read.\n")
-	fmt.Fprintf(stdout, "\nBack it up for real with:\n  caf backup%s %s\n", yesFlag(plan), plan.Service)
+	fmt.Fprintf(stdout, "\nBack it up for real with:\n  cafe backup%s %s\n", yesFlag(plan), plan.Service)
 }
 
 func yesFlag(plan Plan) string {

@@ -29,7 +29,7 @@
 // The citations in this package point at the FLEET's sources, which are not
 // paths in this repository: the kit installer, identity's runbook, muse's
 // runbook and the packet record. That is deliberate and it is the cost of the
-// split — caf cannot vendor a copy of kit's install script and stay honest,
+// split — cafe cannot vendor a copy of kit's install script and stay honest,
 // because a copy that drifted would be a second source of truth that disagreed
 // with the first. The citations are checkable by hand against the fleet, and
 // they are the reason each class claim is a sentence with an address rather

@@ -33,7 +33,7 @@
 # Most of the `--prove` breakages below need the checker to RUN a gate, and each
 # of those runs is a full `go test ./...` — about fifteen seconds. Twelve of them
 # would be a self-test nobody runs, and this file's own rule is no sleeps and no
-# raised retries. So they run a stand-in that prints the two `caf:` lines the
+# raised retries. So they run a stand-in that prints the two `cafe:` lines the
 # real gate prints, captured verbatim from a real run.
 #
 # The stand-in is NOT evidence that the gate works. That is the first control,
@@ -46,7 +46,7 @@
 #
 # THE TWO THAT ARE ONLY THIS REPOSITORY'S
 #
-# The last two breakages are about caf specifically and would be meaningless in
+# The last two breakages are about cafe specifically and would be meaningless in
 # another repository. One removes the live-tier accounting line and asserts
 # `gate.proof-missing` — the "a tier that must not say it skipped" case, which
 # is the whole reason `live-tier` has no floor. The other runs `bin/prime
@@ -242,8 +242,8 @@ install_standin() {
 # the real gate works: the first control runs the real bin/prime.
 set -euo pipefail
 echo "ok  \tgithub.com/cafaye/cafe/internal/example\t0.001s"
-echo 'caf: ${packages} packages, ${passes} top-level passes, ${subtests} subtest passes, 0 failures, 3 skips'
-echo 'caf: live tier: 0 of ${tier} executed; not enabled, so the live tests skipped rather than ran. Set CAF_LIVE_DOCKER=1, CAF_LIVE_RYUK=1 and CAF_LIVE_KAMAL=1, or run bin/prime --live'
+echo 'cafe: ${packages} packages, ${passes} top-level passes, ${subtests} subtest passes, 0 failures, 3 skips'
+echo 'cafe: live tier: 0 of ${tier} executed; not enabled, so the live tests skipped rather than ran. Set CAF_LIVE_DOCKER=1, CAF_LIVE_RYUK=1 and CAF_LIVE_KAMAL=1, or run bin/prime --live'
 STUB
   chmod +x "$dir/bin/prime"
 }
@@ -435,8 +435,8 @@ expect_red 'a gate command written as a shell string with a pipeline in it' "$b"
 # the better answer: the alternative is discovering it after spending the
 # gate's whole timeoutSeconds.
 b="$(fresh_copy proof-uncompilable)"
-edit "$b/gate.yml" "match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes" \
-  "match: '^caf: ([0-9]+ packages, [0-9]+ top-level passes"
+edit "$b/gate.yml" "match: '^cafe: ([0-9]+) packages, [0-9]+ top-level passes" \
+  "match: '^cafe: ([0-9]+ packages, [0-9]+ top-level passes"
 expect_red 'a proof pattern that does not compile, which would otherwise read as "no proof required"' \
   "$b" 'gate.schema'
 
@@ -589,8 +589,8 @@ expect_red 'a gate that outlived the budget its own declaration gave it' "$b" 'g
 # successful match, so the gate has to actually print the line.
 b="$(fresh_copy proof-unmeasurable)"
 install_standin "$b"
-edit "$b/gate.yml" "match: '^caf: ([0-9]+) packages, [0-9]+ top-level passes" \
-  "match: '^caf: [0-9]+ packages, [0-9]+ top-level passes"
+edit "$b/gate.yml" "match: '^cafe: ([0-9]+) packages, [0-9]+ top-level passes" \
+  "match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes"
 expect_red 'a floor with no capture group to read it from, against a gate that ran and printed its proof' \
   "$b" 'gate.proof-invalid' --prove
 
@@ -649,7 +649,7 @@ path = sys.argv[1]
 lines = open(path, encoding="utf-8").read().splitlines(keepends=True)
 kept, seen = [], 0
 for line in lines:
-    if "caf: live tier:" in line or line.startswith("case ") or line.startswith("  \"$LIVE_TIER\")") \
+    if "cafe: live tier:" in line or line.startswith("case ") or line.startswith("  \"$LIVE_TIER\")") \
        or line.startswith("  0)") or line.startswith("  *)"):
         # Drop the whole reporting block, not just one printf, so the
         # breakage is "the line is not printed" rather than "one wording of

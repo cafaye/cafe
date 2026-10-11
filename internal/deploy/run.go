@@ -10,30 +10,30 @@ import (
 	"strings"
 )
 
-// ErrRefused is the sentinel for "caf checked the deployment and would not run
+// ErrRefused is the sentinel for "cafe checked the deployment and would not run
 // it". It is a sentinel rather than a string so a caller can tell a refusal
 // apart from a deploy that ran and failed: the first is fixed by editing a file,
 // the second by reading a log, and a message that merged them would be advice
 // for the wrong one.
-var ErrRefused = errors.New("caf deploy: refusing to deploy")
+var ErrRefused = errors.New("cafe deploy: refusing to deploy")
 
 // ErrDeployFailed is the sentinel for "kamal ran the deploy and it failed, and
 // the report has already been printed".
 //
 // It exists so the caller does not print the reason twice. The failure report is
 // several sentences — what is running now, what to do, that the database was not
-// touched — and every one of them is on stdout already; a `caf: ...` line on
+// touched — and every one of them is on stdout already; a `cafe: ...` line on
 // stderr repeating the cause puts a truncated copy of the report in the place a
 // CI log greps, and the truncated copy is the one without the advice in it.
-var ErrDeployFailed = errors.New("caf deploy: the deploy failed")
+var ErrDeployFailed = errors.New("cafe deploy: the deploy failed")
 
-// Request is one `caf deploy` invocation, before the plan is built.
+// Request is one `cafe deploy` invocation, before the plan is built.
 type Request struct {
 	// Dir is the project directory. Empty means the current one.
 	Dir string
 	// Service is the service being deployed. It comes from the cafaye.yml
 	// manifest, not from the Kamal config: Kamal's `service:` is the container
-	// name and the contract caf owns is the service name.
+	// name and the contract cafe owns is the service name.
 	Service string
 	// Env is the Kamal destination — the environment overlay.
 	Env string
@@ -61,11 +61,11 @@ type Request struct {
 //  1. Preflight. If the deploy engine is not installed, stop. Nothing is started
 //     before that, so a machine without kamal finds out before anything exists.
 //  2. Resolve. Kamal reads its config with the ERB evaluated and refuses one it
-//     cannot use. caf reads that resolved document and refuses an accessory port
+//     cannot use. cafe reads that resolved document and refuses an accessory port
 //     published on every interface of the host.
-//  3. Deploy. One command, Kamal's. caf does not decompose it: Docker install,
+//  3. Deploy. One command, Kamal's. cafe does not decompose it: Docker install,
 //     accessory boot, build, push, proxy boot, the rolling rollout and the health
-//     gate are the deploy engine's, and a caf that decomposed them would be a
+//     gate are the deploy engine's, and a cafe that decomposed them would be a
 //     second deploy path.
 //  4. On failure, report. `kamal app containers` is what is actually running,
 //     which is the only answer to a partial failure that is not a guess.
@@ -137,18 +137,18 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 func preflight(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string, error) {
 	step := plan.Step(Preflight)
 	if step.Argv == nil {
-		return "", fmt.Errorf("caf deploy: the plan has no %q step, so nothing was checked and nothing was deployed", Preflight)
+		return "", fmt.Errorf("cafe deploy: the plan has no %q step, so nothing was checked and nothing was deployed", Preflight)
 	}
 	var out strings.Builder
 	if err := r.Run(ctx, plan.Dir, step, &out, stderr); err != nil {
 		// ErrKamalMissing is a sentinel so this case is tellable apart from a
 		// deploy that ran and failed: the first is fixed by installing a gem, the
 		// second by reading a log.
-		return "", fmt.Errorf("caf deploy: %w", err)
+		return "", fmt.Errorf("cafe deploy: %w", err)
 	}
 	version := strings.TrimSpace(out.String())
 	if version == "" {
-		return "", fmt.Errorf("caf deploy: kamal printed no version; run `kamal version` yourself to see what happened")
+		return "", fmt.Errorf("cafe deploy: kamal printed no version; run `kamal version` yourself to see what happened")
 	}
 	return version, nil
 }
@@ -156,15 +156,15 @@ func preflight(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (stri
 // resolve runs the read-only step that turns a template into a document, and
 // returns what Kamal printed.
 //
-// It is separate because two different things happen with the output: caf parses
+// It is separate because two different things happen with the output: cafe parses
 // it for the exposure check, and the dry run reports on it. Both need the
 // resolved document and neither needs a second run — `kamal config` evaluates the
-// ERB, so caf cannot produce this by itself, and running it twice would be two
+// ERB, so cafe cannot produce this by itself, and running it twice would be two
 // answers to one question.
 func resolve(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string, error) {
 	step := plan.Step(Resolve)
 	if step.Argv == nil {
-		return "", fmt.Errorf("caf deploy: the plan has no %q step, so nothing was resolved and nothing was deployed", Resolve)
+		return "", fmt.Errorf("cafe deploy: the plan has no %q step, so nothing was resolved and nothing was deployed", Resolve)
 	}
 	var out strings.Builder
 	if err := r.Run(ctx, plan.Dir, step, &out, stderr); err != nil {
@@ -174,7 +174,7 @@ func resolve(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string
 		// directory with no git repository to take a release name from — and
 		// asserting one of them sends the reader to edit a file that was never
 		// the problem. The command is what tells them which it is.
-		return "", fmt.Errorf("caf deploy: kamal could not read the configuration, so there is nothing to deploy: %w\n"+
+		return "", fmt.Errorf("cafe deploy: kamal could not read the configuration, so there is nothing to deploy: %w\n"+
 			"  %s reads config/deploy.yml as an ERB template and names the release from\n"+
 			"  the git repository, so the two usual causes are a KIT_* variable that is not\n"+
 			"  exported in this shell, and a directory that is not a git repository.\n"+
@@ -218,9 +218,9 @@ func relativise(dir string, paths []string) []string {
 func refuseExposures(stdout io.Writer, resolved, configFile string) error {
 	exposures, err := InspectResolved(resolved, configFile)
 	if err != nil {
-		// An unreadable resolved config is not a pass. It is a document caf could
+		// An unreadable resolved config is not a pass. It is a document cafe could
 		// not check, and treating it as checked is how an exposure gets through.
-		return fmt.Errorf("%w: caf could not check the deployment for exposed ports: %w", ErrRefused, err)
+		return fmt.Errorf("%w: cafe could not check the deployment for exposed ports: %w", ErrRefused, err)
 	}
 	if len(exposures) == 0 {
 		return nil
@@ -233,7 +233,7 @@ func refuseExposures(stdout io.Writer, resolved, configFile string) error {
 func deploy(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer) error {
 	step := plan.Step(Deploy)
 	if step.Argv == nil {
-		return fmt.Errorf("caf deploy: the plan has no %q step, so nothing was deployed", Deploy)
+		return fmt.Errorf("cafe deploy: the plan has no %q step, so nothing was deployed", Deploy)
 	}
 	fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 
@@ -283,7 +283,7 @@ func failureReport(ctx context.Context, r Runner, plan Plan, stdout, stderr io.W
 	}
 	fmt.Fprint(stdout, "  the reason kamal gave is above.\n")
 	// ErrDeployFailed is a sentinel so the caller can tell "the report is above"
-	// from "caf failed before it could report anything" — the first is errReported
+	// from "cafe failed before it could report anything" — the first is errReported
 	// (exit 1, stderr empty), the second is an error that belongs there.
 	return fmt.Errorf("%w: %s", ErrDeployFailed, plan.Service)
 }
@@ -303,7 +303,7 @@ func printWhereToLook(stdout io.Writer, plan Plan) {
 // would run now or only after a failure, and the fact that none of the changing
 // ones were executed.
 func printDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what caf deploy would run:\n\n")
+	fmt.Fprintf(stdout, "\nthis is what cafe deploy would run:\n\n")
 	for _, step := range plan.Steps {
 		fmt.Fprintf(stdout, "  %s\n", step.Command())
 		fmt.Fprintf(stdout, "      %s\n", step.Why)
@@ -314,11 +314,11 @@ func printDryRun(stdout io.Writer, plan Plan) {
 	fmt.Fprintf(stdout, "configuration and change nothing. %s, which is the only step that changes a\n", plan.Step(Deploy).Command())
 	fmt.Fprintf(stdout, "server, was NOT run. No container was started, no image was built or pushed,\n")
 	fmt.Fprintf(stdout, "no file in %s was written, and no secret was read.\n", plan.Dir)
-	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  caf deploy%s %s\n", yesFlag(plan), plan.Service)
+	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  cafe deploy%s %s\n", yesFlag(plan), plan.Service)
 }
 
 // yesFlag is the flag the operator adds to the command above. It is derived from
-// the plan rather than hardcoded so the line caf prints is the line that works.
+// the plan rather than hardcoded so the line cafe prints is the line that works.
 func yesFlag(plan Plan) string {
 	if plan.Env == "" {
 		return " --yes"

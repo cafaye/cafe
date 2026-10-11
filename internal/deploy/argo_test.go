@@ -22,7 +22,7 @@ import (
 // fake Argo reader for the sync-wait's three outcomes.
 
 // The chart facts a service repository ships, as fixtures. They are the
-// generator's own output shape — `caf gen chart` writes chart/values.yaml with
+// generator's own output shape — `cafe gen chart` writes chart/values.yaml with
 // image.repository and image.tag, and Chart.yaml with version and appVersion —
 // so a fixture written any other way would be a fixture the generator cannot
 // produce.
@@ -217,7 +217,7 @@ func TestTheArgoCommitStepCarriesTheTwoFilesItWrites(t *testing.T) {
 
 // The commit message is the release's traceability: it names the service, the
 // version and the commit it was built from, so a reader can trace a running
-// release back to the source it came from. It also names the second move caf
+// release back to the source it came from. It also names the second move cafe
 // cannot make — the targetRevision — because a commit message that omitted it
 // would read as a complete deploy when it is not.
 func TestTheArgoCommitMessageNamesTheServiceTheVersionAndTheCommit(t *testing.T) {
@@ -227,7 +227,7 @@ func TestTheArgoCommitMessageNamesTheServiceTheVersionAndTheCommit(t *testing.T)
 		"identity: release 0.1.1", // the service and the version
 		"built from 3f9a1c2",      // the commit the release is built from
 		"0.1.0",                   // the old chart version
-		"targetRevision",          // the second move, named as not caf's
+		"targetRevision",          // the second move, named as not cafe's
 	} {
 		if !strings.Contains(message, want) {
 			t.Errorf("the commit message does not name %q:\n%s", want, message)
@@ -235,7 +235,7 @@ func TestTheArgoCommitMessageNamesTheServiceTheVersionAndTheCommit(t *testing.T)
 	}
 }
 
-// The operator's --version outranks the derived one: a version caf guessed is
+// The operator's --version outranks the derived one: a version cafe guessed is
 // a version nobody can roll back to by name, so the pin wins when it is there
 // and the derivation only fills the absence.
 func TestAnOperatorVersionOutranksTheDerivedOne(t *testing.T) {
@@ -259,7 +259,7 @@ func TestAnOperatorVersionOutranksTheDerivedOne(t *testing.T) {
 }
 
 // The derived version bumps the patch component of a semantic version, which
-// is the release caf derives when the operator pins none. A non-semver chart
+// is the release cafe derives when the operator pins none. A non-semver chart
 // version gets a suffix rather than a guess at a shape helm would refuse.
 func TestTheDerivedVersionBumpsThePatchComponent(t *testing.T) {
 	tests := []struct {
@@ -550,7 +550,7 @@ func TestThePushStepRefusesARepositoryWithNoRemote(t *testing.T) {
 // the poll is a read of the Application's status, and a read is assertable
 // with a script that prints, with no cluster anywhere in sight.
 
-// The happy path: Argo has synced the revision caf released and the service is
+// The happy path: Argo has synced the revision cafe released and the service is
 // healthy on the first check. The wait is then one read and a success.
 func TestTheSyncWaitConvergesWhenArgoSyncedTheRevision(t *testing.T) {
 	plan := argoPlanIn(t, "0.1.1")
@@ -584,7 +584,7 @@ func TestTheSyncWaitConvergesAfterSeveralPolls(t *testing.T) {
 
 // The failure this engine exists to prevent: Argo never converges. The deploy
 // committed the revision and pushed it, but the Application's synced revision
-// is not the version caf released — which means the targetRevision has not
+// is not the version cafe released — which means the targetRevision has not
 // moved, and the report says so rather than claiming a deploy that left it
 // behind. The budget is shortened so the proof does not sleep two minutes.
 func TestTheSyncWaitFailsWhenArgoNeverConverges(t *testing.T) {
@@ -600,7 +600,7 @@ func TestTheSyncWaitFailsWhenArgoNeverConverges(t *testing.T) {
 	for _, want := range []string{
 		"never converged",
 		"0.1.0",          // the revision Argo has synced
-		"0.1.1",          // the version caf released
+		"0.1.1",          // the version cafe released
 		"targetRevision", // the second move, named as the cause
 	} {
 		if !strings.Contains(err.Error(), want) {
@@ -770,7 +770,7 @@ func (f *fakeArgoRunner) Run(_ context.Context, dir string, step Step, stdout, _
 // Engine selection is explicit and never a silent fallback: the empty name is
 // the default, which is Kamal because the fleet runs Kamal today, and an
 // unknown name is a usage error — a typo in --engine is the operator invoking
-// caf wrongly, and the wrong answer to it is a deploy run against the wrong
+// cafe wrongly, and the wrong answer to it is a deploy run against the wrong
 // substrate.
 func TestRunnerForSelectsTheEngineAndRefusesAnUnknownOne(t *testing.T) {
 	tests := []struct {
@@ -839,8 +839,8 @@ func newArgoRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	git(t, dir, "init")
-	git(t, dir, "config", "user.email", "caf@cafaye.test")
-	git(t, dir, "config", "user.name", "caf")
+	git(t, dir, "config", "user.email", "cafe@cafaye.test")
+	git(t, dir, "config", "user.name", "cafe")
 	writeFiles(t, dir, map[string]string{
 		"chart/values.yaml": argoValues,
 		"Chart.yaml":        argoChart,

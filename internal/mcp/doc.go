@@ -1,4 +1,4 @@
-// Package mcp serves caf's tools over the Model Context Protocol.
+// Package mcp serves cafe's tools over the Model Context Protocol.
 //
 // # Why a library, and which one
 //
@@ -31,7 +31,7 @@
 //	                              least likely to track a wire change.
 //
 // The official SDK was chosen over the more popular one for three reasons. It is
-// the reference implementation, so its view of a revision is the one caf would
+// the reference implementation, so its view of a revision is the one cafe would
 // have to argue with otherwise. Its tool registration takes a Go type and infers
 // the JSON Schema from it, which makes the argument struct the single source of
 // truth — the doc comment on a field *is* the schema's description. And its
@@ -39,7 +39,7 @@
 // suite, which is not a claim anyone can make about a library with one
 // maintainer.
 //
-// One cost, stated: the SDK's `go` directive is 1.25.0, so caf's moved from
+// One cost, stated: the SDK's `go` directive is 1.25.0, so cafe's moved from
 // `go 1.25` to `go 1.25.0` and the CI toolchain pin with it.
 //
 // Everything above the protocol is still here, and everything above *this*
@@ -72,7 +72,7 @@
 //
 // # HTTP, and who may call it
 //
-// `caf mcp -transport http` serves the streamable HTTP handler from the SDK.
+// `cafe mcp -transport http` serves the streamable HTTP handler from the SDK.
 // The listener is bound to loopback by default, and that default is the same
 // refusal it always was: this server exposes `caf_dev_up` and `caf_dev_down`,
 // which start and stop containers on the machine it runs on, so a listener
@@ -87,7 +87,7 @@
 //
 // TWO MECHANISMS, and they are not the same one. The transport authenticates:
 // over HTTP every request carries a bearer, and an absent or unknown one is a
-// 401 whose body names `caf agent token create` — the agent that needs the tool
+// 401 whose body names `cafe agent token create` — the agent that needs the tool
 // already has that command, so a refusal that ended an interaction was the
 // thing to avoid. The tools are then gated on the caller's scopes, per call,
 // before the handler runs: a read-only agent reads health, logs, rollout state
@@ -101,7 +101,7 @@
 // invariant forbids, and a verifier that returned one would be minting it.
 //
 // The standing principal, read for stdio, is the one place this package names a
-// caller without the transport naming it: a `caf mcp` child process an agent
+// caller without the transport naming it: a `cafe mcp` child process an agent
 // host spawns speaks as the machine's own agent session. It is never consulted
 // when a request carries its own token info, because an authenticated remote
 // caller must be exactly who the transport says and nobody else.

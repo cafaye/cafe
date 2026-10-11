@@ -31,7 +31,7 @@ func lockTree(t *testing.T) (root string, locked Lock) {
 //
 // It exists for one row: a rule bundle that APPEARS after the lock was written
 // is only unpinned if the lock was written while it was absent, and that is the
-// real shape — a repository that adopted `caf lock` before it adopted
+// real shape — a repository that adopted `cafe lock` before it adopted
 // `gate.yml`, or one that added the declaration in a later PR. Tampering with
 // an existing `gate.yml` instead reports `modified`, which is the other problem
 // and already has a row.
@@ -45,7 +45,7 @@ func lockTreeWithout(t *testing.T, absent ...string) (root string, locked Lock) 
 		}
 	}
 
-	built, err := Build(root, "caf 1.2.3")
+	built, err := Build(root, "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestEveryProblemIsDrivableAndNamed(t *testing.T) {
 			},
 			want: []string{
 				"internal/contract/schemas/telemetry/traces.schema.json",
-				"vendored-schema", "missing", "<absent>", "caf lock",
+				"vendored-schema", "missing", "<absent>", "cafe lock",
 			},
 		},
 		{
@@ -122,7 +122,7 @@ func TestEveryProblemIsDrivableAndNamed(t *testing.T) {
 				// somebody forgot to finish. This is the spec bump that
 				// half-lands, and nothing else in this repository can see it:
 				// the file is valid JSON, it is in the vendored directory, and
-				// `caf contract lint` never opens it.
+				// `cafe contract lint` never opens it.
 				path := filepath.Join(root, "internal/contract/schemas/telemetry/probes.schema.json")
 				if err := os.WriteFile(path, []byte(`{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"probes"}`), 0o644); err != nil {
 					t.Fatalf("write: %v", err)
@@ -130,7 +130,7 @@ func TestEveryProblemIsDrivableAndNamed(t *testing.T) {
 			},
 			want: []string{
 				"internal/contract/schemas/telemetry/probes.schema.json",
-				"vendored-schema", "unpinned", "Re-run `caf lock`",
+				"vendored-schema", "unpinned", "Re-run `cafe lock`",
 			},
 		},
 		{
@@ -138,7 +138,7 @@ func TestEveryProblemIsDrivableAndNamed(t *testing.T) {
 			lockWithout: []string{"gate.yml"},
 			tamper: func(t *testing.T, root string) {
 				// A rule bundle that appeared after the lock was written, which
-				// is what a repository that adopted `caf lock` in one PR and
+				// is what a repository that adopted `cafe lock` in one PR and
 				// `gate.yml` in another looks like from here. The lock is not
 				// wrong about anything it pinned; it is incomplete, which is the
 				// failure `Unpinned` exists to name.
@@ -147,7 +147,7 @@ func TestEveryProblemIsDrivableAndNamed(t *testing.T) {
 					t.Fatalf("write gate.yml: %v", err)
 				}
 			},
-			want: []string{"gate.yml", "rule-bundle", "unpinned", "Re-run `caf lock`"},
+			want: []string{"gate.yml", "rule-bundle", "unpinned", "Re-run `cafe lock`"},
 		},
 	} {
 		t.Run(string(row.problem)+"/"+row.want[0], func(t *testing.T) {
@@ -370,7 +370,7 @@ func TestTheGreenReportSaysHowMuchItChecked(t *testing.T) {
 // and each of them must be loud rather than vacuous.
 func TestAnEmptyLockReportsEveryDeclaredFileRatherThanPassing(t *testing.T) {
 	root := tree(t)
-	empty := Lock{LockVersion: LockVersion, Tool: "caf 1.2.3", Hash: HashSHA256, Files: nil}
+	empty := Lock{LockVersion: LockVersion, Tool: "cafe 1.2.3", Hash: HashSHA256, Files: nil}
 
 	if _, err := Write(root, empty); err != nil {
 		t.Fatalf("write an empty lock: %v", err)
@@ -391,7 +391,7 @@ func TestAnEmptyLockReportsEveryDeclaredFileRatherThanPassing(t *testing.T) {
 		t.Errorf("checked %d file(s) against an empty lock", report.Checked)
 	}
 
-	declared, err := Build(root, "caf 1.2.3")
+	declared, err := Build(root, "cafe 1.2.3")
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}

@@ -14,7 +14,7 @@ import (
 // nothing stops a process that has not agreed to take it, which is exactly why
 // every writer goes through Ledger.Lock.
 //
-// It is also the reason a crashed caf needs no janitor. flock is owned by the
+// It is also the reason a crashed cafe needs no janitor. flock is owned by the
 // open file description, so the kernel drops it when the holder dies — a lock
 // left behind by a killed process is not stale, it is gone. That property is
 // what lets a port reservation be *held* for the life of a session and be
@@ -62,7 +62,7 @@ func (l *Ledger) lockWith(name string, flags int) (*Lock, error) {
 	if err != nil {
 		_ = file.Close()
 		if errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, syscall.EAGAIN) {
-			return nil, fmt.Errorf("%w: %s is locked by another caf", ErrHeld, name)
+			return nil, fmt.Errorf("%w: %s is locked by another cafe", ErrHeld, name)
 		}
 		return nil, fmt.Errorf("%w: take the %s lock: %w", ErrNoLedger, name, err)
 	}

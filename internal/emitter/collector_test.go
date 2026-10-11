@@ -44,7 +44,7 @@ type collector struct {
 // endpoint is the address to hand the exporter, in the spelling core's contract
 // uses: a scheme, then host:port. Plaintext, deliberately — it is what core's own
 // default looks like, and using anything else here would be testing a transport
-// caf does not ship with.
+// cafe does not ship with.
 func (c collector) endpoint() string { return "http://" + c.addr }
 
 // next returns the next request the collector received.

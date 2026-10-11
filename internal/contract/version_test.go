@@ -118,7 +118,7 @@ func TestResolveMatrix(t *testing.T) {
 	}
 }
 
-// The answer is a sentence, not a boolean: `caf contract resolve` prints it so
+// The answer is a sentence, not a boolean: `cafe contract resolve` prints it so
 // a person can see which edge of the range they are on without reading the
 // grammar. The exact wording is part of the output contract.
 func TestResolveRationale(t *testing.T) {

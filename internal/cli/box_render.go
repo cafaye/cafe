@@ -14,7 +14,7 @@ import (
 // file is the plain half.
 //
 // It uses text/tabwriter and nothing else. This repository has no TUI
-// framework and `caf dev` prints plain ordered progress for the same reason:
+// framework and `cafe dev` prints plain ordered progress for the same reason:
 // the information is the product, and a table with a border is a table someone
 // has to keep aligned.
 //
@@ -102,7 +102,7 @@ func writePlanHuman(w io.Writer, plan *box.Plan) error {
 		return err
 	}
 	if plan.Next != "" {
-		_, err := fmt.Fprintf(w, "\nnext: caf box apply --phase %s\n", plan.Next)
+		_, err := fmt.Fprintf(w, "\nnext: cafe box apply --phase %s\n", plan.Next)
 		return err
 	}
 	_, err := fmt.Fprintf(w, "\n%s\n", plan.Reason)

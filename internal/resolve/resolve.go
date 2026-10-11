@@ -25,8 +25,8 @@ import (
 var Products = []string{"kit", "platform", "identity", "courier"}
 
 // accountUUID is the shape conductor accepts for an account id
-// (Capability::UUID_RE), and it is the same UUID every caf account is. It is
-// here because caf has to refuse the same string conductor would refuse: a
+// (Capability::UUID_RE), and it is the same UUID every cafe account is. It is
+// here because cafe has to refuse the same string conductor would refuse: a
 // lookup against a value that is not an id answers 404, and a 404 about
 // something the reader typed is a sentence that sends them to a log.
 var accountUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -107,7 +107,7 @@ type Failure struct {
 	// the server's log.
 	Code string `json:"code"`
 	// Message is the server's detail, verbatim. For a caf-side failure (a
-	// missing account, a transport error) it is caf's own sentence.
+	// missing account, a transport error) it is cafe's own sentence.
 	Message string `json:"message"`
 }
 
@@ -197,7 +197,7 @@ type Pantry interface {
 	// caller "no such project" from "no project at that address".
 	ProjectByAddress(ctx context.Context, owner, name string) (*Project, error)
 	// Coordinates is tier 2: one project's repository coordinates, gated on
-	// the caller's caf token. The token is presented, never stored.
+	// the caller's cafe token. The token is presented, never stored.
 	Coordinates(ctx context.Context, name, token string) (*Coordinates, error)
 }
 
@@ -237,13 +237,13 @@ func NewResolver(pantry Pantry, conductor Conductor) *Resolver {
 // unentitled optional dependency resolves, and that is a fact the report
 // carries and an error would destroy.
 //
-// The token is the caller's caf credential, read from the keyring by the
+// The token is the caller's cafe credential, read from the keyring by the
 // caller. It is presented to tier 2 and tier 3 and kept for the length of
 // exactly this call. Empty is a valid value: tier 1 is anonymous, and tier 2
 // and tier 3 answer a named unauthorized, which is the honest response to a
 // caller with no credential.
 //
-// accountID names the caf account the tier-3 check runs for. It is required
+// accountID names the cafe account the tier-3 check runs for. It is required
 // only when a paid product is encountered; see resolveOne.
 func (r *Resolver) Resolve(ctx context.Context, project string, deps []contract.Dependency, token, accountID string) Report {
 	report := Report{Project: project, Services: make([]Resolution, 0, len(deps))}
@@ -254,7 +254,7 @@ func (r *Resolver) Resolve(ctx context.Context, project string, deps []contract.
 }
 
 // ResolveAddress resolves ONE project addressed as `owner/name`, which is what
-// `caf resolve alice/widget` runs. It is a separate entry point rather than a
+// `cafe resolve alice/widget` runs. It is a separate entry point rather than a
 // dependency list of one because the address is the whole question: there is
 // no manifest behind it, no version constraint unless the caller brings one,
 // and nothing to degrade — a community project whose bare name another
@@ -309,7 +309,7 @@ func ambiguousName(err error) bool {
 // OWNER is the namespace the caller addressed this dependency under, and empty
 // is the common case: a manifest's dependency is a bare name, because core's
 // serviceName grammar has no slash in it and a manifest that carried one
-// would not validate. An owner therefore arrives from the caller — `caf
+// would not validate. An owner therefore arrives from the caller — `cafe
 // resolve alice/widget` — and it changes exactly two things at tier 1, both of
 // them about telling two 404s apart.
 func (r *Resolver) resolveOne(ctx context.Context, dep contract.Dependency, owner, token, accountID string) Resolution {
@@ -374,7 +374,7 @@ func (r *Resolver) resolveByAddress(ctx context.Context, res Resolution, owner, 
 // a paid product. The tier-1 read that reached here is not a question these
 // tiers ask — a row the address resolved is a row that exists.
 func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract.Dependency, token, accountID string) Resolution {
-	// Tier 2: the coordinates, for a caller presenting a caf token.
+	// Tier 2: the coordinates, for a caller presenting a cafe token.
 	coords, err := r.pantry.Coordinates(ctx, dep.Name, token)
 	if err != nil {
 		res.Failure = failureFrom(2, err)
@@ -398,13 +398,13 @@ func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract
 		// id that is not a UUID — a 404 that says "not found" about a string
 		// the reader typed. Refusing here names what was typed instead.
 		res.Failure = &Failure{Tier: 3, Code: "account_invalid",
-			Message: "`" + accountID + "` is not an account id; --account takes the UUID of the caf account that holds the entitlement"}
+			Message: "`" + accountID + "` is not an account id; --account takes the UUID of the cafe account that holds the entitlement"}
 		return res
 	}
 	if strings.TrimSpace(dep.Version) == "" {
 		// The manifest schema makes `version` OPTIONAL, and conductor's check
 		// makes it REQUIRED: an unbounded request is a question the endpoint
-		// refuses with 422. The two schemas disagree about one field, so caf
+		// refuses with 422. The two schemas disagree about one field, so cafe
 		// is where the disagreement is settled rather than a round trip that
 		// answers 422 and blames the caller for it.
 		res.Failure = &Failure{Tier: 3, Code: "version_required",

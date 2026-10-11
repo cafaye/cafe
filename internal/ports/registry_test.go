@@ -269,7 +269,7 @@ func TestPortsComeOutInBlockOrder(t *testing.T) {
 }
 
 // The error a caller gets for a port somebody else holds distinguishes the two
-// cases a developer has to act on differently: another caf, which is the design
+// cases a developer has to act on differently: another cafe, which is the design
 // working, and a stranger, which is the collision.
 func TestHeldAndBusyAreDifferentAnswers(t *testing.T) {
 	block := Block{42100, 42109}

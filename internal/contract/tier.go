@@ -37,7 +37,7 @@ const (
 	// and what a rule nobody can select reports as.
 	TierNone Tier = 0
 
-	// TierSource is generated source code: `caf gen` output that no longer
+	// TierSource is generated source code: `cafe gen` output that no longer
 	// compiles. buf's FILE and PACKAGE, which are the same idea at two scopes.
 	TierSource Tier = 1 << iota
 	// TierJSON is a serialized payload: a key changes, a value stops validating,
@@ -51,7 +51,7 @@ const (
 // AllTiers is every tier, for a caller that wants nothing filtered.
 const AllTiers = TierSource | TierJSON | TierWire
 
-// DefaultTiers is what `caf contract breaking` runs when the person did not say.
+// DefaultTiers is what `cafe contract breaking` runs when the person did not say.
 //
 // SOURCE+JSON and not all three, because cafaye ships no binary encoding: no
 // service in the fleet has a protobuf or an Avro schema derived from its OpenAPI

@@ -1,5 +1,5 @@
 #!/bin/sh
-# The gate for caf. Download, build, test, and then say what it did.
+# The gate for cafe. Download, build, test, and then say what it did.
 #
 #   bin/prime            the fast gate. The live tier skips, loudly, and is counted.
 #   bin/prime --live     the fast gate plus the four live tests, which need a container
@@ -23,7 +23,7 @@
 # 2. The output says how much ran. `go test` prints one `ok <pkg> <time>` line
 #    per package and no test count at all, so before this packet a reader could
 #    not tell 428 tests from 4, and neither could a declaration. The two
-#    `caf:` lines below are the only countable output this gate has, and
+#    `cafe:` lines below are the only countable output this gate has, and
 #    `gate.yml`'s three floors are read out of the first of them. They are
 #    counted from `go test -v`, which replays a cached run's verbose output
 #    verbatim -- so a second `bin/prime` on an unchanged tree reports the same
@@ -87,7 +87,7 @@ USAGE
 # scratch database and asserts the rows came back. Its three names are three
 # claims rather than one: that the cycle works, that a broken cross-file contract
 # is refused before anything is booted, and that the refusal about a
-# production-looking scratch database is the GEM's and not caf's. The third is
+# production-looking scratch database is the GEM's and not cafe's. The third is
 # in the tier precisely because it is the claim that a copy of somebody else's
 # rule would also pass, and only running the real gem settles it.
 LIVE_TESTS='TestTheSilentCollisionIsReal|TestAClosedLeaseReapsAndAnOpenOneDoesNot|TestADeployReachesAServerAndAnswers|TestADeployRefusesAReleaseThatNeverGoesHealthy|TestABackupIsTakenAndItRestores|TestABrokenPairIsRefusedBeforeAnythingIsBooted|TestAProductionLookingScratchDatabaseIsRefusedByTheGemAndStillCleanedUp'
@@ -107,7 +107,7 @@ while [ "$#" -gt 0 ]; do
       exit 0
       ;;
     *)
-      # Exit 2, which is this repository's `errUsage`: the user invoked caf
+      # Exit 2, which is this repository's `errUsage`: the user invoked cafe
       # wrongly. A wrong flag must not read as a passing gate.
       printf 'bin/prime: unknown argument %s\n\n' "$1" >&2
       usage >&2
@@ -161,7 +161,7 @@ all_skip=$(count '^[[:space:]]*--- SKIP: ')
 # `go list` through `grep -c` rather than `wc -l`. Two reasons, both found by
 # running this script under a minimal PATH: `wc` pads its output with leading
 # spaces on some platforms and `tr` then has to strip them, and when `wc` is
-# missing altogether the summary printed `caf:  packages, …` — an EMPTY field,
+# missing altogether the summary printed `cafe:  packages, …` — an EMPTY field,
 # which reads as a count of nothing rather than as a broken gate. `grep` is
 # already a dependency of the counting below, so this adds no tool.
 packages=$(go list ./... | grep -c . || true)
@@ -173,29 +173,29 @@ subtest_pass=$((all_pass - top_pass))
 # is the case internal/ci's test refuses to let happen quietly.
 live_pass=$(count "^--- PASS: ($LIVE_TESTS) ")
 
-printf 'caf: %s packages, %s top-level passes, %s subtest passes, %s failures, %s skips\n' \
+printf 'cafe: %s packages, %s top-level passes, %s subtest passes, %s failures, %s skips\n' \
   "$packages" "$top_pass" "$subtest_pass" "$all_fail" "$all_skip"
 
 case "$live_pass" in
   "$LIVE_TIER")
-    printf 'caf: live tier: %s of %s executed\n' "$live_pass" "$LIVE_TIER"
+    printf 'cafe: live tier: %s of %s executed\n' "$live_pass" "$LIVE_TIER"
     ;;
   0)
     # Two different reasons for the same zero, and the line says which. A gate
     # that reported "not enabled" to somebody who had just typed --live would
     # send them looking for a flag problem instead of a missing runtime.
     if [ "$live" -eq 1 ]; then
-      printf 'caf: live tier: 0 of %s executed; --live asked for it and it did not run, which means no container runtime answered on PATH\n' "$LIVE_TIER"
+      printf 'cafe: live tier: 0 of %s executed; --live asked for it and it did not run, which means no container runtime answered on PATH\n' "$LIVE_TIER"
     else
       # The flag names are not hardcoded here either: the same list that counted
       # the tier is what a reader needs to set, and two copies of it is one
       # place to forget to update.
-      printf 'caf: live tier: 0 of %s executed; not enabled, so the %s live tests skipped rather than ran.\n' "$LIVE_TIER" "$LIVE_TIER"
-      printf 'caf: live tier: set CAF_LIVE_DOCKER=1, CAF_LIVE_RYUK=1 and CAF_LIVE_KAMAL=1, or run bin/prime --live\n'
+      printf 'cafe: live tier: 0 of %s executed; not enabled, so the %s live tests skipped rather than ran.\n' "$LIVE_TIER" "$LIVE_TIER"
+      printf 'cafe: live tier: set CAF_LIVE_DOCKER=1, CAF_LIVE_RYUK=1 and CAF_LIVE_KAMAL=1, or run bin/prime --live\n'
     fi
     ;;
   *)
-    printf 'caf: live tier: %s of %s executed; the live tier is only ever all or nothing\n' "$live_pass" "$LIVE_TIER"
+    printf 'cafe: live tier: %s of %s executed; the live tier is only ever all or nothing\n' "$live_pass" "$LIVE_TIER"
     ;;
 esac
 

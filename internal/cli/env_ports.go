@@ -41,7 +41,7 @@ func (h *heldPorts) Reserve(ctx context.Context, session string, gen, n int) ([]
 
 // Take holds one named port, or refuses it. It is the registry's TryReserve with
 // the ledger entry written under the adapter's own session, so a developer's
-// explicit port is recorded exactly like one caf chose.
+// explicit port is recorded exactly like one cafe chose.
 func (h *heldPorts) Take(ctx context.Context, session string, gen, port int) ([]int, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

@@ -9,7 +9,7 @@ import (
 	"github.com/cafaye/cafe/internal/contract"
 )
 
-// The paths one `caf gen telemetry` run writes, relative to the output root.
+// The paths one `cafe gen telemetry` run writes, relative to the output root.
 //
 // They are constants rather than strings at the use sites because all three
 // appear in the drift gate, in the printed report and in the refusal sentences,
@@ -43,7 +43,7 @@ const (
 // group.
 const namespace = "cafaye"
 
-// telemetry is `caf gen telemetry`: the pure function.
+// telemetry is `cafe gen telemetry`: the pure function.
 //
 // Three files and nothing else, and the shape of the set is the substance of
 // this package:
@@ -53,7 +53,7 @@ const namespace = "cafaye"
 //   - the suite, because core's redaction schema asks for a `verifier` and a
 //     boundary with no test is a boundary that holds until the first well-meaning
 //     change. The generated suite is also the drift gate that keeps working
-//     after `caf gen` has not been run for a year;
+//     after `cafe gen` has not been run for a year;
 //   - the machine-readable declaration, because the endpoint contract and the
 //     no-op path are facts about a deployment and belong somewhere a collector
 //     config or an operator can read.
@@ -89,7 +89,7 @@ func telemetry(manifest contract.Manifest, spec contract.TelemetrySpec) (Output,
 		return Output{}, err
 	}
 	if err := contract.ValidateTelemetry("otel-endpoint", declaration); err != nil {
-		return Output{}, fmt.Errorf("caf gen telemetry: the endpoint declaration caf would write is rejected by "+
+		return Output{}, fmt.Errorf("cafe gen telemetry: the endpoint declaration cafe would write is rejected by "+
 			"the vendored core schema, so nothing was written: %w", err)
 	}
 	files = append(files, File{Path: endpointPath, Content: declaration})
@@ -109,7 +109,7 @@ func telemetry(manifest contract.Manifest, spec contract.TelemetrySpec) (Output,
 // underscore in the service part — and a manifest is allowed `name: my-service`.
 //
 // There are exactly two things a generator can do with that, and refusing is
-// worse than either: `caf gen telemetry` failing on a manifest `caf contract
+// worse than either: `cafe gen telemetry` failing on a manifest `cafe contract
 // lint` calls OK is a tool contradicting another tool about a legal document.
 // So the dash is dropped, `my-service` becomes `MYSERVICE_OTEL_ENDPOINT`, and
 // the collision it risks — a repository named `my-service` and one named
@@ -120,16 +120,16 @@ func endpointVariable(service string, spec contract.TelemetrySpec) (string, erro
 	variable := strings.ToUpper(strings.ReplaceAll(service, "-", "")) + "_OTEL_ENDPOINT"
 	pattern, err := regexp.Compile(spec.Endpoint.VariablePattern)
 	if err != nil {
-		return "", fmt.Errorf("caf gen telemetry: core's endpoint variable pattern %q does not compile: %w",
+		return "", fmt.Errorf("cafe gen telemetry: core's endpoint variable pattern %q does not compile: %w",
 			spec.Endpoint.VariablePattern, err)
 	}
 	if !pattern.MatchString(variable) {
-		return "", fmt.Errorf("caf gen telemetry: the service name %q derives the endpoint variable %q, which "+
-			"core's own pattern %q refuses. caf will not invent a third spelling, and a variable name no schema "+
+		return "", fmt.Errorf("cafe gen telemetry: the service name %q derives the endpoint variable %q, which "+
+			"core's own pattern %q refuses. cafe will not invent a third spelling, and a variable name no schema "+
 			"accepts is a name no collector config can agree with.\n"+
-			"  Through `caf gen` this is unreachable: core's manifest schema already constrains `name` to "+
+			"  Through `cafe gen` this is unreachable: core's manifest schema already constrains `name` to "+
 			"`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, and upper-casing that with the dashes removed always matches. "+
-			"So either the manifest is not valid — run `caf contract lint` — or core has widened the name "+
+			"So either the manifest is not valid — run `cafe contract lint` — or core has widened the name "+
 			"pattern and this generator needs to be told which way",
 			service, variable, spec.Endpoint.VariablePattern)
 	}

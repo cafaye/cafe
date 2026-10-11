@@ -12,7 +12,7 @@ import (
 	"github.com/cafaye/cafe/internal/cve"
 )
 
-// cveDeps is what `caf cve` needs from the world, and it is a struct of
+// cveDeps is what `cafe cve` needs from the world, and it is a struct of
 // parameters for the reason resolveDeps and providerDeps are: a test can hand
 // the command an observer that needs no kubectl, an advisory source that
 // answers without a network, and a state file it owns, and drive a whole scan
@@ -32,7 +32,7 @@ type cveDeps struct {
 	context    string
 }
 
-// cveFlags is the flags every verb of `caf cve` shares. `--json` is on all of
+// cveFlags is the flags every verb of `cafe cve` shares. `--json` is on all of
 // them for the reason internal/cli/box.go gives: a shell reads one stream and
 // a person reads the other, and there is no flag that chooses which stream
 // gets the document because one of the two would then be wrong in some
@@ -67,7 +67,7 @@ func (f cveFlags) boxOf() string {
 // scheduleOf resolves the cadence the same way, and the environment variable
 // rather than a flag default for the reason pantryURLEnv is one: a default
 // baked into a binary goes stale when the fleet's practice moves and nobody
-// rebuilds caf to find out.
+// rebuilds cafe to find out.
 func (f cveFlags) scheduleOf() (cve.Schedule, error) {
 	if f.schedule != "" {
 		return cve.ParseSchedule(f.schedule)
@@ -81,8 +81,8 @@ func (f cveFlags) scheduleOf() (cve.Schedule, error) {
 // cveVerb pairs the word a person types with the command that runs it. The two
 // are different strings on purpose, and it is the same pair contractVerb is:
 // the word is what the dispatcher looks up, and the command is named with its
-// full invocation so its help and its usage errors read as `caf cve scan`
-// rather than `caf scan`.
+// full invocation so its help and its usage errors read as `cafe cve scan`
+// rather than `cafe scan`.
 type cveVerb struct {
 	name string
 	cmd  *Command
@@ -101,7 +101,7 @@ func newCveCommand(deps cveDeps) *Command {
 	c := &Command{
 		Name:    "cve",
 		Summary: "the CVE surface of a box: what is installed, what has an advisory, what a fix touches",
-		Usage:   "caf cve <inventory|scan|schedule> [flags]",
+		Usage:   "cafe cve <inventory|scan|schedule> [flags]",
 		LongHelp: "OPS-P11.\n\n" +
 			"Every item in the Attended tier is a schedule rather than an answer to a\n" +
 			"question, and this is the one that says what on the box has a known advisory and\n" +
@@ -110,9 +110,9 @@ func newCveCommand(deps cveDeps) *Command {
 			"\"you have 14 advisories\" is not an answer anybody can act on.\n\n" +
 			cveVerbTable(verbs),
 	}
-	// Bare `caf cve` is a question ("what can this do?"), not a mistake, so it
+	// Bare `cafe cve` is a question ("what can this do?"), not a mistake, so it
 	// answers instead of exiting 2 — the same decision
-	// internal/cli/contract.go makes for a bare `caf contract`.
+	// internal/cli/contract.go makes for a bare `cafe contract`.
 	c.Run = func(args []string, env *Env) error {
 		if len(args) == 0 {
 			printHelp(env.Stdout, c)
@@ -127,14 +127,14 @@ func newCveCommand(deps cveDeps) *Command {
 		for _, verb := range verbs {
 			names = append(names, verb.name)
 		}
-		return fmt.Errorf("%w: unknown cve subcommand %q (usage: caf cve <%s>)",
+		return fmt.Errorf("%w: unknown cve subcommand %q (usage: cafe cve <%s>)",
 			errUsage, args[0], strings.Join(names, "|"))
 	}
 	return c
 }
 
 // cveVerbTable is the verb list in a command's help. It is one string rather
-// than a rendering hook so `caf cve`, `caf cve --help` and `caf help cve`
+// than a rendering hook so `cafe cve`, `cafe cve --help` and `cafe help cve`
 // cannot drift into three different answers.
 func cveVerbTable(verbs []cveVerb) string {
 	var b strings.Builder
@@ -154,7 +154,7 @@ func newCveInventoryCommand(deps cveDeps) *Command {
 	return &Command{
 		Name:    "cve inventory",
 		Summary: "every component on the box, against what the substrate pins",
-		Usage:   "caf cve inventory [--json]",
+		Usage:   "cafe cve inventory [--json]",
 		LongHelp: "Two halves, kept apart. The declared half is what the substrate pins, with the\n" +
 			"file and line each version was read from. The observed half is what the box is\n" +
 			"actually running.\n\n" +
@@ -163,7 +163,7 @@ func newCveInventoryCommand(deps cveDeps) *Command {
 		Flags: func(fs *flag.FlagSet) { f.register(fs) },
 		Run: func(args []string, env *Env) error {
 			if len(args) != 0 {
-				return wantArgs("cve inventory", "caf cve inventory [--json]", 0, len(args))
+				return wantArgs("cve inventory", "cafe cve inventory [--json]", 0, len(args))
 			}
 			observer := deps.observer
 			if observer == nil {
@@ -171,7 +171,7 @@ func newCveInventoryCommand(deps cveDeps) *Command {
 			}
 			observed, err := observer.Observe(context.Background(), cve.Discard())
 			if err != nil {
-				return fmt.Errorf("caf cve inventory: read the box: %w", err)
+				return fmt.Errorf("cafe cve inventory: read the box: %w", err)
 			}
 			inv := cve.Inventory{Box: f.boxOf(), Declared: append([]cve.Component(nil), cve.Substrate...), Observed: observed}
 			inv.Compare()
@@ -219,7 +219,7 @@ func newCveScanCommand(deps cveDeps) *Command {
 	return &Command{
 		Name:    "cve scan",
 		Summary: "compute the box's CVE surface and print the report",
-		Usage:   "caf cve scan [--json] [--schedule 1d] [--no-write-state]",
+		Usage:   "cafe cve scan [--json] [--schedule 1d] [--no-write-state]",
 		LongHelp: "Observe the box, ask the advisory feed, classify, report.\n\n" +
 			"Every network call is bounded, and every phase emits a checkpoint before and\n" +
 			"after it runs, so the last line printed is the phase that is running. A scan that\n" +
@@ -228,11 +228,11 @@ func newCveScanCommand(deps cveDeps) *Command {
 		Flags: func(fs *flag.FlagSet) { f.register(fs) },
 		Run: func(args []string, env *Env) error {
 			if len(args) != 0 {
-				return wantArgs("cve scan", "caf cve scan [--json]", 0, len(args))
+				return wantArgs("cve scan", "cafe cve scan [--json]", 0, len(args))
 			}
 			schedule, err := f.scheduleOf()
 			if err != nil {
-				return fmt.Errorf("caf cve scan: %w", err)
+				return fmt.Errorf("cafe cve scan: %w", err)
 			}
 			source := deps.source
 			if source == nil {
@@ -257,18 +257,18 @@ func newCveScanCommand(deps cveDeps) *Command {
 					// phase it stopped in in the mail cron sends. This is
 					// the whole answer to "a network call that hangs is an
 					// invisible stall": not a faster network, a line.
-					fmt.Fprintf(env.Stderr, "caf cve scan: %s: %s\n", phase, detail)
+					fmt.Fprintf(env.Stderr, "cafe cve scan: %s: %s\n", phase, detail)
 				}),
 			}.Run(context.Background())
 			if err != nil {
-				return fmt.Errorf("caf cve scan: %w", err)
+				return fmt.Errorf("cafe cve scan: %w", err)
 			}
 			// The state write is bookkeeping, not the scan: it happens after
 			// the report is in front of the operator, and it is said out loud
 			// rather than swallowed, because the only real loss is that the
 			// next run may be early.
 			if outcome.Err != nil {
-				fmt.Fprintf(env.Stderr, "caf cve scan: %v\n", outcome.Err)
+				fmt.Fprintf(env.Stderr, "cafe cve scan: %v\n", outcome.Err)
 			}
 			return nil
 		},
@@ -284,8 +284,8 @@ func newCveScheduleCommand() *Command {
 	return &Command{
 		Name:    "cve schedule",
 		Summary: "print the cron line that puts the scan on a schedule",
-		Usage:   "caf cve schedule [--schedule 1d]",
-		LongHelp: "The line is printed, not installed. caf does not edit a crontab: that would be caf\n" +
+		Usage:   "cafe cve schedule [--schedule 1d]",
+		LongHelp: "The line is printed, not installed. cafe does not edit a crontab: that would be cafe\n" +
 			"changing how a box behaves without being asked, which is the same property the\n" +
 			"Attended tier holds in the other direction — upgrade recommendations the\n" +
 			"customer applies.\n\n" +
@@ -295,15 +295,15 @@ func newCveScheduleCommand() *Command {
 		Flags: func(fs *flag.FlagSet) { f.register(fs) },
 		Run: func(args []string, env *Env) error {
 			if len(args) != 0 {
-				return wantArgs("cve schedule", "caf cve schedule [--schedule 1d]", 0, len(args))
+				return wantArgs("cve schedule", "cafe cve schedule [--schedule 1d]", 0, len(args))
 			}
 			schedule, err := f.scheduleOf()
 			if err != nil {
-				return fmt.Errorf("caf cve schedule: %w", err)
+				return fmt.Errorf("cafe cve schedule: %w", err)
 			}
 			binary := os.Args[0]
 			if binary == "" {
-				binary = "caf"
+				binary = "cafe"
 			}
 			_, err = fmt.Fprintf(env.Stdout, "%s\n", cve.CronLine(schedule, binary))
 			return err

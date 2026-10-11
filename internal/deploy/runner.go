@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-// The two engines, and the whole set. `caf deploy --engine` selects one, and
+// The two engines, and the whole set. `cafe deploy --engine` selects one, and
 // the default is Kamal because the fleet runs Kamal today — DEPLOYMENT.md:
 // "Kamal and kit/templates/kamal retire at parity, not before."
 const (
@@ -23,23 +23,23 @@ const (
 	EngineArgo = "argo"
 )
 
-// ErrUsage is the sentinel for "caf was invoked wrongly", which is a different
+// ErrUsage is the sentinel for "cafe was invoked wrongly", which is a different
 // class from both a refusal and a failed deploy and gets a different exit code.
 //
-// A typo in --engine is the operator invoking caf wrongly, and the wrong answer
+// A typo in --engine is the operator invoking cafe wrongly, and the wrong answer
 // to it is a deploy run against the wrong substrate — which is the one outcome
-// a deploy command must never produce by accident. caf exit-2s those and
+// a deploy command must never produce by accident. cafe exit-2s those and
 // exit-1s the other two, so a pipeline can tell "I called it wrong" from "it
 // refused" from "it ran and something broke" — three different fixes behind
 // three different codes.
-var ErrUsage = errors.New("caf deploy: invalid invocation")
+var ErrUsage = errors.New("cafe deploy: invalid invocation")
 
 // RunnerFor returns the runner for an engine name. The empty name is the
 // default, which is Kamal because the fleet runs Kamal today — DEPLOYMENT.md:
 // "Kamal and kit/templates/kamal retire at parity, not before."
 //
 // An unknown name is an error and not a default: a typo in --engine is the
-// operator invoking caf wrongly, and the wrong answer to it is a deploy run
+// operator invoking cafe wrongly, and the wrong answer to it is a deploy run
 // against the wrong substrate — which is the one outcome a deploy command
 // must never produce by accident. The error wraps ErrUsage so the caller
 // exits 2, the same as any other bad flag.
@@ -73,7 +73,7 @@ func RunnerFor(engine string) (Runner, error) {
 // # What the caller keeps
 //
 // The parts either side of the engine, which this package's doc.go says are
-// caf's job: preflight, the refusal, the dry run, the confirmation and the
+// cafe's job: preflight, the refusal, the dry run, the confirmation and the
 // after-the-fact report.
 //
 // The interface is declared HERE and satisfied by the engines in this package

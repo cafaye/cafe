@@ -34,7 +34,7 @@ import (
 // filter that says "remove everything a human ever started". That defence is
 // real, and it is the load-bearing one.
 //
-// caf's reaper is a **liveness guess**, not a monotonic sweep, and this package
+// cafe's reaper is a **liveness guess**, not a monotonic sweep, and this package
 // says so here rather than implying otherwise. It used to imply otherwise: it
 // carried a settle-window field, documented as making the sweep skip anything
 // created after the pass began and sweep again, and read in zero places. Three
@@ -85,8 +85,8 @@ var (
 const ackResponse = "ACK\n"
 
 // LabelBase is the namespace the reaper and every testcontainers client share.
-// caf writes its session label under it so that a caf session is reaped by the
-// same reaper that would reap a testcontainers session, and so that a caf label
+// cafe writes its session label under it so that a cafe session is reaped by the
+// same reaper that would reap a testcontainers session, and so that a cafe label
 // can never be confused with a resource somebody else's tool owns.
 const LabelBase = "org.testcontainers"
 
@@ -114,10 +114,10 @@ func (l Label) valid() error {
 	return nil
 }
 
-// SessionLabel is the label every caf session writes on what it creates: one
+// SessionLabel is the label every cafe session writes on what it creates: one
 // value per run, so the reaper can only ever match the run that asked for it.
 func SessionLabel(session string) Label {
-	return Label{Key: LabelBase + ".caf.session", Value: session}
+	return Label{Key: LabelBase + ".cafe.session", Value: session}
 }
 
 // Filter is what a lease matches. It is a set of labels and nothing else —
@@ -159,7 +159,7 @@ func (f Filter) Lines() ([]string, error) {
 }
 
 // Config is the reaper's address and timings, read from the environment with
-// the same names and the same defaults the reaper documents, so that a caf
+// the same names and the same defaults the reaper documents, so that a cafe
 // session and a testcontainers session in the same shell agree about where the
 // reaper is.
 type Config struct {
@@ -178,7 +178,7 @@ type Config struct {
 }
 
 // The reaper's documented defaults. They are named here rather than read from a
-// doc comment because they are the values a caf session gets when it says
+// doc comment because they are the values a cafe session gets when it says
 // nothing, and a session that silently disagreed with a testcontainers session
 // in the same shell would be a bug nobody would find. The set is exactly what
 // `moby-ryuk` reads — four variables, no retry offset — because a client that
@@ -190,7 +190,7 @@ const (
 )
 
 // ConfigFromEnv reads the reaper's configuration. RYUK=true turns the lease on;
-// a caf that never sets it takes no lease and is unaffected.
+// a cafe that never sets it takes no lease and is unaffected.
 func ConfigFromEnv() Config {
 	return Config{
 		Address:             envString("RYUK_CONTAINER_HOST", defaultAddress),
@@ -200,7 +200,7 @@ func ConfigFromEnv() Config {
 	}
 }
 
-// ConfigWithSession is the configuration caf actually uses: a reaper address and
+// ConfigWithSession is the configuration cafe actually uses: a reaper address and
 // the lease turned on. It is built rather than read so the caller cannot leave
 // it half-configured by omission.
 //

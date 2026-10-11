@@ -12,7 +12,7 @@ import (
 )
 
 // generateBox is a real ed25519 keypair, so the conversion and the round-trip
-// are exercised over the same bytes a caf run would use.
+// are exercised over the same bytes a cafe run would use.
 func generateBox(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
 	t.Helper()
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -168,7 +168,7 @@ func TestATamperedEnvelopeIsRefused(t *testing.T) {
 
 // An envelope that is not one of ours — a wrong version, a wrong algorithm, or
 // a document that is not an envelope at all — is refused by name rather than
-// folded into a decode failure. The box opening an envelope from a future caf
+// folded into a decode failure. The box opening an envelope from a future cafe
 // has to be able to say "I cannot open this" and mean it.
 func TestOpenRefusesAnEnvelopeThatIsNotOurs(t *testing.T) {
 	pub, priv := generateBox(t)

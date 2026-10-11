@@ -42,7 +42,7 @@ type Rule struct {
 
 	// Contract is the core contract this rule leans on, cited by file and the
 	// fact taken from it. Empty means the rule needs none: some failure modes
-	// are caf's own and core says nothing about them, and a citation invented
+	// are cafe's own and core says nothing about them, and a citation invented
 	// to fill the field would be worse than an empty one.
 	Contract string
 

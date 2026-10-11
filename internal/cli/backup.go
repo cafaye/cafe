@@ -12,7 +12,7 @@ import (
 	"github.com/cafaye/cafe/internal/backup"
 )
 
-// backupDeps is what `caf backup` needs from the world: the backup engine.
+// backupDeps is what `cafe backup` needs from the world: the backup engine.
 //
 // It is a parameter rather than a package-level variable for the same reason
 // `deployDeps`, `devDeps` and `reclaimDeps` are: a test can hand the command a
@@ -25,11 +25,11 @@ import (
 // both packages and internal/backup imports neither. The engine owns the plan
 // (which commands run, in what order); the command owns everything either side
 // of it. backup's KamalRunner delegates process execution to internal/deploy's
-// KamalRunner, which stays the only place caf knows how to run kamal.
+// KamalRunner, which stays the only place cafe knows how to run kamal.
 type backupDeps struct {
 	runner backup.Runner
 	// confirm asks the operator. It is a seam because a prompt read from os.Stdin
-	// is a prompt no test can answer and no CI job can satisfy: `caf backup` in a
+	// is a prompt no test can answer and no CI job can satisfy: `cafe backup` in a
 	// pipeline must either be given -yes or fail, and both of those have to be
 	// assertable.
 	confirm func(prompt string) (bool, error)
@@ -75,7 +75,7 @@ func (r backupRun) runner() (backup.Runner, error) {
 	return resolved, nil
 }
 
-// backupOptions is the parsed flag state for `caf backup`.
+// backupOptions is the parsed flag state for `cafe backup`.
 type backupOptions struct {
 	environment string
 	scratch     string
@@ -105,7 +105,7 @@ func (t *tableList) Set(value string) error {
 	return nil
 }
 
-// backupLongHelp is the prose `caf backup` prints under its usage line. It is the
+// backupLongHelp is the prose `cafe backup` prints under its usage line. It is the
 // answer to "what do I type", written down where a person reads it before running
 // a command that writes a database dump and then drops a database.
 //
@@ -127,8 +127,8 @@ WHAT IT NEEDS. A project with config/deploy.yml and config/kamal-backup.yml, whi
 files that are ONE contract: the backup configuration names its accessory and its credentials,
 and the deploy configuration's env.secret list is the only place those credentials come from.
 The KIT_* variables config/deploy.yml interpolates must be exported in the shell that runs
-this, because the accessory has to be booted against the deployment caf deploy would build.
-Credentials are NAMES in .kamal/secrets; caf never reads a value.
+this, because the accessory has to be booted against the deployment cafe deploy would build.
+Credentials are NAMES in .kamal/secrets; cafe never reads a value.
 
 WHAT IT REFUSES, BEFORE ANYTHING IS BOOTS. The accessory the backup configuration names is
 not in the deploy configuration. The accessory does not mount the backup configuration
@@ -144,13 +144,13 @@ starts the backup accessory and skips one already running. "kamal accessory exec
 "kamal-backup backup --force" inside it, because a schedule of 1d otherwise answers "no backup
 due" and the drill would restore a snapshot nobody just took. Then "kamal-backup drill
 production" restores into the scratch database and the gem decides pass or fail by the exit
-status of the check caf hands it. Every command is bounded by -timeout, so a hung pull or a
+status of the check cafe hands it. Every command is bounded by -timeout, so a hung pull or a
 hung dump is a named failure rather than a hang.
 
 THE RESTORE PROOF IS NOT CAF'S TO IMPLEMENT. kamal-backup does not create the scratch database,
-does not drop it, and does not assert anything, so caf supplies those two things. The refusal
+does not drop it, and does not assert anything, so cafe supplies those two things. The refusal
 to drill into a production-looking name is NOT duplicated here: it is kamal-backup's, and in
-operator form it is cafaye/kit's templates/kamal/drill.sh's. caf hands the gem a name and
+operator form it is cafaye/kit's templates/kamal/drill.sh's. cafe hands the gem a name and
 reports what the gem said.
 
 THE ENGINE. --engine selects the backup engine: kamal (the default, the engine the fleet
@@ -159,7 +159,7 @@ there is no Kamal — driven by kubectl cnpg, a CloudNativePG Backup object and 
 recovery Cluster). The CNPG engine reads no kamal-backup.yml and checks no two-file contract:
 the cluster is a fact about the Kubernetes namespace, and its dry run executes nothing.
 
-ONE PATH. caf backup <service> --table <name> --yes, from the project directory. --dry-run
+ONE PATH. cafe backup <service> --table <name> --yes, from the project directory. --dry-run
 runs the two read-only steps, checks the contract against what kamal resolved, prints every
 command and changes nothing — and it refuses exactly what the real run refuses, because a dry
 run more permissive than the real one is worse than no dry run.`
@@ -167,9 +167,9 @@ run more permissive than the real one is worse than no dry run.`
 // newBackupCommand takes its seams. The router passes the zero value and gets the
 // real wiring.
 //
-// `caf backup` is a parent with one verb besides itself: `caf backup drill` is
+// `cafe backup` is a parent with one verb besides itself: `cafe backup drill` is
 // the same cycle with the confirmation taken away and the outcome recorded and
-// reported as a machine document. The parent dispatches the way `caf contract`
+// reported as a machine document. The parent dispatches the way `cafe contract`
 // does, and the drill verb is a Command of its own named with its full
 // invocation so its usage errors read as the words the user typed.
 func newBackupCommand(deps backupDeps) *Command {
@@ -177,7 +177,7 @@ func newBackupCommand(deps backupDeps) *Command {
 	c := &Command{
 		Name:     "backup",
 		Summary:  "take one real backup and prove it restores, into a scratch database it then drops",
-		Usage:    "caf backup [flags] <service>",
+		Usage:    "cafe backup [flags] <service>",
 		LongHelp: backupLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			declareBackupFlags(fs, opts)
@@ -216,7 +216,7 @@ func declareBackupFlags(fs *flag.FlagSet, opts *backupOptions) {
 	fs.StringVar(&opts.engine, "engine", "", "backup engine: kamal (the default, the engine the fleet runs) or cnpg (the launch substrate's, where there is no Kamal)")
 }
 
-// backupRun is one `caf backup` invocation, gathered so the steps read top to
+// backupRun is one `cafe backup` invocation, gathered so the steps read top to
 // bottom and can be tested without a closure capturing five variables.
 type backupRun struct {
 	opts    backupOptions
@@ -227,7 +227,7 @@ type backupRun struct {
 	// schedule uses, so it never asks and it always records.
 	drill bool
 	// asJSON emits the outcome as one machine document on stdout and moves the
-	// engine's own report to stderr. It is the same split `caf agent` makes and
+	// engine's own report to stderr. It is the same split `cafe agent` makes and
 	// for the same reason: an agent pipes stdout into a parser, and a report
 	// interleaved with the document is a document nobody can decode.
 	asJSON bool
@@ -242,11 +242,11 @@ func (r backupRun) run() error {
 
 	// The dry run happens before the prompt, and that order is the point: a
 	// refusal or a plan that says "this is wrong" is more useful than a question
-	// about whether to go ahead and do it. Somebody who typed `caf backup` to see
+	// about whether to go ahead and do it. Somebody who typed `cafe backup` to see
 	// what it would do gets the answer, not a prompt.
 	if r.opts.dryRun {
 		if r.asJSON {
-			return fmt.Errorf("%w: caf backup drill --json with --dry-run: a dry run runs nothing, so there is no outcome to emit; run it for real, or drop --json", errUsage)
+			return fmt.Errorf("%w: cafe backup drill --json with --dry-run: a dry run runs nothing, so there is no outcome to emit; run it for real, or drop --json", errUsage)
 		}
 		return r.runCycle(runner, true)
 	}
@@ -264,7 +264,7 @@ func (r backupRun) run() error {
 		return err
 	}
 	if !ok {
-		fmt.Fprint(r.out(), "caf backup: nothing was taken. Run it with --yes when you mean it.\n")
+		fmt.Fprint(r.out(), "cafe backup: nothing was taken. Run it with --yes when you mean it.\n")
 		return errReported
 	}
 	return r.runCycle(runner, false)
@@ -311,10 +311,10 @@ func (r backupRun) runCycle(runner backup.Runner, dryRun bool) error {
 // rather than the message — so a reworded refusal cannot quietly stop being
 // recognised as one.
 //
-//	ErrUsage      caf was invoked wrongly. Exit 2, the message on stderr.
+//	ErrUsage      cafe was invoked wrongly. Exit 2, the message on stderr.
 //	ErrRefused    a committed configuration is wrong. Exit 1, and the refusal
 //	              is ALREADY the report on stdout, so stderr stays empty: a
-//	              `caf: ...` line there puts a truncated copy in the place a
+//	              `cafe: ...` line there puts a truncated copy in the place a
 //	              CI log greps, and the truncated copy is the one without the
 //	              advice in it.
 //	anything else the cycle ran and something broke. Exit 1, the cause on
@@ -343,7 +343,7 @@ func (r backupRun) recordAndReport(started time.Time, err error, report string) 
 	// exits nonzero with the path in the sentence rather than exiting 0 on the
 	// strength of a restore nobody will be able to point at.
 	if writeErr := r.writeRecord(rec); writeErr != nil {
-		return fmt.Errorf("caf backup: the drill %s, and caf could not record it: %w\n"+
+		return fmt.Errorf("cafe backup: the drill %s, and cafe could not record it: %w\n"+
 			"  The result is only in the report above. Set CAF_DRILL_DIR to a writable directory and run it again.",
 			rec.Outcome, writeErr)
 	}
@@ -368,11 +368,11 @@ func (r backupRun) recordAndReport(started time.Time, err error, report string) 
 		// about a mechanism; this is one line naming the machine-matchable reason,
 		// the service and where the record went.
 		//
-		// caf has no notification transport — the tier copy states that nobody
-		// is paged (OPS-P20) — so the convention this uses is the one caf already
+		// cafe has no notification transport — the tier copy states that nobody
+		// is paged (OPS-P20) — so the convention this uses is the one cafe already
 		// has: exit nonzero and a named reason. A monitor that wants more reads
 		// --json.
-		fmt.Fprintf(r.errOut(), "caf backup drill: %s: %s did not prove a restore (%s)\n",
+		fmt.Fprintf(r.errOut(), "cafe backup drill: %s: %s did not prove a restore (%s)\n",
 			rec.Reason, rec.Service, rec.Outcome)
 		if rec.Detail != "" {
 			fmt.Fprintf(r.errOut(), "  %s\n", rec.Detail)
@@ -420,7 +420,7 @@ func (r backupRun) drillRecord(started time.Time, err error, report string) back
 		// The cycle never got going: the engine is not installed, the project
 		// cannot be read, the plan cannot be built. ErrCycleFailed is the ONE
 		// sentinel a cycle that actually ran returns (run.go's failureReport is
-		// its only source), so its absence is the signal — and "caf could not
+		// its only source), so its absence is the signal — and "cafe could not
 		// start" has to be a different fact from "the restore did not hold",
 		// because one is a machine to fix and the other is a backup to fix.
 		rec.Outcome, rec.Reason = backup.DrillFailed, backup.DrillReasonNotRun
@@ -474,7 +474,7 @@ func (r backupRun) scratchName() string {
 
 // reportOut is where the engine's own report goes. A machine consumes stdout,
 // so the report moves to stderr when the outcome is a machine document — the
-// same split `caf agent` makes.
+// same split `cafe agent` makes.
 func (r backupRun) reportOut() io.Writer {
 	if r.asJSON {
 		return r.errOut()
@@ -489,7 +489,7 @@ func (r backupRun) reportOut() io.Writer {
 // report in internal/backup does), so a record's detail field built from that
 // would be empty on exactly the records that need it. Taking a string rather
 // than an error is the same difference — the thing being summarised here is a
-// paragraph caf printed, not an error.
+// paragraph cafe printed, not an error.
 func firstNonEmptyLine(text string) string {
 	for _, line := range strings.Split(text, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" {
@@ -503,9 +503,9 @@ func firstNonEmptyLine(text string) string {
 // prompt reader is shared because its subtle part — a closed stdin must answer
 // "no" rather than block — is the same for both commands, and the name is a
 // parameter because the message has to read as the words the user typed.
-func confirmBackupOnStdin(prompt string) (bool, error) { return askOnStdin("caf backup", prompt) }
+func confirmBackupOnStdin(prompt string) (bool, error) { return askOnStdin("cafe backup", prompt) }
 
-// ask is the confirmation, and it is the only interactive thing caf backup does.
+// ask is the confirmation, and it is the only interactive thing cafe backup does.
 //
 // A dry run never reaches it. --yes skips it. Everything else asks once, naming
 // the service, the scratch database and the tables, because a prompt that does
@@ -519,7 +519,7 @@ func (r backupRun) ask() (bool, error) {
 	tables := strings.Join(r.opts.tables, ", ")
 	if r.opts.engine == backup.EngineCNPG {
 		return r.deps.confirm(fmt.Sprintf(
-			"caf backup: back the %s cluster up, restore it into the %s cluster, and drop it? asserting %s [y/N] ",
+			"cafe backup: back the %s cluster up, restore it into the %s cluster, and drop it? asserting %s [y/N] ",
 			r.service, scratch, tables))
 	}
 	where := "config/deploy.yml"
@@ -527,7 +527,7 @@ func (r backupRun) ask() (bool, error) {
 		where = "config/deploy." + r.opts.environment + ".yml over config/deploy.yml"
 	}
 	return r.deps.confirm(fmt.Sprintf(
-		"caf backup: back %s up from %s, restore it into %s, and drop it? asserting %s [y/N] ",
+		"cafe backup: back %s up from %s, restore it into %s, and drop it? asserting %s [y/N] ",
 		r.service, where, scratch, tables))
 }
 

@@ -26,7 +26,7 @@ import (
 // nothing about which file moved and a reviewer reading a core bump wants to know
 // that. And a pin at all is the point: the vendored copies are changed by the
 // refresh procedure in `schemas/README.md` and never by a patch, so a hand edit
-// has to fail the suite rather than quietly becoming the contract caf generates
+// has to fail the suite rather than quietly becoming the contract cafe generates
 // from.
 func TestEveryVendoredTelemetrySchemaIsPinned(t *testing.T) {
 	for _, source := range telemetrySources {
@@ -61,7 +61,7 @@ func TestEveryVendoredTelemetrySchemaIsPinned(t *testing.T) {
 }
 
 // core keeps the span-name grammar in two files and asserts in its own suite that
-// the copies match. caf reads both and compares them, because a generator that
+// the copies match. cafe reads both and compares them, because a generator that
 // picked the wrong one would emit a name core's traces schema accepts and core's
 // naming schema refuses — which is core contradicting itself, delivered by a
 // third repository.
@@ -74,7 +74,7 @@ func TestTheTwoCopiesOfTheSpanNameGrammarAreIdentical(t *testing.T) {
 		t.Errorf("traces.schema.json and span-naming.schema.json carry different span-name grammars:\n"+
 			"  traces:      %s\n"+
 			"  span-naming: %s\n"+
-			"core's tests/test_specs.py asserts these are byte-identical, and caf's generated setup emits one of "+
+			"core's tests/test_specs.py asserts these are byte-identical, and cafe's generated setup emits one of "+
 			"them, so a divergence here is a name core accepts in one place and refuses in another",
 			spec.SpanNamePattern, spec.SpanNamePatternMirror)
 	}
@@ -354,7 +354,7 @@ func TestEverySignalCarriesTheSameErrorTypeVocabulary(t *testing.T) {
 // The content words, read out of the redaction schema's own `not` clause with the
 // case-insensitive prefix stripped.
 //
-// This list is the single most valuable thing caf reads, because it is the one
+// This list is the single most valuable thing cafe reads, because it is the one
 // that is enforceable without a collector: a generated setup refuses
 // `muse.prompt` at the point somebody adds it, which is how this actually leaks
 // in practice — not an attacker, but a well-meaning change six months from now by
@@ -378,7 +378,7 @@ func TestTheContentWordsAreReadOutOfTheRedactionSchema(t *testing.T) {
 	// languages.
 	for _, word := range spec.Redaction.ContentWords {
 		if strings.ContainsAny(word, `()\`) {
-			t.Errorf("%q is a regex, not a word. caf strips the (?i) prefix and emits the word, because a "+
+			t.Errorf("%q is a regex, not a word. cafe strips the (?i) prefix and emits the word, because a "+
 				"generated setup should not have to re-implement the case-insensitive match", word)
 		}
 	}
@@ -436,7 +436,7 @@ func TestTheEndpointContractIsReadOutOfTheSchema(t *testing.T) {
 	}
 	if endpoint.Default != "http://otel-collector:4317" {
 		t.Errorf("the default collector is %q, want %q. This value is NOT read out of core's schema — core "+
-			"writes a pattern and a format on it and does not state the address — so it is caf's, and it "+
+			"writes a pattern and a format on it and does not state the address — so it is cafe's, and it "+
 			"agrees with core's docs/observability.md and its examples/valid/telemetry/otel-endpoint.json",
 			endpoint.Default, "http://otel-collector:4317")
 	}
@@ -444,7 +444,7 @@ func TestTheEndpointContractIsReadOutOfTheSchema(t *testing.T) {
 
 // The span-name grammar's bounds, which is where the segment count comes from.
 //
-// Three is not a constant caf chose: it is the `{1,3}` in core's own pattern, and
+// Three is not a constant cafe chose: it is the `{1,3}` in core's own pattern, and
 // it is the number that decides how deep a span name may go. A generator with its
 // own copy of "three" would keep emitting a four-segment name after core tightened
 // the bound, and every name it produced would be rejected by a collector three

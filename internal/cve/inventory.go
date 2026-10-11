@@ -98,9 +98,9 @@ type Blast struct {
 //
 // # Why this is a copy and not a read
 //
-// cafaye/kit is a different repository. caf cannot open
-// templates/substrate/install.sh at run time, and a caf that could would be a
-// caf whose answer depended on a checkout being beside it. So the catalogue
+// cafaye/kit is a different repository. cafe cannot open
+// templates/substrate/install.sh at run time, and a cafe that could would be a
+// cafe whose answer depended on a checkout being beside it. So the catalogue
 // is transcribed here and every row carries the file:line it was read from,
 // which is the only defence a copy has: a reader can check it, and a drift
 // between the two is findable by opening one file.
@@ -519,7 +519,7 @@ func sameVersion(declared, observed string) bool {
 // distro tag — `latest`, `sha256:…`, `1.2.3.4` — still fails: leading
 // non-digits in the three components are refused rather than truncated.
 //
-// What is never done is coercing. A version caf cannot reduce to three
+// What is never done is coercing. A version cafe cannot reduce to three
 // numbers fails here, and the caller says so: "we could not read the version"
 // and "the version is unaffected" are different sentences, and only one of
 // them is safe to act on.

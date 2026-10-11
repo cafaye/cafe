@@ -127,7 +127,7 @@ func (a Advisory) Affects(version string) Class {
 	}
 	if !fixedOK {
 		// Either there is no fix at all, or the fix is written in a spelling
-		// caf cannot compare. Both are named differently below.
+		// cafe cannot compare. Both are named differently below.
 		if a.Fixed == "" {
 			return ClassNoFix
 		}
@@ -157,7 +157,7 @@ const (
 	// the version that proves it" is what makes the rest of the report
 	// trustworthy.
 	ClassUnaffected Class = "unaffected"
-	// ClassUnknown is caf could not compare the version against the range.
+	// ClassUnknown is cafe could not compare the version against the range.
 	// Never rendered as "unaffected": a report that said unaffected when it
 	// meant unreadable is a report that leaves a box unpatched.
 	ClassUnknown Class = "unknown"

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// `caf lock` writes a file and `caf lock --verify` checks it. Both go through
+// `cafe lock` writes a file and `cafe lock --verify` checks it. Both go through
 // the router here rather than by calling `internal/lock` directly, because the
 // two things a command can get wrong are exactly the things the router owns: the
 // exit code and which stream the report lands on.
@@ -16,10 +16,10 @@ import (
 // `internal/lock`'s tests build theirs and for the same reason — a fixture
 // tree is a second thing to keep in step with the generator.
 
-// lockProject copies the tree `caf lock` needs into a scratch directory.
+// lockProject copies the tree `cafe lock` needs into a scratch directory.
 //
 // The manifest, the vendored schemas, the generated telemetry and the gate
-// declaration, and nothing else. `caf lock` walks exactly those four
+// declaration, and nothing else. `cafe lock` walks exactly those four
 // declarations, so copying more of this repository would be copying files
 // nothing here looks at.
 func lockProject(t *testing.T) string {
@@ -90,7 +90,7 @@ func TestLockWritesTheFileAndSaysWhatItPinned(t *testing.T) {
 	}
 
 	if _, err := os.Stat(filepath.Join(root, "caf.lock")); err != nil {
-		t.Fatalf("caf lock did not write caf.lock: %v", err)
+		t.Fatalf("cafe lock did not write caf.lock: %v", err)
 	}
 	for _, want := range []string{
 		"caf.lock",
@@ -189,10 +189,10 @@ func TestVerifyGoesRedOnAHandEditedVendoredSchemaAndGreenOnARestore(t *testing.T
 // is required before a commit and is NOT in `bin/prime`, so the fast gate and CI
 // are green. (An edit *inside* the file is caught earlier still, by
 // `internal/gen`'s drift gate, which regenerates and compares bytes; that is
-// `caf gen`'s half of the same argument and it was here first.)
+// `cafe gen`'s half of the same argument and it was here first.)
 //
 // So this row is not the first line of defence for generated files in THIS tree.
-// What `caf lock` uniquely adds here is the other two kinds — `cafaye.yml` and
+// What `cafe lock` uniquely adds here is the other two kinds — `cafaye.yml` and
 // `gate.yml`, neither of which anything hashed before this packet — and the fact
 // that all four are checked by one mechanism rather than by a pin in each of
 // three packages.
@@ -225,7 +225,7 @@ func TestVerifyCatchesAHandEditedGeneratedFileThatStillBuildsAndTests(t *testing
 // A spec bump that half-lands: a seventh telemetry schema appears in the
 // vendored directory and nobody re-locked.
 //
-// It is valid JSON, it is in the right directory, and `caf contract lint` never
+// It is valid JSON, it is in the right directory, and `cafe contract lint` never
 // opens it — so before this command the only symptom was a generator and a
 // validator disagreeing about what core said.
 func TestVerifyCatchesASchemaThatAppearedWithoutALock(t *testing.T) {
@@ -243,7 +243,7 @@ func TestVerifyCatchesASchemaThatAppearedWithoutALock(t *testing.T) {
 	if code != exitFailure {
 		t.Fatalf("exit code = %d, want %d", code, exitFailure)
 	}
-	for _, want := range []string{"probes.schema.json", "vendored-schema", "unpinned", "Re-run `caf lock`"} {
+	for _, want := range []string{"probes.schema.json", "vendored-schema", "unpinned", "Re-run `cafe lock`"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("the report does not mention %q:\n%s", want, stdout)
 		}
@@ -259,7 +259,7 @@ func TestVerifyWithNoLockSaysWhichCommandWritesOne(t *testing.T) {
 	if code != exitFailure {
 		t.Fatalf("exit code = %d, want %d", code, exitFailure)
 	}
-	for _, want := range []string{"caf.lock", "caf lock"} {
+	for _, want := range []string{"caf.lock", "cafe lock"} {
 		if !strings.Contains(stderr, want) {
 			t.Errorf("the refusal does not mention %q:\n%s", want, stderr)
 		}

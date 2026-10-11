@@ -76,7 +76,7 @@ func (r Report) Summary() string {
 
 // Encode writes the machine document. Indented, for the reason
 // internal/cli/box.go gives: a shell can read it and so can a person, and
-// `caf cve scan --json | jq` is a supported path.
+// `cafe cve scan --json | jq` is a supported path.
 func Encode(w io.Writer, r Report) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

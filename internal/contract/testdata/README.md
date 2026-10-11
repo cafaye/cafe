@@ -2,7 +2,7 @@
 
 Manifests copied verbatim from
 [cafaye/core](https://github.com/cafaye/core) at commit
-`3340e0f3171e09750f43e9f2974a3efb00f0ed82` (spec v0.2), so `caf`'s validator
+`3340e0f3171e09750f43e9f2974a3efb00f0ed82` (spec v0.2), so `cafe`'s validator
 and core's own `tests/test_specs.py` answer the same question about the same
 bytes.
 
@@ -16,8 +16,8 @@ bytes.
 
 The fixtures under `invalid/` that core does **not** ship
 (`self-consume`, `foreign-long-event`, `empty-surface`, `broken`) are written
-for caf. Each one is schema-valid — except `broken`, which is not even YAML —
-so the only thing that can reject them is a caf rule. A fixture that the JSON
+for cafe. Each one is schema-valid — except `broken`, which is not even YAML —
+so the only thing that can reject them is a cafe rule. A fixture that the JSON
 Schema already rejects would pass a linter with the cross-field rules deleted.
 
 `foreign-long-event` is the one to keep an eye on across core bumps. Under

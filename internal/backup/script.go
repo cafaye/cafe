@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Everything caf has to say to the shell inside the backup accessory, and why it
+// Everything cafe has to say to the shell inside the backup accessory, and why it
 // is said that way.
 //
 // # Every script here is ONE LINE, and that is not a style choice
@@ -30,8 +30,8 @@ import (
 // credential in argv is a credential on the machine.
 //
 // The split is written out rather than done in Go because the accessory's
-// environment is not something caf can read: caf never opens a secret's value,
-// and a caf that could would be a caf one bug away from printing one.
+// environment is not something cafe can read: cafe never opens a secret's value,
+// and a cafe that could would be a cafe one bug away from printing one.
 
 // connectionPreamble is the one sentence every script here starts with.
 //
@@ -57,7 +57,7 @@ func connectionPreamble() string {
 // being exact about: the backup accessory's OWN first backup cycle.
 //
 // Booting a backup accessory starts its scheduler, and `Scheduler#run` takes a
-// backup immediately and then sleeps for the whole schedule. So `caf backup` — which
+// backup immediately and then sleeps for the whole schedule. So `cafe backup` — which
 // boots the accessory and then wants the repository — is racing a cycle the boot
 // itself created, and the symptoms are measured:
 //
@@ -146,7 +146,7 @@ const ResticLockExit = 11
 // the disagreement is the bug. Asking again — `restic list locks` after the failed
 // backup — is a sample of a repository whose cycle may finish in the gap: measured,
 // the settle step reported a free repository, the very next command came back
-// restic's exit 11, and by the time caf asked again the cycle was DONE, so the
+// restic's exit 11, and by the time cafe asked again the cycle was DONE, so the
 // answer was free again and a retry conditioned on it never fired. The live tier's
 // third run failed exactly that way, with the accessory's own first snapshot in the
 // repository.
@@ -270,15 +270,15 @@ func AssertionScript(scratch string, tables []string) (string, error) {
 	return connectionPreamble() + `; fail=0; for t in ` + strings.Join(names, " ") + `; do ` +
 		`n=$(psql --no-psqlrc --quiet --tuples-only --no-align --set=ON_ERROR_STOP=1 ` +
 		`--dbname=` + scratch + ` --command="SELECT count(*) FROM $t") || exit 1; ` +
-		`echo "caf backup: $t holds ${n:-0} rows in ` + scratch + ` after the restore"; ` +
-		`case "${n:-}" in ''|0) echo "caf backup: table $t is empty in ` + scratch + ` after the restore" >&2; fail=1;; esac; ` +
+		`echo "cafe backup: $t holds ${n:-0} rows in ` + scratch + ` after the restore"; ` +
+		`case "${n:-}" in ''|0) echo "cafe backup: table $t is empty in ` + scratch + ` after the restore" >&2; fail=1;; esac; ` +
 		`done; exit $fail`, nil
 }
 
 // plainIdentifier is the one rule about the operator's own words, and it is about
 // SHELLS rather than about databases.
 //
-// caf's scratch database name and caf's table names travel through two shells and
+// cafe's scratch database name and cafe's table names travel through two shells and
 // arrive as words in a `docker exec`, so a name that is not a bare identifier
 // would have to be quoted twice and there is no second quoting layer to spend.
 // A name like `my database` is refused here, by name, rather than producing a
@@ -288,27 +288,27 @@ func AssertionScript(scratch string, tables []string) (string, error) {
 // This is NOT the production-name refusal. That one is kamal-backup's
 // (`Config#production_like_target?`, which refuses anything containing
 // "production" and anything delimited by prod/live) and in operator form it is
-// kit's `drill.sh`, and caf hands the name to the gem and reports what the gem
-// said. Keeping the two apart is the point: this one is about how caf can write
-// a name down, and it is caf's to refuse.
+// kit's `drill.sh`, and cafe hands the name to the gem and reports what the gem
+// said. Keeping the two apart is the point: this one is about how cafe can write
+// a name down, and it is cafe's to refuse.
 func plainIdentifier(what, name string) error {
 	if name == "" {
-		return fmt.Errorf("caf backup: an empty %s name is not a name", what)
+		return fmt.Errorf("cafe backup: an empty %s name is not a name", what)
 	}
 	for i, r := range name {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r == '_':
 		case r >= '0' && r <= '9' && i > 0:
 		default:
-			return fmt.Errorf("caf backup: the %s name %q contains %q.\n"+
-				"  This name is carried through two shells to reach the accessory, so caf can only write it "+
+			return fmt.Errorf("cafe backup: the %s name %q contains %q.\n"+
+				"  This name is carried through two shells to reach the accessory, so cafe can only write it "+
 				"as a bare identifier — letters, digits and underscores, not starting with a digit.\n"+
-				"  Quote-free is the whole requirement; whether the name may be USED is not caf's decision, and "+
+				"  Quote-free is the whole requirement; whether the name may be USED is not cafe's decision, and "+
 				"kamal-backup makes that one when the drill runs", what, name, string(r))
 		}
 	}
 	if name[0] >= '0' && name[0] <= '9' {
-		return fmt.Errorf("caf backup: the %s name %q starts with a digit, which is not a bare identifier.\n"+
+		return fmt.Errorf("cafe backup: the %s name %q starts with a digit, which is not a bare identifier.\n"+
 			"  Rename it, or prefix it with an underscore", what, name)
 	}
 	return nil

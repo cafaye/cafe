@@ -266,7 +266,7 @@ func TestAHappyPathRecordsEveryStepBeforeItRuns(t *testing.T) {
 // TestACrashMidStepIsPickedUpAtTheFirstIncompleteStep is the packet. A driver
 // gets part of the way and stops calling; its lease expires; a second driver
 // claims the run and continues at the first step that is not done. The rows
-// are the places a caf process can stop in.
+// are the places a cafe process can stop in.
 func TestACrashMidStepIsPickedUpAtTheFirstIncompleteStep(t *testing.T) {
 	steps := []string{"substrate", "data", "stack"}
 	cases := []struct {

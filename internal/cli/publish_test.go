@@ -155,7 +155,7 @@ func publishTestEnv(t *testing.T, pub *fakePublishPublisher) publishDeps {
 	return deps
 }
 
-// runPublishCLI drives ONE caf publish invocation against injected deps and
+// runPublishCLI drives ONE cafe publish invocation against injected deps and
 // hands back the exit code plus both streams — exactly what main() does with
 // the real process, minus the process.
 func runPublishCLI(t *testing.T, deps publishDeps, args ...string) (code int, stdout, stderr string) {
@@ -239,7 +239,7 @@ func TestDryRunJSONIsOneDocument(t *testing.T) {
 // The user ruling of 2026-10-11 ("for cafaye i think we should make
 // everything non interactive by default as it shall mostly be used by
 // agents") removed the confirmation from the default path: an agent runs
-// `caf publish`, it publishes. No prompt anywhere in the default path —
+// `cafe publish`, it publishes. No prompt anywhere in the default path —
 // not even a TTY-gated one. There is no confirmation seam left to inject,
 // so a default run that blocked on a TTY would hang this test rather than
 // ask it — and the publisher's call list is the proof the writes ran.
@@ -458,7 +458,7 @@ func TestAnInvalidManifestIsRefusedBeforeAnyWrite(t *testing.T) {
 	}
 }
 
-// A directory with no manifest is a refusal that names the way out: caf init
+// A directory with no manifest is a refusal that names the way out: cafe init
 // creates one. The proposal is not printed, because there is nothing to
 // propose.
 func TestADirectoryWithNoManifestNamesCafInit(t *testing.T) {
@@ -470,8 +470,8 @@ func TestADirectoryWithNoManifestNamesCafInit(t *testing.T) {
 	if code != exitFailure {
 		t.Errorf("exit code = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "caf init") {
-		t.Errorf("the refusal does not name caf init\ngot:\n%s", stderr)
+	if !strings.Contains(stderr, "cafe init") {
+		t.Errorf("the refusal does not name cafe init\ngot:\n%s", stderr)
 	}
 	if strings.Contains(stdout, "proposal") {
 		t.Errorf("a missing manifest produced a proposal:\n%s", stdout)
@@ -580,7 +580,7 @@ func TestTheKindFlagFillsTheCuratedCase(t *testing.T) {
 	}
 }
 
-// The registration caf sends is the manifest's own facts — name, language,
+// The registration cafe sends is the manifest's own facts — name, language,
 // core, repository, owner — not a restatement of them.
 func TestTheRegistrationCarriesTheManifestsFacts(t *testing.T) {
 	pub := &fakePublishPublisher{}
@@ -633,7 +633,7 @@ func TestPublishHelpRenders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("--help: %v", err)
 	}
-	for _, want := range []string{"caf publish", "--dry-run", "--yes", "--json", "--tag", "--kind"} {
+	for _, want := range []string{"cafe publish", "--dry-run", "--yes", "--json", "--tag", "--kind"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("help does not name %q\ngot:\n%s", want, out.String())
 		}

@@ -6,7 +6,7 @@ import (
 	"github.com/cafaye/cafe/internal/telemetry"
 )
 
-// This file is the seam between caf's own wiring and the generated contract.
+// This file is the seam between cafe's own wiring and the generated contract.
 //
 // The generated package reads `os.Getenv` directly, which is correct for a
 // service whose process IS the deployment and wrong for a library a caller has
@@ -25,8 +25,8 @@ import (
 
 // EndpointFor is the generated Endpoint(), over an injected lookup.
 //
-// The precedence is core's: `CAF_OTEL_ENDPOINT` wins, the standard
-// `OTEL_EXPORTER_OTLP_ENDPOINT` is the fallback so caf works with generic OTel
+// The precedence is core's: `CAFE_OTEL_ENDPOINT` wins, the standard
+// `OTEL_EXPORTER_OTLP_ENDPOINT` is the fallback so cafe works with generic OTel
 // tooling, and the shipped collector is the default value of the first.
 //
 // The `CAF_` prefix is read from the generated `EndpointVariable` rather than
@@ -42,7 +42,7 @@ import (
 // caller's options. So the address this function returns does win — the caller
 // passes it and the caller's option is applied last — while the SCHEME loses
 // unless the caller states it too. MEASURED over the wire, in
-// precedence_test.go: with `CAF_OTEL_ENDPOINT=https://…` beside
+// precedence_test.go: with `CAFE_OTEL_ENDPOINT=https://…` beside
 // `OTEL_EXPORTER_OTLP_ENDPOINT=http://…`, the first bytes on the connection were
 // the HTTP/2 client preface, not a TLS record.
 //
@@ -60,7 +60,7 @@ func EndpointFor(lookup func(string) string) string {
 }
 
 // otlpEndpointVariable is the OTel specification's own variable, which every
-// SDK reads and which is therefore the fallback that makes caf work with
+// SDK reads and which is therefore the fallback that makes cafe work with
 // tooling that knows nothing about cafaye.
 const otlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT"
 

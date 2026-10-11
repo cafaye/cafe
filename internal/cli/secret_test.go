@@ -45,7 +45,7 @@ func TestSecretInventoryEmitsOneJSONDocument(t *testing.T) {
 	env := newTestEnv()
 
 	if err := c.Execute(env, nil); err != nil {
-		t.Fatalf("caf secret inventory: %v", err)
+		t.Fatalf("cafe secret inventory: %v", err)
 	}
 	var doc struct {
 		Counts  map[string]int `json:"counts"`
@@ -117,7 +117,7 @@ func TestSecretInventoryNeverPrintsAValue(t *testing.T) {
 	}
 }
 
-// THE NAMED REFUSAL. `caf secret rotate MUSE_VAULT_KEY` exits non-zero, names
+// THE NAMED REFUSAL. `cafe secret rotate MUSE_VAULT_KEY` exits non-zero, names
 // the entry, names the class, and carries the reason and the citation. This is
 // the packet's "a named refusal for the rest".
 func TestSecretRotateRefusesTheNotRotatableClassByName(t *testing.T) {
@@ -161,7 +161,7 @@ func TestSecretRotateRunsAndRecords(t *testing.T) {
 	env := newTestEnv()
 
 	if err := c.Execute(env, []string{"--yes", "COURIER_SECRET_BOX_KEY"}); err != nil {
-		t.Fatalf("caf secret rotate: %v", err)
+		t.Fatalf("cafe secret rotate: %v", err)
 	}
 	if len(runner.steps) == 0 {
 		t.Fatal("no steps ran")
@@ -185,7 +185,7 @@ func TestSecretRotateRunsAndRecords(t *testing.T) {
 	}
 }
 
-// A bare `caf secret rotate` rotates what is DUE and refuses everything else, so
+// A bare `cafe secret rotate` rotates what is DUE and refuses everything else, so
 // the run is partial and the exit says so.
 func TestSecretRotateWithNoNameRotatesWhatIsDue(t *testing.T) {
 	deps, runner := testSecretDeps(t)
@@ -215,7 +215,7 @@ func TestSecretRotateDryRunPrintsTheRedactedDocument(t *testing.T) {
 	env := newTestEnv()
 
 	if err := c.Execute(env, []string{"--dry-run", "COURIER_SECRET_BOX_KEY"}); err != nil {
-		t.Fatalf("caf secret rotate --dry-run: %v", err)
+		t.Fatalf("cafe secret rotate --dry-run: %v", err)
 	}
 	if len(runner.steps) != 0 {
 		t.Errorf("a dry run executed %d steps, want 0", len(runner.steps))
@@ -255,17 +255,17 @@ func TestSecretRotateUnknownNameIsAUsageError(t *testing.T) {
 
 	err := c.Execute(env, []string{"NOT_A_SECRET"})
 	if !errors.Is(err, errUsage) {
-		t.Fatalf("err = %v, want errUsage (exit 2: caf was invoked wrongly)", err)
+		t.Fatalf("err = %v, want errUsage (exit 2: cafe was invoked wrongly)", err)
 	}
 }
 
-// Bare `caf secret` is a question, not a mistake, so it answers with its verbs
+// Bare `cafe secret` is a question, not a mistake, so it answers with its verbs
 // instead of exiting 2.
 func TestSecretWithNoVerbAnswers(t *testing.T) {
 	c := newSecretCommand(secretDeps{})
 	env := newTestEnv()
 	if err := c.Execute(env, nil); err != nil {
-		t.Fatalf("bare caf secret: %v", err)
+		t.Fatalf("bare cafe secret: %v", err)
 	}
 	out := written(t, env.Stdout)
 	for _, want := range []string{"secret inventory", "secret rotate"} {

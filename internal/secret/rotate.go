@@ -144,13 +144,13 @@ func looksMissing(err error) bool {
 	return errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist)
 }
 
-// ErrUsage is the sentinel for "caf was invoked wrongly" — an unknown secret
+// ErrUsage is the sentinel for "cafe was invoked wrongly" — an unknown secret
 // name, a rotation asked for by a name the inventory does not hold. It is a
 // different class from a refusal and gets a different exit code, the same three
-// exits `caf backup` makes.
-var ErrUsage = errors.New("caf secret: invalid invocation")
+// exits `cafe backup` makes.
+var ErrUsage = errors.New("cafe secret: invalid invocation")
 
-// Refusal is the answer `caf secret rotate` gives for an entry that is not in
+// Refusal is the answer `cafe secret rotate` gives for an entry that is not in
 // the rotatable class, and it is a REFUSAL rather than a skip.
 //
 // The difference is the whole point of the packet. A rotation run that skipped
@@ -167,7 +167,7 @@ type Refusal struct {
 }
 
 func (r Refusal) Error() string {
-	return fmt.Sprintf("caf secret: refusing to rotate %s: it is %s.\n  %s\n  %s",
+	return fmt.Sprintf("cafe secret: refusing to rotate %s: it is %s.\n  %s\n  %s",
 		r.Name, r.Class, r.Reason, r.Source)
 }
 
@@ -176,7 +176,7 @@ func (r Refusal) Error() string {
 // because the two go to two different streams: a person reads stderr, and a
 // caller matching a sentinel reads the return.
 func (r Refusal) Human() string {
-	return fmt.Sprintf("caf secret: refusing to rotate %s: it is %s.\n  %s\n  %s\n",
+	return fmt.Sprintf("cafe secret: refusing to rotate %s: it is %s.\n  %s\n  %s\n",
 		r.Name, r.Class, r.Reason, r.Source)
 }
 
@@ -228,7 +228,7 @@ func randomBytes(n int) []byte {
 		// crypto/rand failing is not a condition a rotation can answer: the
 		// value would be predictable, and a predictable value is worse than no
 		// rotation at all.
-		panic("caf secret: crypto/rand is unavailable: " + err.Error())
+		panic("cafe secret: crypto/rand is unavailable: " + err.Error())
 	}
 	return b
 }
@@ -376,7 +376,7 @@ func Rotate(ctx context.Context, name string, runner Runner, progress io.Writer)
 		plan.Steps[i].value = value
 	}
 	for _, step := range plan.Steps {
-		if _, err := fmt.Fprintf(progress, "caf secret: %s\n", step.Name); err != nil {
+		if _, err := fmt.Fprintf(progress, "cafe secret: %s\n", step.Name); err != nil {
 			return plan, err
 		}
 		if step.Stdin == "" {
@@ -389,7 +389,7 @@ func Rotate(ctx context.Context, name string, runner Runner, progress io.Writer)
 			return plan, err
 		}
 	}
-	if _, err := fmt.Fprintf(progress, "caf secret: %s\n", plan.Report); err != nil {
+	if _, err := fmt.Fprintf(progress, "cafe secret: %s\n", plan.Report); err != nil {
 		return plan, err
 	}
 	return plan, nil

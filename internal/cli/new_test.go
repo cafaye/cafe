@@ -9,14 +9,14 @@ import (
 	"github.com/cafaye/cafe/internal/contract"
 )
 
-// `caf new` scaffolds into ./<name>, so every case here runs in a directory
+// `cafe new` scaffolds into ./<name>, so every case here runs in a directory
 // the test owns. t.Chdir is Go 1.24's and restores on cleanup; the cases are
 // serial as a result, which is the price of a command whose target directory
 // is relative to the working one.
 
 // The happy path, and the packet's whole claim at the command surface: the
 // scaffolded project's manifest validates against core's schema AND passes
-// `caf contract lint`. The scaffold test in internal/scaffold proves the same
+// `cafe contract lint`. The scaffold test in internal/scaffold proves the same
 // pair over the package; this one proves the CLI wrote the bytes that lint
 // then reads off disk.
 func TestNewScaffoldsAProjectThatLints(t *testing.T) {
@@ -88,7 +88,7 @@ func TestNewRefusesToClobberAnExistingProject(t *testing.T) {
 }
 
 // An illegal name is refused by name, with the rules stated, and nothing is
-// written — a person who typed `caf new My_App` gets a sentence, not a
+// written — a person who typed `cafe new My_App` gets a sentence, not a
 // directory. (A name beginning with a dash is a flag to the flag package and
 // is rejected as one; the pattern's remaining cases live in
 // internal/scaffold's own table, which drives them through ValidateName

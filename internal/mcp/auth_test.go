@@ -129,7 +129,7 @@ func TestAReadOnlyAgentReadsAndCannotMutate(t *testing.T) {
 		// The refusal must be actionable: it names the tool, the scope, who the
 		// caller is and the command that mints a token carrying the scope. A
 		// "permission denied" that names none of those is a wall.
-		for _, want := range []string{"caf mcp " + name, RequiredScope[name], "noel", "caf agent token create"} {
+		for _, want := range []string{"cafe mcp " + name, RequiredScope[name], "noel", "cafe agent token create"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("the refusal for %s does not name %q:\n%s", name, want, got)
 			}
@@ -332,7 +332,7 @@ func TestAnUnauthenticatedRemoteCallerIsRefusedWithAUsableAnswer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, want := range []string{"caf agent token create", "Authorization: Bearer"} {
+			for _, want := range []string{"cafe agent token create", "Authorization: Bearer"} {
 				if !strings.Contains(body, want) {
 					t.Errorf("the refusal does not name %q:\n%s", want, body)
 				}
@@ -674,7 +674,7 @@ func TestARefusalNeverCarriesTheTokenItWasHanded(t *testing.T) {
 	if !strings.Contains(body, "[redacted]") {
 		t.Errorf("the redaction left nothing in its place:\n%s", body)
 	}
-	if !strings.Contains(body, "caf agent token create") {
+	if !strings.Contains(body, "cafe agent token create") {
 		t.Errorf("the refusal does not name the remedy:\n%s", body)
 	}
 }
@@ -751,7 +751,7 @@ func TestARoutableListenerNeedsAnAuthority(t *testing.T) {
 }
 
 // The scope table is the one place a tool's scope is written down, so a test
-// walks it and says what it finds: every scope caf names is one of the three,
+// walks it and says what it finds: every scope cafe names is one of the three,
 // and the remote tools are in it while the local six are not.
 func TestTheScopeTableCoversTheRemoteToolsAndNotTheLocalOnes(t *testing.T) {
 	for _, tool := range []string{"caf_health", "caf_logs", "caf_rollout", "caf_status"} {

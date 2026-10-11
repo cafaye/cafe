@@ -123,7 +123,7 @@ func TestTheNoOpPathNeverBuildsAnExporter(t *testing.T) {
 		},
 		{
 			// Traces off alone is NOT a no-op, and this row exists to say so.
-			// caf emits only traces today, so the obvious next change to this
+			// cafe emits only traces today, so the obvious next change to this
 			// table is to add it as a no-op, and it would be wrong.
 			name: "traces off but metrics on is not a no-op",
 			env:  map[string]string{telemetry.SwitchTracesExporter: "none"},
@@ -232,7 +232,7 @@ func TestAnExporterThatWillNotBuildDoesNotFailTheCommand(t *testing.T) {
 	}
 }
 
-// A resource that cannot be merged is a caf bug rather than a deployment
+// A resource that cannot be merged is a cafe bug rather than a deployment
 // problem, so it is the ONE failure Install reports instead of swallowing.
 // Silently running without identity would put spans in the backend under no
 // service.name, which is the single outcome the resource block exists to
@@ -271,44 +271,44 @@ func TestOneInvocationProducesOneRootSpanNamedPerCoresGrammar(t *testing.T) {
 		args     []string
 		wantName string
 	}{
-		{name: "a single-word command", args: []string{"doctor"}, wantName: "caf.doctor"},
-		{name: "a long-running command", args: []string{"dev"}, wantName: "caf.dev"},
+		{name: "a single-word command", args: []string{"doctor"}, wantName: "cafe.doctor"},
+		{name: "a long-running command", args: []string{"dev"}, wantName: "cafe.dev"},
 		{
 			// `contract lint` is a grouped verb: a Command named with its full
 			// invocation and dispatched by its parent. One invocation, one span,
 			// two segments — the grammar allows three after the service name.
-			name: "a grouped verb", args: []string{"contract", "lint"}, wantName: "caf.contract.lint",
+			name: "a grouped verb", args: []string{"contract", "lint"}, wantName: "cafe.contract.lint",
 		},
-		{name: "a generator subcommand", args: []string{"gen", "telemetry"}, wantName: "caf.gen.telemetry"},
+		{name: "a generator subcommand", args: []string{"gen", "telemetry"}, wantName: "cafe.gen.telemetry"},
 		{
 			// Flags and their values are excluded, so two runs of one command
 			// with different arguments are ONE span. This is the property the
 			// derivation exists for.
 			name: "a flag and its value do not reach the name",
-			// `caf gen telemetry -out /tmp/x`: the flag and the word after it
+			// `cafe gen telemetry -out /tmp/x`: the flag and the word after it
 			// are consumed together, leaving gen and telemetry.
-			args: []string{"gen", "telemetry", "-out", "/tmp/somewhere"}, wantName: "caf.gen.telemetry",
+			args: []string{"gen", "telemetry", "-out", "/tmp/somewhere"}, wantName: "cafe.gen.telemetry",
 		},
 		{
 			name:     "an equals flag is one word",
 			args:     []string{"dev", "--project=/tmp/a-long-project-path"},
-			wantName: "caf.dev",
+			wantName: "cafe.dev",
 		},
 		{
 			name:     "a trailing flag consumes nothing",
 			args:     []string{"dev", "-no-infra"},
-			wantName: "caf.dev",
+			wantName: "cafe.dev",
 		},
-		{name: "no arguments", args: nil, wantName: "caf.cli.run"},
-		{name: "help", args: []string{"--help"}, wantName: "caf.cli.run"},
-		{name: "version", args: []string{"-v"}, wantName: "caf.cli.run"},
+		{name: "no arguments", args: nil, wantName: "cafe.cli.run"},
+		{name: "help", args: []string{"--help"}, wantName: "cafe.cli.run"},
+		{name: "version", args: []string{"-v"}, wantName: "cafe.cli.run"},
 		{
 			// 24 characters: over core's 15-per-segment bound. DROPPED rather
 			// than truncated, because truncating produces two names for one
 			// command depending on how long the word was.
 			name:     "an over-long word is dropped, not mangled",
 			args:     []string{"an-extremely-long-subcommand-name"},
-			wantName: "caf.cli.run",
+			wantName: "cafe.cli.run",
 		},
 		{
 			// The case the derivation exists for. A path is caller text, and
@@ -317,7 +317,7 @@ func TestOneInvocationProducesOneRootSpanNamedPerCoresGrammar(t *testing.T) {
 			// ULID, a URL or a path".
 			name:     "a path is never a span name",
 			args:     []string{"/Users/someone/Code/cafaye/caf-wt-otel/internal/emitter"},
-			wantName: "caf.cli.run",
+			wantName: "cafe.cli.run",
 		},
 	} {
 		t.Run(row.name, func(t *testing.T) {
@@ -330,7 +330,7 @@ func TestOneInvocationProducesOneRootSpanNamedPerCoresGrammar(t *testing.T) {
 
 			spans := oneRun(t, session, row.args, OutcomeSuccess)
 			if len(spans) != 1 {
-				t.Fatalf("recorded %d spans, want exactly 1: one caf invocation is one span", len(spans))
+				t.Fatalf("recorded %d spans, want exactly 1: one cafe invocation is one span", len(spans))
 			}
 			span := spans[0]
 
@@ -478,7 +478,7 @@ func TestAFailedInvocationCarriesAClassFromCoresVocabulary(t *testing.T) {
 			wantType: "",
 		},
 		{
-			// A typo is not a caf bug. Filing it as internal_error puts a
+			// A typo is not a cafe bug. Filing it as internal_error puts a
 			// person's mistake in the same dashboard bucket as a defect, and the
 			// two have opposite remedies.
 			name:     "a usage error is invalid_request",
@@ -623,7 +623,7 @@ func TestACommandCanNameItsOwnClassWithoutBreakingErrorInspection(t *testing.T) 
 // 3. inbound traceparent
 // ---------------------------------------------------------------------------
 
-// A caf invocation started by another cafaye process — `caf env up` running a
+// A cafe invocation started by another cafaye process — `cafe env up` running a
 // command under test, a CI job, a shell script — continues the caller's trace
 // when one is in the context. That is the property kit's codec exists for.
 func TestAnInboundTraceparentIsContinued(t *testing.T) {
@@ -663,12 +663,12 @@ func TestAnInboundTraceparentIsContinued(t *testing.T) {
 	// the wrong reason on the day the batch processor changes.
 	var child tracetest.SpanStub
 	for _, span := range spans {
-		if span.Name == "caf.doctor" {
+		if span.Name == "cafe.doctor" {
 			child = span
 		}
 	}
 	if child.Name == "" {
-		t.Fatalf("no span named caf.doctor in %v", spanNames(spans))
+		t.Fatalf("no span named cafe.doctor in %v", spanNames(spans))
 	}
 
 	if child.SpanContext.TraceID() != parentTrace {
@@ -686,7 +686,7 @@ func TestAnInboundTraceparentIsContinued(t *testing.T) {
 
 // A W3C traceparent read through the SDK's propagator — the path a real inbound
 // header takes — continues the caller's trace. This is the assertion that a
-// header read off an Env var reaches the span, which is how a caf child process
+// header read off an Env var reaches the span, which is how a cafe child process
 // inherits its caller's trace in practice.
 func TestATraceparentFromTheEnvironmentIsContinued(t *testing.T) {
 	session, _, err := recordingInstall(t, map[string]string{
@@ -812,26 +812,26 @@ func TestTheSpanNameDerivation(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "one word", args: []string{"dev"}, want: "caf.dev"},
-		{name: "mixed case folds", args: []string{"Dev"}, want: "caf.dev"},
-		{name: "upper case folds", args: []string{"DEV"}, want: "caf.dev"},
+		{name: "one word", args: []string{"dev"}, want: "cafe.dev"},
+		{name: "mixed case folds", args: []string{"Dev"}, want: "cafe.dev"},
+		{name: "upper case folds", args: []string{"DEV"}, want: "cafe.dev"},
 		// A dash is legal in a service name and illegal in every segment after
 		// it, so it becomes an underscore — which the grammar does allow.
-		{name: "a dash becomes an underscore", args: []string{"my-command"}, want: "caf.my_command"},
-		{name: "three segments fill the grammar", args: []string{"a", "b", "c"}, want: "caf.a.b.c"},
+		{name: "a dash becomes an underscore", args: []string{"my-command"}, want: "cafe.my_command"},
+		{name: "three segments fill the grammar", args: []string{"a", "b", "c"}, want: "cafe.a.b.c"},
 		// A fourth is dropped rather than making the name illegal.
-		{name: "a fourth segment is dropped", args: []string{"a", "b", "c", "d"}, want: "caf.a.b.c"},
+		{name: "a fourth segment is dropped", args: []string{"a", "b", "c", "d"}, want: "cafe.a.b.c"},
 		// A segment may not start with a digit or an underscore.
-		{name: "a leading digit is refused", args: []string{"1st"}, want: "caf.cli.run"},
-		{name: "a leading underscore is refused", args: []string{"_x"}, want: "caf.cli.run"},
+		{name: "a leading digit is refused", args: []string{"1st"}, want: "cafe.cli.run"},
+		{name: "a leading underscore is refused", args: []string{"_x"}, want: "cafe.cli.run"},
 		// 15 characters exactly is legal; 16 is not.
-		{name: "fifteen characters is legal", args: []string{"abcdefghijklmno"}, want: "caf.abcdefghijklmno"},
-		{name: "sixteen characters is not", args: []string{"abcdefghijklmnop"}, want: "caf.cli.run"},
+		{name: "fifteen characters is legal", args: []string{"abcdefghijklmno"}, want: "cafe.abcdefghijklmno"},
+		{name: "sixteen characters is not", args: []string{"abcdefghijklmnop"}, want: "cafe.cli.run"},
 		// A path, a URL and a ULID: the three things core's length bound exists
 		// to keep out of a name.
-		{name: "a path is refused", args: []string{"/etc/hosts"}, want: "caf.cli.run"},
-		{name: "a url is refused", args: []string{"https://example.com/x"}, want: "caf.cli.run"},
-		{name: "a ulid is too long to be a segment", args: []string{"usr_01J9Z8QK5M4N7P2R3T6V8W9X0A"}, want: "caf.cli.run"},
+		{name: "a path is refused", args: []string{"/etc/hosts"}, want: "cafe.cli.run"},
+		{name: "a url is refused", args: []string{"https://example.com/x"}, want: "cafe.cli.run"},
+		{name: "a ulid is too long to be a segment", args: []string{"usr_01J9Z8QK5M4N7P2R3T6V8W9X0A"}, want: "cafe.cli.run"},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			got := InvocationSpanName(row.args)
@@ -858,7 +858,7 @@ func TestTheSpanNameDerivationIsDeterministic(t *testing.T) {
 }
 
 // The two ends of the endpoint contract, asserted on the function that reads
-// them: CAF_OTEL_ENDPOINT wins, the standard variable is the fallback so caf
+// them: CAFE_OTEL_ENDPOINT wins, the standard variable is the fallback so cafe
 // works with generic OTel tooling, and the shipped collector is the default.
 func TestTheEndpointPrecedence(t *testing.T) {
 	for _, row := range []struct {
@@ -946,7 +946,7 @@ func TestInstallHandsTheExporterASchemeFreeEndpoint(t *testing.T) {
 // generated package does not carry span KINDS — it carries the names, the error
 // vocabulary and the attribute allowlists, and there is no generated constant
 // for this enum. So this is a hand-maintained copy of five values, and the only
-// thing keeping it honest is the row that checks the one caf uses is on it. A
+// thing keeping it honest is the row that checks the one cafe uses is on it. A
 // copy that drifts fails loudly at that row rather than silently.
 var coreKinds = map[trace.SpanKind]bool{
 	trace.SpanKindInternal: true,
@@ -1061,10 +1061,10 @@ func spanNames(spans tracetest.SpanStubs) []string {
 //
 // `otlptracegrpc` defaults to TLS. core's shipped default endpoint is
 // `http://otel-collector:4317` — plaintext gRPC on the collector's 4317. With
-// TLS on, caf opened NO CONNECTION AT ALL: `lsof` against a real OTLP receiver
+// TLS on, cafe opened NO CONNECTION AT ALL: `lsof` against a real OTLP receiver
 // listening on the configured port showed the listener and nothing else, on
 // every command, and the exporter's handshake failure was dropped by the error
-// handler installed for `noOp.warnings`. The observable result was a caf that
+// handler installed for `noOp.warnings`. The observable result was a cafe that
 // exported nothing, said nothing, and cost every command its flush budget.
 //
 // So the rule is pinned here for all four spellings a person can write.
@@ -1177,8 +1177,8 @@ func TestTheSpanReachesARealOTLPReceiverOverTheWire(t *testing.T) {
 	}
 	span := received[0]
 
-	if span.span.GetName() != "caf.contract.lint" {
-		t.Errorf("span name on the wire = %q, want %q", span.span.GetName(), "caf.contract.lint")
+	if span.span.GetName() != "cafe.contract.lint" {
+		t.Errorf("span name on the wire = %q, want %q", span.span.GetName(), "cafe.contract.lint")
 	}
 	if !telemetry.SpanNamePattern.MatchString(span.span.GetName()) {
 		t.Errorf("span name %q is refused by core's grammar", span.span.GetName())
@@ -1258,7 +1258,7 @@ func TestAFailureReachesTheWireWithItsClass(t *testing.T) {
 	}
 }
 
-// A malformed traceparent still exports, measured over the wire. A caf child
+// A malformed traceparent still exports, measured over the wire. A cafe child
 // process started by something that set TRACEPARENT to garbage must still emit,
 // because a request — or here a command — is not an error because its trace header
 // was garbage (W3C §4.2).
@@ -1306,7 +1306,7 @@ func TestAMalformedTraceparentStillExportsOverTheWire(t *testing.T) {
 // An inbound traceparent continues a trace ACROSS PROCESSES, which is the whole
 // reason propagation exists, and it can only be shown with two processes.
 //
-// caf starts no child process, so the second process here is this test's own: it
+// cafe starts no child process, so the second process here is this test's own: it
 // reads the span a first, parented invocation exported and checks the trace id
 // matches the one it put in the header. That is the same assertion a fleet makes
 // when gateway's trace and identity's trace meet in one view.

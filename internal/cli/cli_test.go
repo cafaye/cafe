@@ -60,13 +60,13 @@ func TestRunDispatch(t *testing.T) {
 			name:     "help for a command prints that command's flags",
 			args:     []string{"help", "new"},
 			wantCode: 0,
-			wantOut:  []string{"caf new", "Flags:", "-template"},
+			wantOut:  []string{"cafe new", "Flags:", "-template"},
 		},
 		{
 			name:     "command help flag prints the command help",
 			args:     []string{"doctor", "--help"},
 			wantCode: 0,
-			wantOut:  []string{"caf doctor"},
+			wantOut:  []string{"cafe doctor"},
 		},
 		{
 			name:     "help for an unknown command is a usage error",
@@ -78,19 +78,19 @@ func TestRunDispatch(t *testing.T) {
 			name:     "version flag prints the version",
 			args:     []string{"--version"},
 			wantCode: 0,
-			wantOut:  []string{"caf 1.2.3 (commit abc1234)"},
+			wantOut:  []string{"cafe 1.2.3 (commit abc1234)"},
 		},
 		{
 			name:     "short version flag prints the version",
 			args:     []string{"-v"},
 			wantCode: 0,
-			wantOut:  []string{"caf 1.2.3 (commit abc1234)"},
+			wantOut:  []string{"cafe 1.2.3 (commit abc1234)"},
 		},
 		{
 			name:     "unknown command is a usage error",
 			args:     []string{"nope"},
 			wantCode: 2,
-			wantErr:  []string{`unknown command "nope"`, "run \"caf help\""},
+			wantErr:  []string{`unknown command "nope"`, "run \"cafe help\""},
 		},
 		{
 			name:     "unknown flag is a usage error",
@@ -186,7 +186,7 @@ func TestRunFillsInUnsetVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
-	if want := "caf " + devVersion + " (commit " + unknownCommit + ")\n"; stdout != want {
+	if want := "cafe " + devVersion + " (commit " + unknownCommit + ")\n"; stdout != want {
 		t.Errorf("stdout = %q, want %q", stdout, want)
 	}
 }

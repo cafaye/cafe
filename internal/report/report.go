@@ -152,7 +152,7 @@ type SecretSection struct {
 	Counts map[secret.Class]int `json:"counts,omitempty"`
 	// Due is the rotatable entries past their interval on this box. It comes
 	// from secret.Due, which is why the report cannot disagree with
-	// `caf secret inventory` about what is due.
+	// `cafe secret inventory` about what is due.
 	Due []string `json:"due,omitempty"`
 	// Refused is the not-rotatable entries with the class and the reason, read
 	// out of the rotation state — the sentence that says "this is still not
@@ -244,7 +244,7 @@ func assembleBackups(in Input) BackupSection {
 		case backup.DrillRefused:
 			section.Refused++
 		default:
-			// Failed and anything caf could not classify. A record whose
+			// Failed and anything cafe could not classify. A record whose
 			// outcome is neither of the three is a record that did not prove
 			// a restore, and counting it as passed would be the quietest kind
 			// of wrong — the same reason backup.DrillReasonNotRun exists.

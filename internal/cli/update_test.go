@@ -19,9 +19,9 @@ import (
 // read for identity, and nothing the developer configured leaks in.
 func updateGitEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv("GIT_AUTHOR_NAME", "caf test")
+	t.Setenv("GIT_AUTHOR_NAME", "cafe test")
 	t.Setenv("GIT_AUTHOR_EMAIL", "caf-test@example.com")
-	t.Setenv("GIT_COMMITTER_NAME", "caf test")
+	t.Setenv("GIT_COMMITTER_NAME", "cafe test")
 	t.Setenv("GIT_COMMITTER_EMAIL", "caf-test@example.com")
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	if _, err := exec.LookPath("git"); err != nil {
@@ -124,7 +124,7 @@ func seedUpdateFixture(t *testing.T) *updateFixture {
 	return &updateFixture{root: root, upstream: upstream, downstream: downstream, manifest: manifest, pin: pin, tip: tip}
 }
 
-// runUpdateIn runs `caf update` with args in dir and returns the exit code
+// runUpdateIn runs `cafe update` with args in dir and returns the exit code
 // and both streams, the way main would.
 func runUpdateIn(t *testing.T, dir string, args ...string) (int, string, string) {
 	t.Helper()

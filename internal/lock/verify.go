@@ -61,21 +61,21 @@ func (f Finding) remedy() string {
 	switch f.Problem {
 	case ProblemModified:
 		return "Regenerate it, or revert the edit. A hand-edited vendored schema and a hand-edited " +
-			"generated file are both still plausible and both are wrong, and neither `caf contract lint` " +
+			"generated file are both still plausible and both are wrong, and neither `cafe contract lint` " +
 			"nor a build can tell them apart from the real thing."
 	case ProblemMissing:
-		return "Restore the file, or re-run `caf lock` if removing it was deliberate. A pinned file that " +
+		return "Restore the file, or re-run `cafe lock` if removing it was deliberate. A pinned file that " +
 			"is gone is a spec bump that landed on the manifest and not on the tree."
 	case ProblemUnknown:
-		return "Re-run `caf lock`. The lock pins this file and nothing in the tree declares it, so a " +
+		return "Re-run `cafe lock`. The lock pins this file and nothing in the tree declares it, so a " +
 			"line was added to the lock by hand. Hand-editing a lock is how it stops being a record of " +
 			"anything."
 	case ProblemUnpinned:
-		return "Re-run `caf lock`. The tree declares this file and the lock does not name it, which is " +
+		return "Re-run `cafe lock`. The tree declares this file and the lock does not name it, which is " +
 			"what a spec bump that half-landed looks like: the declaration moved and the tree followed " +
 			"part of the way."
 	case ProblemKind:
-		return "Re-run `caf lock` with a caf that knows this kind. This caf cannot say whether the bytes " +
+		return "Re-run `cafe lock` with a cafe that knows this kind. This cafe cannot say whether the bytes " +
 			"it pinned were the right ones, and it will not guess."
 	}
 	return ""
@@ -130,7 +130,7 @@ func Verify(root string, l Lock) (Report, error) {
 		pinned[entry.Path] = true
 
 		// An unknown kind is reported and not hashed. Continuing would mean
-		// comparing bytes this caf cannot say were the right bytes, and a green
+		// comparing bytes this cafe cannot say were the right bytes, and a green
 		// line beside that would be worse than the red one.
 		if !KnownKind(entry.Kind) {
 			report.Problems = append(report.Problems, Finding{
@@ -204,12 +204,12 @@ func (r Report) String() string {
 	lockPath := filepath.ToSlash(filepath.Join(r.Root, FileName))
 
 	if r.OK() {
-		fmt.Fprintf(&out, "caf lock: %s matches %d pinned file(s), and nothing the tree declares is "+
+		fmt.Fprintf(&out, "cafe lock: %s matches %d pinned file(s), and nothing the tree declares is "+
 			"missing from it.\n", lockPath, r.Checked)
 		return out.String()
 	}
 
-	fmt.Fprintf(&out, "caf lock: %d problem(s) in %s (%d of %d pinned file(s) hashed).\n",
+	fmt.Fprintf(&out, "cafe lock: %d problem(s) in %s (%d of %d pinned file(s) hashed).\n",
 		len(r.Problems), lockPath, r.Checked, r.Pinned)
 
 	for _, finding := range r.Problems {
@@ -253,7 +253,7 @@ func indent(text string) string {
 	return "    " + strings.Join(lines, "\n    ")
 }
 
-// Describe is the one line `caf lock` prints after it writes: how many files,
+// Describe is the one line `cafe lock` prints after it writes: how many files,
 // of what kinds. The breakdown is the point — a lock of eleven files that is all
 // one kind is a lock that is not pinning what the tree declares, and the number
 // that shows it is the breakdown.

@@ -10,7 +10,7 @@ import (
 )
 
 // ConfigFileName is the file the agent's non-secrets live in. It sits beside
-// box.json in ~/.config/caf and holds no credential of any kind: a config file
+// box.json in ~/.config/cafe and holds no credential of any kind: a config file
 // that carried a token would make every dump, every transcript and every upload
 // of the config directory a credential leak. That is the same split the box
 // makes, and it is the reason this file is safe to read, share and paste.
@@ -33,7 +33,7 @@ type Session struct {
 	// a verb mints a replacement, cleared when the session's token is revoked.
 	// The keyring holds the token's VALUE, which identity's token list does not
 	// echo, so this id is the only handle the two share — it is what lets a
-	// bare `caf agent token rotate` or `token revoke` find the session's own
+	// bare `cafe agent token rotate` or `token revoke` find the session's own
 	// token without listing and guessing.
 	AgentKeyID string `json:"agent_key_id,omitempty"`
 	// BaseURL is the identity origin this session talks to.
@@ -132,8 +132,8 @@ func (c Config) Session() (Session, error) {
 }
 
 // Select finds the one session the selectors name. An empty selector means "no
-// opinion", so `caf agent whoami` acts on the active session and
-// `caf agent whoami --agent noel` narrows. More than one match is a refusal
+// opinion", so `cafe agent whoami` acts on the active session and
+// `cafe agent whoami --agent noel` narrows. More than one match is a refusal
 // rather than a choice: picking the first of two environments is how a token
 // ends up presented to the wrong origin.
 func (c Config) Select(agentUsername, baseURL string) (Session, error) {
@@ -154,7 +154,7 @@ func (c Config) Select(agentUsername, baseURL string) (Session, error) {
 	}
 	switch len(matches) {
 	case 0:
-		return Session{}, fmt.Errorf("%w: no saved session matches --agent %q --base-url %q; run `caf agent register` first", ErrUnknownSession, agentUsername, baseURL)
+		return Session{}, fmt.Errorf("%w: no saved session matches --agent %q --base-url %q; run `cafe agent register` first", ErrUnknownSession, agentUsername, baseURL)
 	case 1:
 		return matches[0], nil
 	default:

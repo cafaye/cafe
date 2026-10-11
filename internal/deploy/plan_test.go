@@ -111,7 +111,7 @@ func TestTheFailureReportIsAPlanStepAndNotAlwaysRun(t *testing.T) {
 }
 
 // Every step names a real command and gives a reason. The engine check is the
-// load-bearing one: caf drives Kamal and nothing else, so a step that was not a
+// load-bearing one: cafe drives Kamal and nothing else, so a step that was not a
 // kamal command would be a second deploy path.
 func TestEveryStepHasAnArgvAKamalInvokesAndAReason(t *testing.T) {
 	plan := fixturePlan("staging")
@@ -125,7 +125,7 @@ func TestEveryStepHasAnArgvAKamalInvokesAndAReason(t *testing.T) {
 			t.Errorf("step %q has no command", step.Name)
 		}
 		if step.Argv[0] != "kamal" {
-			t.Errorf("step %q runs %q, not kamal: caf drives one engine and this is a second one", step.Name, step.Argv[0])
+			t.Errorf("step %q runs %q, not kamal: cafe drives one engine and this is a second one", step.Name, step.Argv[0])
 		}
 		if step.Why == "" {
 			t.Errorf("step %q has no reason, so a reader cannot tell whether to trust it", step.Name)
@@ -190,7 +190,7 @@ func TestAnEnvironmentBecomesADestinationFlagAndAnEmptyOneDoesNot(t *testing.T) 
 	}
 }
 
-// A pinned version is the operator's; an absent one is Kamal's default and caf
+// A pinned version is the operator's; an absent one is Kamal's default and cafe
 // must not invent one, because a version nobody chose cannot be rolled back to
 // by name.
 func TestAVersionIsPinnedOnlyWhenTheOperatorAsksFor(t *testing.T) {
@@ -217,7 +217,7 @@ func TestAVersionIsPinnedOnlyWhenTheOperatorAsksFor(t *testing.T) {
 	}
 }
 
-// caf drives exactly one engine. A step that is not a kamal command would be a
+// cafe drives exactly one engine. A step that is not a kamal command would be a
 // second deploy path, which is the thing this packet exists to avoid.
 func TestTheDeployStepIsTheOnlyOneThatChangesAServer(t *testing.T) {
 	plan := fixturePlan("")

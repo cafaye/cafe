@@ -2,8 +2,8 @@
 // against conductor and then runs the install, phase by phase, to a box that
 // serves an app.
 //
-// The split is the command vocabulary in moon/AGENTS-FIRST.md: `caf agent …`
-// is a *principal* (an identity that becomes claimed), `caf box …` is a
+// The split is the command vocabulary in moon/AGENTS-FIRST.md: `cafe agent …`
+// is a *principal* (an identity that becomes claimed), `cafe box …` is a
 // *machine* (it has a keypair, it enrolls, it runs the substrate). A box does
 // not log in; it presents a capability that was minted for it and for nobody
 // else, and that is worth exactly one enrollment for a few minutes.
@@ -13,9 +13,9 @@
 //
 //	Keyring    where the box's private key lives. Nothing else in this
 //	           package can hold it, and nothing here ever returns it.
-//	Conductor  the one HTTP call caf makes in this package: redeeming a
+//	Conductor  the one HTTP call cafe makes in this package: redeeming a
 //	           capability. Injected, so the redemption can be counted.
-//	Store      the two files on disk: `box.json` (non-secrets, ~/.config/caf)
+//	Store      the two files on disk: `box.json` (non-secrets, ~/.config/cafe)
 //	           and the enrollment journal beside it.
 //	Phase      the install table, pure data, so a plan is a function.
 //
@@ -34,7 +34,7 @@
 // key is not a file anybody reads.
 //
 // WHAT THIS PACKET DOES NOT DO, and deliberately: it does not run the
-// installer. `kit` owns the substrate install (W2-P4) and `caf boxd` owns the
+// installer. `kit` owns the substrate install (W2-P4) and `cafe boxd` owns the
 // daemon that runs it (W2-P7). What `apply --phase N` does here is own the
 // *record* — which phase was reached, when, by what evidence, and what the
 // next handoff is — so that when a real driver arrives it has a state machine

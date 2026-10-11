@@ -157,7 +157,7 @@ func withCheck(want []string, plan Plan) []string {
 	return out
 }
 
-// The scratch database is caf's own default and it is not a refusal rule: what is
+// The scratch database is cafe's own default and it is not a refusal rule: what is
 // and is not an ALLOWED scratch name is kamal-backup's decision, made when the
 // drill runs. The default is written down here so a change to it is visible.
 func TestTheScratchDatabaseDefaultsToTheServiceAndATableIsRequired(t *testing.T) {
@@ -202,7 +202,7 @@ func TestANameThatCannotSurviveTwoShellsIsRefusedByName(t *testing.T) {
 			}
 			_, err := PlanFor(fixtureCover("identity", ""), fixtureConfig("backup"), opts)
 			if err == nil {
-				t.Fatalf("caf accepted %s %q, which is passed to the accessory unquoted", given.what, given.value)
+				t.Fatalf("cafe accepted %s %q, which is passed to the accessory unquoted", given.what, given.value)
 			}
 			if !strings.Contains(err.Error(), "kamal-backup") {
 				t.Errorf("the refusal does not say whose decision the PRODUCTION rule is, so a reader "+
@@ -219,7 +219,7 @@ func TestAPlainIdentifierIsAccepted(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			opts := Options{Tables: []string{name}, Scratch: "identity_drill2"}
 			if _, err := PlanFor(fixtureCover("identity", ""), fixtureConfig("backup"), opts); err != nil {
-				t.Errorf("caf refused a plain identifier %q: %v", name, err)
+				t.Errorf("cafe refused a plain identifier %q: %v", name, err)
 			}
 		})
 	}
@@ -403,7 +403,7 @@ func TestTheCNPGPlanHasNoKamalSteps(t *testing.T) {
 	}
 }
 
-// The scratch cluster is caf's own default, and a table is required for the
+// The scratch cluster is cafe's own default, and a table is required for the
 // same reason the Kamal plan requires one: a restore whose only proof is that
 // a command exited zero is not a drill.
 func TestTheCNPGScratchClusterDefaultsToTheServiceAndATableIsRequired(t *testing.T) {
@@ -485,7 +485,7 @@ func TestTheCNPGPlanRefusesAScratchNameThatIsNotAPlainIdentifier(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, err := PlanForCNPG(fixtureCover("identity", ""), Options{Scratch: given, Tables: []string{"users"}})
 			if err == nil {
-				t.Errorf("caf accepted scratch cluster %q, which is not a plain identifier", given)
+				t.Errorf("cafe accepted scratch cluster %q, which is not a plain identifier", given)
 			}
 		})
 	}

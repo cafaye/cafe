@@ -36,7 +36,7 @@ import (
 
 // ObservationSchemaVersion is the version of the observation document. It is a
 // field rather than implied by the wire so a consumer reading one in a year
-// can tell which shape it is holding without knowing which caf build produced
+// can tell which shape it is holding without knowing which cafe build produced
 // it — the same reason every cafaye artifact carries its own version.
 const ObservationSchemaVersion = 1
 
@@ -52,7 +52,7 @@ type Observation struct {
 	// BoxID is which box this is — the enrollment a report no reader can
 	// attribute is a report nobody can act on.
 	BoxID string `json:"box_id"`
-	// DeployedVersion is the caf build this box is running as. It is what a
+	// DeployedVersion is the cafe build this box is running as. It is what a
 	// pending release is compared against.
 	DeployedVersion string `json:"deployed_version"`
 	// VersionRange is the constraint the box tracks, and whether the box
@@ -151,7 +151,7 @@ type Certificate struct {
 // nothing but the standard library, and internal/boxd's own test fails the build
 // if it imports os/exec or syscall), and the standard library exposes no disk
 // usage on any platform — so the measurement lives in internal/cli, which already
-// owns the platform probes `caf doctor` reads (doctor_probe_darwin.go,
+// owns the platform probes `cafe doctor` reads (doctor_probe_darwin.go,
 // doctor_probe_linux.go, doctor_probe_windows.go) and is allowed to import
 // syscall there. The type is declared here, next to the observation it belongs to,
 // so the day the reading becomes portable does not move the schema.

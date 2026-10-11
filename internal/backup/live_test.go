@@ -17,7 +17,7 @@ import (
 
 // The honest test of this package, and the reason the rest of it exists.
 //
-// Everything above this line runs with a fake and proves that caf builds the right
+// Everything above this line runs with a fake and proves that cafe builds the right
 // argv in the right order. That is not the same claim as "a backup was taken and
 // it restored". So this one takes a real snapshot of a real Postgres through a
 // real kamal-backup accessory, restores it into a scratch database, asserts the
@@ -32,7 +32,7 @@ import (
 // connection is stock: real SSHKit, a real `kamal accessory boot all`, a real
 // `pg_dump` streamed into a real restic repository by the real
 // ghcr.io/crmne/kamal-backup:0.5.2 image, and a real `kamal-backup drill
-// production` that restores and then runs caf's assertion. Only the address
+// production` that restores and then runs cafe's assertion. Only the address
 // changes.
 //
 // It is not a mock of a backup. It is a backup, and then a restore of it.
@@ -59,14 +59,14 @@ import (
 //
 // # NO PUBLISHED POSTGRES PORT, and that is the point
 //
-// caf deploy refuses an accessory that publishes its port on anything but
+// cafe deploy refuses an accessory that publishes its port on anything but
 // loopback (internal/deploy/exposure.go), and it is right: the accessory is on
 // the `kamal` network and the backup reaches it by name. The rehearsal therefore
 // declares no `port:` on the postgres accessory at all, which means the
 // scratch-database create, the restore and the row assertion all happen INSIDE
 // the backup accessory, over the kamal network, by name — the shape production has.
 // A rehearsal that published a port to make its own job easier would be a
-// rehearsal of a configuration caf refuses.
+// rehearsal of a configuration cafe refuses.
 //
 // # THE SAFETY RULES ITS OWN RISK DEMANDS
 //
@@ -107,7 +107,7 @@ const (
 	// liveProductionScratch is the name the gem must refuse. `prod` delimited by
 	// underscores is exactly the gem's own pattern — a target matching
 	// (^|[/_.:-])prod([/_.:-]|$) — so this is the gem's rule being fired rather than
-	// caf's, and the difference matters.
+	// cafe's, and the difference matters.
 	liveProductionScratch = "caf_prod_drill"
 )
 
@@ -128,7 +128,7 @@ func TestABackupIsTakenAndItRestores(t *testing.T) {
 	}
 	rig := newRehearsal(t)
 
-	// caf backup, through the real runner, the way an operator types it.
+	// cafe backup, through the real runner, the way an operator types it.
 	rig.backup(t)
 
 	// ONE SNAPSHOT EXISTS, and it is the one this run took. Read back from the
@@ -143,7 +143,7 @@ func TestABackupIsTakenAndItRestores(t *testing.T) {
 	// AND NOTHING IS LEFT TO RESTORE INTO BY ACCIDENT.
 	rig.mustHaveDropped(t, liveScratch)
 
-	// The gem validates the same pair caf accepted. Two implementations of one
+	// The gem validates the same pair cafe accepted. Two implementations of one
 	// contract agreeing on the GOOD document is the control for the broken-pair
 	// case, which is the only way the agreement is evidence rather than a tautology.
 	rig.mustValidate(t, true)
@@ -194,9 +194,9 @@ func TestABrokenPairIsRefusedBeforeAnythingIsBooted(t *testing.T) {
 	}
 
 	// And the GEM refuses the same pair, from the same file, with the message the
-	// runbook quotes. This is deliberately taken AFTER caf's refusal and after the
+	// runbook quotes. This is deliberately taken AFTER cafe's refusal and after the
 	// assertion that nothing was booted: the gem can only be consulted once the
-	// accessory exists, which is precisely why caf does not shell out to it for the
+	// accessory exists, which is precisely why cafe does not shell out to it for the
 	// refusal in the first place.
 	if out, err := rig.kamal("accessory", "reboot", "backup"); err != nil {
 		t.Fatalf("kamal accessory reboot backup: %v\n%s", err, out)
@@ -215,11 +215,11 @@ func TestABrokenPairIsRefusedBeforeAnythingIsBooted(t *testing.T) {
 
 // The production-name refusal, and the point of this case is WHERE it comes from.
 //
-// caf carries no copy of the rule — that is kamal-backup's
+// cafe carries no copy of the rule — that is kamal-backup's
 // (Config#production_like_target? in 0.5.2) and, in operator form,
 // cafaye/kit's templates/kamal/drill.sh. So the refusal here is the GEM's, fired
 // by handing it a name, and the two things worth asserting are that it fired and
-// that caf still cleaned up.
+// that cafe still cleaned up.
 func TestAProductionLookingScratchDatabaseIsRefusedByTheGemAndStillCleanedUp(t *testing.T) {
 	if os.Getenv("CAF_LIVE_KAMAL") != "1" {
 		t.Skip("live backup tier: set CAF_LIVE_KAMAL=1, or run bin/prime --live")
@@ -238,11 +238,11 @@ func TestAProductionLookingScratchDatabaseIsRefusedByTheGemAndStillCleanedUp(t *
 	}
 
 	report := out.String()
-	// The gem's own words, not caf's. caf refusing here would mean caf had a copy
+	// The gem's own words, not cafe's. cafe refusing here would mean cafe had a copy
 	// of the rule, and a second copy of a rule about which database gets dropped
 	// is a second opinion about the one thing that must not be in doubt.
 	if !strings.Contains(report, "production-looking restore target") {
-		t.Errorf("the refusal is not the gem's. caf must not carry its own copy of this rule:\n%s", report)
+		t.Errorf("the refusal is not the gem's. cafe must not carry its own copy of this rule:\n%s", report)
 	}
 	// And the cleanup ran anyway, which is the half a refusal in the wrong place
 	// would skip.
@@ -297,7 +297,7 @@ func newRehearsal(t *testing.T) *rehearsal {
 		transcript: &safeBuffer{},
 	}
 	// HOME is scoped to the rehearsal's own directory for the whole test, not only
-	// for the commands the harness runs: caf shells out to kamal, and kamal reads
+	// for the commands the harness runs: cafe shells out to kamal, and kamal reads
 	// ~/.ssh/known_hosts (through Ruby's File.expand_path, which honours $HOME) to
 	// trust the host key of the container this test just created.
 	t.Setenv("HOME", rig.home)
@@ -334,7 +334,7 @@ func (r *rehearsal) gitInit() {
 	r.t.Helper()
 	r.runIn(r.project, "git", "init", "--quiet", "--initial-branch=main")
 	r.runIn(r.project, "git", "config", "user.email", "caf-live-backup@example.invalid")
-	r.runIn(r.project, "git", "config", "user.name", "caf live backup")
+	r.runIn(r.project, "git", "config", "user.name", "cafe live backup")
 	r.runIn(r.project, "git", "add", "--all")
 	r.runIn(r.project, "git", "commit", "--quiet", "-m", "the backup configuration under test")
 }
@@ -488,8 +488,8 @@ builder:
   arch: %[4]s
 registry:
   server: localhost:5555
-  username: caf
-  password: caf
+  username: cafe
+  password: cafe
 proxy:
   ssl: false
   hosts:
@@ -566,7 +566,7 @@ func (r *rehearsal) linkDockerPlugins() {
 // startRepository creates the restic repository before the cycle runs.
 //
 // This is a rig step and it is deliberate, and the reason was measured. On a
-// BRAND NEW repository the accessory's own scheduler and caf's forced snapshot both
+// BRAND NEW repository the accessory's own scheduler and cafe's forced snapshot both
 // find it missing and both run `restic init`, and two concurrent inits on one local
 // repository leave it with a damaged key: the next command fails with
 //
@@ -596,7 +596,7 @@ func (r *rehearsal) startRepository() {
 // startPostgres boots the database accessory and waits for it to be READY, which
 // is the event and not a duration.
 //
-// This is the step `caf deploy` would already have done, and it is done here rather
+// This is the step `cafe deploy` would already have done, and it is done here rather
 // than left to the cycle for a measured reason: the backup accessory's scheduler
 // runs its first cycle about a second after it boots, and a fresh Postgres
 // initialises its volume before it accepts connections. So a cycle that boots both
@@ -639,7 +639,7 @@ func (r *rehearsal) seed() {
 }
 
 // backup runs one default cycle through the real runner, and fails the test if it
-// errors. It is `caf backup identity --table users --yes` with nothing else on the
+// errors. It is `cafe backup identity --table users --yes` with nothing else on the
 // command line, so the thing exercised is the command an operator types rather
 // than an invocation assembled to suit the test.
 func (r *rehearsal) backup(t *testing.T) {
@@ -651,7 +651,7 @@ func (r *rehearsal) backup(t *testing.T) {
 		Tables:  []string{liveTables},
 	}, r.writer(&out), io.Discard)
 	if err != nil {
-		t.Fatalf("caf backup: %v\n%s", err, out.String())
+		t.Fatalf("cafe backup: %v\n%s", err, out.String())
 	}
 }
 
@@ -700,7 +700,7 @@ func (r *rehearsal) mustListSnapshot(t *testing.T) {
 func (r *rehearsal) mustHaveRestored(t *testing.T, table string, rows int) {
 	t.Helper()
 	transcript := r.transcript.String()
-	want := fmt.Sprintf("caf backup: %s holds %d rows in %s after the restore", table, rows, liveScratch)
+	want := fmt.Sprintf("cafe backup: %s holds %d rows in %s after the restore", table, rows, liveScratch)
 	if !strings.Contains(transcript, want) {
 		t.Errorf("the restored database did not report %q.\n  The check's exit status is the gem's verdict, "+
 			"and the count is the evidence behind it.\n  transcript tail:\n%s",
@@ -722,7 +722,7 @@ func (r *rehearsal) mustHaveDropped(t *testing.T, scratch string) {
 	}
 }
 
-// mustValidate runs the gem's OWN validator against the same pair caf checked, and
+// mustValidate runs the gem's OWN validator against the same pair cafe checked, and
 // the three-way agreement is the point.
 func (r *rehearsal) mustValidate(t *testing.T, wantOK bool) {
 	t.Helper()
@@ -730,7 +730,7 @@ func (r *rehearsal) mustValidate(t *testing.T, wantOK bool) {
 	t.Logf("kamal-backup validate ->\n%s", out)
 	ok := strings.Contains(out, "ok")
 	if ok != wantOK {
-		t.Errorf("kamal-backup validate said ok=%v, want %v.\n  caf refuses the same pair by reading the two "+
+		t.Errorf("kamal-backup validate said ok=%v, want %v.\n  cafe refuses the same pair by reading the two "+
 			"files itself, and two implementations of one contract that disagree is a bug in one of them.\n%s",
 			ok, wantOK, out)
 	}
@@ -1081,7 +1081,7 @@ func (b *safeBuffer) String() string {
 
 const liveSSHHostName = "caf-live-backup-sshhost"
 
-// The rehearsal host. It is the same image caf deploy's rehearsal builds, with one
+// The rehearsal host. It is the same image cafe deploy's rehearsal builds, with one
 // addition, and the addition is the entrypoint's rewrite of root's home directory.
 const sshHostDockerfile = `FROM alpine:3.20
 RUN apk add --no-cache openssh docker-cli docker-cli-buildx bash

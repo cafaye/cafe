@@ -21,7 +21,7 @@ import (
 // ordinary `go test` code rather than a script in a directory nobody runs.
 //
 // Why it is worth having at all: the finding it demonstrates is the reason this
-// package exists, and the claim is a claim about a *runtime*, not about caf. A
+// package exists, and the claim is a claim about a *runtime*, not about cafe. A
 // report that repeats a measurement is a report of a guess with a citation.
 //
 //	go test -run TestTheSilentCollisionIsReal -v ./internal/ports/   # skipped
@@ -29,7 +29,7 @@ import (
 //
 // # What it must not do
 //
-// It must not touch a port in caf's block, and it must not leave anything behind.
+// It must not touch a port in cafe's block, and it must not leave anything behind.
 // A port outside the block is used for exactly that reason: 15000-15999 is where
 // sibling workers publish, and a demonstration that took one of their ports to
 // make a point would be the catastrophic outcome this whole packet exists to
@@ -37,12 +37,12 @@ import (
 // carries a label and a name of its own, removed by a defer.
 
 // liveDemoPort is where the demonstration publishes. It is in the scratch range
-// rather than caf's block, and the case asserts that before it starts.
+// rather than cafe's block, and the case asserts that before it starts.
 const liveDemoPort = 42711
 
 // liveDemoLabel is on every resource the demonstration creates, so a person
 // reading `docker ps` afterwards can see what was and was not ours.
-const liveDemoLabel = "org.testcontainers.caf.demo=ports-silent-collision"
+const liveDemoLabel = "org.testcontainers.cafe.demo=ports-silent-collision"
 
 // liveGate is the environment variable that says "there is a container runtime
 // here and it is yours to use". It is a name and not a boolean so it cannot be
@@ -73,7 +73,7 @@ func TestTheSilentCollisionIsReal(t *testing.T) {
 		t.Skipf("set %s=1 to run this against a container runtime; it starts and removes containers", liveGate)
 	}
 	if CAF.Contains(liveDemoPort) {
-		t.Fatalf("the demonstration port %d is inside caf's block %s; a demo must never take a sibling worker's port", liveDemoPort, CAF)
+		t.Fatalf("the demonstration port %d is inside cafe's block %s; a demo must never take a sibling worker's port", liveDemoPort, CAF)
 	}
 	runtime := liveRuntime(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)

@@ -12,7 +12,7 @@ import (
 )
 
 // CNPGRunner is the CNPG engine: it owns the CNPG plan and runs it through
-// kubectl, which stays the only place caf knows how to drive `kubectl cnpg` —
+// kubectl, which stays the only place cafe knows how to drive `kubectl cnpg` —
 // including the "kubectl is not installed" sentence, which is this engine's
 // shape of deploy's ErrKamalMissing.
 //
@@ -63,10 +63,10 @@ func (r *CNPGRunner) Run(ctx context.Context, dir string, step Step, stdout, std
 		// config/ yet, and WriteFile does not create it — measured by a test that
 		// watched the write fail on a directory nobody had made.
 		if err := os.MkdirAll(filepath.Dir(file.Path), 0o755); err != nil {
-			return fmt.Errorf("caf backup: create the directory for %s: %w", file.Path, err)
+			return fmt.Errorf("cafe backup: create the directory for %s: %w", file.Path, err)
 		}
 		if err := os.WriteFile(file.Path, []byte(file.Content), 0o600); err != nil {
-			return fmt.Errorf("caf backup: write %s for the %s step: %w", file.Path, step.Name, err)
+			return fmt.Errorf("cafe backup: write %s for the %s step: %w", file.Path, step.Name, err)
 		}
 	}
 	return r.run(ctx, dir, step.Args(), stdout, stderr)
@@ -108,7 +108,7 @@ var ErrKubectlMissing = fmt.Errorf("kubectl is not installed")
 // first is present, and the operator has to be able to tell which they are
 // missing.
 func installNote(binary string) string {
-	return "kubectl is the backup engine caf drives, and it is not on PATH (" + binary + " could not be run).\n" +
+	return "kubectl is the backup engine cafe drives, and it is not on PATH (" + binary + " could not be run).\n" +
 		"  Install kubectl, then the CloudNativePG plugin that gives it the `cnpg` subcommand.\n" +
 		"  The plugin is what `kubectl cnpg version` probes: without it, kubectl answers\n" +
 		"  \"unknown command cnpg\" and the preflight above is where that surfaces."
@@ -146,7 +146,7 @@ func runCNPGCycle(ctx context.Context, r Runner, req Request, stdout, stderr io.
 	}
 	info, err := os.Stat(abs)
 	if err != nil || !info.IsDir() {
-		return fmt.Errorf("caf backup: %s is not a directory caf can read: %w", abs, err)
+		return fmt.Errorf("cafe backup: %s is not a directory cafe can read: %w", abs, err)
 	}
 	if req.Env != "" {
 		return fmt.Errorf("%w: --env is a Kamal destination and the CNPG engine has no destination\n"+
@@ -200,7 +200,7 @@ func runCNPGCycle(ctx context.Context, r Runner, req Request, stdout, stderr io.
 // value a real run writes — so the document on the screen and the document on
 // disk are one fact, and a dry run cannot drift from the run it describes.
 func printCNPGDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what caf backup would run:\n\n")
+	fmt.Fprintf(stdout, "\nthis is what cafe backup would run:\n\n")
 	for _, step := range plan.Steps {
 		fmt.Fprintf(stdout, "  %s\n", step.Command())
 		fmt.Fprintf(stdout, "      %s\n", step.Why)
@@ -213,7 +213,7 @@ func printCNPGDryRun(stdout io.Writer, plan Plan) {
 	fmt.Fprintf(stdout, "created or deleted, and no file in %s was written — the recovery\n", plan.Dir)
 	fmt.Fprintf(stdout, "manifest above is the document the restore step would apply, printed\n")
 	fmt.Fprintf(stdout, "rather than written.\n")
-	fmt.Fprintf(stdout, "\nBack it up for real with:\n  caf backup --engine cnpg%s %s\n", yesFlag(plan), plan.Service)
+	fmt.Fprintf(stdout, "\nBack it up for real with:\n  cafe backup --engine cnpg%s %s\n", yesFlag(plan), plan.Service)
 }
 
 // cnpgSuccessReport is what a CNPG cycle that restored something says.
@@ -230,7 +230,7 @@ func cnpgSuccessReport(plan Plan, stdout io.Writer) error {
 	fmt.Fprintf(stdout, "  %s has been deleted, so nothing is left to restore into by accident\n", plan.Scratch)
 	fmt.Fprintf(stdout, "  what this does NOT prove: that the next backup will be taken. This engine takes\n")
 	fmt.Fprintf(stdout, "  a backup on every run; the schedule that protects the service between drills\n")
-	fmt.Fprintf(stdout, "  is the cluster's own, and caf does not read it.\n")
+	fmt.Fprintf(stdout, "  is the cluster's own, and cafe does not read it.\n")
 	return nil
 }
 
@@ -249,7 +249,7 @@ func cnpgFailureReport(plan Plan, stdout io.Writer, cause error) error {
 	fmt.Fprint(stdout, "  failed drill does not delete it: the next drill restores from it.\n")
 	fmt.Fprint(stdout, "  the reason is the command's own, above.\n")
 	// ErrCycleFailed is a sentinel so the caller can tell "the report is above"
-	// from "caf failed before it could report anything" — the first is errReported
+	// from "cafe failed before it could report anything" — the first is errReported
 	// (exit 1, stderr empty), the second is an error that belongs there.
 	return fmt.Errorf("%w: %s", ErrCycleFailed, plan.Service)
 }

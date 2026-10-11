@@ -1,4 +1,4 @@
-# Toolchain pins for this repository. caf is a single Go binary with no other
+# Toolchain pins for this repository. cafe is a single Go binary with no other
 # runtime dependency, so the go pin is the whole file.
 #
 #   mise install    # install the pinned toolchain
@@ -11,5 +11,5 @@ description = "The gate: download, build, test"
 run = "./bin/prime"
 
 [tasks.doctor]
-description = "Build caf and report the local toolchains"
+description = "Build cafe and report the local toolchains"
 run = "go run ./cmd/cafe doctor"

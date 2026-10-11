@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Identity is the enrolled box identity — what `caf box enroll` (W2-P6) writes
+// Identity is the enrolled box identity — what `cafe box enroll` (W2-P6) writes
 // and this daemon reads. It is facts and addresses, never key material: the
 // box's private key lives behind the KeySource seam and is loaded per
 // connection, because a long-lived secret held in a daemon's memory longer
@@ -22,9 +22,9 @@ type Identity struct {
 	// conductor this box answers to — a flag that overrode it would be a
 	// second authority about the box's owner.
 	Conductor string
-	// Version is the caf build this box enrolled as, which is what
+	// Version is the cafe build this box enrolled as, which is what
 	// box.status reports rather than the version currently running; when the
-	// two differ, `caf box update` is the honest answer for why.
+	// two differ, `cafe box update` is the honest answer for why.
 	Version string
 }
 

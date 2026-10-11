@@ -1,10 +1,10 @@
 # EXPECTED FAILURE — the JSON Schema accepts this file (exposes has a key, so
 # minProperties is satisfied, and an empty events array breaks nothing); the
-# caf cross-field rules in docs/manifest-conventions.md do not.
+# cafe cross-field rules in docs/manifest-conventions.md do not.
 #
 # Rule: a repository that declares a contract surface must actually declare
 # one. `exposes: {events: []}` serves nobody and routes nowhere: there is no
-# OpenAPI document for `caf dev` to serve and no event for `gateway` to route.
+# OpenAPI document for `cafe dev` to serve and no event for `gateway` to route.
 # A repository with no `exposes` at all is a library or a spec repo, which is
 # a different and legal thing.
 name: courier

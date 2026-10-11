@@ -30,7 +30,7 @@ func TestEveryCommandRendersHelp(t *testing.T) {
 			var out strings.Builder
 			printHelp(&out, c)
 
-			if !strings.Contains(out.String(), "caf "+c.Name) {
+			if !strings.Contains(out.String(), "cafe "+c.Name) {
 				t.Errorf("the help does not name the command:\n%s", out.String())
 			}
 			if c.Flags != nil && !strings.Contains(out.String(), "Flags:") {
@@ -211,7 +211,7 @@ func TestTheGenerationFlagKeepsTheFence(t *testing.T) {
 }
 
 // The `env up` invocation grammar. `--` is required rather than inferred, because
-// a command's own flags look exactly like caf's and guessing which is which is
+// a command's own flags look exactly like cafe's and guessing which is which is
 // how a suite ends up running against the wrong tier.
 func TestTheInvocationGrammar(t *testing.T) {
 	c := newEnvUpCommand()
@@ -225,7 +225,7 @@ func TestTheInvocationGrammar(t *testing.T) {
 		{name: "a tier and a command", args: []string{"go", "--", "go", "test", "./..."}, wantTier: "go", wantCmd: []string{"go", "test", "./..."}},
 		{name: "a single dash is the same separator", args: []string{"ci", "-", "make", "test"}, wantTier: "ci", wantCmd: []string{"make", "test"}},
 		{name: "a command that is one word", args: []string{"smoke", "--", "true"}, wantTier: "smoke", wantCmd: []string{"true"}},
-		{name: "a command that looks like a caf flag", args: []string{"go", "--", "go", "test", "-race", "-v"}, wantTier: "go", wantCmd: []string{"go", "test", "-race", "-v"}},
+		{name: "a command that looks like a cafe flag", args: []string{"go", "--", "go", "test", "-race", "-v"}, wantTier: "go", wantCmd: []string{"go", "test", "-race", "-v"}},
 		{name: "no arguments at all", args: nil, wantErr: "wants a tier and a command"},
 		{name: "a tier and nothing else", args: []string{"go"}, wantErr: "no command to run"},
 		{name: "no separator", args: []string{"go", "go", "test"}, wantErr: "expected --"},
@@ -278,7 +278,7 @@ func TestASignalledChildDoesNotBecomeSuccess(t *testing.T) {
 }
 
 // The router passes a parent's child's status through, and adds nothing of its
-// own. This is the property that makes `caf env up` a gate rather than a
+// own. This is the property that makes `cafe env up` a gate rather than a
 // decoration: a CI job that read 0 out of a red suite would be a green badge for
 // a red run.
 func TestTheRouterPassesTheChildsExitCodeThrough(t *testing.T) {
@@ -506,25 +506,25 @@ func TestTheLedgerDirectoryResolution(t *testing.T) {
 	})
 }
 
-// The `env` group is a verb with subcommands, so `caf env` alone prints help and
-// `caf env up` is dispatched by the parent. A subcommand in the top-level
-// registry would be a command the user could type as `caf env up`, which the
+// The `env` group is a verb with subcommands, so `cafe env` alone prints help and
+// `cafe env up` is dispatched by the parent. A subcommand in the top-level
+// registry would be a command the user could type as `cafe env up`, which the
 // router cannot dispatch to.
 func TestEnvDispatchesItsVerbRatherThanRegisteringIt(t *testing.T) {
 	env, _ := lookupCommand(Commands(), "env")
 
-	// `caf env` with no verb prints the group's help and succeeds.
+	// `cafe env` with no verb prints the group's help and succeeds.
 	code, stdout, _ := runCLI(t, testVersion, "env")
 	if code != exitSuccess {
-		t.Errorf("caf env exited %d, want 0", code)
+		t.Errorf("cafe env exited %d, want 0", code)
 	}
-	if !strings.Contains(stdout, "caf env up") {
-		t.Errorf("caf env does not advertise its verb:\n%s", stdout)
+	if !strings.Contains(stdout, "cafe env up") {
+		t.Errorf("cafe env does not advertise its verb:\n%s", stdout)
 	}
 
-	// `caf env help` does the same.
-	if _, helpOut, _ := runCLI(t, testVersion, "env", "help"); !strings.Contains(helpOut, "caf env up") {
-		t.Errorf("caf env help does not advertise the verb:\n%s", helpOut)
+	// `cafe env help` does the same.
+	if _, helpOut, _ := runCLI(t, testVersion, "env", "help"); !strings.Contains(helpOut, "cafe env up") {
+		t.Errorf("cafe env help does not advertise the verb:\n%s", helpOut)
 	}
 
 	// The verb is not a top-level command.
@@ -546,7 +546,7 @@ func TestEnvRejectsAnUnknownVerbWithTheRealOneNamed(t *testing.T) {
 	}
 }
 
-// A -port inside the block is the developer's decision and caf honours it. caf
+// A -port inside the block is the developer's decision and cafe honours it. cafe
 // holds that exact port rather than picking a different one, because overriding a
 // port somebody typed is the one thing this command must never do: the developer
 // has a URL, a bookmark, or a test that connects to it.
@@ -563,11 +563,11 @@ func TestAnExplicitPortInsideTheBlockIsHonoured(t *testing.T) {
 		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
 	}
 	if len(held.reserved) != 1 || held.reserved[0] != wanted {
-		t.Errorf("reserved %v, want exactly [%d]: caf holds the port it was given rather than replacing it", held.reserved, wanted)
+		t.Errorf("reserved %v, want exactly [%d]: cafe holds the port it was given rather than replacing it", held.reserved, wanted)
 	}
 }
 
-// A -port outside the block is refused, and the refusal names the range. caf
+// A -port outside the block is refused, and the refusal names the range. cafe
 // checks a port it was given — it does not move it — but a port nobody arbitrates
 // is how 21101 and 55432 happened, so it is refused rather than honoured.
 func TestAnExplicitPortOutsideTheBlockIsRefused(t *testing.T) {
@@ -636,7 +636,7 @@ func TestEnvUpDryRunStartsNothing(t *testing.T) {
 		t.Errorf("the receipt does not say the stack was not started:\n%s", stdout)
 	}
 	// The compose document is printed even on a dry run, for the same reason
-	// `caf dev` prints it: a generated artifact nobody can inspect is an artifact
+	// `cafe dev` prints it: a generated artifact nobody can inspect is an artifact
 	// nobody can debug.
 	if !strings.Contains(stdout, "services:") {
 		t.Errorf("the dry run did not print the compose document:\n%s", stdout)
@@ -660,7 +660,7 @@ func TestADryRunLeavesNoStackEntry(t *testing.T) {
 }
 
 // The project is named by the caller, not by the process's working directory,
-// and a relative path is resolved the same way `caf dev` resolves it.
+// and a relative path is resolved the same way `cafe dev` resolves it.
 func TestEnvUpResolvesTheProjectFromTheFlag(t *testing.T) {
 	dir := envProject(t)
 	book := openTestLedger(t)
@@ -717,7 +717,7 @@ func TestReceiptJoinsNeverPrintAnEmptyCell(t *testing.T) {
 	}
 }
 
-// The rendered document carries the ports caf held, not the service's own. A
+// The rendered document carries the ports cafe held, not the service's own. A
 // document whose ports disagree with the ledger is a document nobody can
 // reconcile with the stack that came up, and the compose file is the artifact a
 // developer diffs when two runs disagree.

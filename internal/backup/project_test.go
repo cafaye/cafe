@@ -34,7 +34,7 @@ func TestReadNamesTheFilesItFound(t *testing.T) {
 	}
 }
 
-// The credentials Kamal reads are KAMAL's rule and not caf's, and getting it
+// The credentials Kamal reads are KAMAL's rule and not cafe's, and getting it
 // wrong sends an operator to a file kamal never opens. Kamal's
 // Kamal::Secrets#secrets_filenames is ["<path>-common", "<path>.<destination>"]
 // for a destination, so the undotted file is not among them.
@@ -98,7 +98,7 @@ func TestReadRefusesAMissingFileAndNamesIt(t *testing.T) {
 		"no deploy config": {
 			setUp:    func(*testing.T, string) {},
 			saysFile: "config/deploy.yml",
-			saysDo:   "caf deploy",
+			saysDo:   "cafe deploy",
 		},
 		"no environment overlay": {
 			setUp: func(t *testing.T, dir string) {
@@ -141,7 +141,7 @@ func TestReadRefusesAPathThatIsNotADirectory(t *testing.T) {
 
 	if _, err := Read(filepath.Join(dir, "absent"), "identity", ""); err == nil {
 		t.Fatal("Read accepted a directory that is not there")
-	} else if !strings.Contains(err.Error(), "not a directory caf can read") {
+	} else if !strings.Contains(err.Error(), "not a directory cafe can read") {
 		t.Errorf("the refusal does not distinguish absent from wrong:\n%v", err)
 	}
 }

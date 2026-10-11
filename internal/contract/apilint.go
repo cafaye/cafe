@@ -9,7 +9,7 @@ import (
 
 // The OpenAPI rules. `openapi.` rather than `convention.` because the manifest
 // rules are core's docs/manifest-conventions.md and these are core's
-// docs/openapi-conventions.md, which says of the versioning half: "A future `caf
+// docs/openapi-conventions.md, which says of the versioning half: "A future `cafe
 // contract lint` will enforce both."
 const (
 	RuleOpenAPIPrefix = "openapi."

@@ -321,7 +321,7 @@ func TestTheDaemonReportsAMissingEnrollment(t *testing.T) {
 	dialer := &fakeDialer{ch: &fakeConductor{}}
 	var log lockedBuffer
 	d, err := Open(Options{
-		Store:    &fakeStore{err: errors.New("no enrolled identity: run caf box enroll")},
+		Store:    &fakeStore{err: errors.New("no enrolled identity: run cafe box enroll")},
 		Keys:     &testKeys{},
 		Dial:     dialer,
 		WorldFor: testWorldFor,

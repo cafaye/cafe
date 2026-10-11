@@ -56,13 +56,13 @@ func cveTestDeps(t *testing.T, observer cve.Observer, source cve.Source) (cveDep
 }
 
 // TestBareCveAnswersRatherThanFailing is the same decision
-// internal/cli/contract.go makes for a bare `caf contract`: a bare verb is a
+// internal/cli/contract.go makes for a bare `cafe contract`: a bare verb is a
 // question, not a mistake.
 func TestBareCveAnswersRatherThanFailing(t *testing.T) {
 	env := newTestEnv()
 	err := lookupCommandOrFail(t, "cve").Execute(env, nil)
 	if err != nil {
-		t.Fatalf("bare `caf cve` = %v, want the help, not a usage error", err)
+		t.Fatalf("bare `cafe cve` = %v, want the help, not a usage error", err)
 	}
 	for _, verb := range []string{"inventory", "scan", "schedule"} {
 		if !strings.Contains(written(t, env.Stdout), verb) {
@@ -104,7 +104,7 @@ func TestCveScanEndToEnd(t *testing.T) {
 
 	env := newTestEnv()
 	if err := newCveScanCommand(deps).Execute(env, nil); err != nil {
-		t.Fatalf("caf cve scan: %v", err)
+		t.Fatalf("cafe cve scan: %v", err)
 	}
 	out := written(t, env.Stdout)
 	for _, want := range []string{
@@ -143,7 +143,7 @@ func TestCveScanJSONIsOneDocument(t *testing.T) {
 	deps, _ := cveTestDeps(t, observer, source)
 	env := newTestEnv()
 	if err := newCveScanCommand(deps).Execute(env, []string{"--json"}); err != nil {
-		t.Fatalf("caf cve scan --json: %v", err)
+		t.Fatalf("cafe cve scan --json: %v", err)
 	}
 	out := written(t, env.Stdout)
 	if !json.Valid([]byte(out)) {
@@ -169,7 +169,7 @@ func TestCveScanRefusesToReportOnABoxItCouldNotRead(t *testing.T) {
 	env := newTestEnv()
 	err := newCveScanCommand(deps).Execute(env, nil)
 	if err == nil {
-		t.Fatal("caf cve scan succeeded against a box it could not read")
+		t.Fatal("cafe cve scan succeeded against a box it could not read")
 	}
 	if !strings.Contains(err.Error(), "kubectl reached no cluster") {
 		t.Errorf("err = %v, want the observer's own sentence rather than a paraphrase", err)
@@ -190,7 +190,7 @@ func TestCveInventoryKeepsTheTwoHalvesApart(t *testing.T) {
 	deps, _ := cveTestDeps(t, observer, nil)
 	env := newTestEnv()
 	if err := newCveInventoryCommand(deps).Execute(env, nil); err != nil {
-		t.Fatalf("caf cve inventory: %v", err)
+		t.Fatalf("cafe cve inventory: %v", err)
 	}
 	out := written(t, env.Stdout)
 	if !strings.Contains(out, "kit/templates/substrate/install.sh") {
@@ -209,7 +209,7 @@ func TestCveInventoryKeepsTheTwoHalvesApart(t *testing.T) {
 func TestCveSchedulePrintsRatherThanInstalls(t *testing.T) {
 	env := newTestEnv()
 	if err := newCveScheduleCommand().Execute(env, []string{"--schedule", "1d"}); err != nil {
-		t.Fatalf("caf cve schedule: %v", err)
+		t.Fatalf("cafe cve schedule: %v", err)
 	}
 	out := written(t, env.Stdout)
 	// Five cron fields, a command, and a comment. The binary path is whatever
@@ -243,7 +243,7 @@ func TestCveScanIsNotDueStillAnswersAndSaysSo(t *testing.T) {
 	}
 	env := newTestEnv()
 	if err := newCveScanCommand(deps).Execute(env, []string{"--schedule", "1d"}); err != nil {
-		t.Fatalf("caf cve scan: %v", err)
+		t.Fatalf("cafe cve scan: %v", err)
 	}
 	if !strings.Contains(written(t, env.Stdout), "next scan in") {
 		t.Errorf("a run that was not due must say so:\n%s", written(t, env.Stdout))

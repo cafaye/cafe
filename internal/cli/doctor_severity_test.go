@@ -77,7 +77,7 @@ type triMachine struct {
 	// the doctor was pointed at rather than of the machine.
 	plan func(project dev.Project) (dev.Stack, error)
 	// publishOn rewrites the project service's published port, which is the only
-	// way to get a port inside or outside caf's block into a plan. Zero means
+	// way to get a port inside or outside cafe's block into a plan. Zero means
 	// "whatever the plan says", which for a Go project is 8080.
 	publishOn int
 }
@@ -106,7 +106,7 @@ func planPublishingOn(base func(dev.Project) (dev.Stack, error), hostPort int) f
 }
 
 // planFor wraps a planner so the project is published on an explicit port, which
-// is the only way a port outside the caf block reaches a plan: caf honours an
+// is the only way a port outside the cafe block reaches a plan: cafe honours an
 // explicit -port rather than overriding it, which is what makes the check's job
 // to say so rather than to move it.
 func planWithHostPort(base func(dev.Project) (dev.Stack, error), hostPort int) func(dev.Project) (dev.Stack, error) {
@@ -162,7 +162,7 @@ func freeMachine(t *testing.T) *triMachine {
 // readyTriMachine is the same machine with a machine-sized report: 32 GiB and 16
 // CPUs, so a case that arranges one fact is not also quietly failing the
 // "the machine is too small" one.
-// readyMachine is a machine sized for a stack, with a port inside caf's block so
+// readyMachine is a machine sized for a stack, with a port inside cafe's block so
 // that "nothing is wrong" means something a caf-managed stack would recognise.
 func readyMachine(t *testing.T) *triMachine {
 	t.Helper()
@@ -291,7 +291,7 @@ func TestTheTriStateReachesTheExitCode(t *testing.T) {
 		want    Severity
 	}{
 		{
-			// "Everything is fine" for a caf-managed stack means a port caf
+			// "Everything is fine" for a caf-managed stack means a port cafe
 			// arbitrated. A Go project on its own 8080 is separately reported as
 			// un-arbitrated, which is its own case below.
 			name:    "everything is fine",
@@ -547,7 +547,7 @@ func TestEveryNonOkFindingCarriesARemediationCommand(t *testing.T) {
 				// A remediation that is not a command is a hint, and a hint in
 				// the fix column is a hint a person follows instead of running
 				// the right thing.
-				if !strings.Contains(finding.Fix, "caf ") && !strings.Contains(finding.Fix, "docker ") &&
+				if !strings.Contains(finding.Fix, "cafe ") && !strings.Contains(finding.Fix, "docker ") &&
 					!strings.Contains(finding.Fix, "lsof ") && !strings.Contains(finding.Fix, "sysctl ") &&
 					!strings.Contains(finding.Fix, "brew ") && !strings.Contains(finding.Fix, "mise ") &&
 					!strings.Contains(finding.Fix, "open -a ") && !strings.Contains(finding.Fix, "ls -la ") {
@@ -670,7 +670,7 @@ func TestSeverityIsReasonedPerFact(t *testing.T) {
 	}{
 		{fact: "tilt", want: SeverityWarn, why: "most developers do not use it, and a red CI over it gets disabled"},
 		{fact: "reclaim", want: SeverityWarn, why: "un-reclaimed state is worth mentioning and one command fixes it"},
-		{fact: "block-crowd", want: SeverityWarn, why: "a stranger in the block is not caf's to fail over, and it is the collision worth reporting"},
+		{fact: "block-crowd", want: SeverityWarn, why: "a stranger in the block is not cafe's to fail over, and it is the collision worth reporting"},
 		{fact: "unknown", want: SeverityWarn, why: "a machine that would not answer is not a machine with nothing"},
 		{fact: "cpu", want: SeverityFail, why: "a machine with one CPU cannot run a database, a cache and a service"},
 		{fact: "memory", want: SeverityFail, why: "a number that is genuinely too small"},
@@ -745,7 +745,7 @@ func TestDoctorRemindsYouAboutUnreclaimedState(t *testing.T) {
 	if code != exitSuccess {
 		t.Errorf("exit code = %d, want 0: un-reclaimed state is worth saying and is not broken", code)
 	}
-	if !strings.Contains(stdout, "caf reclaim") {
+	if !strings.Contains(stdout, "cafe reclaim") {
 		t.Errorf("the report does not say how to fix it:\n%s", stdout)
 	}
 	// The detail has to be specific enough to act on without a second command:
@@ -791,14 +791,14 @@ func TestDoctorNamesAForeignOccupantOfTheBlock(t *testing.T) {
 		t.Errorf("a stranger in the block = %s, want warn", finding.Severity)
 	}
 	if code != exitSuccess {
-		t.Errorf("exit code = %d, want 0: a stranger is not caf's to fail over", code)
+		t.Errorf("exit code = %d, want 0: a stranger is not cafe's to fail over", code)
 	}
 	if !strings.Contains(finding.Detail, strconv.Itoa(ports.CAF.First+1)) {
 		t.Errorf("the detail does not name the port: %q", finding.Detail)
 	}
 }
 
-// A port outside the block is not caf's business at all. The check scans the
+// A port outside the block is not cafe's business at all. The check scans the
 // block and says nothing about 21101, because the whole point of the block is
 // that a port in it is recognisable as ours.
 func TestTheBlockCheckSaysNothingAboutPortsOutsideIt(t *testing.T) {
@@ -809,12 +809,12 @@ func TestTheBlockCheckSaysNothingAboutPortsOutsideIt(t *testing.T) {
 	_, _, findings := reportFrom(t, dir, m)
 
 	if findingFor(t, findings, "port block").Severity != SeverityOK {
-		t.Error("a port outside the block was reported; caf only arbitrates its own range")
+		t.Error("a port outside the block was reported; cafe only arbitrates its own range")
 	}
 }
 
 // An exhausted block is a failure and not a warning, because the next
-// `caf env up` will fail. This is the case that separates the two states on this
+// `cafe env up` will fail. This is the case that separates the two states on this
 // check, and it is the reason the meta-test asks for all three.
 func TestAnExhaustedBlockIsAFailure(t *testing.T) {
 	dir := doctorProject(t, "go")
@@ -984,7 +984,7 @@ func TestToolsOnlySkipsTheSectionsThatNeedAProject(t *testing.T) {
 	}
 }
 
-// The ledger flag. caf must not read or write a developer's real ledger because
+// The ledger flag. cafe must not read or write a developer's real ledger because
 // a test ran, and a caller has to be able to point the whole command elsewhere.
 func TestDoctorNamesTheLedgerItRead(t *testing.T) {
 	dir := doctorProject(t, "go")
@@ -1001,11 +1001,11 @@ func TestDoctorNamesTheLedgerItRead(t *testing.T) {
 }
 
 // The help says what the command now does. `doctor` changed from "always exits
-// 0" to a tri-state, and a person's first source for that is `caf help doctor`.
+// 0" to a tri-state, and a person's first source for that is `cafe help doctor`.
 func TestTheHelpSaysTheExitCodeChanged(t *testing.T) {
 	c, _ := lookupCommand(Commands(), "doctor")
 
-	for _, want := range []string{"ok, warn, fail", "never moves", "change from caf 0.x"} {
+	for _, want := range []string{"ok, warn, fail", "never moves", "change from cafe 0.x"} {
 		if !strings.Contains(c.LongHelp, want) {
 			t.Errorf("the help does not say %q", want)
 		}

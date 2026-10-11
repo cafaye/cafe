@@ -51,7 +51,7 @@ func (c *providerTestConductor) Status(_ context.Context, boxID string) ([]provi
 
 // providerTestEnv wires a command tree to a planted identity with a REAL
 // keypair, so the round-trip proof — the envelope the command posts opens with
-// the private half the test holds — is a proof about the same bytes a caf run
+// the private half the test holds — is a proof about the same bytes a cafe run
 // would produce. The private key stays in the test and goes nowhere else.
 func providerTestEnv(t *testing.T) (deps providerDeps, cond *providerTestConductor, priv ed25519.PrivateKey) {
 	t.Helper()
@@ -89,7 +89,7 @@ func plantProviderIdentity(t *testing.T, dir string, pub ed25519.PublicKey) {
 	}
 }
 
-// runProviderCLI drives ONE caf provider command tree against the injected
+// runProviderCLI drives ONE cafe provider command tree against the injected
 // deps and hands back the exit code plus both streams — exactly what main()
 // does with the real process, minus the process. It goes through the parent's
 // dispatcher rather than at a verb directly, so the verb lookup and its usage
@@ -295,7 +295,7 @@ func TestProviderConnectRefusesAnUnenrolledBox(t *testing.T) {
 	if code != exitFailure {
 		t.Errorf("exit code = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "caf box enroll") {
+	if !strings.Contains(stderr, "cafe box enroll") {
 		t.Errorf("the refusal does not name the remedy:\n%s", stderr)
 	}
 	if cond.calls != 0 {
@@ -347,7 +347,7 @@ func TestProviderVerbsRejectBadArgumentCounts(t *testing.T) {
 	}
 }
 
-// A word under `caf provider` that is not a verb is a usage error, and the
+// A word under `cafe provider` that is not a verb is a usage error, and the
 // answer is the list of the ones that are.
 func TestProviderUnknownVerbIsAUsageError(t *testing.T) {
 	deps, _, _ := providerTestEnv(t)
@@ -375,7 +375,7 @@ func TestProviderConnectReportsAFailureHonestly(t *testing.T) {
 	if code != exitFailure {
 		t.Errorf("exit code = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "caf provider connect") {
+	if !strings.Contains(stderr, "cafe provider connect") {
 		t.Errorf("the report does not name the command:\n%s", stderr)
 	}
 	if !strings.Contains(stderr, "NOT posted in plaintext") {
@@ -471,7 +471,7 @@ func TestProviderStatusOnAnUnenrolledBox(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0 (an unenrolled box has no connections, which is not a failure)", code)
 	}
-	if !strings.Contains(stderr, "not enrolled") || !strings.Contains(stderr, "caf box enroll") {
+	if !strings.Contains(stderr, "not enrolled") || !strings.Contains(stderr, "cafe box enroll") {
 		t.Errorf("the report does not name the state and the remedy:\n%s", stderr)
 	}
 	var doc StatusResult

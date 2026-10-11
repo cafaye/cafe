@@ -1,4 +1,4 @@
-// Package lock is `caf lock`: one file that pins a tree's specs, its vendored
+// Package lock is `cafe lock`: one file that pins a tree's specs, its vendored
 // schemas and its generated clients, so that a spec bump that half-lands, or a
 // vendored file somebody edited by hand, is a red gate rather than a client and
 // a server disagreeing on the wire.
@@ -26,7 +26,7 @@
 //
 //	KindSpec             the manifest itself, and the OpenAPI document it names
 //	KindVendoredSchema   every file under internal/contract/schemas
-//	KindGeneratedClient  every path `caf gen` writes for THIS manifest
+//	KindGeneratedClient  every path `cafe gen` writes for THIS manifest
 //	KindRuleBundle       the gate declaration, core's named versioned rule set
 //
 // The generated half is the reason this is worth having over a `sha256sum`
@@ -47,10 +47,10 @@
 //
 // # No timestamp
 //
-// `caf lock` twice over one tree produces the same bytes, exactly as `caf gen`
+// `cafe lock` twice over one tree produces the same bytes, exactly as `cafe gen`
 // does, because a timestamp would make the diff between two locks a diff
 // between two runs rather than a diff between two trees. Provenance is the
-// `tool` field — the caf version that wrote it — which is also what a wholesale
+// `tool` field — the cafe version that wrote it — which is also what a wholesale
 // invalidation keys on: a format change bumps `LockVersion` and every older
 // lock says so by name rather than being parsed under rules it was not written
 // under.

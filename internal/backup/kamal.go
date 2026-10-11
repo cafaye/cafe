@@ -8,9 +8,9 @@ import (
 )
 
 // KamalRunner is the Kamal engine: it owns the Kamal plan and runs it through
-// internal/deploy's KamalRunner, which stays the only place caf knows how to
+// internal/deploy's KamalRunner, which stays the only place cafe knows how to
 // execute kamal — including the "kamal is not installed" sentence, which both
-// `caf deploy` and `caf backup` must say the same way.
+// `cafe deploy` and `cafe backup` must say the same way.
 type KamalRunner struct {
 	delegate *deploy.KamalRunner
 }

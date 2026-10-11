@@ -16,9 +16,9 @@ import (
 	"github.com/cafaye/cafe/internal/boxd"
 )
 
-// `caf boxd` — the box daemon.
+// `cafe boxd` — the box daemon.
 //
-// This is the one caf subcommand that is a long-running process rather than a
+// This is the one cafe subcommand that is a long-running process rather than a
 // command: it runs on the customer's box (as root, because the substrate runs
 // as root), dials out to conductor over mTLS, and redeems capabilities against
 // the whitelisted route table in internal/boxd. It is invariant 4's home: the
@@ -31,7 +31,7 @@ import (
 // is why the flags below name where the enrolled identity is and nothing else:
 // there is no -listen, and adding one would be a different daemon.
 
-// boxdDeps is what `caf boxd` needs from the world, as a parameter so a test
+// boxdDeps is what `cafe boxd` needs from the world, as a parameter so a test
 // can hand the command a recording identity store, an in-memory key, a fake
 // conductor and a scratch state file — and drive the whole daemon without a
 // network, a box, or a certificate anywhere outside the test.
@@ -69,7 +69,7 @@ func newBoxdCommand(deps boxdDeps) *Command {
 	c := &Command{
 		Name:    "boxd",
 		Summary: "run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities",
-		Usage:   "caf boxd [flags]",
+		Usage:   "cafe boxd [flags]",
 		LongHelp: "Runs the box daemon. It is a long-running process: it loads the enrolled\n" +
 			"identity, dials conductor outbound over mTLS, and waits for capabilities.\n" +
 			"Each capability names a route in the box's whitelisted table and is redeemed\n" +
@@ -86,7 +86,7 @@ func newBoxdCommand(deps boxdDeps) *Command {
 			"table — so an agent operating the box cannot escalate by asking the box to\n" +
 			"do something; it can only ask for what the box can do.\n" +
 			"\n" +
-			"Needs an enrolled box: run `caf box enroll --token …` first. Without the\n" +
+			"Needs an enrolled box: run `cafe box enroll --token …` first. Without the\n" +
 			"identity it prints that and exits rather than running unenrolled.",
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.identity, "identity", "", "path to the enrolled box identity; $CAF_BOX_IDENTITY or the user state directory")
@@ -108,19 +108,19 @@ func runBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
 
 	identityPath, err := resolveBoxIdentityPath(opts.identity)
 	if err != nil {
-		return fmt.Errorf("caf boxd: %w", err)
+		return fmt.Errorf("cafe boxd: %w", err)
 	}
 	if _, err := os.Stat(identityPath); err != nil {
 		// An unenrolled box is a box that was never told what it is. The
 		// message names the one command that fixes it, because a daemon that
 		// cannot say what it lacks is a daemon nobody can act on.
-		return fmt.Errorf("caf boxd: no enrolled identity at %s; run `caf box enroll --token …` "+
+		return fmt.Errorf("cafe boxd: no enrolled identity at %s; run `cafe box enroll --token …` "+
 			"on this box first (enrollment is the W2-P6 packet)", identityPath)
 	}
 
 	store, err := newFileIdentityStore(identityPath)
 	if err != nil {
-		return fmt.Errorf("caf boxd: %w", err)
+		return fmt.Errorf("cafe boxd: %w", err)
 	}
 	if deps.store == nil {
 		deps.store = store
@@ -148,7 +148,7 @@ func runBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
 		Once:     opts.once,
 	})
 	if err != nil {
-		return fmt.Errorf("caf boxd: %w", err)
+		return fmt.Errorf("cafe boxd: %w", err)
 	}
 	return daemon.Run(ctx)
 }
@@ -166,14 +166,14 @@ func resolveBoxIdentityPath(flagPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("find the home directory: %w", err)
 	}
-	return filepath.Join(dir, ".config", "caf", "box-identity.json"), nil
+	return filepath.Join(dir, ".config", "cafe", "box-identity.json"), nil
 }
 
 // ---------------------------------------------------------------------------
 // the enrolled identity, on disk
 // ---------------------------------------------------------------------------
 
-// identityDocument is what `caf box enroll` (W2-P6) writes and this daemon
+// identityDocument is what `cafe box enroll` (W2-P6) writes and this daemon
 // reads: the box's name, where its conductor is, and where its certificate
 // and key live. The paths are relative to the document, so an enrollment is
 // one directory a backup can carry.

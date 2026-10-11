@@ -6,8 +6,8 @@
 // It is an ASSEMBLER, not a collector. Every fact it prints comes from one of
 // four packets that already exist, plus a small number of shapes this packet
 // defines because nothing in the tree defines them yet. It opens no socket,
-// runs no command and reads no state directory: `caf report` takes a document
-// in and writes a page out, the same boundary `caf failure check` holds (see
+// runs no command and reads no state directory: `cafe report` takes a document
+// in and writes a page out, the same boundary `cafe failure check` holds (see
 // internal/cli/failure.go for why that boundary is where it is — a verb that
 // read the box directly would be a verb that only worked on a box).
 //
@@ -49,10 +49,10 @@
 //     of points rather than a single now-reading: "the box is at 80%" is a
 //     fact, "the box has been climbing for six weeks" is the fact a report is
 //     for.
-//   - incidents — owed by the same surface. `caf failure`'s observation
+//   - incidents — owed by the same surface. `cafe failure`'s observation
 //     document and this one are two producers of two different facts, and
 //     merging them would make both weaker.
-//   - patches applied — owed by the packet that applies a fix. `caf cve` can
+//   - patches applied — owed by the packet that applies a fix. `cafe cve` can
 //     say what a box is EXPOSED to (OPS-P11); nothing yet records what was
 //     actually applied and when.
 //   - upstream releases received, applied or held — owed by the box's apply

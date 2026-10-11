@@ -67,13 +67,13 @@ func TestContractLintOutput(t *testing.T) {
 			name:     "a path that does not exist is a failure, not a pass",
 			args:     []string{"contract", "lint", filepath.Join(tree, "nope")},
 			wantCode: exitFailure,
-			wantErr:  "caf contract lint:",
+			wantErr:  "cafe contract lint:",
 		},
 		{
 			name:     "a tree with no manifest is a failure, not a pass",
 			args:     []string{"contract", "lint", t.TempDir()},
 			wantCode: exitFailure,
-			wantErr:  "caf contract lint:",
+			wantErr:  "cafe contract lint:",
 		},
 	}
 
@@ -125,7 +125,7 @@ func TestContractLintPrintsOneLinePerManifest(t *testing.T) {
 	}
 }
 
-// validLintLine is the whole output contract of `caf contract lint`.
+// validLintLine is the whole output contract of `cafe contract lint`.
 var validLintLine = regexp.MustCompile(`^(OK|INVALID) \S+(?:: \S.*)?$`)
 
 // The resolver prints the answer and the reason, because the reason is the
@@ -190,7 +190,7 @@ func TestContractResolveOutput(t *testing.T) {
 	}
 }
 
-// A constraint or a version caf cannot parse is the user typing it wrong, not
+// A constraint or a version cafe cannot parse is the user typing it wrong, not
 // a service being broken: it is a usage error and exits 2, not 1.
 func TestContractResolveRejectsBadInputAsUsage(t *testing.T) {
 	tests := []struct {
@@ -249,7 +249,7 @@ func TestContractResolveRejectsBadInputAsUsage(t *testing.T) {
 	}
 }
 
-// `caf contract` is a group of verbs, so bare and unknown are different
+// `cafe contract` is a group of verbs, so bare and unknown are different
 // answers: bare prints the verbs, unknown is a mistake worth exiting 2 on.
 func TestContractDispatch(t *testing.T) {
 	tests := []struct {
@@ -263,25 +263,25 @@ func TestContractDispatch(t *testing.T) {
 			name:     "bare contract prints its verbs",
 			args:     []string{"contract"},
 			wantCode: exitSuccess,
-			wantOut:  []string{"caf contract", "lint", "resolve"},
+			wantOut:  []string{"cafe contract", "lint", "resolve"},
 		},
 		{
 			name:     "help contract prints its verbs",
 			args:     []string{"help", "contract"},
 			wantCode: exitSuccess,
-			wantOut:  []string{"caf contract", "lint", "resolve"},
+			wantOut:  []string{"cafe contract", "lint", "resolve"},
 		},
 		{
 			name:     "a verb's own help",
 			args:     []string{"contract", "lint", "--help"},
 			wantCode: exitSuccess,
-			wantOut:  []string{"caf contract lint", "caf contract lint <path>"},
+			wantOut:  []string{"cafe contract lint", "cafe contract lint <path>"},
 		},
 		{
 			name:     "resolve's own help",
 			args:     []string{"contract", "resolve", "-h"},
 			wantCode: exitSuccess,
-			wantOut:  []string{"caf contract resolve", "<constraint> <version>"},
+			wantOut:  []string{"cafe contract resolve", "<constraint> <version>"},
 		},
 		{
 			name:     "an unknown verb is a usage error",
@@ -340,10 +340,10 @@ func TestContractIsNotAStub(t *testing.T) {
 		code, _, stderr := runCLI(t, testVersion, args...)
 
 		if code == exitUsage {
-			t.Errorf("caf %s: exit %d, want the subcommand to run (stderr: %s)", strings.Join(args, " "), code, stderr)
+			t.Errorf("cafe %s: exit %d, want the subcommand to run (stderr: %s)", strings.Join(args, " "), code, stderr)
 		}
 		if strings.Contains(stderr, errNotImplemented.Error()) {
-			t.Errorf("caf %s still reports %q", strings.Join(args, " "), errNotImplemented)
+			t.Errorf("cafe %s still reports %q", strings.Join(args, " "), errNotImplemented)
 		}
 	}
 }
