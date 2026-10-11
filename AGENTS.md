@@ -249,6 +249,28 @@ flag to toggle between them — a flag that chooses which stream gets the
 document is a flag that guarantees one of the two is wrong in some script — and
 the test asserts stdout is one CLEAN JSON document on every verb.
 
+`internal/verify` is the verifier the box runs UNDER — the ops half of
+`cafe box verify`, split by the same rule:
+
+- `doc.go` — what the package is, the two questions it answers before the box
+  answers, and the three rules that hold them together (no secret is ever a
+  fact, the ledger keeps fingerprints and never values, a degraded answer
+  names the human).
+- `verify.go` — `Check(Probe) Verification`: the pure classifier over the
+  observe.report document, the secrets the box must hold, and the minted-secret
+  ledger, with the reason→remedy table that attaches the person's next line to
+  every degraded fact.
+- `state.go` — the minted-secret ledger: the one piece of state the verifier
+  owns, and the reason it exists (an enclave build must not mint a second
+  `SECRET_KEY_BASE`).
+
+It imports `internal/boxd` for the three fact types it judges and nothing
+else, so it stays buildable for every release target with the standard
+library — the daemon's own rule, applied to the check the daemon runs. The
+CLI half is `internal/cli/box_verify.go`: the inventory cross-reference, the
+observation document on disk, and the value that arrives on stdin and never in
+argv.
+
 `internal/box` is `cafe box`, split by the same rule and it is the package the
 whole agents-first layer turns on:
 
