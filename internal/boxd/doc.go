@@ -1,6 +1,6 @@
 // Package boxd is the daemon that runs on the customer's box.
 //
-// It is the only thing on the box that can act on a conductor capability, it
+// It is the only thing on the box that can act on a box capability, it
 // dials outbound over mTLS and never listens, and its route table is the
 // security boundary: AGENTS-FIRST invariant 4 says the enforcement lives on
 // the box, not in the agent's instructions, and this package is where that
@@ -8,7 +8,7 @@
 //
 // # What a route is, and why the table is a whitelist
 //
-// A capability arrives from conductor naming a ROUTE — `stack.apply`,
+// A capability arrives from box naming a ROUTE — `stack.apply`,
 // `provider.connect` — and parameters for it. The daemon looks the route up in
 // a table that exists as a Go value, compiled into the binary, and dispatches
 // to that route's handler or refuses the capability. There is no path from a
@@ -29,13 +29,13 @@
 //
 // A capability's route must be in the table, alive in time and bound to this
 // box. Anything else is refused by name, before a handler runs, and the
-// refusal is reported back to conductor rather than swallowed — a refused
+// refusal is reported back to box rather than swallowed — a refused
 // capability the daemon agreed to is the failure mode this exists to prevent.
 //
 // No route may return a Secret-shaped value. `cafe boxd`'s job on the box is
 // to receive sealed envelopes and act on them, never to hand credentials back
 // out over the channel — the envelope is opened on the box and installed as a
-// Kubernetes Secret, and what goes back to conductor is a status saying that
+// Kubernetes Secret, and what goes back to box is a status saying that
 // happened. This is asserted rather than promised: the test renders every
 // route in the table through a recording world and walks each answer's type
 // graph, failing if any reachable type is Secret-shaped. It is invariant 4 in

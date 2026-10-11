@@ -22,13 +22,13 @@ const (
 	EnvelopeVersion = 1
 	// EnvelopeAlgorithm is the hybrid scheme: an ephemeral X25519 keypair
 	// agrees an AES-256-GCM key with the box's key via ECDH, and the
-	// credential rides inside the AEAD. It is named to sit beside conductor's
+	// credential rides inside the AEAD. It is named to sit beside box's
 	// own "RSA-OAEP+A256GCM" so a column holding either reads as one family.
 	EnvelopeAlgorithm = "X25519+A256GCM"
 )
 
 // Envelope is the sealed form of one credential. It is the whole of what
-// conductor stores in `sealed_credential` and the whole of what crosses the
+// box stores in `sealed_credential` and the whole of what crosses the
 // wire: five fields, every one but v/alg base64, and not one of them the
 // credential in any recoverable form — `data` is AES-256-GCM ciphertext under
 // a key that is not in the document, and `key` is an ephemeral public key
@@ -36,7 +36,7 @@ const (
 //
 // `key` is the ephemeral X25519 public key, NOT a wrapped data key. ECDH
 // derives the shared secret directly from (ephemeral private, box public), so
-// there is nothing to wrap the way conductor's RSA-OAEP wraps a random AES
+// there is nothing to wrap the way box's RSA-OAEP wraps a random AES
 // key. The box recomputes the same secret from (box private, this ephemeral
 // public) and opens the AEAD.
 type Envelope struct {
@@ -55,7 +55,7 @@ type Envelope struct {
 var ErrUnknownEnvelope = fmt.Errorf("envelope is not a cafe X25519+A256GCM envelope")
 
 // field order, so a sealed envelope's bytes are stable across runs of one
-// input. Conductor's SealedEnvelope has the same property and for the same
+// input. Box's SealedEnvelope has the same property and for the same
 // reason: a column that can hold two spellings of the same envelope is a
 // column a diff cannot read.
 var envelopeFields = []string{"v", "alg", "key", "iv", "tag", "data"}
@@ -137,7 +137,7 @@ func reverseBytes(b []byte) {
 }
 
 // Seal encrypts credential to the box's ed25519 public key and returns the
-// envelope as a JSON string — the exact bytes conductor stores and the exact
+// envelope as a JSON string — the exact bytes box stores and the exact
 // bytes that cross the wire.
 //
 // The credential is in plaintext for the duration of this call and nowhere
@@ -192,9 +192,9 @@ func Seal(credential string, boxPublic ed25519.PublicKey) (string, error) {
 
 // Open recovers the credential from an envelope, using the box's ed25519
 // private key. It is the inverse of Seal and it is here for the round-trip
-// tests and for the box side (boxd, W2-P7) when it opens what conductor stored.
+// tests and for the box side (boxd, W2-P7) when it opens what box stored.
 //
-// Conductor never calls this — it holds no private key. Its existence is the
+// Box never calls this — it holds no private key. Its existence is the
 // proof that the envelope is a real envelope and not a one-way hash: a
 // credential that cannot be opened by the box is a credential that was never
 // really handed over.
@@ -257,8 +257,8 @@ func Open(envelopeJSON string, boxPrivate ed25519.PrivateKey) (string, error) {
 
 // sealAESGCM is the data plane: AES-256-GCM under the shared secret. The
 // overhead (auth tag) is split out of the ciphertext so the envelope's fields
-// match conductor's shape — {iv, tag, data} — and a box written against
-// conductor's own envelope reads this one without a second idea of the layout.
+// match box's shape — {iv, tag, data} — and a box written against
+// box's own envelope reads this one without a second idea of the layout.
 func sealAESGCM(key, plaintext []byte) (data, iv, tag []byte, err error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

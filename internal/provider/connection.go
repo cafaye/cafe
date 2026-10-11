@@ -12,13 +12,13 @@ import (
 	"time"
 )
 
-// Providers is the vocabulary conductor accepts (EmailProviderConnection::
+// Providers is the vocabulary box accepts (EmailProviderConnection::
 // PROVIDERS). It is repeated here because the client has to refuse a provider
-// conductor would refuse, and refusing here — with a sentence naming the two —
+// box would refuse, and refusing here — with a sentence naming the two —
 // is a better error than a 422 from a server a person is staring at.
 var Providers = []string{"smtp", "cloudflare"}
 
-// Connection is one email provider a box's account uses, as conductor records
+// Connection is one email provider a box's account uses, as box records
 // it. Every field but SealedCredential is a non-secret: they say WHICH provider
 // and WHICH account, and those facts are what ` + "`cafe provider status`" + `
 // prints. SealedCredential is the envelope — ciphertext conductor cannot open
@@ -49,7 +49,7 @@ type ConnectRequest struct {
 	BoxPublic []byte
 }
 
-// Conductor is the one call this package makes over the network, and it is an
+// ControlPlane is the one call this package makes over the network, and it is an
 // interface so a test can drive a connect without a network — the same seam
 // internal/box uses for the capability redemption, for the same reason: a
 // test that needs a server to prove the client is a test that cannot run on a
@@ -58,10 +58,10 @@ type ConnectRequest struct {
 // Connect and Status are separate methods because they are separate questions
 // with separate failure modes, and a caller that only reports status must not
 // have to hold a credential to do it.
-type Conductor interface {
-	// Connect posts a sealed connection and returns what conductor recorded.
+type ControlPlane interface {
+	// Connect posts a sealed connection and returns what box recorded.
 	Connect(ctx context.Context, conn Connection) (*Connection, error)
-	// Status lists the connections conductor holds for one box.
+	// Status lists the connections box holds for one enrolled machine.
 	Status(ctx context.Context, boxID string) ([]Connection, error)
 }
 
@@ -78,14 +78,14 @@ var (
 )
 
 // Connect seals the credential to the box's public key and posts the envelope
-// to conductor. It is the whole of the client half of boundary 6 in one call:
-// the credential goes into the envelope and the envelope goes to conductor,
+// to box. It is the whole of the client half of boundary 6 in one call:
+// the credential goes into the envelope and the envelope goes to box,
 // and nothing in between ever sees the plaintext but this function.
 //
-// The returned Connection carries conductor's record of what was stored — the
+// The returned Connection carries box's record of what was stored — the
 // provider, the account, the box, the config and the envelope — and never the
 // credential. A caller that logs the return value logs no secret.
-func Connect(ctx context.Context, c Conductor, req ConnectRequest) (*Connection, error) {
+func Connect(ctx context.Context, c ControlPlane, req ConnectRequest) (*Connection, error) {
 	if !knownProvider(req.Provider) {
 		return nil, ErrUnknownProvider
 	}
@@ -117,11 +117,11 @@ func Connect(ctx context.Context, c Conductor, req ConnectRequest) (*Connection,
 // credential and opens none: the envelopes come back as opaque JSON and are
 // passed through untouched, because a status report that opened the envelopes
 // would be a status report that prints secrets.
-func Status(ctx context.Context, c Conductor, boxID string) ([]Connection, error) {
+func Status(ctx context.Context, c ControlPlane, boxID string) ([]Connection, error) {
 	return c.Status(ctx, boxID)
 }
 
-// knownProvider reports whether provider is one conductor accepts.
+// knownProvider reports whether provider is one box accepts.
 func knownProvider(provider string) bool {
 	for _, p := range Providers {
 		if p == provider {
@@ -137,17 +137,17 @@ func knownProvider(provider string) bool {
 // way, and a timeout means the box is not left half-connected.
 const DefaultTimeout = 30 * time.Second
 
-// HTTPConductor is the real Conductor: one POST and one GET against
-// conductor's private API, outbound from the box.
+// HTTPControlPlane is the real ControlPlane: one POST and one GET against
+// box's private API, outbound from the box.
 //
 // The routes are the ones the model's name implies — POST and GET
 // /v1/email-provider-connections — built against the documented shape because
-// conductor merged the model, the migration and the sealing primitive (W3-P2)
+// box merged the model, the migration and the sealing primitive (W3-P2)
 // but no route yet. When the route lands, this client needs no change.
-type HTTPConductor struct {
-	// BaseURL is conductor's origin, e.g. https://conductor.internal:4000.
+type HTTPControlPlane struct {
+	// BaseURL is box's origin, e.g. https://box.internal:4000.
 	// Empty is refused rather than defaulted, for the reason internal/box's
-	// HTTPConductor refuses it: a client with no endpoint is a client that
+	// HTTPControlPlane refuses it: a client with no endpoint is a client that
 	// would POST to a relative path.
 	BaseURL string
 	// Client is the HTTP client. Nil means one with a timeout.
@@ -160,7 +160,7 @@ type HTTPConductor struct {
 // the POST and the GET cannot drift onto different paths.
 const connectPath = "/v1/email-provider-connections"
 
-func (c HTTPConductor) client() *http.Client {
+func (c HTTPControlPlane) client() *http.Client {
 	if c.Client != nil {
 		return c.Client
 	}
@@ -174,9 +174,9 @@ func (c HTTPConductor) client() *http.Client {
 // Connect POSTs the sealed connection. The body is the Connection document
 // verbatim: provider, account, box_id, config and the envelope. There is no
 // credential in it — the envelope is the only thing the credential became.
-func (c HTTPConductor) Connect(ctx context.Context, conn Connection) (*Connection, error) {
+func (c HTTPControlPlane) Connect(ctx context.Context, conn Connection) (*Connection, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, errors.New("no conductor URL configured; set it with `cafe provider connect --conductor <url>` or in the box identity")
+		return nil, errors.New("no box URL configured; set it with `cafe provider connect --box <url>` or in the box identity")
 	}
 	body, err := json.Marshal(conn)
 	if err != nil {
@@ -213,13 +213,13 @@ func (c HTTPConductor) Connect(ctx context.Context, conn Connection) (*Connectio
 	return &recorded, nil
 }
 
-// Status GETs the connections conductor holds for one box. A 404 is reported
-// as no connections rather than an error, because "conductor has never heard
-// of this box" and "this box has no providers" are the same answer to the
-// question ` + "`cafe provider status`" + ` asks.
-func (c HTTPConductor) Status(ctx context.Context, boxID string) ([]Connection, error) {
+// Status GETs the connections box holds for one machine. A 404 is reported
+// as no connections rather than an error, because "box has never heard
+// of this machine" and "this machine has no providers" are the same answer to
+// the question `cafe provider status` asks.
+func (c HTTPControlPlane) Status(ctx context.Context, boxID string) ([]Connection, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, errors.New("no conductor URL configured; set it with `cafe provider status --conductor <url>` or in the box identity")
+		return nil, errors.New("no box URL configured; set it with `cafe provider status --box <url>` or in the box identity")
 	}
 	url := strings.TrimSuffix(c.BaseURL, "/") + connectPath + "?box_id=" + boxID
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

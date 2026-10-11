@@ -28,7 +28,7 @@ type World interface {
 	// backup drill, and which of the given candidate releases are pending
 	// against this box's version range. Read-only, and non-secret by
 	// construction: the answer is walked by the load-bearing test the same as
-	// every other route's. Params carries the release universe from conductor;
+	// every other route's. Params carries the release universe from box;
 	// the range and the deployed version are the box's own facts.
 	Observe(ctx context.Context, params ObserveParams) (Observation, error)
 	// Stack is what the substrate is running: the services, their phase, and
@@ -55,13 +55,13 @@ type Handler[In, Out any] func(ctx context.Context, w World, in In) (Out, error)
 // is the Go type the handler actually takes and returns — a route whose
 // documented answer and its real one disagree is a bug the compiler can see.
 type Route struct {
-	// Name is the wire name conductor's capability carries. It is matched
+	// Name is the wire name box's capability carries. It is matched
 	// exactly: there is no prefix matching, no fallback, no wildcard.
 	Name string
 	// Summary is one sentence a reader of the table understands.
 	Summary string
 	// ReadOnly is whether the route mutates the box. It is a statement about
-	// the route rather than an annotation for a host: a conductor will only
+	// the route rather than an annotation for a host: box will only
 	// send a mutating route with a capability a human approved, and this field
 	// is how the daemon says which ones those are.
 	ReadOnly bool
@@ -164,19 +164,20 @@ func refuse(cap Capability, status Status, why string) Outcome {
 // the routes
 // ---------------------------------------------------------------------------
 
-// boxStatus answers "who is this box and is it well". It is the route a
-// conductor polls to know an enrollment is alive, and it carries only
+// boxStatus answers "who is this box and is it well". It is the route the
+// control plane polls to know an enrollment is alive, and it carries only
 // enrolled facts — a name, an address, a version — because there is nothing
-// about a box that conductor needs which is not already in its own record.
+// about a box that the control plane needs which is not already in its own
+// record.
 func boxStatusRoute() Route {
 	type status struct {
-		BoxID     string `json:"box_id"`
-		Version   string `json:"version"`
-		Conductor string `json:"conductor"`
+		BoxID        string `json:"box_id"`
+		Version      string `json:"version"`
+		ControlPlane string `json:"conductor"`
 	}
 	h := Handler[struct{}, status](func(_ context.Context, w World, _ struct{}) (status, error) {
 		id := w.Identity()
-		return status{BoxID: id.BoxID, Version: id.Version, Conductor: id.Conductor}, nil
+		return status{BoxID: id.BoxID, Version: id.Version, ControlPlane: id.ControlPlane}, nil
 	})
 	return route("box.status", "report the box's enrolled identity and the daemon's version", true, struct{}{}, status{}, h)
 }

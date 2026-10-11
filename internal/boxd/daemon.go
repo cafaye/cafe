@@ -9,7 +9,7 @@ import (
 )
 
 // The reconnect backoff. It is bounded on both sides on purpose: a daemon
-// whose conductor is down for an hour must not hammer it every millisecond,
+// whose control plane is down for an hour must not hammer it every millisecond,
 // and must not take thirty seconds to notice it is back either. The numbers
 // are a shape rather than a measurement — this fleet's daemons have not run
 // long enough for a real distribution to mean anything, and a claim
@@ -19,12 +19,12 @@ const (
 	maxBackoff = 30 * time.Second
 )
 
-// Dialer opens the outbound channel to conductor. It is a seam for the same
-// reason World is: the daemon's loop is provable without a network, and the
-// TLS half is provable against a real listener (see tls_test.go), so neither
-// half needs the other to be real to be tested.
+// Dialer opens the outbound channel to the control plane. It is a seam for the
+// same reason World is: the daemon's loop is provable without a network, and
+// the TLS half is provable against a real listener (see tls_test.go), so
+// neither half needs the other to be real to be tested.
 type Dialer interface {
-	Dial(ctx context.Context, id Identity) (Conductor, error)
+	Dial(ctx context.Context, id Identity) (ControlPlane, error)
 }
 
 // Options is what the daemon needs before it will run. Every field is
@@ -90,9 +90,9 @@ func Open(opts Options) (*Daemon, error) {
 // Run serves until ctx is cancelled or, with Once set, one capability has been
 // redeemed. It returns ctx.Err() on cancellation and an error on a round it
 // could not complete, and it reconnects on its own: a daemon that exited
-// because conductor restarted would be a daemon the box's supervisor has to
+// because box restarted would be a daemon the box's supervisor has to
 // babysit, and the reconnect is bounded rather than immediate so a down
-// conductor is not a busy loop.
+// control plane is not a busy loop.
 //
 // With Once, a round that completed without the context ending is the
 // daemon's whole life: `cafe boxd -once` returns after one capability, so an
@@ -110,7 +110,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 		}
 		// A round that ends without the context ending is a connection that
 		// went away or a round that could not start; either way the box keeps
-		// trying, because the box's whole job is to be reachable by conductor.
+		// trying, because the box's whole job is to be reachable by the control plane.
 		d.logf("boxd: round ended (%v); reconnecting in %s", err, backoff)
 		select {
 		case <-ctx.Done():
@@ -136,14 +136,14 @@ func (d *Daemon) round(ctx context.Context) error {
 	}
 	ch, err := d.opts.Dial.Dial(ctx, id)
 	if err != nil {
-		return fmt.Errorf("boxd: connect to %s: %w", id.Conductor, err)
+		return fmt.Errorf("boxd: connect to %s: %w", id.ControlPlane, err)
 	}
 	// The connection is closed whatever the round does, and the key it was
 	// dialled with is dropped with it — the box key is held for the life of a
 	// connection and no longer (doc.go, rule three).
 	defer ch.Close()
 
-	d.logf("boxd: enrolled as %s, outbound to %s", id.BoxID, id.Conductor)
+	d.logf("boxd: enrolled as %s, outbound to %s", id.BoxID, id.ControlPlane)
 	world := d.opts.WorldFor(id)
 	for {
 		cap, err := ch.Next(ctx)
@@ -163,14 +163,14 @@ func (d *Daemon) round(ctx context.Context) error {
 
 // redeem is one capability's whole life on the box: the whitelist decision,
 // the handler, and the ack — including for capabilities refused, because a
-// refusal conductor never heard about is a capability conductor will re-send
+// refusal box never heard about is a capability box will re-send
 // until its TTL burns down.
-func (d *Daemon) redeem(ctx context.Context, ch Conductor, world World, cap Capability) error {
+func (d *Daemon) redeem(ctx context.Context, ch ControlPlane, world World, cap Capability) error {
 	answer, outcome, err := Redeem(ctx, d.opts.Table, world, cap)
 	if err != nil {
 		// The route ran and failed. The message is already in the outcome;
 		// this line is the operator's, and it names the capability so it can
-		// be found in conductor's audit log.
+		// be found in box's audit log.
 		d.logf("boxd: capability %s (%s) failed: %v", cap.ID, cap.Route, err)
 	} else if outcome.Status != Accepted {
 		// The whitelist fired. This is the most interesting line the daemon
@@ -181,7 +181,7 @@ func (d *Daemon) redeem(ctx context.Context, ch Conductor, world World, cap Capa
 		d.logf("boxd: capability %s (%s) accepted", cap.ID, cap.Route)
 	}
 	if err := ch.Ack(ctx, Ack{Outcome: outcome, Answer: answer}); err != nil {
-		// Nothing more can be done for this capability: conductor will either
+		// Nothing more can be done for this capability: box will either
 		// see the failure from the dropped connection or wait out the TTL.
 		return fmt.Errorf("boxd: ack capability %s: %w", cap.ID, err)
 	}
