@@ -178,7 +178,7 @@ func TestCertStatusClassifiesRemainingLife(t *testing.T) {
 
 // TestTheBoxWorldObservesItself is the integration: the real box-world assembles
 // a machine-readable Observation from a real certificate on disk, a real backup
-// drill journal, the two env seams, and a conductor's candidate releases. It is
+// drill journal, the two env seams, and box's candidate releases. It is
 // marshalled and read back, because that is what the policy engine and the
 // monthly report will do.
 func TestTheBoxWorldObservesItself(t *testing.T) {
@@ -197,7 +197,7 @@ func TestTheBoxWorldObservesItself(t *testing.T) {
 		FinishedAt: now.Add(-48 * time.Hour),
 	})
 
-	world := newBoxWorld(boxd.Identity{BoxID: "box-test", Conductor: "conductor.example.com:443", Version: "1.0.0"},
+	world := newBoxWorld(boxd.Identity{BoxID: "box-test", ControlPlane: "box.example.com:443", Version: "1.0.0"},
 		identityPath, filepath.Join(t.TempDir(), "boxd-state.json"))
 	obs, err := world.Observe(context.Background(), boxd.ObserveParams{Releases: []boxd.CandidateRelease{
 		{Name: "core", Version: "1.5.0"}, // in ^1.0.0, newer → pending
@@ -484,11 +484,11 @@ func writeObserveBox(t *testing.T, version string, notAfter time.Time) string {
 
 	identityPath := filepath.Join(dir, "box-identity.json")
 	doc := identityDocument{
-		BoxID:       "box-test",
-		Conductor:   "conductor.example.com:443",
-		Version:     version,
-		Certificate: "box.crt",
-		Key:         "box.key",
+		BoxID:        "box-test",
+		ControlPlane: "box.example.com:443",
+		Version:      version,
+		Certificate:  "box.crt",
+		Key:          "box.key",
 	}
 	data, err := json.Marshal(doc)
 	if err != nil {

@@ -20,10 +20,10 @@ import (
 // The seams a provider test needs, in one place and for one reason: the whole
 // point of the packet is that the credential never crosses a boundary it was
 // not sealed for, and the only way to prove that at the command level is to
-// drive the command against a conductor that captures what was posted and a
+// drive the command against a control plane that captures what was posted and a
 // directory the test owns. Nothing here touches the network, the machine's
 // config directory or a real box.
-type providerTestConductor struct {
+type providerTestControlPlane struct {
 	calls  int
 	posted []provider.Connection
 	boxed  []string // box_id per Status call
@@ -31,7 +31,7 @@ type providerTestConductor struct {
 	err    error
 }
 
-func (c *providerTestConductor) Connect(_ context.Context, conn provider.Connection) (*provider.Connection, error) {
+func (c *providerTestControlPlane) Connect(_ context.Context, conn provider.Connection) (*provider.Connection, error) {
 	c.calls++
 	c.posted = append(c.posted, conn)
 	if c.err != nil {
@@ -40,7 +40,7 @@ func (c *providerTestConductor) Connect(_ context.Context, conn provider.Connect
 	return &conn, nil
 }
 
-func (c *providerTestConductor) Status(_ context.Context, boxID string) ([]provider.Connection, error) {
+func (c *providerTestControlPlane) Status(_ context.Context, boxID string) ([]provider.Connection, error) {
 	c.calls++
 	c.boxed = append(c.boxed, boxID)
 	if c.err != nil {
@@ -53,7 +53,7 @@ func (c *providerTestConductor) Status(_ context.Context, boxID string) ([]provi
 // keypair, so the round-trip proof — the envelope the command posts opens with
 // the private half the test holds — is a proof about the same bytes a cafe run
 // would produce. The private key stays in the test and goes nowhere else.
-func providerTestEnv(t *testing.T) (deps providerDeps, cond *providerTestConductor, priv ed25519.PrivateKey) {
+func providerTestEnv(t *testing.T) (deps providerDeps, cp *providerTestControlPlane, priv ed25519.PrivateKey) {
 	t.Helper()
 	pub, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -61,9 +61,9 @@ func providerTestEnv(t *testing.T) (deps providerDeps, cond *providerTestConduct
 	}
 	dir := t.TempDir()
 	plantProviderIdentity(t, dir, pub)
-	cond = &providerTestConductor{}
-	deps = providerDeps{dir: dir, ring: newBoxTestRing(), cond: cond, url: "https://conductor.test"}
-	return deps, cond, private
+	cp = &providerTestControlPlane{}
+	deps = providerDeps{dir: dir, ring: newBoxTestRing(), controlPlane: cp, url: "https://box.test"}
+	return deps, cp, private
 }
 
 // plantProviderIdentity writes the box.json a provider verb reads the public
@@ -72,13 +72,13 @@ func providerTestEnv(t *testing.T) (deps providerDeps, cond *providerTestConduct
 func plantProviderIdentity(t *testing.T, dir string, pub ed25519.PublicKey) {
 	t.Helper()
 	id := box.Identity{
-		BoxID:      "box-11111111-2222-3333-4444-555555555555",
-		AccountID:  "acct-aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-		PublicKey:  base64.RawStdEncoding.EncodeToString(pub),
-		Status:     "active",
-		Phase:      "enrolled",
-		EnrolledAt: "2026-10-09T12:00:00Z",
-		Conductor:  "https://conductor.test",
+		BoxID:        "box-11111111-2222-3333-4444-555555555555",
+		AccountID:    "acct-aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		PublicKey:    base64.RawStdEncoding.EncodeToString(pub),
+		Status:       "active",
+		Phase:        "enrolled",
+		EnrolledAt:   "2026-10-09T12:00:00Z",
+		ControlPlane: "https://box.test",
 	}
 	raw, err := json.Marshal(id)
 	if err != nil {
@@ -116,7 +116,7 @@ func credentialForms(credential string) map[string]string {
 
 // assertNoCredentialForm fails if the credential's bytes reached any of the
 // command's three observable surfaces: stdout, stderr, or what was posted to
-// conductor. "Logs" in the brief is stderr here — the command keeps no log of
+// the control plane. "Logs" in the brief is stderr here — the command keeps no log of
 // its own, and a secret in either stream is a secret in the transcript.
 func assertNoCredentialForm(t *testing.T, credential string, stdout, stderr string, posted provider.Connection) {
 	t.Helper()
@@ -149,7 +149,7 @@ func assertNoCredentialForm(t *testing.T, credential string, stdout, stderr stri
 // everything would pass the first half by leaking nothing at all, and a build
 // that sealed to the wrong key would produce an envelope nobody can open.
 func TestNoProviderCommandEverPrintsTheCredential(t *testing.T) {
-	deps, cond, priv := providerTestEnv(t)
+	deps, cp, priv := providerTestEnv(t)
 	const credential = "super-secret-smtp-password-42"
 
 	code, stdout, stderr := runProviderCLI(t, deps, "connect",
@@ -162,13 +162,13 @@ func TestNoProviderCommandEverPrintsTheCredential(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("connect exited %d (stderr: %s)", code, stderr)
 	}
-	if cond.calls != 1 {
-		t.Fatalf("conductor was called %d times, want 1", cond.calls)
+	if cp.calls != 1 {
+		t.Fatalf("control plane was called %d times, want 1", cp.calls)
 	}
-	if len(cond.posted) != 1 {
-		t.Fatalf("posted %d connections, want 1", len(cond.posted))
+	if len(cp.posted) != 1 {
+		t.Fatalf("posted %d connections, want 1", len(cp.posted))
 	}
-	posted := cond.posted[0]
+	posted := cp.posted[0]
 
 	assertNoCredentialForm(t, credential, stdout, stderr, posted)
 
@@ -209,7 +209,7 @@ func TestNoProviderCommandEverPrintsTheCredential(t *testing.T) {
 // list, a pipe is not — so it carries the same tripwire: the credential rides
 // in on stdin, and neither stream nor the posted payload may carry it out.
 func TestProviderConnectThroughStdinNeverPrintsTheCredential(t *testing.T) {
-	deps, cond, priv := providerTestEnv(t)
+	deps, cp, priv := providerTestEnv(t)
 	const credential = "piped-secret-9876"
 	withStdin(t, credential+"\n")
 
@@ -220,10 +220,10 @@ func TestProviderConnectThroughStdinNeverPrintsTheCredential(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("connect exited %d (stderr: %s)", code, stderr)
 	}
-	if len(cond.posted) != 1 {
-		t.Fatalf("posted %d connections, want 1", len(cond.posted))
+	if len(cp.posted) != 1 {
+		t.Fatalf("posted %d connections, want 1", len(cp.posted))
 	}
-	posted := cond.posted[0]
+	posted := cp.posted[0]
 	assertNoCredentialForm(t, credential, stdout, stderr, posted)
 
 	opened, err := provider.Open(posted.SealedCredential, priv)
@@ -261,10 +261,10 @@ func withStdin(t *testing.T, content string) {
 }
 
 // An unknown provider is a usage mistake, and it is refused BEFORE anything is
-// sealed or posted — sealing an envelope for a provider conductor would refuse
+// sealed or posted — sealing an envelope for a provider box would refuse
 // is work thrown away, and the count is what proves it.
 func TestProviderConnectRefusesAnUnknownProvider(t *testing.T) {
-	deps, cond, _ := providerTestEnv(t)
+	deps, cp, _ := providerTestEnv(t)
 
 	code, stdout, stderr := runProviderCLI(t, deps, "connect", "--account", "x@y.z", "--credential", "s", "bogus")
 	if code != exitUsage {
@@ -276,16 +276,16 @@ func TestProviderConnectRefusesAnUnknownProvider(t *testing.T) {
 	if stdout != "" {
 		t.Errorf("a usage error wrote to stdout:\n%s", stdout)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor was called %d times, want 0 (nothing was sealed or posted)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane was called %d times, want 0 (nothing was sealed or posted)", cp.calls)
 	}
 }
 
 // An unenrolled box is not a failure, it is a fact with a remedy: there is no
 // key to seal to, and an envelope sealed to nobody is a credential posted in
-// the open. The count is the assertion — nothing reached conductor.
+// the open. The count is the assertion — nothing reached the control plane.
 func TestProviderConnectRefusesAnUnenrolledBox(t *testing.T) {
-	deps, cond, _ := providerTestEnv(t)
+	deps, cp, _ := providerTestEnv(t)
 	// Unenroll the box the only honest way: remove the identity it reads.
 	if err := os.Remove(filepath.Join(deps.dir, box.IdentityFileName)); err != nil {
 		t.Fatal(err)
@@ -298,16 +298,16 @@ func TestProviderConnectRefusesAnUnenrolledBox(t *testing.T) {
 	if !strings.Contains(stderr, "cafe box enroll") {
 		t.Errorf("the refusal does not name the remedy:\n%s", stderr)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor was called %d times, want 0 (no key, no envelope, nothing posted)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane was called %d times, want 0 (no key, no envelope, nothing posted)", cp.calls)
 	}
 }
 
 // A connect with no --account is a usage mistake: the account is the fact
-// conductor records alongside the envelope, and a connection with no account
+// box records alongside the envelope, and a connection with no account
 // is a credential nobody can attribute.
 func TestProviderConnectWantsAnAccount(t *testing.T) {
-	deps, cond, _ := providerTestEnv(t)
+	deps, cp, _ := providerTestEnv(t)
 
 	code, _, stderr := runProviderCLI(t, deps, "connect", "--credential", "s", "smtp")
 	if code != exitUsage {
@@ -316,8 +316,8 @@ func TestProviderConnectWantsAnAccount(t *testing.T) {
 	if !strings.Contains(stderr, "--account") {
 		t.Errorf("the refusal does not name the flag:\n%s", stderr)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor was called %d times, want 0", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane was called %d times, want 0", cp.calls)
 	}
 }
 
@@ -363,13 +363,13 @@ func TestProviderUnknownVerbIsAUsageError(t *testing.T) {
 	}
 }
 
-// A conductor that fails is reported as a failure, not folded into a success:
-// "conductor is unreachable" and "connected" are different answers and only the
+// A control plane that fails is reported as a failure, not folded into a success:
+// "the control plane is unreachable" and "connected" are different answers and only the
 // first one tells the operator to go looking. The credential was sealed and
 // the envelope was NOT stored, and the command says so.
 func TestProviderConnectReportsAFailureHonestly(t *testing.T) {
-	deps, cond, _ := providerTestEnv(t)
-	cond.err = context.DeadlineExceeded
+	deps, cp, _ := providerTestEnv(t)
+	cp.err = context.DeadlineExceeded
 
 	code, _, stderr := runProviderCLI(t, deps, "connect", "--account", "x@y.z", "--credential", "s", "smtp")
 	if code != exitFailure {
@@ -381,22 +381,22 @@ func TestProviderConnectReportsAFailureHonestly(t *testing.T) {
 	if !strings.Contains(stderr, "NOT posted in plaintext") {
 		t.Errorf("the report does not say the credential was not posted in plaintext:\n%s", stderr)
 	}
-	if cond.calls != 1 {
-		t.Errorf("conductor was called %d times, want 1 (the envelope was presented, the storage failed)", cond.calls)
+	if cp.calls != 1 {
+		t.Errorf("control plane was called %d times, want 1 (the envelope was presented, the storage failed)", cp.calls)
 	}
 }
 
-// Status reports what conductor holds and opens nothing: the envelopes come
+// Status reports what box holds and opens nothing: the envelopes come
 // back as opaque JSON and are passed through untouched, because a status that
 // opened envelopes would be a status that prints secrets. The tripwire is the
 // envelope bytes themselves — they must not reach either stream.
 func TestProviderStatusReportsConnectionsAndOpensNothing(t *testing.T) {
-	deps, cond, priv := providerTestEnv(t)
+	deps, cp, priv := providerTestEnv(t)
 	envelope, err := provider.Seal("the-credential", priv.Public().(ed25519.PublicKey))
 	if err != nil {
 		t.Fatalf("seal the fixture envelope: %v", err)
 	}
-	cond.answer = []provider.Connection{{
+	cp.answer = []provider.Connection{{
 		Provider:         "smtp",
 		Account:          "noel@example.com",
 		BoxID:            "box-11111111-2222-3333-4444-555555555555",
@@ -408,11 +408,11 @@ func TestProviderStatusReportsConnectionsAndOpensNothing(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("status exited %d (stderr: %s)", code, stderr)
 	}
-	if cond.calls != 1 {
-		t.Fatalf("conductor was called %d times, want 1", cond.calls)
+	if cp.calls != 1 {
+		t.Fatalf("control plane was called %d times, want 1", cp.calls)
 	}
-	if len(cond.boxed) != 1 || cond.boxed[0] != "box-11111111-2222-3333-4444-555555555555" {
-		t.Errorf("status asked about %v, want this box", cond.boxed)
+	if len(cp.boxed) != 1 || cp.boxed[0] != "box-11111111-2222-3333-4444-555555555555" {
+		t.Errorf("status asked about %v, want this box", cp.boxed)
 	}
 
 	var doc StatusResult
@@ -430,7 +430,7 @@ func TestProviderStatusReportsConnectionsAndOpensNothing(t *testing.T) {
 	// stream, in any encoding.
 	assertNoCredentialForm(t, "the-credential", stdout, stderr, provider.Connection{SealedCredential: envelope})
 	if strings.Contains(stdout, envelope) || strings.Contains(stderr, envelope) {
-		t.Errorf("status echoed the envelope conductor holds:\n%s%s", stdout, stderr)
+		t.Errorf("status echoed the envelope box holds:\n%s%s", stdout, stderr)
 	}
 }
 
@@ -462,7 +462,7 @@ func TestProviderStatusReportsNotConnectedHonestly(t *testing.T) {
 // An unenrolled box has no connections, and that is the honest report — not a
 // failure. The remedy is named, and the document says connected: false.
 func TestProviderStatusOnAnUnenrolledBox(t *testing.T) {
-	deps, cond, _ := providerTestEnv(t)
+	deps, cp, _ := providerTestEnv(t)
 	if err := os.Remove(filepath.Join(deps.dir, box.IdentityFileName)); err != nil {
 		t.Fatal(err)
 	}
@@ -481,8 +481,8 @@ func TestProviderStatusOnAnUnenrolledBox(t *testing.T) {
 	if doc.Connected || len(doc.Connections) != 0 {
 		t.Errorf("status = %+v, want connected false and no connections", doc)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor was called %d times, want 0 (there is nothing to ask)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane was called %d times, want 0 (there is nothing to ask)", cp.calls)
 	}
 }
 

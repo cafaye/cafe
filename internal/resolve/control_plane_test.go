@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-// TestHTTPConductorMintsAndRedeems drives the real client through the whole of
+// TestHTTPControlPlaneMintsAndRedeems drives the real client through the whole of
 // tier 3: the entitlement check posts the triple, the mint answers with a
 // capability, and the redemption returns the fetch grant.
-func TestHTTPConductorMintsAndRedeems(t *testing.T) {
+func TestHTTPControlPlaneMintsAndRedeems(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -39,7 +39,7 @@ func TestHTTPConductorMintsAndRedeems(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := HTTPConductor{BaseURL: srv.URL}
+	c := HTTPControlPlane{BaseURL: srv.URL}
 	grant, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err != nil {
 		t.Fatalf("artifact fetch: %v", err)
@@ -57,7 +57,7 @@ func TestHTTPConductorMintsAndRedeems(t *testing.T) {
 
 // The two named 403s are distinguished by the code in the body, and the client
 // reads them out of the body rather than the status.
-func TestHTTPConductorEntitlementRequiredIsNamed(t *testing.T) {
+func TestHTTPControlPlaneEntitlementRequiredIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
@@ -65,21 +65,21 @@ func TestHTTPConductorEntitlementRequiredIsNamed(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := HTTPConductor{BaseURL: srv.URL}
+	c := HTTPControlPlane{BaseURL: srv.URL}
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("a 403 resolved without an error")
 	}
-	ce, ok := err.(*ConductorError)
+	ce, ok := err.(*ControlPlaneError)
 	if !ok {
-		t.Fatalf("error = %T, want *ConductorError", err)
+		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "entitlement_required" {
 		t.Errorf("code = %q, want entitlement_required", ce.Code)
 	}
 }
 
-func TestHTTPConductorVersionNotGrantedIsNamed(t *testing.T) {
+func TestHTTPControlPlaneVersionNotGrantedIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
@@ -87,23 +87,23 @@ func TestHTTPConductorVersionNotGrantedIsNamed(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := HTTPConductor{BaseURL: srv.URL}
+	c := HTTPControlPlane{BaseURL: srv.URL}
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("a 403 resolved without an error")
 	}
-	ce, ok := err.(*ConductorError)
+	ce, ok := err.(*ControlPlaneError)
 	if !ok {
-		t.Fatalf("error = %T, want *ConductorError", err)
+		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "version_not_granted" {
 		t.Errorf("code = %q, want version_not_granted", ce.Code)
 	}
 }
 
-// A 404 — an agent acting alone, or an unknown account, which conductor
-// answers alike on purpose — is a named ConductorError.
-func TestHTTPConductorNotFoundIsNamed(t *testing.T) {
+// A 404 — an agent acting alone, or an unknown account, which box
+// answers alike on purpose — is a named ControlPlaneError.
+func TestHTTPControlPlaneNotFoundIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -111,26 +111,26 @@ func TestHTTPConductorNotFoundIsNamed(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := HTTPConductor{BaseURL: srv.URL}
+	c := HTTPControlPlane{BaseURL: srv.URL}
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
-	ce, ok := err.(*ConductorError)
+	ce, ok := err.(*ControlPlaneError)
 	if !ok {
-		t.Fatalf("error = %T, want *ConductorError", err)
+		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", ce.Code)
 	}
 }
 
-// The 404 conductor answers for an agent acting alone is one answer to two
+// The 404 box answers for an agent acting alone is one answer to two
 // questions — "unknown account" and "you are not a member of it" — and
-// conductor deliberately does not say which. Caf says the actionable half
+// box deliberately does not say which. Caf says the actionable half
 // instead, because a bare 404 about a fetch is nearly always a caller acting
 // alone and the remedy is a call the reader can make.
-func TestHTTPConductorMintNotFoundCarriesTheRemedy(t *testing.T) {
+func TestHTTPControlPlaneMintNotFoundCarriesTheRemedy(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -138,14 +138,14 @@ func TestHTTPConductorMintNotFoundCarriesTheRemedy(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := HTTPConductor{BaseURL: srv.URL}
+	c := HTTPControlPlane{BaseURL: srv.URL}
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
-	ce, ok := err.(*ConductorError)
+	ce, ok := err.(*ControlPlaneError)
 	if !ok {
-		t.Fatalf("error = %T, want *ConductorError", err)
+		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", ce.Code)
@@ -161,7 +161,7 @@ func TestHTTPConductorMintNotFoundCarriesTheRemedy(t *testing.T) {
 // A mint refusal and a redemption refusal are told apart, because they need
 // different actions: one is about the caller, the other is about a capability
 // that has already been spent. The `where` clause is what separates them.
-func TestHTTPConductorNamesWhichTier3CallWasRefused(t *testing.T) {
+func TestHTTPControlPlaneNamesWhichTier3CallWasRefused(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/accounts/11111111-1111-4111-8111-111111111111/artifact_fetches" {
@@ -174,14 +174,14 @@ func TestHTTPConductorNamesWhichTier3CallWasRefused(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := HTTPConductor{BaseURL: srv.URL}
+	c := HTTPControlPlane{BaseURL: srv.URL}
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("the mint was refused without an error")
 	}
-	ce, ok := err.(*ConductorError)
+	ce, ok := err.(*ControlPlaneError)
 	if !ok {
-		t.Fatalf("error = %T, want *ConductorError", err)
+		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if !strings.Contains(ce.Message, "the entitlement check") {
 		t.Errorf("message = %q, want it to name the call that refused", ce.Message)
@@ -193,7 +193,7 @@ func TestHTTPConductorNamesWhichTier3CallWasRefused(t *testing.T) {
 
 // A redemption refusal — the capability already spent — is named, so a
 // double-redeem is a sentence rather than a silent error.
-func TestHTTPConductorRedeemConflictIsNamed(t *testing.T) {
+func TestHTTPControlPlaneRedeemConflictIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/capabilities/redeem" {
@@ -206,14 +206,14 @@ func TestHTTPConductorRedeemConflictIsNamed(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := HTTPConductor{BaseURL: srv.URL}
+	c := HTTPControlPlane{BaseURL: srv.URL}
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("a redeemed capability resolved without an error")
 	}
-	ce, ok := err.(*ConductorError)
+	ce, ok := err.(*ControlPlaneError)
 	if !ok {
-		t.Fatalf("error = %T, want *ConductorError", err)
+		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "capability_redeemed" {
 		t.Errorf("code = %q, want capability_redeemed", ce.Code)
@@ -224,12 +224,12 @@ func TestHTTPConductorRedeemConflictIsNamed(t *testing.T) {
 }
 
 // A client with no endpoint refuses rather than POSTing to a relative path.
-func TestHTTPConductorWithoutBaseURLRefuses(t *testing.T) {
-	c := HTTPConductor{}
+func TestHTTPControlPlaneWithoutBaseURLRefuses(t *testing.T) {
+	c := HTTPControlPlane{}
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("a client with no endpoint resolved without an error")
-	} else if _, ok := err.(*ConductorError); !ok {
-		t.Errorf("error = %T, want *ConductorError", err)
+	} else if _, ok := err.(*ControlPlaneError); !ok {
+		t.Errorf("error = %T, want *ControlPlaneError", err)
 	}
 }

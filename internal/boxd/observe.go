@@ -7,9 +7,9 @@ import (
 
 // The observe stream: one box reporting on itself, machine-readable.
 //
-// OPS-P15. boxd already dials out to conductor over mTLS and redeems
+// OPS-P15. boxd already dials out to box over mTLS and redeems
 // capabilities against a whitelisted route table. This is the READ half of
-// that channel made real: a conductor mints an observe.report capability, the
+// that channel made real: box mints an observe.report capability, the
 // box answers with one Observation document, and the policy engine (OPS-P16)
 // and the monthly report (OPS-P13) consume it as JSON rather than as prose.
 //
@@ -23,9 +23,9 @@ import (
 // stated gap.
 //
 // The one deliberate asymmetry: WHICH releases are pending is the box's to
-// answer, but the universe of releases is conductor's. Conductor knows every
+// answer, but the universe of releases is the control plane's. Box knows every
 // release it has recorded; only the box knows which of them fit the version
-// range IT was enrolled under. So conductor sends the candidates as the
+// range IT was enrolled under. So box sends the candidates as the
 // capability's parameters (ObserveParams) and the box matches them against its
 // own range and its own deployed version. Neither side has to trust the other
 // with a fact it can compute itself, and there is no second network call for
@@ -43,7 +43,7 @@ const ObservationSchemaVersion = 1
 // Observation is one box's report on itself: the deployed facts, the facts in
 // degraded status where v0 cannot yet measure them, and the releases that are
 // pending for this box's version range. It is the answer observe.report gives
-// conductor, marshalled for the wire, and it is a non-secret by construction
+// box, marshalled for the wire, and it is a non-secret by construction
 // — the load-bearing test in secret_test.go walks this type graph and fails if
 // anything reachable from it is Secret-shaped.
 type Observation struct {
@@ -60,9 +60,10 @@ type Observation struct {
 	// pending, so this carries its own status rather than an empty string a
 	// reader would mistake for "no constraint".
 	VersionRange VersionRange `json:"version_range"`
-	// Conductor is the conductor this box answers to, for the reader that
-	// needs to route a question back to the control plane.
-	Conductor string `json:"conductor,omitempty"`
+	// ControlPlane is the control plane this box answers to, for the reader that
+	// needs to route a question back to it. The JSON key stays `conductor`:
+	// it is wire, and a test proves the bytes.
+	ControlPlane string `json:"conductor,omitempty"`
 	// CollectedAt is when the box assembled this. It is the box's clock, and
 	// it is separate from any drill or expiry timestamp for that reason.
 	CollectedAt time.Time `json:"collected_at"`
@@ -226,14 +227,14 @@ type PendingRelease struct {
 }
 
 // ObserveParams is what an observe.report capability carries: the universe of
-// releases conductor knows about, which the box matches against its own range.
-// Conductor owns the catalog; the box owns the range; the match is the answer
+// releases box knows about, which the box matches against its own range.
+// Box owns the catalog; the box owns the range; the match is the answer
 // and neither side had to be told the other's fact.
 type ObserveParams struct {
 	Releases []CandidateRelease `json:"releases,omitempty"`
 }
 
-// CandidateRelease is one release conductor is offering. It carries only the
+// CandidateRelease is one release box is offering. It carries only the
 // two facts the match needs — a name and a version — and nothing else, so a
 // capability that names a release cannot smuggle any other shape into the
 // box's answer.

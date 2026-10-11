@@ -24,7 +24,7 @@
 //     been taken over finds its writes refused rather than silently landing
 //     on top of the new holder's.
 //
-// WHY FILE-BACKED, AND NOT POSTGRES ON CONDUCTOR'S DATA. The prior art keeps
+// WHY FILE-BACKED, AND NOT POSTGRES ON BOX'S DATA. The prior art keeps
 // this state in Postgres because that is where cleo's platform state already
 // lives. The box cannot do that, and the reason is the install itself: the
 // first thing a box installs is the substrate that will eventually carry

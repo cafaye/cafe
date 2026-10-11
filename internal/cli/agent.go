@@ -39,7 +39,7 @@ type agentDeps struct {
 // identityURLEnv is where the endpoint comes from when no flag names one. An
 // environment variable rather than a flag default, because a flag default baked
 // into the binary is a default that goes stale when identity moves and nobody
-// rebuilds cafe to find out. The same argument CAF_CONDUCTOR_URL already makes
+// rebuilds cafe to find out. The same argument CAF_BOX_URL already makes
 // for the box.
 const identityURLEnv = "CAF_IDENTITY_URL"
 
@@ -231,7 +231,7 @@ func newAgentRegisterCommand(deps agentDeps) *Command {
 		if err != nil {
 			// A missing endpoint is a misconfigured MACHINE, not a mistyped
 			// command, so it is a failure and not a usage error — the same
-			// answer `cafe box enroll` gives for a missing CAF_CONDUCTOR_URL.
+			// answer `cafe box enroll` gives for a missing CAF_BOX_URL.
 			// The remedy names both the flag and the variable.
 			return agentError(env, err)
 		}

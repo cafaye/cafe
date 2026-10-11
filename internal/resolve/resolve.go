@@ -9,24 +9,24 @@ import (
 	"github.com/cafaye/cafe/internal/contract"
 )
 
-// Products is the vocabulary conductor's entitlement check accepts
+// Products is the vocabulary box's entitlement check accepts
 // (Entitlement::PRODUCTS): the paid units, D8's prices. It is repeated here
 // because the resolver has to decide which dependencies reach tier 3, and the
-// only way to decide is to know the list — conductor exposes no "what are the
+// only way to decide is to know the list — box exposes no "what are the
 // products" operation, so a client that did not carry the list would have to
 // ask the tier-3 question about every dependency and read the 422, which is a
 // round trip that answers a question the server already answered at boot.
 //
-// The drift risk is real and named: a product added to conductor and not here
+// The drift risk is real and named: a product added to box and not here
 // resolves as a free service (tier 1/2 only, no entitlement check) — the safe
 // direction, because the alternative is a product that never resolves. The
-// mirror of this list lives in conductor's own tests; a change to either is a
+// mirror of this list lives in box's own tests; a change to either is a
 // change to both.
 var Products = []string{"kit", "platform", "identity", "courier"}
 
-// accountUUID is the shape conductor accepts for an account id
+// accountUUID is the shape box accepts for an account id
 // (Capability::UUID_RE), and it is the same UUID every cafe account is. It is
-// here because cafe has to refuse the same string conductor would refuse: a
+// here because cafe has to refuse the same string box would refuse: a
 // lookup against a value that is not an id answers 404, and a 404 about
 // something the reader typed is a sentence that sends them to a log.
 var accountUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -67,7 +67,7 @@ type Repository struct {
 // to artifact, closed.
 //
 // It carries the capability's SCOPE and never its token. The token is a
-// bearer credential, shown once by conductor and spent by the redemption; the
+// bearer credential, shown once by box and spent by the redemption; the
 // grant is what a fetch is authorised by, and it is a fact about the
 // entitlement rather than a secret.
 type FetchGrant struct {
@@ -184,7 +184,7 @@ type Report struct {
 
 // Pantry is the tiered catalog this resolver consumes (W4-P1). It is an
 // interface so a test can drive a resolution without a network — the same
-// seam internal/provider uses for conductor, for the same reason: a test that
+// seam internal/provider uses for box, for the same reason: a test that
 // needs a server to prove the client is a test that cannot run on a bare CI
 // runner.
 type Pantry interface {
@@ -201,11 +201,11 @@ type Pantry interface {
 	Coordinates(ctx context.Context, name, token string) (*Coordinates, error)
 }
 
-// Conductor is the entitlement check this resolver consumes (W4-P2). One
+// ControlPlane is the entitlement check this resolver consumes (W4-P2). One
 // method because the resolver's tier-3 question is one question — "does this
 // account hold this product at this range, and may I fetch it?" — whose
 // answer is the fetch grant.
-type Conductor interface {
+type ControlPlane interface {
 	// ArtifactFetch is tier 3: the entitlement check, the mint of the
 	// artifact.fetch capability, and its redemption, in one call. The
 	// returned grant is the proof; the capability token is spent and never
@@ -217,17 +217,17 @@ type Conductor interface {
 // two clients and nothing else: it is a pure function of the manifest, the
 // caller's token and the two services, which is what makes it testable.
 type Resolver struct {
-	pantry    Pantry
-	conductor Conductor
+	pantry       Pantry
+	controlPlane ControlPlane
 }
 
 // NewResolver builds a Resolver over the two clients. Either may be nil, in
 // which case the corresponding tier is refused with a named failure rather
-// than a panic — a resolver with no conductor configured is a resolver that
-// reports "no conductor" for every paid dependency, which is the honest
+// than a panic — a resolver with no control plane configured is a resolver that
+// reports "no control plane" for every paid dependency, which is the honest
 // answer.
-func NewResolver(pantry Pantry, conductor Conductor) *Resolver {
-	return &Resolver{pantry: pantry, conductor: conductor}
+func NewResolver(pantry Pantry, controlPlane ControlPlane) *Resolver {
+	return &Resolver{pantry: pantry, controlPlane: controlPlane}
 }
 
 // Resolve walks every declared dependency through the tiers and returns the
@@ -383,7 +383,7 @@ func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract
 	res.Coordinates = coords
 
 	// Tier 3: the entitlement check, for a paid product only. A free service
-	// never reaches this tier — it is not a product, and conductor's check
+	// never reaches this tier — it is not a product, and box's check
 	// would refuse it with 422.
 	if !r.isProduct(dep.Name) {
 		return res
@@ -394,7 +394,7 @@ func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract
 		return res
 	}
 	if !accountUUID.MatchString(strings.TrimSpace(accountID)) {
-		// Conductor looks the capability up by account and answers 404 for an
+		// Box looks the capability up by account and answers 404 for an
 		// id that is not a UUID — a 404 that says "not found" about a string
 		// the reader typed. Refusing here names what was typed instead.
 		res.Failure = &Failure{Tier: 3, Code: "account_invalid",
@@ -402,7 +402,7 @@ func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract
 		return res
 	}
 	if strings.TrimSpace(dep.Version) == "" {
-		// The manifest schema makes `version` OPTIONAL, and conductor's check
+		// The manifest schema makes `version` OPTIONAL, and box's check
 		// makes it REQUIRED: an unbounded request is a question the endpoint
 		// refuses with 422. The two schemas disagree about one field, so cafe
 		// is where the disagreement is settled rather than a round trip that
@@ -411,11 +411,11 @@ func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract
 			Message: "dependency `" + dep.Name + "` is a paid product and the entitlement check is scoped to a version range, so this project must declare one; add `version: ^X.Y.Z` to its manifest"}
 		return res
 	}
-	if r.conductor == nil {
-		res.Failure = &Failure{Tier: 3, Code: "no_conductor", Message: "no conductor is configured, so the entitlement check cannot be asked"}
+	if r.controlPlane == nil {
+		res.Failure = &Failure{Tier: 3, Code: "no_control_plane", Message: "no control plane is configured, so the entitlement check cannot be asked"}
 		return res
 	}
-	grant, err := r.conductor.ArtifactFetch(ctx, accountID, dep.Name, dep.Version, token)
+	grant, err := r.controlPlane.ArtifactFetch(ctx, accountID, dep.Name, dep.Version, token)
 	if err != nil {
 		res.Failure = failureFrom(3, err)
 		return res
@@ -424,7 +424,7 @@ func (r *Resolver) resolveFrom(ctx context.Context, res Resolution, dep contract
 	return res
 }
 
-// isProduct reports whether a service name is one of conductor's paid products,
+// isProduct reports whether a service name is one of box's paid products,
 // and therefore a dependency that must clear the tier-3 entitlement check.
 func (r *Resolver) isProduct(name string) bool {
 	for _, p := range Products {
@@ -436,7 +436,7 @@ func (r *Resolver) isProduct(name string) bool {
 }
 
 // failureFrom maps a client error to a Failure, surfacing the server's own
-// code and detail. An error that is neither a PantryError nor a ConductorError
+// code and detail. An error that is neither a PantryError nor a ControlPlaneError
 // is a transport failure or a cafe-side refusal, and it becomes a failure whose
 // code names that, so a network outage is never reported as "the service
 // said no".
@@ -445,7 +445,7 @@ func failureFrom(tier int, err error) *Failure {
 	if errors.As(err, &pe) {
 		return &Failure{Tier: tier, Status: pe.Status, Code: pe.Code, Message: pe.Detail}
 	}
-	var ce *ConductorError
+	var ce *ControlPlaneError
 	if errors.As(err, &ce) {
 		return &Failure{Tier: tier, Status: ce.Status, Code: ce.Code, Message: ce.Message}
 	}

@@ -233,7 +233,7 @@ func (w *mcpBoxWorld) Rollout(ctx context.Context) (mcp.Rollout, error) {
 		// Applied is the phase the box has reached, read out of its own table.
 		// `proposed` is what a human is being asked to approve and neither this
 		// build nor this box holds it: the release and approval records are
-		// conductor's (W5-P1). The read says so rather than answering with an
+		// box's (W5-P1). The read says so rather than answering with an
 		// empty list a caller would read as "nothing is pending".
 		Applied: status.Phase(),
 	}
@@ -247,7 +247,7 @@ func (w *mcpBoxWorld) Rollout(ctx context.Context) (mcp.Rollout, error) {
 			Human: phase.Human,
 		})
 	}
-	rollout.Note = notWired("the release a human approves and its approval record live in conductor " +
+	rollout.Note = notWired("the release a human approves and its approval record live in box " +
 		"and are not in this build, so `proposed` is empty by construction and not because nothing " +
 		"is pending.")
 	_ = ctx
@@ -255,7 +255,7 @@ func (w *mcpBoxWorld) Rollout(ctx context.Context) (mcp.Rollout, error) {
 }
 
 // Propose and Apply are the two writes, and both are refused until the release
-// surface they need exists. Conductor's approvals are W5-P1 and this packet
+// surface they need exists. Box's approvals are W5-P1 and this packet
 // consumes them rather than building them — which means a tool that pretended
 // to apply a release here would be a tool that changed a box without a human's
 // approval, and that is exactly the convenience the wave's rule 5 calls a
@@ -268,12 +268,12 @@ func (w *mcpBoxWorld) Apply(context.Context, mcp.ApplyArgs) (mcp.Applied, error)
 	return mcp.Applied{}, ErrNotWired
 }
 
-// ErrNotWired is what a mutating remote tool answers with until conductor's
+// ErrNotWired is what a mutating remote tool answers with until box's
 // releases and approvals exist (W5-P1). It is a named error rather than a string
 // so a caller can ask which of the two halves it is missing, and its message is
 // the actionable half: it names the packet and what the caller can do
 // meanwhile.
-var ErrNotWired = fmt.Errorf("cafe mcp: proposing and applying a release need conductor's releases and " +
+var ErrNotWired = fmt.Errorf("cafe mcp: proposing and applying a release need box's releases and " +
 	"approvals, which are W5-P1 and are not in this build. The reads (caf_health, caf_logs, " +
 	"caf_rollout, caf_status) are live, and `cafe box plan` shows the install phases a human can " +
 	"drive directly")

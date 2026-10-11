@@ -14,18 +14,18 @@ import (
 
 // The outbound-only channel: the dial shape and the wire protocol.
 //
-// The dial is tls.Dial — a client connection the box makes to conductor's
-// address. There is no Listen, no net.Listener and no inbound handler in this
-// package, and that is the physical shape of "outbound-only": nothing on this
-// box accepts a connection from anywhere, so nothing outside can knock on the
-// box even if it wanted to. The house rule in AGENTS.md about listeners is
-// the same rule at fleet scale: `cafe mcp`'s HTTP transport is loopback-only
+// The dial is tls.Dial — a client connection the box makes to the control
+// plane's address. There is no Listen, no net.Listener and no inbound handler
+// in this package, and that is the physical shape of "outbound-only": nothing
+// on this box accepts a connection from anywhere, so nothing outside can knock
+// on the box even if it wanted to. The house rule in AGENTS.md about listeners
+// is the same rule at fleet scale: `cafe mcp`'s HTTP transport is loopback-only
 // because it starts containers, and this channel is outbound-only because it
 // redeems capabilities.
 //
 // The wire is one JSON object per line over the TLS connection, chosen over
 // HTTP because the channel is long-lived and has exactly two verbs. It is
-// cafe's side of a contract whose server half lands with conductor's own
+// cafe's side of a contract whose server half lands with box's own
 // capability-machinery work (W1-P3); the protocol is written down here rather
 // than discovered from a server, so both sides have something to be checked
 // against from day one, and the failure when they disagree is a failed test
@@ -40,12 +40,12 @@ const (
 // has not failed yet.
 const dialTimeout = 10 * time.Second
 
-// tlsDialer is the real Dialer: mutual TLS to conductor, with the box's client
-// certificate loaded per dial from the KeySource.
+// tlsDialer is the real Dialer: mutual TLS to the control plane, with the box's
+// client certificate loaded per dial from the KeySource.
 type tlsDialer struct {
 	keys KeySource
-	// RootCAs is the trust anchor for conductor's certificate. Nil means the
-	// system pool, which is what a real box uses — conductor presents a
+	// RootCAs is the trust anchor for the control plane's certificate. Nil means
+	// the system pool, which is what a real box uses — box presents a
 	// publicly-issued certificate. A test injects its own pool so it can speak
 	// to a listener with a self-signed one.
 	RootCAs *x509.CertPool
@@ -55,22 +55,22 @@ type tlsDialer struct {
 // source AT THE DIAL, not at construction: the box key is loaded for the life
 // of this connection and released when the connection is closed, and a dialer
 // that carried it between calls would be a long-lived secret in memory.
-func (d tlsDialer) Dial(ctx context.Context, id Identity) (Conductor, error) {
+func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) {
 	cert, err := d.keys.Certificate(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("load the box key for one connection: %w", err)
 	}
-	host, _, err := net.SplitHostPort(id.Conductor)
+	host, _, err := net.SplitHostPort(id.ControlPlane)
 	if err != nil {
-		// An identity whose conductor address has no port is an enrollment
+		// An identity whose control-plane address has no port is an enrollment
 		// that was read wrong, and naming the field beats a tls error about
 		// the hostname.
-		return nil, fmt.Errorf("conductor %q is not host:port", id.Conductor)
+		return nil, fmt.Errorf("control plane %q is not host:port", id.ControlPlane)
 	}
 	dialer := &net.Dialer{Timeout: dialTimeout}
-	conn, err := tls.DialWithDialer(dialer, "tcp", id.Conductor, &tls.Config{
+	conn, err := tls.DialWithDialer(dialer, "tcp", id.ControlPlane, &tls.Config{
 		// The box's client certificate: this is what makes the channel
-		// MUTUAL. Conductor verifies it, and this is the only credential the
+		// MUTUAL. Box verifies it, and this is the only credential the
 		// box presents.
 		Certificates: []tls.Certificate{cert},
 		ServerName:   host,
@@ -78,20 +78,20 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (Conductor, error) {
 		MinVersion:   tls.VersionTLS13,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("mTLS to %s: %w", id.Conductor, err)
+		return nil, fmt.Errorf("mTLS to %s: %w", id.ControlPlane, err)
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	return &tlsConductor{conn: conn, rw: rw, dec: json.NewDecoder(rw)}, nil
+	return &tlsControlPlane{conn: conn, rw: rw, dec: json.NewDecoder(rw)}, nil
 }
 
-// NewTLSDialer is the real Dialer for a box: mutual TLS to the conductor the
+// NewTLSDialer is the real Dialer for a box: mutual TLS to the control plane the
 // enrolled identity names, with the box's certificate loaded per dial.
 func NewTLSDialer(keys KeySource) Dialer {
 	return tlsDialer{keys: keys}
 }
 
-// tlsConductor is one connection speaking the line protocol.
-type tlsConductor struct {
+// tlsControlPlane is one connection speaking the line protocol.
+type tlsControlPlane struct {
 	conn *tls.Conn
 	rw   *bufio.ReadWriter
 	// dec is one decoder for the connection's life. A decoder per read would
@@ -109,9 +109,9 @@ type request struct {
 
 // Next sends the next request and reads one capability. It honors the
 // context's deadline as a read deadline, because a Next with no deadline is a
-// Next that can hang forever on a connection conductor has quietly dropped —
+// Next that can hang forever on a connection box has quietly dropped —
 // and a hung round is a box that looks alive and redeems nothing.
-func (c *tlsConductor) Next(ctx context.Context) (Capability, error) {
+func (c *tlsControlPlane) Next(ctx context.Context) (Capability, error) {
 	if deadline, ok := ctx.Deadline(); ok {
 		if err := c.conn.SetReadDeadline(deadline); err != nil {
 			return Capability{}, err
@@ -125,15 +125,15 @@ func (c *tlsConductor) Next(ctx context.Context) (Capability, error) {
 		return Capability{}, err
 	}
 	if cap.ID == "" {
-		return Capability{}, errors.New("conductor sent a capability with no id; a capability nobody can name cannot be acked")
+		return Capability{}, errors.New("box sent a capability with no id; a capability nobody can name cannot be acked")
 	}
 	return cap, nil
 }
 
 // Ack sends one capability's report and reads the acknowledgement. A failure
 // is returned rather than swallowed: the daemon's round ends on it and
-// reconnects, which is how conductor learns the connection is gone.
-func (c *tlsConductor) Ack(ctx context.Context, ack Ack) error {
+// reconnects, which is how box learns the connection is gone.
+func (c *tlsControlPlane) Ack(ctx context.Context, ack Ack) error {
 	if deadline, ok := ctx.Deadline(); ok {
 		if err := c.conn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -149,7 +149,7 @@ func (c *tlsConductor) Ack(ctx context.Context, ack Ack) error {
 		return err
 	}
 	if !acked.OK {
-		return errors.New("conductor refused the ack")
+		return errors.New("box refused the ack")
 	}
 	return nil
 }
@@ -157,13 +157,13 @@ func (c *tlsConductor) Ack(ctx context.Context, ack Ack) error {
 // Close ends the connection and, with it, the TLS session that holds the box
 // key. The release is the reference drop: the TLS stack owns the last copy,
 // and Close is where the daemon lets it go.
-func (c *tlsConductor) Close() error {
+func (c *tlsControlPlane) Close() error {
 	return c.conn.Close()
 }
 
 // send writes one request as a line. The write is flushed here because a
-// buffered writer that is never flushed is a request conductor never sees.
-func (c *tlsConductor) send(req request) error {
+// buffered writer that is never flushed is a request box never sees.
+func (c *tlsControlPlane) send(req request) error {
 	data, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("encode the request: %w", err)
@@ -178,7 +178,7 @@ func (c *tlsConductor) send(req request) error {
 // framing is the line framing, which is why the protocol is one object per
 // line rather than length-prefixed: no second parser to disagree with the
 // first.
-func (c *tlsConductor) read(into any) error {
+func (c *tlsControlPlane) read(into any) error {
 	if err := c.dec.Decode(into); err != nil {
 		return fmt.Errorf("read the response: %w", err)
 	}

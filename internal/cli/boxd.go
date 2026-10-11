@@ -20,7 +20,7 @@ import (
 //
 // This is the one cafe subcommand that is a long-running process rather than a
 // command: it runs on the customer's box (as root, because the substrate runs
-// as root), dials out to conductor over mTLS, and redeems capabilities against
+// as root), dials out to box over mTLS, and redeems capabilities against
 // the whitelisted route table in internal/boxd. It is invariant 4's home: the
 // enforcement of what the box can be told to do lives here, on the box, in
 // code — not in an agent's instructions, which are advisory.
@@ -33,7 +33,7 @@ import (
 
 // boxdDeps is what `cafe boxd` needs from the world, as a parameter so a test
 // can hand the command a recording identity store, an in-memory key, a fake
-// conductor and a scratch state file — and drive the whole daemon without a
+// control plane and a scratch state file — and drive the whole daemon without a
 // network, a box, or a certificate anywhere outside the test.
 type boxdDeps struct {
 	store    boxd.IdentityStore
@@ -68,15 +68,15 @@ func newBoxdCommand(deps boxdDeps) *Command {
 	opts := &boxdOptions{}
 	c := &Command{
 		Name:    "boxd",
-		Summary: "run the box daemon: outbound-only mTLS to conductor, redeeming whitelisted capabilities",
+		Summary: "run the box daemon: outbound-only mTLS to box, redeeming whitelisted capabilities",
 		Usage:   "cafe boxd [flags]",
 		LongHelp: "Runs the box daemon. It is a long-running process: it loads the enrolled\n" +
-			"identity, dials conductor outbound over mTLS, and waits for capabilities.\n" +
+			"identity, dials box outbound over mTLS, and waits for capabilities.\n" +
 			"Each capability names a route in the box's whitelisted table and is redeemed\n" +
 			"against it — or refused by name, if the route is not in the table.\n" +
 			"\n" +
 			"The daemon opens no listener and accepts no inbound connection. The only\n" +
-			"channel is the one it makes, outbound, to the conductor named in the enrolled\n" +
+			"channel is the one it makes, outbound, to the control plane named in the enrolled\n" +
 			"identity — which is what \"outbound-only mTLS\" means here, and what makes the\n" +
 			"box unreachable from the network even if something wanted to reach it.\n" +
 			"\n" +
@@ -174,7 +174,7 @@ func resolveBoxIdentityPath(flagPath string) (string, error) {
 // ---------------------------------------------------------------------------
 
 // identityDocument is what `cafe box enroll` (W2-P6) writes and this daemon
-// reads: the box's name, where its conductor is, and where its certificate
+// reads: the box's name, where its control plane is, and where its certificate
 // and key live. The paths are relative to the document, so an enrollment is
 // one directory a backup can carry.
 //
@@ -183,11 +183,11 @@ func resolveBoxIdentityPath(flagPath string) (string, error) {
 // written down here rather than discovered from a file that does not exist
 // yet, so both sides have a contract to be checked against.
 type identityDocument struct {
-	BoxID       string `json:"box_id"`
-	Conductor   string `json:"conductor"`
-	Version     string `json:"version"`
-	Certificate string `json:"certificate"`
-	Key         string `json:"key"`
+	BoxID        string `json:"box_id"`
+	ControlPlane string `json:"conductor"`
+	Version      string `json:"version"`
+	Certificate  string `json:"certificate"`
+	Key          string `json:"key"`
 }
 
 // fileIdentityStore reads the enrolled identity, and is the KeySource too:
@@ -218,8 +218,8 @@ func (s *fileIdentityStore) read() (identityDocument, error) {
 	if doc.BoxID == "" {
 		return identityDocument{}, fmt.Errorf("the enrolled identity at %s has no box_id", s.path)
 	}
-	if doc.Conductor == "" {
-		return identityDocument{}, fmt.Errorf("the enrolled identity at %s has no conductor", s.path)
+	if doc.ControlPlane == "" {
+		return identityDocument{}, fmt.Errorf("the enrolled identity at %s has no control plane", s.path)
 	}
 	return doc, nil
 }
@@ -230,7 +230,7 @@ func (s *fileIdentityStore) Load(context.Context) (boxd.Identity, error) {
 	if err != nil {
 		return boxd.Identity{}, err
 	}
-	return boxd.Identity{BoxID: doc.BoxID, Conductor: doc.Conductor, Version: doc.Version}, nil
+	return boxd.Identity{BoxID: doc.BoxID, ControlPlane: doc.ControlPlane, Version: doc.Version}, nil
 }
 
 // Certificate implements boxd.KeySource: the client certificate for one
@@ -279,7 +279,7 @@ func boxStatePath(identityPath string) string {
 //     provider credential and installing it as a Kubernetes Secret needs the
 //     substrate on the box, and that lands with the substrate packet. A route
 //     the world cannot fulfil yet answers `failed` with that reason — never a
-//     silent success, which would be the box lying to conductor about a
+//     silent success, which would be the daemon lying to the control plane about a
 //     credential being installed.
 //
 // The world is built per connection with the identity that connection loaded,
@@ -410,7 +410,7 @@ func (w boxWorld) Envelope(context.Context, boxd.Envelope) (boxd.EnvelopeResult,
 // client certificate's expiry (the enrollment's own certificate), the root
 // filesystem's usage (one statfs, made here because boxd itself may not import
 // syscall) and the most recent backup drill (the drill directory this box
-// writes). It computes which of conductor's candidate releases are pending
+// writes). It computes which of box's candidate releases are pending
 // against the box's own version range.
 //
 // ctx is honoured at each bounded read: there is no long-running loop here —
@@ -439,7 +439,7 @@ func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.
 		SchemaVersion:   boxd.ObservationSchemaVersion,
 		BoxID:           w.id.BoxID,
 		DeployedVersion: w.id.Version,
-		Conductor:       w.id.Conductor,
+		ControlPlane:    w.id.ControlPlane,
 		CollectedAt:     now,
 		Certificate:     cert,
 		Disk:            diskFact(rootDiskPath()),
@@ -461,7 +461,7 @@ func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.
 
 // certificate reads the box's own client certificate for its expiry. The
 // certificate is public — its dates are not a secret — but its NotAfter is
-// the one date that decides whether this box can still dial conductor, which
+// the one date that decides whether this box can still dial box, which
 // is why an observation carries it rather than leaving it to be discovered
 // when the handshake starts failing.
 func (w boxWorld) certificate(now time.Time) boxd.Certificate {

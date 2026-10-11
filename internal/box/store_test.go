@@ -39,12 +39,12 @@ func (r *testRing) Delete(service, account string) error {
 	return nil
 }
 
-// countingConductor counts redemptions and answers with what the case planted.
+// countingControlPlane counts redemptions and answers with what the case planted.
 //
 // The count is the assertion this whole table exists for: a retried enrollment
 // that redeems twice has not been proved idempotent, it has merely been lucky,
-// because conductor would have refused the second one anyway.
-type countingConductor struct {
+// because box would have refused the second one anyway.
+type countingControlPlane struct {
 	calls        int
 	installation *Installation
 	err          error
@@ -54,7 +54,7 @@ type countingConductor struct {
 	tripwire bool
 }
 
-func (c *countingConductor) Redeem(_ context.Context, _ string, _ ed25519.PublicKey) (*Installation, error) {
+func (c *countingControlPlane) Redeem(_ context.Context, _ string, _ ed25519.PublicKey) (*Installation, error) {
 	c.calls++
 	if c.tripwire {
 		panic("unreachable: a recovered enrollment must never present the capability again")
@@ -76,15 +76,15 @@ func fakeInstallation() *Installation {
 
 // openTestStore is a store in a directory the test owns, with a clock the test
 // controls so a timestamp is never the reason an assertion failed.
-func openTestStore(t *testing.T) (*Store, *countingConductor) {
+func openTestStore(t *testing.T) (*Store, *countingControlPlane) {
 	t.Helper()
-	cond := &countingConductor{installation: fakeInstallation()}
-	s := NewStore(t.TempDir(), newTestRing(), cond)
+	cp := &countingControlPlane{installation: fakeInstallation()}
+	s := NewStore(t.TempDir(), newTestRing(), cp)
 	s.now = func() time.Time { return time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC) }
-	return s, cond
+	return s, cp
 }
 
-// testToken is a capability in conductor's own shape: `cap_` plus 64 hex
+// testToken is a capability in box's own shape: `cap_` plus 64 hex
 // characters. It is not a real one and it is never accepted by anything.
 var testToken = "cap_" + strings.Repeat("a", 64)
 
@@ -142,8 +142,8 @@ func TestARetriedEnrollmentConvergesAndNeverRedeemsTwice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, cond := openTestStore(t)
-			cond.tripwire = tt.tripwire
+			s, cp := openTestStore(t)
+			cp.tripwire = tt.tripwire
 			if tt.stage != "" && tt.stage != "complete" {
 				prepare(t, s, tt.stage)
 			}
@@ -151,22 +151,22 @@ func TestARetriedEnrollmentConvergesAndNeverRedeemsTwice(t *testing.T) {
 			// A run at the stage is performed first, so the `complete` row is a
 			// completed enrollment rather than an assumption about one.
 			if tt.stage == "complete" {
-				cond.tripwire = false
-				if _, err := s.Enroll(context.Background(), testToken, "https://conductor.test"); err != nil {
+				cp.tripwire = false
+				if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
 					t.Fatalf("first enroll: %v", err)
 				}
-				cond.tripwire = tt.tripwire
+				cp.tripwire = tt.tripwire
 			}
 
 			// The count is measured across the RETRY, not across the stage setup:
 			// the `complete` row performs a real enrollment first, and the
 			// question is whether the second attempt spends anything.
-			before := cond.calls
-			got, err := s.Enroll(context.Background(), testToken, "https://conductor.test")
+			before := cp.calls
+			got, err := s.Enroll(context.Background(), testToken, "https://box.test")
 			if err != nil {
 				t.Fatalf("enroll: %v", err)
 			}
-			if got, want := cond.calls-before, tt.wantRedemption; got != want {
+			if got, want := cp.calls-before, tt.wantRedemption; got != want {
 				t.Errorf("the retry presented the capability %d times, want %d", got, want)
 			}
 			if got.Action != tt.wantAction {
@@ -205,10 +205,10 @@ func prepare(t *testing.T, s *Store, stage string) {
 		t.Fatal(err)
 	}
 	jr := &journal{
-		State:     stage,
-		PublicKey: pub,
-		StartedAt: "2026-10-09T11:59:00Z",
-		Conductor: "https://conductor.test",
+		State:        stage,
+		PublicKey:    pub,
+		StartedAt:    "2026-10-09T11:59:00Z",
+		ControlPlane: "https://box.test",
 	}
 	if stage == journalRedeemed {
 		inst := fakeInstallation()
@@ -225,23 +225,23 @@ func prepare(t *testing.T, s *Store, stage string) {
 // the number of redemptions across TWO PROCESSES, and a process is the only
 // thing that forgets.
 func TestTheWholeSequenceIsReplayable(t *testing.T) {
-	s, cond := openTestStore(t)
-	first, err := s.Enroll(context.Background(), "cap_first", "https://conductor.test")
+	s, cp := openTestStore(t)
+	first, err := s.Enroll(context.Background(), "cap_first", "https://box.test")
 	if err != nil {
 		t.Fatalf("first enroll: %v", err)
 	}
 	if first.Action != ActionEnrolled || first.Redemptions != 1 {
 		t.Fatalf("first = %+v", first)
 	}
-	second, err := s.Enroll(context.Background(), "cap_second", "https://conductor.test")
+	second, err := s.Enroll(context.Background(), "cap_second", "https://box.test")
 	if err != nil {
 		t.Fatalf("second enroll: %v", err)
 	}
 	if second.Action != ActionAlreadyEnrolled {
 		t.Errorf("second action = %q, want %q", second.Action, ActionAlreadyEnrolled)
 	}
-	if cond.calls != 1 {
-		t.Errorf("conductor called %d times across two enrolls, want 1", cond.calls)
+	if cp.calls != 1 {
+		t.Errorf("control plane called %d times across two enrolls, want 1", cp.calls)
 	}
 	// The identity is byte-identical: a retry that rewrote it would be a retry
 	// that lost the enrolled_at the first run recorded.
@@ -266,13 +266,13 @@ func TestARefusedRedemptionLeavesARetryableState(t *testing.T) {
 	}{
 		{name: "already redeemed", err: ErrCapabilityRedeemed, want: "capability has already been redeemed"},
 		{name: "expired", err: ErrCapabilityExpired, want: "capability has expired"},
-		{name: "unknown", err: ErrCapabilityUnknown, want: "conductor does not know this capability"},
+		{name: "unknown", err: ErrCapabilityUnknown, want: "box does not know this capability"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, cond := openTestStore(t)
-			cond.err = tt.err
-			got, err := s.Enroll(context.Background(), testToken, "https://conductor.test")
+			s, cp := openTestStore(t)
+			cp.err = tt.err
+			got, err := s.Enroll(context.Background(), testToken, "https://box.test")
 			if err == nil {
 				t.Fatal("a refused redemption must not report success")
 			}
@@ -296,16 +296,16 @@ func TestARefusedRedemptionLeavesARetryableState(t *testing.T) {
 			}
 
 			// And the retry with a fresh capability does converge.
-			cond.err = nil
-			retry, err := s.Enroll(context.Background(), "cap_fresh", "https://conductor.test")
+			cp.err = nil
+			retry, err := s.Enroll(context.Background(), "cap_fresh", "https://box.test")
 			if err != nil {
 				t.Fatalf("retry after a refusal: %v", err)
 			}
 			if retry.Action != ActionEnrolled {
 				t.Errorf("retry action = %q, want %q", retry.Action, ActionEnrolled)
 			}
-			if cond.calls != 2 {
-				t.Errorf("conductor called %d times across the refusal and the retry, want 2", cond.calls)
+			if cp.calls != 2 {
+				t.Errorf("control plane called %d times across the refusal and the retry, want 2", cp.calls)
 			}
 		})
 	}
@@ -316,7 +316,7 @@ func TestARefusedRedemptionLeavesARetryableState(t *testing.T) {
 // every archive and every transcript of a directory listing.
 func TestTheJournalCarriesNoCredential(t *testing.T) {
 	s, _ := openTestStore(t)
-	if _, err := s.Enroll(context.Background(), testToken, "https://conductor.test"); err != nil {
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
 		t.Fatal(err)
 	}
 	names, err := filepath.Glob(filepath.Join(s.Dir, "*"))
@@ -343,10 +343,10 @@ func TestTheJournalCarriesNoCredential(t *testing.T) {
 // value that reached a field nobody thought to check is exactly the case this
 // test exists for.
 func TestNoDocumentOrFileEverCarriesThePrivateKey(t *testing.T) {
-	s, cond := openTestStore(t)
+	s, cp := openTestStore(t)
 	ring := s.Ring.(*testRing)
 
-	if _, err := s.Enroll(context.Background(), testToken, "https://conductor.test"); err != nil {
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
 		t.Fatal(err)
 	}
 	id, err := s.Identity()
@@ -419,7 +419,7 @@ func TestNoDocumentOrFileEverCarriesThePrivateKey(t *testing.T) {
 	if !sawPublicKey {
 		t.Error("no file carries the public key, so the control half of this test proved nothing")
 	}
-	_ = cond
+	_ = cp
 }
 
 // Verify is the command that reports a boolean about the private key. Its
@@ -428,7 +428,7 @@ func TestNoDocumentOrFileEverCarriesThePrivateKey(t *testing.T) {
 func TestVerifyReportsFactsAndNeverTheKey(t *testing.T) {
 	s, _ := openTestStore(t)
 	ring := s.Ring.(*testRing)
-	if _, err := s.Enroll(context.Background(), testToken, "https://conductor.test"); err != nil {
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
 		t.Fatal(err)
 	}
 	id, _ := s.Identity()
@@ -475,7 +475,7 @@ func TestVerifyReportsFactsAndNeverTheKey(t *testing.T) {
 // the sentence that says what to run, and none of them may write anything or
 // start an install.
 func TestEveryLifecycleVerbRefusesAnUnenrolledBox(t *testing.T) {
-	s, cond := openTestStore(t)
+	s, cp := openTestStore(t)
 
 	// status ANSWERS rather than refusing: "this box is not enrolled, and here
 	// is whether an enrollment is half-done" is the question an agent asks a
@@ -495,8 +495,8 @@ func TestEveryLifecycleVerbRefusesAnUnenrolledBox(t *testing.T) {
 	// An unfinished enrollment is the one fact worth having in a status, so it
 	// is asserted by putting the store into that state: a refused redemption
 	// leaves exactly it.
-	cond.err = ErrCapabilityRedeemed
-	if _, err := s.Enroll(context.Background(), testToken, "https://conductor.test"); err == nil {
+	cp.err = ErrCapabilityRedeemed
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err == nil {
 		t.Fatal("a refused capability must not enroll a box")
 	}
 	st, err = s.Status()
@@ -534,7 +534,7 @@ func TestEveryLifecycleVerbRefusesAnUnenrolledBox(t *testing.T) {
 // prevent.
 func TestApplyIsSequentialAndIdempotent(t *testing.T) {
 	s, _ := openTestStore(t)
-	if _, err := s.Enroll(context.Background(), testToken, "https://conductor.test"); err != nil {
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -595,7 +595,7 @@ func TestApplyIsSequentialAndIdempotent(t *testing.T) {
 // and for no other reason.
 func TestAPlanIsAFunctionOfTheStoredState(t *testing.T) {
 	s, _ := openTestStore(t)
-	if _, err := s.Enroll(context.Background(), testToken, "https://conductor.test"); err != nil {
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
 		t.Fatal(err)
 	}
 	before, err := s.Plan()

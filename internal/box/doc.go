@@ -1,5 +1,5 @@
 // Package box is the box half of the CLI: the machine that enrolls itself
-// against conductor and then runs the install, phase by phase, to a box that
+// against box and then runs the install, phase by phase, to a box that
 // serves an app.
 //
 // The split is the command vocabulary in moon/AGENTS-FIRST.md: `cafe agent …`
@@ -13,7 +13,7 @@
 //
 //	Keyring    where the box's private key lives. Nothing else in this
 //	           package can hold it, and nothing here ever returns it.
-//	Conductor  the one HTTP call cafe makes in this package: redeeming a
+//	ControlPlane the one HTTP call cafe makes in this package: redeeming a
 //	           capability. Injected, so the redemption can be counted.
 //	Store      the two files on disk: `box.json` (non-secrets, ~/.config/cafe)
 //	           and the enrollment journal beside it.

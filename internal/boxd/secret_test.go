@@ -70,7 +70,7 @@ func representativeObservation(now time.Time) Observation {
 		BoxID:           "box-test",
 		DeployedVersion: "1.2.3",
 		VersionRange:    VersionRange{Range: "^1.2.0", Status: "ok"},
-		Conductor:       "conductor.example.com:443",
+		ControlPlane:    "box.example.com:443",
 		CollectedAt:     now,
 		Health:          Health{Status: "healthy", Phase: 3},
 		Certificate:     Certificate{Status: "ok", ExpiresAt: &expires, DaysLeft: &days},
@@ -91,7 +91,7 @@ func TestEveryRouteRefusesToAnswerWithASecret(t *testing.T) {
 		t.Fatal("the route table is empty; there is nothing to enforce a whitelist over")
 	}
 	world := recordingWorld{
-		identity: Identity{BoxID: "box-test", Conductor: "conductor.example.com:443", Version: "test"},
+		identity: Identity{BoxID: "box-test", ControlPlane: "box.example.com:443", Version: "test"},
 		stack:    StackStatus{Services: []string{"k3s", "identity", "courier"}, Phase: 3, Detail: "phase 3 of 8"},
 		observe:  representativeObservation(time.Now()),
 	}

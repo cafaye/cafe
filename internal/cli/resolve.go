@@ -19,7 +19,7 @@ import (
 
 // resolveDeps is what `cafe resolve` needs from the world, and it is a struct of
 // parameters for the reason providerDeps and agentDeps are: a test can hand the
-// command a keyring it owns, a pantry and a conductor that answer without a
+// command a keyring it owns, a pantry and a control plane that answer without a
 // network, and a directory it controls, and drive a whole resolution without a
 // server, a keychain or a token.
 type resolveDeps struct {
@@ -32,21 +32,21 @@ type resolveDeps struct {
 	// pantry is the tiered catalog. Nil means a real HTTP client, which is why
 	// a test always sets it: the whole point of the seam is the answer.
 	pantry resolve.Pantry
-	// conductor is the entitlement check. Nil means a real HTTP client, for the
+	// controlPlane is the entitlement check. Nil means a real HTTP client, for the
 	// same reason.
-	conductor resolve.Conductor
+	controlPlane resolve.ControlPlane
 	// pantryURL is pantry's origin. Empty means the CAF_PANTRY_URL environment
 	// variable, and an empty environment variable is a refusal rather than a
 	// guess.
 	pantryURL string
-	// conductorURL is conductor's origin. Empty means the CAF_CONDUCTOR_URL
+	// controlPlaneURL is box's origin. Empty means the CAF_BOX_URL
 	// environment variable, the same rule box and provider already hold.
-	conductorURL string
+	controlPlaneURL string
 }
 
 // pantryURLEnv is where pantry's origin comes from when no flag names one. An
 // environment variable rather than a flag default, for the reason
-// conductorURLEnv is: a flag default baked into a binary is a default that goes
+// boxURLEnv is: a flag default baked into a binary is a default that goes
 // stale when the service moves and nobody rebuilds cafe to find out.
 const pantryURLEnv = "CAF_PANTRY_URL"
 
@@ -66,14 +66,14 @@ func (d resolveDeps) withDefaults() resolveDeps {
 	if d.pantryURL == "" {
 		d.pantryURL = strings.TrimSpace(os.Getenv(pantryURLEnv))
 	}
-	if d.conductorURL == "" {
-		d.conductorURL = strings.TrimSpace(os.Getenv(conductorURLEnv))
+	if d.controlPlaneURL == "" {
+		d.controlPlaneURL = strings.TrimSpace(os.Getenv(boxURLEnv))
 	}
 	if d.pantry == nil {
 		d.pantry = resolve.HTTPPantry{BaseURL: d.pantryURL}
 	}
-	if d.conductor == nil {
-		d.conductor = resolve.HTTPConductor{BaseURL: d.conductorURL}
+	if d.controlPlane == nil {
+		d.controlPlane = resolve.HTTPControlPlane{BaseURL: d.controlPlaneURL}
 	}
 	return d
 }
@@ -86,7 +86,7 @@ the cafaye catalog, and names every failure with its remedy.
   TIER 2  the metadata      where the code lives (the caller's cafe token)
   TIER 3  the artifact       the entitlement check and the fetch grant
 
-A dependency that is a paid product must clear tier 3: conductor asks whether
+A dependency that is a paid product must clear tier 3: box asks whether
 the named account holds the product at the range the project asks for, and
 mints a single-use artifact.fetch capability when it does. The two refusals are
 named, never silent:
@@ -118,12 +118,12 @@ func newResolveCommand(deps resolveDeps) *Command {
 	c := &Command{
 		Name:     "resolve",
 		Summary:  "resolve a project's cafaye.yml dependencies through the catalog's tiers, naming every failure",
-		Usage:    "cafe resolve [--account <uuid>] [--pantry <url>] [--conductor <url>] <project|owner/name>",
+		Usage:    "cafe resolve [--account <uuid>] [--pantry <url>] [--box <url>] <project|owner/name>",
 		LongHelp: resolveLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.account, "account", "", "the cafe account the tier-3 entitlement check runs against; required only when a dependency is a paid product")
 			fs.StringVar(&opts.pantry, "pantry", "", "pantry's origin; without it, "+pantryURLEnv+" is used")
-			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, "+conductorURLEnv+" is used and an unset variable is a refusal")
+			fs.StringVar(&opts.box, "box", "", "box's origin; without it, "+boxURLEnv+" is used and an unset variable is a refusal")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -137,9 +137,9 @@ func newResolveCommand(deps resolveDeps) *Command {
 
 // resolveOptions is `cafe resolve`'s flag state.
 type resolveOptions struct {
-	account   string
-	pantry    string
-	conductor string
+	account string
+	pantry  string
+	box     string
 }
 
 // runResolve reads the project's manifest, resolves every declared dependency
@@ -157,8 +157,8 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 	if opts.pantry != "" {
 		deps.pantryURL = opts.pantry
 	}
-	if opts.conductor != "" {
-		deps.conductorURL = opts.conductor
+	if opts.box != "" {
+		deps.controlPlaneURL = opts.box
 	}
 	deps = deps.withDefaults()
 
@@ -170,7 +170,7 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 	// other question. Both are one positional argument, and the rule that
 	// separates them is whether a manifest is there to read.
 	if owner, name, ok := addressOf(project); ok {
-		report := resolve.NewResolver(deps.pantry, deps.conductor).ResolveAddress(
+		report := resolve.NewResolver(deps.pantry, deps.controlPlane).ResolveAddress(
 			env.Context, owner, name, token, opts.account)
 		return reportResolve(report, env)
 	}
@@ -180,7 +180,7 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 		return err
 	}
 
-	report := resolve.NewResolver(deps.pantry, deps.conductor).Resolve(
+	report := resolve.NewResolver(deps.pantry, deps.controlPlane).Resolve(
 		env.Context, project, manifest.Dependencies(), token, opts.account)
 	return reportResolve(report, env)
 }

@@ -74,7 +74,7 @@ func TestSealAndOpenRoundTrips(t *testing.T) {
 }
 
 // The envelope is the whole of what crosses the wire and the whole of what
-// conductor stores, so it must not carry the credential in any recoverable
+// box stores, so it must not carry the credential in any recoverable
 // form — not raw, not base64, not hex. This is the client half of boundary 6's
 // tripwire, and it is asserted over the whole envelope document rather than
 // field by field, because a value that reached a field nobody thought to check
@@ -121,8 +121,8 @@ func TestTheEnvelopeCarriesNoFormOfTheCredential(t *testing.T) {
 }
 
 // An envelope is sealed to ONE box. A second box's private key must not open
-// it — that is the property that makes handing the envelope to conductor safe:
-// conductor can store it, but only the box it was sealed to can read it.
+// it — that is the property that makes handing the envelope to box safe:
+// box can store it, but only the box it was sealed to can read it.
 func TestAnEnvelopeSealedToOneBoxCannotBeOpenedByAnother(t *testing.T) {
 	pub, _ := generateBox(t)
 	_, otherPriv := generateBox(t)

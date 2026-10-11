@@ -61,10 +61,10 @@ func (f *fakePantry) Coordinates(_ context.Context, name, token string) (*Coordi
 	return f.coords, f.coordsErr
 }
 
-// fakeConductor is the seam a test drives tier 3 through. It records the
+// fakeControlPlane is the seam a test drives tier 3 through. It records the
 // triple the check was asked about, so a test can assert the account, the
-// artifact and the version range reached conductor unchanged.
-type fakeConductor struct {
+// artifact and the version range reached box unchanged.
+type fakeControlPlane struct {
 	grant    *FetchGrant
 	err      error
 	calls    int
@@ -74,7 +74,7 @@ type fakeConductor struct {
 	token    string
 }
 
-func (f *fakeConductor) ArtifactFetch(_ context.Context, accountID, artifact, versionRange, token string) (*FetchGrant, error) {
+func (f *fakeControlPlane) ArtifactFetch(_ context.Context, accountID, artifact, versionRange, token string) (*FetchGrant, error) {
 	f.calls++
 	f.account = accountID
 	f.artifact = artifact
@@ -100,8 +100,8 @@ func TestAFreeProjectResolvesThroughTier1AndTier2(t *testing.T) {
 		project: &Project{Name: "gateway", Repository: PublicRepo{Visibility: "public"}},
 		coords:  &Coordinates{Name: "gateway", Repository: Repository{URL: "git@github.com:cafaye/gateway.git", DefaultBranch: "master"}},
 	}
-	cond := &fakeConductor{}
-	r := NewResolver(pantry, cond)
+	cp := &fakeControlPlane{}
+	r := NewResolver(pantry, cp)
 
 	report := r.Resolve(context.Background(), ".", deps("gateway"), "cafaye_token", "")
 
@@ -121,8 +121,8 @@ func TestAFreeProjectResolvesThroughTier1AndTier2(t *testing.T) {
 	if res.Coordinates.Repository.URL != "git@github.com:cafaye/gateway.git" {
 		t.Errorf("repository = %q", res.Coordinates.Repository.URL)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (a free service never reaches tier 3)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0 (a free service never reaches tier 3)", cp.calls)
 	}
 	if pantry.lastToken != "cafaye_token" {
 		t.Errorf("tier 2 token = %q, want the caller's token", pantry.lastToken)
@@ -136,14 +136,14 @@ func TestAPaidProjectResolvesThroughAllThreeTiers(t *testing.T) {
 		project: &Project{Name: "identity", Repository: PublicRepo{Visibility: "private"}},
 		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:cafaye/identity.git", DefaultBranch: "master"}},
 	}
-	cond := &fakeConductor{grant: &FetchGrant{
+	cp := &fakeControlPlane{grant: &FetchGrant{
 		Purpose:      "artifact.fetch",
 		AccountID:    "11111111-1111-4111-8111-111111111111",
 		Artifact:     "identity",
 		VersionRange: "^0.1.0",
 		ExpiresAt:    "2026-10-09T16:00:00Z",
 	}}
-	r := NewResolver(pantry, cond)
+	r := NewResolver(pantry, cp)
 
 	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
 
@@ -160,20 +160,20 @@ func TestAPaidProjectResolvesThroughAllThreeTiers(t *testing.T) {
 	if res.Fetch.VersionRange != "^0.1.0" {
 		t.Errorf("version range = %q", res.Fetch.VersionRange)
 	}
-	if cond.calls != 1 {
-		t.Errorf("conductor calls = %d, want 1", cond.calls)
+	if cp.calls != 1 {
+		t.Errorf("control plane calls = %d, want 1", cp.calls)
 	}
-	if cond.account != "11111111-1111-4111-8111-111111111111" {
-		t.Errorf("account = %q", cond.account)
+	if cp.account != "11111111-1111-4111-8111-111111111111" {
+		t.Errorf("account = %q", cp.account)
 	}
-	if cond.artifact != "identity" {
-		t.Errorf("artifact = %q", cond.artifact)
+	if cp.artifact != "identity" {
+		t.Errorf("artifact = %q", cp.artifact)
 	}
-	if cond.version != "^0.1.0" {
-		t.Errorf("version range = %q", cond.version)
+	if cp.version != "^0.1.0" {
+		t.Errorf("version range = %q", cp.version)
 	}
-	if cond.token != "cafaye_token" {
-		t.Errorf("tier 3 token = %q, want the caller's token", cond.token)
+	if cp.token != "cafaye_token" {
+		t.Errorf("tier 3 token = %q, want the caller's token", cp.token)
 	}
 }
 
@@ -185,8 +185,8 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 	// `catalog.ErrNoSuchService` branch. It deliberately does not echo the
 	// name, which is what keeps a 404 from being an existence oracle.
 	pantry := &fakePantry{projectErr: &PantryError{Status: 404, Code: "not_found", Detail: "no official cafaye service is registered under that name"}}
-	cond := &fakeConductor{}
-	r := NewResolver(pantry, cond)
+	cp := &fakeControlPlane{}
+	r := NewResolver(pantry, cp)
 
 	report := r.Resolve(context.Background(), ".", deps("nope"), "cafaye_token", "")
 
@@ -209,8 +209,8 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 	if res.Coordinates != nil {
 		t.Errorf("an unknown name produced coordinates")
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (tier 1 failed first)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0 (tier 1 failed first)", cp.calls)
 	}
 }
 
@@ -221,7 +221,7 @@ func TestNoCredentialIsANamedTier2Failure(t *testing.T) {
 		project:   &Project{Name: "gateway"},
 		coordsErr: &PantryError{Status: 401, Code: "unauthorized", Detail: "this operation requires a cafe token and none was presented"},
 	}
-	r := NewResolver(pantry, &fakeConductor{})
+	r := NewResolver(pantry, &fakeControlPlane{})
 
 	report := r.Resolve(context.Background(), ".", deps("gateway"), "", "")
 
@@ -238,16 +238,16 @@ func TestNoCredentialIsANamedTier2Failure(t *testing.T) {
 }
 
 // The named failure the brief leads with: an entitled product the account
-// does not hold. The code is conductor's own, the message names the product
+// does not hold. The code is box's own, the message names the product
 // and where to start one, and the test asserts both.
 func TestEntitlementRequiredIsNamedWithProductAndRemedy(t *testing.T) {
 	pantry := &fakePantry{
 		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:cafaye/identity.git"}},
 	}
-	cond := &fakeConductor{err: &ConductorError{Status: 403, Code: "entitlement_required",
+	cp := &fakeControlPlane{err: &ControlPlaneError{Status: 403, Code: "entitlement_required",
 		Message: "product `identity` needs an entitlement — start one at https://cafaye.com"}}
-	r := NewResolver(pantry, cond)
+	r := NewResolver(pantry, cp)
 
 	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
 
@@ -277,9 +277,9 @@ func TestVersionNotGrantedNamesBothRanges(t *testing.T) {
 		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
-	cond := &fakeConductor{err: &ConductorError{Status: 403, Code: "version_not_granted",
+	cp := &fakeControlPlane{err: &ControlPlaneError{Status: 403, Code: "version_not_granted",
 		Message: "your entitlement covers `^0.2.0`, this project asks for `^0.1.0`"}}
-	r := NewResolver(pantry, cond)
+	r := NewResolver(pantry, cp)
 
 	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
 
@@ -305,7 +305,7 @@ func TestPaidDependencyWithoutAccountIsNamed(t *testing.T) {
 		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
-	r := NewResolver(pantry, &fakeConductor{})
+	r := NewResolver(pantry, &fakeControlPlane{})
 
 	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "")
 
@@ -324,7 +324,7 @@ func TestPaidDependencyWithoutAccountIsNamed(t *testing.T) {
 // A resolver with no pantry configured refuses tier 1 with a named failure
 // rather than panicking — a resolver that cannot read the catalog says so.
 func TestNoPantryIsANamedFailure(t *testing.T) {
-	r := NewResolver(nil, &fakeConductor{})
+	r := NewResolver(nil, &fakeControlPlane{})
 
 	report := r.Resolve(context.Background(), ".", deps("gateway"), "cafaye_token", "")
 
@@ -334,7 +334,7 @@ func TestNoPantryIsANamedFailure(t *testing.T) {
 	}
 }
 
-// The manifest schema makes `version` OPTIONAL; conductor's check makes it
+// The manifest schema makes `version` OPTIONAL; box's check makes it
 // REQUIRED. The disagreement is settled on cafe's side rather than in a round
 // trip that answers 422 and blames the reader for it, and it is a failure the
 // resolver records like any other — so an OPTIONAL paid dependency with no
@@ -344,8 +344,8 @@ func TestPaidDependencyWithoutAVersionIsNamedAndNeverAsks(t *testing.T) {
 		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
-	cond := &fakeConductor{}
-	r := NewResolver(pantry, cond)
+	cp := &fakeControlPlane{}
+	r := NewResolver(pantry, cp)
 
 	dep := contract.Dependency{Name: "identity", Version: "", Required: true}
 	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "11111111-1111-4111-8111-111111111111")
@@ -360,12 +360,12 @@ func TestPaidDependencyWithoutAVersionIsNamedAndNeverAsks(t *testing.T) {
 	if !strings.Contains(res.Failure.Message, "version") {
 		t.Errorf("message = %q, want it to name the field", res.Failure.Message)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (the question is unaskable without a range)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0 (the question is unaskable without a range)", cp.calls)
 	}
 }
 
-// An --account that is not a UUID is a 404 from conductor, and a 404 about a
+// An --account that is not a UUID is a 404 from box, and a 404 about a
 // string the reader typed is a sentence that sends them nowhere. Caf refuses
 // it with the string echoed back.
 func TestAccountThatIsNotAUUIDIsNamed(t *testing.T) {
@@ -373,8 +373,8 @@ func TestAccountThatIsNotAUUIDIsNamed(t *testing.T) {
 		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
 	}
-	cond := &fakeConductor{}
-	r := NewResolver(pantry, cond)
+	cp := &fakeControlPlane{}
+	r := NewResolver(pantry, cp)
 
 	dep := contract.Dependency{Name: "identity", Version: "^0.1.0", Required: true}
 	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "not-a-uuid")
@@ -386,21 +386,21 @@ func TestAccountThatIsNotAUUIDIsNamed(t *testing.T) {
 	if !strings.Contains(res.Failure.Message, "not-a-uuid") {
 		t.Errorf("message = %q, want it to echo what was typed", res.Failure.Message)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 (the account is not an id)", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0 (the account is not an id)", cp.calls)
 	}
 }
 
-// A version the schema accepts is a version conductor accepts, and the two
+// A version the schema accepts is a version box accepts, and the two
 // patterns are the same one: ^X.Y.Z, ~X.Y.Z, >=X.Y.Z and an exact X.Y.Z. This
-// table is the mirror of core's `semverRange` $defs and conductor's
+// table is the mirror of core's `semverRange` $defs and box's
 // VersionRange::PATTERN, and a row added to one must be added to the other
 // three — which is why it is a table rather than one example.
-func TestAVersionTheSchemaAcceptsIsAVersionConductorAccepts(t *testing.T) {
+func TestAVersionTheSchemaAcceptsIsAVersionBoxAccepts(t *testing.T) {
 	for _, v := range []string{"^0.1.0", "~0.1.0", ">=0.1.0", "0.1.0"} {
 		pantry := &fakePantry{project: &Project{Name: "identity"}, coords: &Coordinates{Name: "identity"}}
-		cond := &fakeConductor{grant: &FetchGrant{Artifact: "identity", VersionRange: v}}
-		r := NewResolver(pantry, cond)
+		cp := &fakeControlPlane{grant: &FetchGrant{Artifact: "identity", VersionRange: v}}
+		r := NewResolver(pantry, cp)
 
 		dep := contract.Dependency{Name: "identity", Version: v, Required: true}
 		report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "11111111-1111-4111-8111-111111111111")
@@ -409,18 +409,18 @@ func TestAVersionTheSchemaAcceptsIsAVersionConductorAccepts(t *testing.T) {
 			t.Errorf("%s: failed: %+v", v, report.Services[0].Failure)
 			continue
 		}
-		if cond.calls != 1 {
-			t.Errorf("%s: conductor calls = %d, want 1", v, cond.calls)
+		if cp.calls != 1 {
+			t.Errorf("%s: control plane calls = %d, want 1", v, cp.calls)
 		}
-		if cond.version != v {
-			t.Errorf("%s: the range sent was %q", v, cond.version)
+		if cp.version != v {
+			t.Errorf("%s: the range sent was %q", v, cp.version)
 		}
 	}
 }
 
-// A resolver with no conductor configured refuses tier 3 for a paid product
+// A resolver with no control plane configured refuses tier 3 for a paid product
 // with a named failure, after tiers 1 and 2 have succeeded.
-func TestNoConductorIsANamedFailureForPaidOnly(t *testing.T) {
+func TestNoControlPlaneIsANamedFailureForPaidOnly(t *testing.T) {
 	pantry := &fakePantry{
 		project: &Project{Name: "identity"},
 		coords:  &Coordinates{Name: "identity"},
@@ -430,8 +430,8 @@ func TestNoConductorIsANamedFailureForPaidOnly(t *testing.T) {
 	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
-	if res.Failure == nil || res.Failure.Code != "no_conductor" {
-		t.Fatalf("failure = %+v, want a no_conductor failure", res.Failure)
+	if res.Failure == nil || res.Failure.Code != "no_control_plane" {
+		t.Fatalf("failure = %+v, want a no_control_plane failure", res.Failure)
 	}
 	if res.Coordinates == nil {
 		t.Errorf("tiers 1 and 2 succeeded but the coordinates are not reported")
@@ -442,7 +442,7 @@ func TestNoConductorIsANamedFailureForPaidOnly(t *testing.T) {
 // the resolver reports it and the dependency is recorded as failed.
 func TestTransportFailureIsNamed(t *testing.T) {
 	pantry := &fakePantry{projectErr: errors.New("dial tcp: connection refused")}
-	r := NewResolver(pantry, &fakeConductor{})
+	r := NewResolver(pantry, &fakeControlPlane{})
 
 	report := r.Resolve(context.Background(), ".", deps("gateway"), "cafaye_token", "")
 
@@ -465,8 +465,8 @@ func TestEveryDependencyIsResolvedIndependently(t *testing.T) {
 		project: &Project{Name: "gateway"},
 		coords:  &Coordinates{Name: "gateway"},
 	}
-	cond := &fakeConductor{err: &ConductorError{Status: 403, Code: "entitlement_required", Message: "product `identity` needs an entitlement"}}
-	r := NewResolver(pantry, cond)
+	cp := &fakeControlPlane{err: &ControlPlaneError{Status: 403, Code: "entitlement_required", Message: "product `identity` needs an entitlement"}}
+	r := NewResolver(pantry, cp)
 
 	report := r.Resolve(context.Background(), ".", deps("gateway", "identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
 
@@ -482,13 +482,13 @@ func TestEveryDependencyIsResolvedIndependently(t *testing.T) {
 }
 
 // The required flag travels with the resolution so the caller can decide
-// warn-vs-block. The resolver does not decide it — conductor never sees it.
+// warn-vs-block. The resolver does not decide it — box never sees it.
 func TestRequiredFlagTravelsWithTheResolution(t *testing.T) {
 	pantry := &fakePantry{
 		project:   &Project{Name: "identity"},
 		coordsErr: &PantryError{Status: 401, Code: "unauthorized", Detail: "no token"},
 	}
-	r := NewResolver(pantry, &fakeConductor{})
+	r := NewResolver(pantry, &fakeControlPlane{})
 
 	dep := contract.Dependency{Name: "identity", Version: "^0.1.0", Required: false}
 	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "", "")
@@ -515,7 +515,7 @@ func TestAnAmbiguousBareNameRetriesByAddressWhenAnOwnerIsKnown(t *testing.T) {
 		coords:  &Coordinates{Name: "widget", Repository: Repository{URL: "git@github.com:alice/widget.git"}},
 	}
 
-	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
 		context.Background(), "alice", "widget", "cafaye_token", "")
 
 	if pantry.addressCalls != 1 {
@@ -545,7 +545,7 @@ func TestAPlainNotFoundNeverRetriesByAddress(t *testing.T) {
 			Detail: "no official cafaye project is registered under that name"},
 	}
 
-	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
 		context.Background(), "alice", "widget", "cafaye_token", "")
 
 	if pantry.addressCalls != 0 {
@@ -569,7 +569,7 @@ func TestABareNotFoundWithoutAnOwnerDoesNotRetry(t *testing.T) {
 			Detail: "no official cafaye project is registered under that name"},
 	}
 
-	report := NewResolver(pantry, &fakeConductor{}).Resolve(
+	report := NewResolver(pantry, &fakeControlPlane{}).Resolve(
 		context.Background(), ".", deps("widget"), "cafaye_token", "")
 
 	if pantry.addressCalls != 0 {
@@ -598,7 +598,7 @@ func TestAnAddressNamingTheWrongOwnerIsARefusal(t *testing.T) {
 			Detail: "no official cafaye project is registered under the address alice/widget"},
 	}
 
-	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
 		context.Background(), "alice", "widget", "cafaye_token", "")
 
 	res := report.Services[0]
@@ -626,7 +626,7 @@ func TestAnAddressThatMatchesResolvesWithoutASecondRead(t *testing.T) {
 		coords:  &Coordinates{Name: "widget", Repository: Repository{URL: "git@github.com:alice/widget.git"}},
 	}
 
-	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
 		context.Background(), "alice", "widget", "cafaye_token", "")
 
 	res := report.Services[0]
@@ -644,16 +644,16 @@ func TestAnAddressThatMatchesResolvesWithoutASecondRead(t *testing.T) {
 // A paid product addressed by a community owner still reaches tier 3 — the
 // product vocabulary is about the bare name, not about who owns it — and it
 // hits the same range requirement a manifest dependency does: the address form
-// carries no version constraint, so conductor is never asked a question it
+// carries no version constraint, so box is never asked a question it
 // would answer 422. The failure names what a manifest would have supplied.
 func TestAnAddressedPaidProductStillNeedsARange(t *testing.T) {
 	pantry := &fakePantry{
 		project: &Project{Name: "identity", OwnerSlug: "alice"},
 		coords:  &Coordinates{Name: "identity"},
 	}
-	cond := &fakeConductor{}
+	cp := &fakeControlPlane{}
 
-	report := NewResolver(pantry, cond).ResolveAddress(
+	report := NewResolver(pantry, cp).ResolveAddress(
 		context.Background(), "alice", "identity", "cafaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
@@ -663,8 +663,8 @@ func TestAnAddressedPaidProductStillNeedsARange(t *testing.T) {
 	if res.Failure.Tier != 3 {
 		t.Errorf("tier = %d, want 3 — the entitlement check is where the range is needed", res.Failure.Tier)
 	}
-	if cond.calls != 0 {
-		t.Errorf("conductor calls = %d, want 0 — an unbounded request is a 422 nobody should spend", cond.calls)
+	if cp.calls != 0 {
+		t.Errorf("control plane calls = %d, want 0 — an unbounded request is a 422 nobody should spend", cp.calls)
 	}
 	if res.Coordinates == nil {
 		t.Errorf("the refusal destroyed the coordinates the first two tiers answered")
@@ -683,7 +683,7 @@ func TestAnAmbiguitySpelledInTheCodeIsStillAmbiguity(t *testing.T) {
 		coords:  &Coordinates{Name: "widget"},
 	}
 
-	report := NewResolver(pantry, &fakeConductor{}).ResolveAddress(
+	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
 		context.Background(), "alice", "widget", "cafaye_token", "")
 
 	if pantry.addressCalls != 1 {

@@ -17,11 +17,11 @@ type Identity struct {
 	// BoxID is the enrollment's own name for this box. A capability is bound
 	// to it, and Redeem refuses one that is not.
 	BoxID string
-	// Conductor is the address the daemon dials out to. It is in the identity
+	// ControlPlane is the address the daemon dials out to. It is in the identity
 	// rather than in a flag because enrollment is what establishes which
-	// conductor this box answers to — a flag that overrode it would be a
+	// control plane this box answers to — a flag that overrode it would be a
 	// second authority about the box's owner.
-	Conductor string
+	ControlPlane string
 	// Version is the cafe build this box enrolled as, which is what
 	// box.status reports rather than the version currently running; when the
 	// two differ, `cafe box update` is the honest answer for why.
@@ -47,14 +47,14 @@ type IdentityStore interface {
 	Load(ctx context.Context) (Identity, error)
 }
 
-// Capability is one instruction from conductor, and the only thing that
+// Capability is one instruction from box, and the only thing that
 // arrives over the channel. It names a route, carries that route's parameters
-// as bytes, and expires: conductor mints these single-use, minutes TTL, bound
+// as bytes, and expires: box mints these single-use, minutes TTL, bound
 // to this box, which is invariant 2 — possession of a capability away from its
 // target buys nothing, because the target is the box and the TTL is minutes.
 type Capability struct {
 	// ID is the capability's own name, single-use. The outcome carries it so
-	// conductor can retire it.
+	// box can retire it.
 	ID string
 	// BoxID is the box this capability is bound to. Redeem refuses any other.
 	BoxID string
@@ -75,14 +75,14 @@ func (c Capability) alive(now time.Time) bool {
 	return now.Before(c.ExpiresAt)
 }
 
-// Status is what the daemon tells conductor became of a capability.
+// Status is what the daemon tells box became of a capability.
 type Status string
 
 const (
 	// Accepted means the route ran and the box reports success.
 	Accepted Status = "accepted"
 	// Failed means the route ran and failed — the box's own error is in the
-	// outcome's message, and a conductor may re-mint.
+	// outcome's message, and box may re-mint.
 	Failed Status = "failed"
 	// RouteRefused means the capability named a route not in this box's table.
 	// This is the whitelist firing, and it is worth its own status because
@@ -95,7 +95,7 @@ const (
 	Expired Status = "expired"
 )
 
-// Outcome is what goes back to conductor for every capability: which one, what
+// Outcome is what goes back to box for every capability: which one, what
 // the daemon decided, and why in a sentence. It is the classification and
 // never the data — the answer travels beside it inside an Ack, and it is
 // guarded by the same walk every route's output goes through.
@@ -108,7 +108,7 @@ type Outcome struct {
 	Message string `json:"message,omitempty"`
 }
 
-// Ack is one capability's full report to conductor: the decision about it,
+// Ack is one capability's full report to box: the decision about it,
 // and the answer the route produced.
 //
 // The answer is carried because a capability is a request — `stack.status`
@@ -162,18 +162,18 @@ type EnvelopeResult struct {
 	Detail    string `json:"detail,omitempty"`
 }
 
-// Conductor is the outbound channel. Two methods, both outbound: the daemon
+// ControlPlane is the outbound channel. Two methods, both outbound: the daemon
 // asks for the next capability and reports what it decided. There is no method
 // on this interface that would let the box be driven inbound — no listener in
 // the type system any more than in the process.
-type Conductor interface {
-	// Next blocks until conductor sends a capability for this box or ctx ends.
+type ControlPlane interface {
+	// Next blocks until box sends a capability for this box or ctx ends.
 	// The daemon holds the connection open; a box that polls is a box whose
 	// failure mode is a slow capability rather than an open port.
 	Next(ctx context.Context) (Capability, error)
 	// Ack reports one capability's outcome and answer. The daemon acks every
-	// capability, including the ones it refused — a refusal conductor did not
-	// hear about is a capability conductor will re-send until its TTL burns
+	// capability, including the ones it refused — a refusal box did not
+	// hear about is a capability box will re-send until its TTL burns
 	// down.
 	Ack(ctx context.Context, ack Ack) error
 	// Close ends the connection.

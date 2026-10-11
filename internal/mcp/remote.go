@@ -370,7 +370,7 @@ func (t *remoteTools) runRollout(ctx context.Context, _ NoArgs) (Rollout, error)
 type statusFacts struct {
 	// Enrolled is whether a human has run `cafe box enroll` on this box.
 	Enrolled bool `json:"enrolled"`
-	// BoxRef is conductor's reference for this box, which is how a human names
+	// BoxRef is box's reference for this machine, which is how a human names
 	// it in the website's `/boxes` screen.
 	BoxRef string `json:"box_ref,omitempty"`
 	// Status is the lifecycle word the journal recorded.
@@ -403,7 +403,7 @@ type StatusStep struct {
 func (t *remoteTools) status() Tool[NoArgs, statusFacts] {
 	return Tool[NoArgs, statusFacts]{
 		Name: "caf_status",
-		Description: "Report a box's status: whether it is enrolled, conductor's reference for it, the " +
+		Description: "Report a box's status: whether it is enrolled, box's reference for it, the " +
 			"install phase it has reached, and every phase in the install table with the one a human is " +
 			"required for marked. " +
 			"Needs an agent token carrying the read scope. " +

@@ -16,7 +16,7 @@ import (
 // boxDeps is what `cafe box` needs from the world, and it is a struct of
 // parameters rather than a set of package-level variables for the reason
 // deployDeps and envDeps are: a test can hand the command a keyring it owns and
-// a conductor that counts, which is the only way an enrollment can be driven
+// a control plane that counts, which is the only way an enrollment can be driven
 // through the real router without a network, a keychain or a real capability.
 type boxDeps struct {
 	// dir is where box.json, the journal and the event log live. Empty means
@@ -25,10 +25,10 @@ type boxDeps struct {
 	// ring holds the private key. Nil means a file ring under the config
 	// directory, and a test always sets it.
 	ring box.Keyring
-	// cond redeems the capability. Nil means a real HTTP client, which is why
+	// controlPlane redeems the capability. Nil means a real HTTP client, which is why
 	// a test always sets it: the whole point of the seam is the count.
-	cond box.Conductor
-	// url is the conductor endpoint. Empty means the CAF_CONDUCTOR_URL
+	controlPlane box.ControlPlane
+	// url is the box endpoint. Empty means the CAF_BOX_URL
 	// environment variable, and an empty environment variable is a refusal
 	// rather than a guess.
 	url string
@@ -48,11 +48,11 @@ func defaultConfigDir() (string, error) {
 	return filepath.Join(base, "cafe"), nil
 }
 
-// conductorURLFromEnv is where the endpoint comes from when no flag names one.
+// boxURLEnv is where the endpoint comes from when no flag names one.
 // An environment variable rather than a flag default, because a flag default
-// baked into the binary is a default that goes stale when conductor moves and
+// baked into the binary is a default that goes stale when box moves and
 // nobody rebuilds cafe to find out.
-const conductorURLEnv = "CAF_CONDUCTOR_URL"
+const boxURLEnv = "CAF_BOX_URL"
 
 func (d boxDeps) withDefaults() boxDeps {
 	if d.dir == "" {
@@ -61,13 +61,13 @@ func (d boxDeps) withDefaults() boxDeps {
 		}
 	}
 	if d.url == "" {
-		d.url = os.Getenv(conductorURLEnv)
+		d.url = os.Getenv(boxURLEnv)
 	}
 	if d.ring == nil {
 		d.ring = box.FileRing{Dir: filepath.Join(d.dir, "keyring")}
 	}
-	if d.cond == nil {
-		d.cond = box.HTTPConductor{BaseURL: d.url}
+	if d.controlPlane == nil {
+		d.controlPlane = box.HTTPControlPlane{BaseURL: d.url}
 	}
 	return d
 }
@@ -77,7 +77,7 @@ func (d boxDeps) withDefaults() boxDeps {
 // them.
 func (d boxDeps) store() *box.Store {
 	d = d.withDefaults()
-	return box.NewStore(d.dir, d.ring, d.cond)
+	return box.NewStore(d.dir, d.ring, d.controlPlane)
 }
 
 // boxVerb is one word under `cafe box`, paired with the command that runs it.
@@ -89,7 +89,7 @@ type boxVerb struct {
 	cmd  *Command
 }
 
-// boxVerbs takes the deps so one injected keyring and one injected conductor
+// boxVerbs takes the deps so one injected keyring and one injected control plane
 // reach every verb. The parent hands them down; the router hands the parent the
 // zero value and gets the real wiring.
 func boxVerbs(deps boxDeps) []boxVerb {
@@ -114,8 +114,8 @@ that ` + "`cafe box register`" + ` never reads as "the agent is registering a bo
 
 ENROL is the one command that spends anything. It generates the box's keypair,
 stores the private half in the keyring, and presents the capability to
-conductor. The capability is single-use, box-bound and lives minutes
-(conductor's Capability::TTL_MINUTES), so the token is spent exactly once and
+box. The capability is single-use, box-bound and lives minutes
+(box's Capability::TTL_MINUTES), so the token is spent exactly once and
 cannot be re-spent — which is why every step is written down BEFORE it is
 taken, and why a retry that finds a recorded redemption finishes from the
 record instead of presenting the token again.
@@ -196,8 +196,8 @@ func (f *boxFlags) declare(fs *flag.FlagSet) {
 
 // boxEnrollOptions is `cafe box enroll`'s flag state.
 type boxEnrollOptions struct {
-	token     string
-	conductor string
+	token string
+	box   string
 }
 
 func newBoxEnrollCommand(deps boxDeps) *Command {
@@ -205,10 +205,10 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 	c := &Command{
 		Name:    "box enroll",
 		Summary: "enroll this box: generate its keypair, redeem the capability, store its identity",
-		Usage:   "cafe box enroll --token <capability> [--conductor <url>]",
+		Usage:   "cafe box enroll --token <capability> [--box <url>]",
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.token, "token", "", "the single-use box.enroll capability conductor minted for this box")
-			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, "+conductorURLEnv+" is read and an unset variable is a refusal")
+			fs.StringVar(&opts.token, "token", "", "the single-use box.enroll capability minted for this box")
+			fs.StringVar(&opts.box, "box", "", "box's origin; without it, "+boxURLEnv+" is read and an unset variable is a refusal")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -219,11 +219,11 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 		// be run at all without it, and the distinction is the difference between
 		// exit 2 and exit 1 in every script that calls this.
 		if strings.TrimSpace(opts.token) == "" {
-			return fmt.Errorf("%w: cafe box enroll wants --token <capability>, the single-use box.enroll capability conductor minted for this box (usage: %s)", errUsage, c.Usage)
+			return fmt.Errorf("%w: cafe box enroll wants --token <capability>, the single-use box.enroll capability minted for this box (usage: %s)", errUsage, c.Usage)
 		}
-		url := opts.conductor
+		url := opts.box
 		if url == "" {
-			url = os.Getenv(conductorURLEnv)
+			url = os.Getenv(boxURLEnv)
 		}
 		deps.url = url
 		store := boxStoreFor(c, env, deps)
@@ -244,7 +244,7 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 
 // boxStoreFor builds the store every verb runs against. The `box` parent hands
 // its deps down through the verbs' constructors, so one injected ring and one
-// injected conductor are what the whole tree of subcommands sees — which is
+// injected control plane are what the whole tree of subcommands sees — which is
 // the property the CLI-level retry test relies on, because the count it
 // asserts is the count across TWO INVOCATIONS of the command.
 func boxStoreFor(_ *Command, _ *Env, deps boxDeps) *box.Store {

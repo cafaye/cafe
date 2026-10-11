@@ -28,7 +28,7 @@ import (
 // into the SAME constraint grammar cafe contract resolve uses, not a second
 // copy of it.
 
-// pendingAgainstRange classifies conductor's candidate releases against this
+// pendingAgainstRange classifies box's candidate releases against this
 // box's own version range and deployed version. A release is pending when its
 // version is inside the range AND strictly newer than what is deployed — the
 // two conditions together: already-deployed releases are not pending, and
@@ -39,7 +39,7 @@ import (
 // disagree with the first about what a caret over a 0.x service means.
 //
 // A candidate whose version does not parse is skipped rather than failing the
-// whole observation: one malformed candidate from conductor must not stop the
+// whole observation: one malformed candidate from box must not stop the
 // box reporting everything else it knows, which is the resolve principle that
 // "store every failure as a field, return no error" (internal/resolve/doc.go).
 //
@@ -86,7 +86,7 @@ func healthStatus(phase int, cert boxd.Certificate, drill *boxd.DrillFact) boxd.
 	var reasons []string
 	switch cert.Status {
 	case "expired":
-		reasons = append(reasons, "the client certificate has expired; this box can no longer dial conductor")
+		reasons = append(reasons, "the client certificate has expired; this box can no longer dial box")
 	case "expiring":
 		reasons = append(reasons, "the client certificate is close to expiry")
 	}

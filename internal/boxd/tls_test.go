@@ -21,7 +21,7 @@ import (
 // rather than a sentence in a doc comment. A real TLS listener speaks the real
 // line protocol to the real dialer over loopback, requiring and verifying the
 // box's client certificate — so the handshake, the framing, the redemption and
-// the ack are all exercised against the same crypto a conductor would use.
+// the ack are all exercised against the same crypto box would use.
 //
 // It is the one place in this package that binds a socket, and it is a
 // LOOPBACK listener inside the test process: no container, no network
@@ -96,7 +96,7 @@ func newTestPKI(t *testing.T) testPKI {
 			Leaf: mustParseCert(t, der),
 		}
 	}
-	return testPKI{pool: pool, server: issue("conductor.test"), box: issue("box-test"), other: issue("box-other")}
+	return testPKI{pool: pool, server: issue("box.test"), box: issue("box-test"), other: issue("box-other")}
 }
 
 func mustParseCert(t *testing.T, der []byte) *x509.Certificate {
@@ -120,7 +120,7 @@ func (k *instrumentedKeys) Certificate(context.Context) (tls.Certificate, error)
 	return k.cert, nil
 }
 
-// fakeServer is one conductor: a loopback TLS listener that REQUIRES a client
+// fakeServer is one control plane: a loopback TLS listener that REQUIRES a client
 // certificate, and answers the line protocol with a queued capability.
 type fakeServer struct {
 	// cap is the capability the next request receives.
@@ -155,7 +155,7 @@ func newFakeServer(t *testing.T, pki testPKI, cap Capability) *fakeServer {
 	return s
 }
 
-// addr is the listener's address, for the identity's conductor field.
+// addr is the listener's address, for the identity's control-plane field.
 func (s *fakeServer) addr() string { return s.listener.Addr().String() }
 
 // serve accepts ONE connection and speaks the protocol: a capability for the
@@ -209,8 +209,8 @@ func (s *fakeServer) close() { s.listener.Close(); <-s.serveDone }
 // against a real listener that requires the box's client certificate. Three
 // assertions, and each one is a property the AGENTS-FIRST diagram claims:
 //
-//   - the handshake COMPLETES, which means conductor verified the box's
-//     certificate and the box verified conductor's — the channel is mutual;
+//   - the handshake COMPLETES, which means box verified the daemon's
+//     certificate and the daemon verified box's — the channel is mutual;
 //   - the server saw the box's own certificate as the peer, so the identity
 //     the box authenticated as is the one the enrollment says it is;
 //   - the protocol round trip works: a capability arrives, is redeemed by the
@@ -223,7 +223,7 @@ func TestTheChannelIsMutualTLS(t *testing.T) {
 
 	keys := &instrumentedKeys{cert: pki.box}
 	dialer := tlsDialer{keys: keys, RootCAs: pki.pool}
-	id := Identity{BoxID: "box-test", Conductor: server.addr(), Version: "test"}
+	id := Identity{BoxID: "box-test", ControlPlane: server.addr(), Version: "test"}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -266,7 +266,7 @@ func TestTheKeyIsLoadedPerDial(t *testing.T) {
 	pki := newTestPKI(t)
 	keys := &instrumentedKeys{cert: pki.box}
 	dialer := tlsDialer{keys: keys, RootCAs: pki.pool}
-	id := Identity{BoxID: "box-test", Conductor: "conductor.invalid:443", Version: "test"}
+	id := Identity{BoxID: "box-test", ControlPlane: "box.invalid:443", Version: "test"}
 
 	// The dial is expected to fail — nothing is listening on that address —
 	// but the key is loaded BEFORE the dial attempt, which is the ordering
@@ -285,7 +285,7 @@ func TestTheKeyIsLoadedPerDial(t *testing.T) {
 // TestAConnectionWithoutTheBoxKeyIsRefused: the listener requires a client
 // certificate, so a dial whose key source has none fails at the handshake.
 // This is the negative proof that the channel is authenticated on BOTH sides:
-// it is not enough for the box to reach conductor, it must be the box.
+// it is not enough for the daemon to reach box, it must be the enrolled box.
 func TestAConnectionWithoutTheBoxKeyIsRefused(t *testing.T) {
 	pki := newTestPKI(t)
 	server := newFakeServer(t, pki, oneCapability("box.status"))
@@ -296,7 +296,7 @@ func TestAConnectionWithoutTheBoxKeyIsRefused(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	ch, err := dialer.Dial(ctx, Identity{BoxID: "box-test", Conductor: server.addr()})
+	ch, err := dialer.Dial(ctx, Identity{BoxID: "box-test", ControlPlane: server.addr()})
 	if err != nil {
 		// The dial itself failed. That is one acceptable refusal, and the
 		// stronger case — a connection that dialled and was refused at the
@@ -311,17 +311,17 @@ func TestAConnectionWithoutTheBoxKeyIsRefused(t *testing.T) {
 	}
 }
 
-// TestTheProtocolRefusesAnUnnamedCapability: a conductor that sends a
+// TestTheProtocolRefusesAnUnnamedCapability: a box that sends a
 // capability with no id gets an error rather than a silent accept — a
 // capability nobody can name cannot be acked, and acking it anyway would make
-// conductor believe something happened.
+// box believe something happened.
 func TestTheProtocolRefusesAnUnnamedCapability(t *testing.T) {
 	pki := newTestPKI(t)
 	server := newFakeServer(t, pki, Capability{BoxID: "box-test", Route: "box.status"})
 	defer server.close()
 
 	keys := &instrumentedKeys{cert: pki.box}
-	ch, err := (tlsDialer{keys: keys, RootCAs: pki.pool}).Dial(context.Background(), Identity{Conductor: server.addr()})
+	ch, err := (tlsDialer{keys: keys, RootCAs: pki.pool}).Dial(context.Background(), Identity{ControlPlane: server.addr()})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}

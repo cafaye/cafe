@@ -17,7 +17,7 @@ import (
 
 // providerDeps is what `cafe provider` needs from the world, and it is a struct
 // of parameters for the reason boxDeps is: a test can hand the command a
-// keyring it owns, a conductor that counts and a directory it controls, and
+// keyring it owns, a control plane that counts and a directory it controls, and
 // drive a whole connect without a network, a keychain or a real box.
 type providerDeps struct {
 	// dir is where box.json and the keyring live. Empty means the resolved
@@ -26,10 +26,10 @@ type providerDeps struct {
 	// ring holds the box's private key. Nil means a file ring under the
 	// config directory, and a test always sets it.
 	ring box.Keyring
-	// cond connects and reports status. Nil means a real HTTP client, which
+	// controlPlane connects and reports status. Nil means a real HTTP client, which
 	// is why a test always sets it: the whole point of the seam is the count.
-	cond provider.Conductor
-	// url is conductor's endpoint. Empty means the CAF_CONDUCTOR_URL
+	controlPlane provider.ControlPlane
+	// url is box's endpoint. Empty means the CAF_BOX_URL
 	// environment variable, and an empty environment variable is a refusal
 	// rather than a guess.
 	url string
@@ -42,22 +42,22 @@ func (d providerDeps) withDefaults() providerDeps {
 		}
 	}
 	if d.url == "" {
-		d.url = os.Getenv(conductorURLEnv)
+		d.url = os.Getenv(boxURLEnv)
 	}
 	if d.ring == nil {
 		d.ring = box.FileRing{Dir: filepath.Join(d.dir, "keyring")}
 	}
-	if d.cond == nil {
-		d.cond = provider.HTTPConductor{BaseURL: d.url}
+	if d.controlPlane == nil {
+		d.controlPlane = provider.HTTPControlPlane{BaseURL: d.url}
 	}
 	return d
 }
 
 // store builds the box store the verbs read the identity from. The box's own
-// Conductor (the capability redemption) is nil because no provider verb
-// redeems anything: they read the identity and talk to conductor's connection
-// endpoint, which is the provider.Conductor above. A store with no box
-// Conductor is a store that cannot enroll, and that is exactly what a provider
+// ControlPlane (the capability redemption) is nil because no provider verb
+// redeems anything: they read the identity and talk to box's connection
+// endpoint, which is the provider.ControlPlane above. A store with no box
+// ControlPlane is a store that cannot enroll, and that is exactly what a provider
 // command must not be able to do.
 func (d providerDeps) store() *box.Store {
 	d = d.withDefaults()
@@ -82,16 +82,16 @@ func providerVerbs(deps providerDeps) []providerVerb {
 const providerLongHelp = `A provider connection is a credential SEALED TO THE BOX. The agent
 that runs ` + "`cafe provider connect`" + ` is a courier of the envelope and never a
 holder of the value: the credential is sealed to the box's public key in
-memory at the moment it is read, and the envelope — ciphertext conductor
+memory at the moment it is read, and the envelope — ciphertext box
 cannot open — is the only thing that crosses the wire. The credential is never
 printed, never logged, and never stored anywhere but inside the envelope.
 
-Conductor holds the envelope and cannot open it. The box, holding the private
+Box holds the envelope and cannot open it. The box, holding the private
 half of its keypair, is the only thing that can. That is boundary 6, and it is
 why the agent's transcript — which is a log, stored by the agent host and
 replayed into model providers — never carries a provider secret.
 
-` + "`cafe provider status`" + ` reports what conductor holds and opens nothing: the
+` + "`cafe provider status`" + ` reports what box holds and opens nothing: the
 envelopes come back as opaque JSON and are passed through untouched.
 
 stdout carries the document, stderr carries the sentence. Neither carries a
@@ -142,13 +142,13 @@ func unknownProviderVerb(name string, verbs []providerVerb) error {
 type providerConnectOptions struct {
 	account    string
 	credential string
-	conductor  string
+	box        string
 	config     configFlags
 }
 
 // configFlags collects repeated --config key=value flags into a map. It is a
 // flag.Value so the flag package does the splitting and the command gets a
-// map it can hand to conductor directly.
+// map it can hand to box directly.
 type configFlags struct {
 	pairs map[string]string
 }
@@ -184,12 +184,12 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 	opts := &providerConnectOptions{}
 	c := &Command{
 		Name:    "provider connect",
-		Summary: "seal a provider credential to the box's public key and post the envelope to conductor",
+		Summary: "seal a provider credential to the box's public key and post the envelope to box",
 		Usage:   "cafe provider connect --account <id> [--credential <secret> | stdin] [--config key=value]… <provider>",
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.account, "account", "", "the provider-side account identifier (an email address, a zone id, …)")
 			fs.StringVar(&opts.credential, "credential", "", "the provider secret; sealed to the box and never printed. Read from stdin when omitted")
-			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, the box identity's conductor or "+conductorURLEnv+" is used")
+			fs.StringVar(&opts.box, "box", "", "box's origin; without it, the box identity's control plane or "+boxURLEnv+" is used")
 			fs.Var(&opts.config, "config", "a non-secret provider setting, key=value; repeat for each")
 		},
 	}
@@ -222,20 +222,20 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 			return err
 		}
 
-		// The conductor is the seam, and it is honored rather than overwritten:
+		// The control plane is the seam, and it is honored rather than overwritten:
 		// a test injects one and the network is never touched, for the reason
-		// boxDeps' conductor is. Nil means the real client, and the URL it
+		// boxDeps' control plane is. Nil means the real client, and the URL it
 		// dials is the flag, then the identity the box enrolled against, then
 		// the environment — the same order box enroll resolves it in.
-		if deps.cond == nil {
-			url := opts.conductor
+		if deps.controlPlane == nil {
+			url := opts.box
 			if url == "" {
-				url = id.Conductor
+				url = id.ControlPlane
 			}
 			if url == "" {
-				url = os.Getenv(conductorURLEnv)
+				url = os.Getenv(boxURLEnv)
 			}
-			deps.cond = provider.HTTPConductor{BaseURL: url}
+			deps.controlPlane = provider.HTTPControlPlane{BaseURL: url}
 		}
 
 		// The credential is sealed to the box's public key and the envelope is
@@ -246,7 +246,7 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 		if err != nil {
 			return err
 		}
-		conn, err := provider.Connect(env.Context, deps.cond, provider.ConnectRequest{
+		conn, err := provider.Connect(env.Context, deps.controlPlane, provider.ConnectRequest{
 			Provider:   prov,
 			Account:    opts.account,
 			BoxID:      id.BoxID,
@@ -260,14 +260,14 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 			return errReported
 		}
 
-		say(env.Stderr, "connected %s to %s (box %s); the credential is sealed to the box and conductor holds only the envelope", conn.Provider, conn.Account, conn.BoxID)
+		say(env.Stderr, "connected %s to %s (box %s); the credential is sealed to the box and box holds only the envelope", conn.Provider, conn.Account, conn.BoxID)
 		return writeJSONDoc(env.Stdout, &ConnectResult{
 			Provider:  conn.Provider,
 			Account:   conn.Account,
 			BoxID:     conn.BoxID,
 			Config:    conn.Config,
 			Connected: true,
-			Message:   "the credential is sealed to the box; conductor holds the envelope and cannot open it",
+			Message:   "the credential is sealed to the box; box holds the envelope and cannot open it",
 		})
 	}
 	return c
@@ -319,7 +319,7 @@ func decodeBoxPublic(text string) (ed25519.PublicKey, error) {
 	return ed25519.PublicKey(raw), nil
 }
 
-// knownProvider reports whether name is one conductor accepts.
+// knownProvider reports whether name is one box accepts.
 func knownProvider(name string) bool {
 	for _, p := range provider.Providers {
 		if p == name {
@@ -331,7 +331,7 @@ func knownProvider(name string) bool {
 
 // ConnectResult is what `cafe provider connect` reports. It carries every fact
 // about the connection that is not a secret — which is all of them: the
-// credential is inside the envelope conductor holds, and this document holds
+// credential is inside the envelope box holds, and this document holds
 // only the envelope's shadow.
 type ConnectResult struct {
 	Provider  string            `json:"provider"`
@@ -346,19 +346,19 @@ type ConnectResult struct {
 
 // providerStatusOptions is `cafe provider status`'s flag state.
 type providerStatusOptions struct {
-	json      bool
-	conductor string
+	json bool
+	box  string
 }
 
 func newProviderStatusCommand(deps providerDeps) *Command {
 	opts := &providerStatusOptions{}
 	c := &Command{
 		Name:    "provider status",
-		Summary: "which providers this box is connected to, as conductor reports it",
-		Usage:   "cafe provider status [--json] [--conductor <url>]",
+		Summary: "which providers this box is connected to, as box reports it",
+		Usage:   "cafe provider status [--json] [--box <url>]",
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.json, "json", false, "print the machine document on stdout instead of the human one")
-			fs.StringVar(&opts.conductor, "conductor", "", "conductor's origin; without it, the box identity's conductor or "+conductorURLEnv+" is used")
+			fs.StringVar(&opts.box, "box", "", "box's origin; without it, the box identity's control plane or "+boxURLEnv+" is used")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -377,18 +377,18 @@ func newProviderStatusCommand(deps providerDeps) *Command {
 			return err
 		}
 
-		if deps.cond == nil {
-			url := opts.conductor
+		if deps.controlPlane == nil {
+			url := opts.box
 			if url == "" {
-				url = id.Conductor
+				url = id.ControlPlane
 			}
 			if url == "" {
-				url = os.Getenv(conductorURLEnv)
+				url = os.Getenv(boxURLEnv)
 			}
-			deps.cond = provider.HTTPConductor{BaseURL: url}
+			deps.controlPlane = provider.HTTPControlPlane{BaseURL: url}
 		}
 
-		conns, err := provider.Status(env.Context, deps.cond, id.BoxID)
+		conns, err := provider.Status(env.Context, deps.controlPlane, id.BoxID)
 		if err != nil {
 			fmt.Fprintf(env.Stderr, "cafe provider status: %v\n", err)
 			return errReported
@@ -415,7 +415,7 @@ func newProviderStatusCommand(deps providerDeps) *Command {
 
 // StatusResult is what `cafe provider status` reports. It opens no envelope and
 // carries no credential: the connections are reported as the provider/account
-// pairs they are, and the envelopes conductor holds stay opaque.
+// pairs they are, and the envelopes box holds stay opaque.
 type StatusResult struct {
 	BoxID       string              `json:"box_id"`
 	Connected   bool                `json:"connected"`

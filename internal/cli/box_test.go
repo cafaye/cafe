@@ -17,7 +17,7 @@ import (
 )
 
 // The seams a box test needs, in one place: a keyring the test owns and a
-// conductor that counts. The count is the assertion the whole file turns on.
+// control plane that counts. The count is the assertion the whole file turns on.
 type boxTestRing struct{ entries map[string]string }
 
 func newBoxTestRing() *boxTestRing { return &boxTestRing{entries: map[string]string{}} }
@@ -39,11 +39,11 @@ func (r *boxTestRing) Delete(service, account string) error {
 	return nil
 }
 
-// countingBoxConductor counts redemptions. Conductor's single-use means a
+// countingBoxControlPlane counts redemptions. Box's single-use means a
 // second redemption is ALWAYS refused server-side, so a test that asserted
 // "the second enroll fails" would pass against a client that redeemed twice.
 // The count is what distinguishes idempotence from luck.
-type countingBoxConductor struct {
+type countingBoxControlPlane struct {
 	calls    int
 	tokens   []string
 	answer   *box.Installation
@@ -51,7 +51,7 @@ type countingBoxConductor struct {
 	tripwire bool
 }
 
-func (c *countingBoxConductor) Redeem(_ context.Context, token string, _ ed25519.PublicKey) (*box.Installation, error) {
+func (c *countingBoxControlPlane) Redeem(_ context.Context, token string, _ ed25519.PublicKey) (*box.Installation, error) {
 	c.calls++
 	c.tokens = append(c.tokens, token)
 	if c.tripwire {
@@ -73,19 +73,19 @@ func fakeBoxInstallation() *box.Installation {
 }
 
 // boxTestEnv is the deps every case below wires a command tree to: a directory
-// the test owns, a keyring in memory, and a conductor that answers with a
+// the test owns, a keyring in memory, and a control plane that answers with a
 // planted installation. Nothing here touches the machine's config directory,
 // its keychain or the network, which is the only reason these tests can run on
 // a bare CI runner.
-func boxTestEnv(t *testing.T) (deps boxDeps, cond *countingBoxConductor, ring *boxTestRing) {
+func boxTestEnv(t *testing.T) (deps boxDeps, cp *countingBoxControlPlane, ring *boxTestRing) {
 	t.Helper()
-	cond = &countingBoxConductor{answer: fakeBoxInstallation()}
+	cp = &countingBoxControlPlane{answer: fakeBoxInstallation()}
 	ring = newBoxTestRing()
-	deps = boxDeps{dir: t.TempDir(), ring: ring, cond: cond, url: "https://conductor.test"}
-	return deps, cond, ring
+	deps = boxDeps{dir: t.TempDir(), ring: ring, controlPlane: cp, url: "https://box.test"}
+	return deps, cp, ring
 }
 
-// boxTestToken is a capability in conductor's own shape. It is not a real
+// boxTestToken is a capability in box's own shape. It is not a real
 // one and nothing accepts it but the fake.
 var boxTestToken = "cap_" + strings.Repeat("b", 64)
 
@@ -138,11 +138,11 @@ func newFakeBoxKey(t *testing.T) fakeBoxKey {
 //
 // Two invocations rather than one, and two separate command trees sharing one
 // directory, because the state that has to survive a crash is the state on disk
-// and not the state in a process. The conductor is injected so the count is the
+// and not the state in a process. The control plane is injected so the count is the
 // network's count; the filesystem is real, which is the part a mock would
 // otherwise make worthless.
 func TestBoxEnrollIsIdempotentThroughTheCommandTree(t *testing.T) {
-	deps, cond, ring := boxTestEnv(t)
+	deps, cp, ring := boxTestEnv(t)
 
 	code, stdout, stderr := runBoxCLI(t, deps, "enroll", "--token", boxTestToken)
 	if code != 0 {
@@ -156,7 +156,7 @@ func TestBoxEnrollIsIdempotentThroughTheCommandTree(t *testing.T) {
 		t.Errorf("first redemptions = %d, want 1", first.Redemptions)
 	}
 	if first.Identity == nil || first.Identity.BoxID != fakeBoxInstallation().BoxID {
-		t.Errorf("first identity = %+v, want it to name the box conductor assigned", first.Identity)
+		t.Errorf("first identity = %+v, want it to name the enrolled box", first.Identity)
 	}
 	if strings.Count(stderr, "\n") != 1 || !strings.HasPrefix(stderr, "cafe box: ") {
 		t.Errorf("first stderr is not the one-sentence verdict:\n%s", stderr)
@@ -180,11 +180,11 @@ func TestBoxEnrollIsIdempotentThroughTheCommandTree(t *testing.T) {
 	if second.Redemptions != 0 {
 		t.Errorf("second attempt redeemed %d times, want 0", second.Redemptions)
 	}
-	if cond.calls != 1 {
-		t.Fatalf("conductor was called %d times across two enrolls, want exactly 1", cond.calls)
+	if cp.calls != 1 {
+		t.Fatalf("control plane was called %d times across two enrolls, want exactly 1", cp.calls)
 	}
-	if len(cond.tokens) != 1 || cond.tokens[0] != boxTestToken {
-		t.Errorf("conductor was presented %v, want the one token once", cond.tokens)
+	if len(cp.tokens) != 1 || cp.tokens[0] != boxTestToken {
+		t.Errorf("control plane was presented %v, want the one token once", cp.tokens)
 	}
 	if strings.Contains(stdout, private) || strings.Contains(stderr, private) {
 		t.Error("an enroll printed the box private key")
@@ -193,7 +193,7 @@ func TestBoxEnrollIsIdempotentThroughTheCommandTree(t *testing.T) {
 
 // The convergence case the brief is about, at the command level: an enrollment
 // that got as far as presenting the capability and no further is FINISHED by a
-// retry without presenting it again. The conductor here is a tripwire — any
+// retry without presenting it again. The control plane here is a tripwire — any
 // attempt to redeem panics the test — which is the only way to prove the retry
 // did not go back to the network.
 func TestBoxEnrollRecoversFromAnInterruptedSequence(t *testing.T) {
@@ -216,7 +216,7 @@ func TestBoxEnrollRecoversFromAnInterruptedSequence(t *testing.T) {
 		"account_id":  inst.AccountID,
 		"status":      inst.Status,
 		"phase":       inst.Phase,
-		"conductor":   "https://conductor.test",
+		"conductor":   "https://box.test",
 		"started_at":  "2026-10-09T11:59:00Z",
 		"redeemed_at": "2026-10-09T12:00:00Z",
 	}
@@ -224,7 +224,7 @@ func TestBoxEnrollRecoversFromAnInterruptedSequence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The conductor of THIS tree is the tripwire: it refuses to answer, so a
+	// The control plane of THIS tree is the tripwire: it refuses to answer, so a
 	// retry that presented the capability fails the test rather than passing it.
 	code, stdout, stderr := runBoxCLI(t, deps, "enroll", "--token", "cap_spent")
 	if code != 0 {
@@ -385,8 +385,8 @@ func TestBoxEnrollRefusesASpentCapabilityHonestly(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			deps, cond, _ := boxTestEnv(t)
-			cond.err = tt.err
+			deps, cp, _ := boxTestEnv(t)
+			cp.err = tt.err
 			code, _, stderr := runBoxCLI(t, deps, "enroll", "--token", boxTestToken)
 			if code != exitFailure {
 				t.Errorf("exit = %d, want %d (stderr: %s)", code, exitFailure, stderr)

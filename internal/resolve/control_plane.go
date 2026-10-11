@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-// ConductorError is one non-2xx answer from conductor. Like PantryError, it
-// carries the server's own code and message, because conductor's refusals are
+// ControlPlaneError is one non-2xx answer from box. Like PantryError, it
+// carries the server's own code and message, because box's refusals are
 // named and actionable (`entitlement_required`, `version_not_granted`) and a
 // client that paraphrased them would be a client whose failures cannot be
 // grepped against the server's log.
-type ConductorError struct {
+type ControlPlaneError struct {
 	// Status is the HTTP status.
 	Status int
 	// Code is the error's `code`: entitlement_required, version_not_granted,
@@ -27,19 +27,19 @@ type ConductorError struct {
 	Message string
 }
 
-func (e *ConductorError) Error() string {
+func (e *ControlPlaneError) Error() string {
 	if e.Message != "" {
-		return fmt.Sprintf("conductor answered %d %s: %s", e.Status, e.Code, e.Message)
+		return fmt.Sprintf("box answered %d %s: %s", e.Status, e.Code, e.Message)
 	}
-	return fmt.Sprintf("conductor answered %d %s", e.Status, e.Code)
+	return fmt.Sprintf("box answered %d %s", e.Status, e.Code)
 }
 
-// HTTPConductor is the real Conductor: the entitlement check, the mint of the
+// HTTPControlPlane is the real ControlPlane: the entitlement check, the mint of the
 // artifact.fetch capability, and its redemption — the whole of tier 3 in one
 // call, because the resolver's tier-3 question is one question and the
 // capability is not a thing to hold, it is a thing to spend.
-type HTTPConductor struct {
-	// BaseURL is conductor's origin. Empty is refused rather than defaulted.
+type HTTPControlPlane struct {
+	// BaseURL is box's origin. Empty is refused rather than defaulted.
 	BaseURL string
 	// Client is the HTTP client. Nil means one with a timeout.
 	Client *http.Client
@@ -47,16 +47,16 @@ type HTTPConductor struct {
 	Timeout time.Duration
 }
 
-// DefaultConductorTimeout is what a nil Timeout means.
-const DefaultConductorTimeout = 30 * time.Second
+// DefaultControlPlaneTimeout is what a nil Timeout means.
+const DefaultControlPlaneTimeout = 30 * time.Second
 
-func (c HTTPConductor) client() *http.Client {
+func (c HTTPControlPlane) client() *http.Client {
 	if c.Client != nil {
 		return c.Client
 	}
 	timeout := c.Timeout
 	if timeout <= 0 {
-		timeout = DefaultConductorTimeout
+		timeout = DefaultControlPlaneTimeout
 	}
 	return &http.Client{Timeout: timeout}
 }
@@ -73,14 +73,14 @@ func (c HTTPConductor) client() *http.Client {
 //
 // The caller's token (the agent's cafe credential) is presented as the bearer
 // for the mint and kept for the length of exactly this call. Whether it is
-// sufficient — whether the caller is a member of the account — is conductor's
+// sufficient — whether the caller is a member of the account — is box's
 // decision, and the refusal is named: 401 unauthenticated, 404 not_found (an
-// agent acting alone is not a member, and conductor answers that with the
+// agent acting alone is not a member, and box answers that with the
 // same 404 as an unknown account), 503 unavailable when identity cannot be
 // reached.
-func (c HTTPConductor) ArtifactFetch(ctx context.Context, accountID, artifact, versionRange, token string) (*FetchGrant, error) {
+func (c HTTPControlPlane) ArtifactFetch(ctx context.Context, accountID, artifact, versionRange, token string) (*FetchGrant, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, &ConductorError{Code: "no_conductor", Message: "no conductor URL configured"}
+		return nil, &ControlPlaneError{Code: "no_control_plane", Message: "no box URL configured"}
 	}
 
 	// The mint: POST /v1/accounts/{id}/artifact_fetches {artifact, version_range}.
@@ -91,7 +91,7 @@ func (c HTTPConductor) ArtifactFetch(ctx context.Context, accountID, artifact, v
 
 	// The redemption: POST /v1/capabilities/redeem {token, account_id}. The
 	// account_id must match the capability's own account — a capability for
-	// account A cannot fetch for account B — and conductor refuses a mismatch
+	// account A cannot fetch for account B — and box refuses a mismatch
 	// without spending the capability.
 	grant, err := c.redeem(ctx, capToken, accountID)
 	if err != nil {
@@ -101,7 +101,7 @@ func (c HTTPConductor) ArtifactFetch(ctx context.Context, accountID, artifact, v
 }
 
 // mint posts the entitlement check and returns the capability token.
-func (c HTTPConductor) mint(ctx context.Context, accountID, artifact, versionRange, token string) (string, error) {
+func (c HTTPControlPlane) mint(ctx context.Context, accountID, artifact, versionRange, token string) (string, error) {
 	body, err := json.Marshal(map[string]string{
 		"artifact":      artifact,
 		"version_range": versionRange,
@@ -118,7 +118,7 @@ func (c HTTPConductor) mint(ctx context.Context, accountID, artifact, versionRan
 		// "the entitlement check" is the `where`: a 404 here is about a caller
 		// who is not a member of the account, not about a capability.
 		if res.StatusCode == http.StatusNotFound {
-			return "", &ConductorError{Status: res.StatusCode, Code: "not_found", Message: notFoundHint()}
+			return "", &ControlPlaneError{Status: res.StatusCode, Code: "not_found", Message: notFoundHint()}
 		}
 		return "", errorFrom(res.StatusCode, raw, "the entitlement check")
 	}
@@ -131,15 +131,15 @@ func (c HTTPConductor) mint(ctx context.Context, accountID, artifact, versionRan
 		return "", fmt.Errorf("decode the mint answer: %w", err)
 	}
 	if strings.TrimSpace(payload.Capability.Token) == "" {
-		return "", &ConductorError{Code: "no_capability", Message: "the entitlement check passed but minted no capability token"}
+		return "", &ControlPlaneError{Code: "no_capability", Message: "the entitlement check passed but minted no capability token"}
 	}
 	return payload.Capability.Token, nil
 }
 
 // redeem redeems the capability and returns the fetch grant. The grant is the
-// capability's scope, read back from conductor — the proof that the capability
+// capability's scope, read back from box — the proof that the capability
 // was real and has been spent.
-func (c HTTPConductor) redeem(ctx context.Context, capToken, accountID string) (*FetchGrant, error) {
+func (c HTTPControlPlane) redeem(ctx context.Context, capToken, accountID string) (*FetchGrant, error) {
 	body, err := json.Marshal(map[string]string{
 		"token":      capToken,
 		"account_id": accountID,
@@ -181,31 +181,31 @@ func (c HTTPConductor) redeem(ctx context.Context, capToken, accountID string) (
 // transport error. The token is presented as the bearer; an empty token is
 // refused here rather than sent as an empty bearer, which a server answers 401
 // for a token that never existed.
-func (c HTTPConductor) do(ctx context.Context, token, method, path string, body []byte) (*http.Response, []byte, error) {
+func (c HTTPControlPlane) do(ctx context.Context, token, method, path string, body []byte) (*http.Response, []byte, error) {
 	if strings.TrimSpace(token) == "" {
-		return nil, nil, &ConductorError{Code: "unauthenticated", Message: "this call needs a cafe token and none was presented"}
+		return nil, nil, &ControlPlaneError{Code: "unauthenticated", Message: "this call needs a cafe token and none was presented"}
 	}
 	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(c.BaseURL, "/")+path, bytes.NewReader(body))
 	if err != nil {
-		return nil, nil, fmt.Errorf("build the conductor request: %w", err)
+		return nil, nil, fmt.Errorf("build the box request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 	res, err := c.client().Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("call conductor: %w", err)
+		return nil, nil, fmt.Errorf("call box: %w", err)
 	}
 	defer res.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
-		return res, nil, fmt.Errorf("read conductor's answer: %w", err)
+		return res, nil, fmt.Errorf("read box's answer: %w", err)
 	}
 	return res, raw, nil
 }
 
-// errorFrom turns conductor's {error:{code,message}} body into a ConductorError.
-// The code is read out of the body because conductor names its refusals there,
+// errorFrom turns box's {error:{code,message}} body into a ControlPlaneError.
+// The code is read out of the body because box names its refusals there,
 // and the two 403s — entitlement_required and version_not_granted — are
 // distinguished by the code and nothing else.
 //
@@ -237,16 +237,16 @@ func errorFrom(status int, raw []byte, where string) error {
 	if where != "" {
 		message = where + ": " + message
 	}
-	return &ConductorError{Status: status, Code: code, Message: message}
+	return &ControlPlaneError{Status: status, Code: code, Message: message}
 }
 
-// notFoundHint is what conductor's 404 does NOT say, and it has to be said
+// notFoundHint is what box's 404 does NOT say, and it has to be said
 // somewhere because the 404 is one answer to two questions.
 //
-// Conductor looks a capability up by token and an account by id, and it answers
+// Box looks a capability up by token and an account by id, and it answers
 // the same 404 for "unknown" and "not yours" — a capability for account A is
 // not a capability for account B, and saying which would be an oracle for
-// whether a guessed id is real. That is right on conductor's side and wrong on
+// whether a guessed id is real. That is right on box's side and wrong on
 // this one: a 404 about a fetch is almost always an agent acting alone, and the
 // remedy is a call the reader can actually make.
 func notFoundHint() string {

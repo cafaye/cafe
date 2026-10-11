@@ -75,16 +75,16 @@ func (s *oneCapabilityStore) Load(context.Context) (boxd.Identity, error) {
 	return s.id, nil
 }
 
-// queueConductor is one connection with a queue and a record, standing in for
-// conductor. It is the command layer's fake, not the daemon's: the daemon's
+// queueControlPlane is one connection with a queue and a record, standing in for
+// the control plane. It is the command layer's fake, not the daemon's: the daemon's
 // own fakes live in internal/boxd, and this one exists so the command can be
 // driven without re-testing what it delegates.
-type queueConductor struct {
+type queueControlPlane struct {
 	queue []boxd.Capability
 	acks  []boxd.Ack
 }
 
-func (c *queueConductor) Next(_ context.Context) (boxd.Capability, error) {
+func (c *queueControlPlane) Next(_ context.Context) (boxd.Capability, error) {
 	if len(c.queue) == 0 {
 		// Blocks like a real connection waiting for the next capability.
 		<-make(chan struct{})
@@ -95,20 +95,20 @@ func (c *queueConductor) Next(_ context.Context) (boxd.Capability, error) {
 	return cap, nil
 }
 
-func (c *queueConductor) Ack(_ context.Context, ack boxd.Ack) error {
+func (c *queueControlPlane) Ack(_ context.Context, ack boxd.Ack) error {
 	c.acks = append(c.acks, ack)
 	return nil
 }
 
-func (c *queueConductor) Close() error { return nil }
+func (c *queueControlPlane) Close() error { return nil }
 
-// counterDialer counts dials and always returns the one prepared conductor.
+// counterDialer counts dials and always returns the one prepared control plane.
 type counterDialer struct {
-	ch    *queueConductor
+	ch    *queueControlPlane
 	dials int
 }
 
-func (d *counterDialer) Dial(context.Context, boxd.Identity) (boxd.Conductor, error) {
+func (d *counterDialer) Dial(context.Context, boxd.Identity) (boxd.ControlPlane, error) {
 	d.dials++
 	return d.ch, nil
 }
@@ -134,7 +134,7 @@ func (w staticWorld) Observe(_ context.Context, _ boxd.ObserveParams) (boxd.Obse
 }
 
 // fakeDeps assembles the seam for a command driven by the test.
-func fakeDeps(t *testing.T, id boxd.Identity, ch *queueConductor) (boxdDeps, *counterDialer) {
+func fakeDeps(t *testing.T, id boxd.Identity, ch *queueControlPlane) (boxdDeps, *counterDialer) {
 	t.Helper()
 	dialer := &counterDialer{ch: ch}
 	return boxdDeps{
@@ -161,12 +161,12 @@ func (staticKeys) Certificate(context.Context) (tls.Certificate, error) {
 // names the box and the capability, because a daemon whose only output is its
 // exit code is a daemon nobody can watch work.
 func TestBoxdRedeemsOneCapabilityAndExitsZero(t *testing.T) {
-	id := boxd.Identity{BoxID: "box-test", Conductor: "conductor.invalid:443", Version: "test"}
-	ch := &queueConductor{queue: []boxd.Capability{{
+	id := boxd.Identity{BoxID: "box-test", ControlPlane: "box.invalid:443", Version: "test"}
+	ch := &queueControlPlane{queue: []boxd.Capability{{
 		ID: "cap-1", BoxID: "box-test", Route: "box.status", ExpiresAt: time.Now().Add(time.Minute),
 	}}}
 	deps, dialer := fakeDeps(t, id, ch)
-	identityPath := writeIdentity(t, identityDocument{BoxID: id.BoxID, Conductor: id.Conductor})
+	identityPath := writeIdentity(t, identityDocument{BoxID: id.BoxID, ControlPlane: id.ControlPlane})
 
 	env := newTestEnv()
 	err := newBoxdCommand(deps).Execute(env, []string{"-identity", identityPath, "-once"})
@@ -219,7 +219,7 @@ func TestBoxdRefusesAnUnenrolledBox(t *testing.T) {
 // in the table: the daemon has no listener, so a flag that names one must not
 // exist, and a flag that does not exist exits 2.
 func TestBoxdBadInvocationsAreUsageErrors(t *testing.T) {
-	identityPath := writeIdentity(t, identityDocument{BoxID: "box-test", Conductor: "c:443"})
+	identityPath := writeIdentity(t, identityDocument{BoxID: "box-test", ControlPlane: "c:443"})
 	tests := []struct {
 		name string
 		args []string
@@ -252,11 +252,11 @@ func TestTheIdentityFileIsTheSeam(t *testing.T) {
 	dir := t.TempDir()
 	testKeypairFiles(t, dir)
 	path := writeIdentityIn(t, dir, identityDocument{
-		BoxID:       "box-seam",
-		Conductor:   "conductor.cafaye.com:443",
-		Version:     "1.2.3",
-		Certificate: "box.crt",
-		Key:         "box.key",
+		BoxID:        "box-seam",
+		ControlPlane: "box.svc.cafaye.com:443",
+		Version:      "1.2.3",
+		Certificate:  "box.crt",
+		Key:          "box.key",
 	})
 
 	store, err := newFileIdentityStore(path)
@@ -267,7 +267,7 @@ func TestTheIdentityFileIsTheSeam(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if id.BoxID != "box-seam" || id.Conductor != "conductor.cafaye.com:443" {
+	if id.BoxID != "box-seam" || id.ControlPlane != "box.svc.cafaye.com:443" {
 		t.Fatalf("identity = %+v, want the document's own facts", id)
 	}
 	cert, err := store.Certificate(context.Background())
@@ -287,7 +287,7 @@ func TestTheIdentityFileIsTheSeam(t *testing.T) {
 }
 
 // TestTheIdentityFileRefusesAnUnusableDocument: the three ways an identity
-// document is wrong — not JSON, no box_id, no conductor — each with its own
+// document is wrong — not JSON, no box_id, no control plane — each with its own
 // message. A document nobody can read is a daemon that cannot start, and its
 // error is what the operator reads first.
 func TestTheIdentityFileRefusesAnUnusableDocument(t *testing.T) {
@@ -298,7 +298,7 @@ func TestTheIdentityFileRefusesAnUnusableDocument(t *testing.T) {
 	}{
 		{"not JSON", "box-identity!", "not the JSON"},
 		{"no box_id", `{"conductor":"c:443"}`, "no box_id"},
-		{"no conductor", `{"box_id":"box-x"}`, "no conductor"},
+		{"no control plane", `{"box_id":"box-x"}`, "no control plane"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -349,8 +349,8 @@ func TestTheBoxWorldAppliesIdempotently(t *testing.T) {
 
 // TestTheBoxWorldRefusesTheEnvelopeHonestly: opening a sealed provider
 // credential needs the substrate, which is not on the box yet. v0's world
-// refuses rather than pretending — a silent success would be the box telling
-// conductor a credential was installed when it was not.
+// refuses rather than pretending — a silent success would be the daemon telling
+// the control plane a credential was installed when it was not.
 func TestTheBoxWorldRefusesTheEnvelopeHonestly(t *testing.T) {
 	identity := filepath.Join(t.TempDir(), "box-identity.json")
 	world := newBoxWorld(boxd.Identity{BoxID: "box-test"}, identity, filepath.Join(t.TempDir(), "boxd-state.json"))
