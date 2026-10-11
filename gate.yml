@@ -92,7 +92,10 @@ gate:
       minimum: 28
     - id: suite
       match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
-      # 1259, measured with `./bin/prime` on this tree (28 packages, 1234 subtests, 8 skips).
+      # 1280, measured with `./bin/prime` on this tree (29 packages, 1239 subtests, 8 skips).
+      # roll/box-ops-verify (the ops verifier) added top-level tests in
+      # internal/verify's classifier and ledger tables and internal/cli's
+      # `cafe box verify --observe` cases, and took the package count to 29.
       # The floor moved twice in the Cafaye Ops wave: OPS-P9 (backup drill) and
       # OPS-P10/P11/P12 (secret inventory, cve surface, failure library) and
       # OPS-P13 (the monthly report) each added top-level tests and no subtests,
@@ -102,7 +105,7 @@ gate:
       # internal/resolve (the address read, the ambiguity retry, the wrong-owner
       # refusal), internal/publish (the 201 body's address) and internal/cli
       # (the slash form).
-      minimum: 1259
+      minimum: 1280
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1234, measured: internal/cve's classification tables, the cve CLI
