@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/verify"
 )
 
 // boxDeps is what `cafe box` needs from the world, and it is a struct of
@@ -32,6 +33,11 @@ type boxDeps struct {
 	// environment variable, and an empty environment variable is a refusal
 	// rather than a guess.
 	url string
+	// stdin is where a value arrives when a verb needs one. It is a field
+	// rather than os.Stdin for the reason failureDeps carries its own: a
+	// secret never reaches argv, so it arrives on a stream, and a stream the
+	// test cannot replace is a value the test cannot prove stayed off argv.
+	stdin io.Reader
 }
 
 // defaultConfigDir is the config directory a box's non-secrets and an agent's
@@ -68,6 +74,9 @@ func (d boxDeps) withDefaults() boxDeps {
 	}
 	if d.controlPlane == nil {
 		d.controlPlane = box.HTTPControlPlane{BaseURL: d.url}
+	}
+	if d.stdin == nil {
+		d.stdin = os.Stdin
 	}
 	return d
 }
@@ -451,11 +460,15 @@ func newBoxLogsCommand(deps boxDeps) *Command {
 
 func newBoxVerifyCommand(deps boxDeps) *Command {
 	f := &boxFlags{}
+	ops := &opsVerifyOptions{}
 	c := &Command{
 		Name:    "box verify",
-		Summary: "the box's report on itself: identity, key, journal and phase",
-		Usage:   "cafe box verify [--json]",
-		Flags:   func(fs *flag.FlagSet) { f.declare(fs) },
+		Summary: "the box's report on itself: identity, key, journal and phase — and, with --observe, the secrets and health signals it answers under",
+		Usage:   "cafe box verify [--observe <observe.report.json>] [--state-dir <dir>] [--mint <name>] [--json]",
+		Flags: func(fs *flag.FlagSet) {
+			f.declare(fs)
+			ops.declare(fs)
+		},
 	}
 	c.Run = func(args []string, env *Env) error {
 		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
@@ -465,17 +478,44 @@ func newBoxVerifyCommand(deps boxDeps) *Command {
 		if err != nil {
 			return err
 		}
-		if v.OK {
-			say(env.Stderr, "box %s verifies", v.BoxID)
-			return writeDoc(env.Stdout, v, f.json)
-		}
-		say(env.Stderr, "box %s does not verify: %s", v.BoxID, v.Reason)
-		// The verdict is the document; printing it again on stderr would put
-		// the same sentence in two places, one of which a CI log greps.
-		if err := writeDoc(env.Stdout, v, f.json); err != nil {
+		// The ops half runs over the same document and answers the same
+		// verb, so `cafe box verify` is one command a person runs and not
+		// two they have to know about. It is skipped wholesale when no flag
+		// asks for it, which is what keeps the verb's existing output the
+		// output a script already reads.
+		opsDoc, run, err := runOpsVerify(ops, env, deps.withDefaults().stdin, v.BoxID)
+		if err != nil {
 			return err
 		}
-		return errReported
+		if !run {
+			if v.OK {
+				say(env.Stderr, "box %s verifies", v.BoxID)
+				return writeDoc(env.Stdout, v, f.json)
+			}
+			say(env.Stderr, "box %s does not verify: %s", v.BoxID, v.Reason)
+			// The verdict is the document; printing it again on stderr would put
+			// the same sentence in two places, one of which a CI log greps.
+			if err := writeDoc(env.Stdout, v, f.json); err != nil {
+				return err
+			}
+			return errReported
+		}
+
+		renderOpsVerify(env, opsDoc)
+		// Both halves, one document: the box's report on itself, and the
+		// verification it runs under. A machine reads one JSON object; a
+		// person reads the stderr lines, whose last is the next line.
+		both := struct {
+			*box.Verify
+			Verification *verify.Verification `json:"verification,omitempty"`
+		}{Verify: v, Verification: opsDoc}
+		if err := writeDoc(env.Stdout, both, f.json); err != nil {
+			return err
+		}
+		if !v.OK || (opsDoc != nil && opsDoc.Status == verify.StatusDegraded) {
+			return errReported
+		}
+		return nil
 	}
 	return c
 }

@@ -77,6 +77,25 @@ type Observation struct {
 	// Disk is the box's root filesystem in bytes, measured by the world (see
 	// Disk's own comment for why the measurement is not made here).
 	Disk Disk `json:"disk"`
+	// Settings is, per service, the NAMES of the settings that are set on
+	// this box. Names only — see the type comment on internal/failure's
+	// Observation, which is the same rule for the same reason: a service's
+	// configuration is where credentials live, and the fact the verifier
+	// needs is a name's presence. This is what lets the box answer "which
+	// secrets are on me" without ever being able to answer "what are they
+	// worth", and it is the substrate's fact to fill: the daemon reads the
+	// cluster's Secret keys and cannot read a value it was never given a
+	// route for.
+	Settings map[string][]string `json:"settings,omitempty"`
+	// SealedSecrets are the names whose value this box holds ONLY as an
+	// envelope sealed to its own public key, posted here by the control
+	// plane. It is the one thing the daemon knows about a sealed envelope
+	// beyond its existence: the name the control plane addressed, and
+	// nothing else — the ciphertext is unreadable without the box key and
+	// the key is the transport's, loaded per connection. A name in here is
+	// a fact about WHERE the value is, which is the whole question an
+	// operator asks when the box cannot send mail.
+	SealedSecrets []string `json:"sealed_secrets,omitempty"`
 	// LastDrill is the most recent backup drill across every service on this
 	// box — the box-level summary — and nil when this box has never run a
 	// drill: a box with no history is the ordinary first state, not an error.

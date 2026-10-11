@@ -91,6 +91,15 @@ type SecretInput struct {
 	// MintedBy names the box that minted this value rather than a human
 	// typing one. Empty when a human pushed it at deploy time.
 	MintedBy string
+	// Elsewhere names where the value lives when it is NOT on the box and
+	// NOT sealed for the control plane, and where it lives is still a fact
+	// worth having. muse's vault key is the case: the inventory records no
+	// namespace and no Secret object for it, because muse reads it per
+	// request out of its own vault and it never becomes a cluster Secret at
+	// all. A verifier that reported that as "missing" would demand an object
+	// that cannot exist, which is the false alarm that teaches people to
+	// ignore the report.
+	Elsewhere string
 	// Class is the inventory's word for the entry: rotatable, conditional
 	// or not-rotatable. It is carried so the answer can say which class a
 	// missing value belongs to without the verifier holding the table.
@@ -201,9 +210,24 @@ func Check(p Probe) Verification {
 	// routing on that report, so the verifier checks the SAME report — a
 	// verifier that re-measured would eventually disagree with the thing it
 	// is verifying.
-	v.Signals = append(v.Signals, diskSignal(obs.Disk))
-	v.Signals = append(v.Signals, certificateSignal(obs.Certificate))
-	v.Signals = append(v.Signals, healthSignal(obs.Health))
+	disk := diskSignal(obs.Disk)
+	cert := certificateSignal(obs.Certificate)
+	health := healthSignal(obs.Health)
+	v.Signals = append(v.Signals, disk, cert, health)
+
+	// A degraded SIGNAL is a degraded reason, because the person's next line
+	// is attached to a reason and not to a signal — a status nobody can act
+	// on is the reason people SSH in and grep a log.
+	if disk.Status == StatusDegraded {
+		v.add(p, "disk_full", disk.Detail)
+	}
+	if cert.Status == StatusDegraded {
+		key := "certificate_expired"
+		if obs.Certificate.Status == "expiring" {
+			key = "certificate_expiring"
+		}
+		v.add(p, key, cert.Detail)
+	}
 
 	if p.answered() {
 		// A drill that failed or never ran is a health fact the edge reads
@@ -224,6 +248,15 @@ func Check(p Probe) Verification {
 		if key, detail, ok := secretReason(p, s); ok {
 			v.add(p, key, detail)
 		}
+	}
+
+	// The box's own word for itself, last: when it says degraded and nothing
+	// this verifier named explains it, its reasons are carried through —
+	// "the probe timeout is the bug" is a sentence nobody else is going to
+	// produce. When something above already explains it, this stays quiet
+	// rather than saying the same thing twice.
+	if health.Status == StatusDegraded && !explainedBy(v.Reasons) {
+		v.add(p, "health_degraded", health.Detail)
 	}
 
 	if p.Mint != nil {
@@ -362,6 +395,11 @@ func secretFact(s SecretInput) SecretFact {
 		} else {
 			fact.Detail = "held on the box"
 		}
+	case s.Elsewhere != "":
+		// The value is somewhere the box's Secret surface does not reach,
+		// and that is where it is SUPPOSED to be. Reported, not remedied.
+		fact.Status = "held_elsewhere"
+		fact.Detail = s.Elsewhere
 	case s.Sealed:
 		fact.Status = "sealed_only"
 		fact.Detail = "sealed for the control plane against this box's public key, and not installed on the box, so a command that needs it fails"
@@ -397,11 +435,33 @@ func secretReason(p Probe, s SecretInput) (Key, Detail string, _ bool) {
 			return "secret_forked", fmt.Sprintf("%s was minted by box %s, and this box reports it was minted by box %s: two boxes hold one name", s.Name, rec.BoxID, s.MintedBy), true
 		}
 		return "", "", false
+	case s.Elsewhere != "":
+		// Nowhere a Secret could be, and that is not a fault: see
+		// SecretInput.Elsewhere.
+		return "", "", false
 	case s.Sealed:
 		return "secret_not_installed", fmt.Sprintf("%s is sealed for the control plane against this box's key and is not installed on the box", s.Name), true
 	default:
 		return "secret_missing", fmt.Sprintf("%s is neither on the box nor sealed for the control plane", s.Name), true
 	}
+}
+
+// explainedBy is whether a reason above already accounts for the box's own
+// degraded health. The box's summary is DERIVED from the facts a verifier
+// checks independently — healthStatus's certificate and drill reasons are
+// the same facts — so reporting both would be the same sentence twice, and a
+// report that says one thing two ways is a report a reader discounts.
+func explainedBy(reasons []Reason) bool {
+	explains := map[string]bool{
+		"drill_absent": true, "drill_failed": true,
+		"certificate_expired": true, "certificate_expiring": true,
+	}
+	for _, r := range reasons {
+		if explains[r.Key] {
+			return true
+		}
+	}
+	return false
 }
 
 // remedy is the person's part of a reason, and it is a table rather than a
@@ -423,6 +483,8 @@ func remedy(key, boxID string) Human {
 		action = "`cafe reclaim` releases what a failed session left behind, and the free-byte number in this report is what says it worked"
 	case "drill_absent", "drill_failed":
 		action = "run `cafe backup drill <service>`: the outcome is recorded, and the next observe.report reports it without anybody grepping a log"
+	case "health_degraded":
+		action = "`cafe failure check` against this observation names which documented failure mode holds; the reasons under this one are the box's own words for it"
 	case "secret_missing":
 		action = "push the secret at deploy time (`cafe deploy <service>`) — never bake it into the image — and this report's secret section says when the box holds it"
 	case "secret_not_installed":
