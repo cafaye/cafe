@@ -34,6 +34,7 @@ internal/ports/     the port block, the reservation that holds a port, the probe
 internal/provider/  caf provider: the client half of boundary 6 — the envelope sealed to the box's public key, the conductor seam
 internal/reclaim/   the sweep's container-runtime seam, scoped to one project
 internal/resolve/   caf resolve: the tiered catalog's consumer — a manifest's dependencies through tiers 1/2/3, and the named failures
+internal/publish/   caf publish: the write half of the same pantry client — the proposal, the three writes, the address a project registered under
 internal/secret/    caf secret: the box's secret inventory, its three classes, and the rotation path for the rotatable one
 internal/ryuk/      the reaper lease client, for testcontainers' Ryuk
 internal/ci/        no code; the tests that keep .github/workflows/ci.yml and bin/prime honest
