@@ -49,6 +49,16 @@ type SSHHost struct {
 	Timeout time.Duration
 	// ConnectTimeout bounds the connection. Zero means DefaultConnectTimeout.
 	ConnectTimeout time.Duration
+	// Progress is called as a Write proceeds: once per chunk with the bytes
+	// that crossed, and once when the host's own hash matched. Nil is silent,
+	// which is the right default for a library — the CLI sets it, so the
+	// operator watching a 29 MB binary cross a slow link sees a line per
+	// megabyte and a final one that says the bytes were proven.
+	//
+	// It is a field rather than a third method on the Host interface on
+	// purpose: the interface is two methods and a fake host must not have to
+	// implement reporting to be usable.
+	Progress func(WriteEvent, int, int)
 }
 
 // DefaultTimeout bounds one remote command. A `curl | sh` on a cold network can
@@ -107,30 +117,10 @@ func (h SSHHost) Run(ctx context.Context, command string, stdin []byte) (Output,
 	return out, nil
 }
 
-// Write puts a file on the host.
-//
-// It goes over a single `ssh cat > path` rather than a second transport: a
-// command that opens one connection per step is a command whose failure modes
-// are one, and scp would be a second client to configure, to trust and to keep
-// in step with the one above it.
-func (h SSHHost) Write(ctx context.Context, path string, data []byte, mode os.FileMode) error {
-	// The install is written to a sibling and moved into place, so a host that
-	// loses the connection mid-write keeps its previous binary rather than
-	// ending up with a truncated one. Same argument as the keyring's rename,
-	// applied to a file on a machine nobody is watching.
-	dir := filepath.Dir(path)
-	tmp := filepath.Join(dir, "."+filepath.Base(path)+".cafe-tmp")
-	script := fmt.Sprintf("mkdir -p %s && cat > %s && chmod %o %s && mv %s %s",
-		shellQuote(dir), shellQuote(tmp), mode, shellQuote(tmp), shellQuote(tmp), shellQuote(path))
-	out, err := h.Run(ctx, script, data)
-	if err != nil {
-		return err
-	}
-	if !out.OK() {
-		return fmt.Errorf("cafe box setup: write %s on %s: %s", path, h.Name, firstLine(out.Stderr+out.Stdout))
-	}
-	return nil
-}
+// Write is in write.go, and it is deliberately not here: the transport's job
+// is one process and one pipe, and the delivery's job is a bounded stream with
+// a hash gate on it. They were one method once, and what came out of a 29 MB
+// write was 17,625,600 bytes on the far end and a success.
 
 // sshArgs builds the options every invocation carries. They are here rather
 // than at the call sites because there is one policy for reaching a host and
