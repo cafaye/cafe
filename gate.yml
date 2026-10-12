@@ -114,7 +114,7 @@ gate:
       # added the stack's own release-history cases. The two numbers measure
       # different things and a packet that moved one without the other is a
       # packet that was counted, not rounded.
-      minimum: 1289
+      minimum: 1314
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1234, measured: internal/cve's classification tables, the cve CLI

@@ -45,6 +45,7 @@ internal/reclaim/   the sweep's container-runtime seam, scoped to one project
 internal/resolve/   cafe resolve: the tiered catalog's consumer — a manifest's dependencies through tiers 1/2/3, and the named failures
 internal/publish/   cafe publish: the write half of the same pantry client — the proposal, the three writes, the address a project registered under
 internal/secret/    cafe secret: the box's secret inventory, its three classes, and the rotation path for the rotatable one
+internal/stack/    the boxed stack: releases on disk, the current pointer, the history, and the flip-back
 internal/ryuk/      the reaper lease client, for testcontainers' Ryuk
 internal/ci/        no code; the tests that keep .github/workflows/ci.yml and bin/prime honest
 bin/prime           the gate: go mod download && go build ./... && go test -v ./... , then say what ran
@@ -546,6 +547,58 @@ not hold" would be a green light over a blind spot, which is the report
 `internal/lock` refuses to produce; `TestTheBoxDaemonsObservationAnswersNothingAndSaysSo`
 in `check_test.go` watches that answer stay unknown rather than drift into a pass.
 
+`internal/stack` is `cafe box deploy` and `cafe box rollback`, split by the
+same rule, and it is the one piece of state a box owns so that a rollback
+needs no control plane:
+
+- `doc.go` — what the package is, the shape on disk, and why a stack root is
+  one service's.
+- `release.go` — `Release`, `History`, `Store`, and the four file operations a
+  deploy path is made of: stage (an exclusive create, never in place), switch
+  (a relative symlink moved by rename, which is the atomic step), current, and
+  prune (keep N, never the pointer and never the last-good one).
+- `deploy.go` — `Deploy` in six ordered steps, the `Box` seam the box's
+  substrate implements, and `flipBack`.
+
+**The switch comes before the gate, and that is the design.** You cannot know
+whether a release works without putting it in front of traffic; a second
+"test" copy of everything is a staging environment the box does not have and
+that would prove nothing about the release actually serving. What makes it
+safe is the fixing: `flipBack` writes the last-good pointer at the moment of
+the failure and reads it back off local disk, so a rollback makes no network
+call and cannot fail because something else is down. Two pointers, because two
+questions — "undo this" walks back one release (`previousGood`), and "the
+deploy broke" jumps to the last one that passed a gate (`LastGood`).
+
+**The edge's host and certificate state is READ, never owned.** A deploy
+refuses a host the edge does not route, or whose certificate is not valid
+now, BEFORE it stages anything: that is the one moment the answer is free,
+and the check is the last thing between a deploy and a release nobody can
+reach. The state comes from the box's own edge file, because a second copy of
+it in the deploy path would be a copy that can disagree with the one serving
+traffic.
+
+**A release record carries the NAME of the secret set, never a value.** The
+box installs the set INTO the release directory at deploy time — that is
+"secrets at deploy, pushed to the box, never baked into the image" — and the
+record above it is a sentence a stranger could read without learning
+anything, which is why history.json is 0644 rather than 0600: the release
+history is the product an operator reads with `cat`.
+`TestTheReleaseRecordCarriesNoSecretValue` installs one and searches every
+record the stack wrote, with the control half asserting the name IS there.
+
+**Nothing here needs a container runtime to prove anything.** The `Box` seam
+is three methods; a test drives a fake that counts, and the e2e test serves
+the release directory through a real loopback HTTP edge that routes on the
+Host header — so a service change through `api.cafaye.test` and
+`auth.cafaye.test`, and a broken deploy flipping back on purpose, are
+assertions in the gate rather than a screenshot in a report.
+
+`internal/stack` is stdlib only, and it holds to it for the same reason
+`internal/box` does: the release history is the state a box recovers itself
+with, and a rollback that needed a library fetched over the network would be a
+rollback that could not run on the box that needs it.
+
 the standard library cannot do the job. `internal/box`, `internal/ledger`,
 `internal/ports`, `internal/reclaim`, `internal/ryuk`,
 `internal/lock` and
@@ -607,6 +660,15 @@ their ProxyJump, is a poor trade.
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and
 `github.com/santhosh-tekuri/jsonschema/v6` for draft 2020-12 validation.
+
+**Six packages have dependencies** — `internal/contract` (two),
+`internal/backup` (one, the same YAML library), `internal/scaffold` (both of
+`internal/contract`'s, for the same reason that package uses them),
+`internal/resolve` (`internal/contract` again, for the ONE type it must not
+have an opinion about), `internal/mcp` (`modelcontextprotocol/go-sdk`) and
+`internal/failure` (`internal/boxd`). Everything else is standard library
+only, and that is a claim about the tree: a package added to the list has to
+say why in its own doc, because the default is "no".
 
 `internal/backup` has one, and it is the first of those: `github.com/goccy/go-yaml`
 again, to read `config/kamal-backup.yml` and the accessory block out of the document
@@ -837,7 +899,7 @@ does not run, add it there in the same commit.
    count it expects.
 4. Add the row to the README command table.
 5. Add the package to the Layout section above if it is a new one, and count it in
-   the dependency paragraph — "There are three packages with dependencies" is a claim
+   the dependency paragraph — "Six packages have dependencies" is a claim
    about the tree, and a new package makes it wrong.
 6. `bin/prime`, `gofmt -l .`, `go vet ./...` — and if the change added a test,
    raise the floor in `gate.yml` in the same commit, or step 6 will tell you so.

@@ -49,6 +49,12 @@ type boxDeps struct {
 	// reached around its parent would be a verb no test could drive through
 	// the real router.
 	setup boxSetupDeps
+	// stack is the deploy verbs' half of the deps: the box's own stack root
+	// and the two seams a test injects. It is separate from the lifecycle
+	// half because it is separate state — a stack root and a keyring have
+	// nothing to do with each other — and a struct that carried both would
+	// let a test that only wanted one hand back a nil for the other.
+	stack boxStackDeps
 }
 
 // defaultConfigDir is the config directory a box's non-secrets and an agent's
@@ -98,6 +104,7 @@ func (d boxDeps) withDefaults() boxDeps {
 	if d.controlPlane == nil {
 		d.controlPlane = box.HTTPControlPlane{BaseURL: d.url}
 	}
+	d.stack = d.stack.withDefaults()
 	return d
 }
 
@@ -129,10 +136,12 @@ type boxVerb struct {
 func boxVerbs(deps boxDeps) []boxVerb {
 	return append([]boxVerb{
 		{name: "apply", cmd: newBoxApplyCommand(deps)},
+		{name: "deploy", cmd: newBoxDeployCommand(deps)},
 		{name: "enroll", cmd: newBoxEnrollCommand(deps)},
 		{name: "logs", cmd: newBoxLogsCommand(deps)},
 		{name: "plan", cmd: newBoxPlanCommand(deps)},
 		{name: "setup", cmd: newBoxSetupCommand(deps.setup)},
+		{name: "rollback", cmd: newBoxRollbackCommand(deps)},
 		{name: "status", cmd: newBoxStatusCommand(deps)},
 		{name: "verify", cmd: newBoxVerifyCommand(deps)},
 	}, boxEdgeVerbs(deps)...)
@@ -188,8 +197,8 @@ func newBoxCommand(deps boxDeps) *Command {
 	verbs := boxVerbs(deps)
 	c := &Command{
 		Name:     "box",
-		Summary:  "the box lifecycle: enroll, then status, plan, apply, logs, verify — and the edge: publish, edge, rollback",
-		Usage:    "cafe box <enroll|status|plan|apply|logs|verify|publish|edge|rollback> [flags] [arguments]",
+		Summary:  "the box lifecycle: enroll, then status, plan, apply, setup, deploy, rollback, logs, verify — and the edge: publish, edge",
+		Usage:    "cafe box <enroll|status|plan|apply|setup|deploy|rollback|logs|verify|publish|edge> [flags] [arguments]",
 		LongHelp: boxLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -495,17 +504,35 @@ func resolvePhaseArg(phase string) string {
 	return phase
 }
 
+// logsOptions is `cafe box logs`' flag state. `--release` is one flag with
+// two subjects, and that is deliberate: the box's own lifecycle log and a
+// release's own log are both "what happened", and a person who typed
+// `cafe box logs --release X` expects the log of the release they named
+// rather than a lecture about which command to type next.
+type logsOptions struct {
+	boxStackFlags
+	release string
+	root    string
+}
+
 func newBoxLogsCommand(deps boxDeps) *Command {
-	f := &boxFlags{}
+	opts := &logsOptions{}
 	c := &Command{
 		Name:    "box logs",
-		Summary: "the box's own log: what happened, when, and to which phase",
-		Usage:   "cafe box logs [--json]",
-		Flags:   func(fs *flag.FlagSet) { f.declare(fs) },
+		Summary: "the box's own log — and, with --release, the log of one release",
+		Usage:   "cafe box logs [--json] [--release <id>]",
+		Flags: func(fs *flag.FlagSet) {
+			fs.BoolVar(&opts.json, "json", false, "print the machine document on stdout instead of the human one")
+			fs.StringVar(&opts.release, "release", "", "follow ONE release's log instead of the box's own event log")
+			fs.StringVar(&opts.root, "root", "", "where this box's stack lives (default $"+stackRootEnv+" or "+defaultStackRoot+")")
+		},
 	}
 	c.Run = func(args []string, env *Env) error {
 		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
 			return err
+		}
+		if opts.release != "" {
+			return writeReleaseLog(env, deps, opts)
 		}
 		events, err := boxStoreFor(c, env, deps).Logs()
 		if err != nil {
@@ -516,9 +543,35 @@ func newBoxLogsCommand(deps boxDeps) *Command {
 		} else {
 			say(env.Stderr, "%d events", len(events))
 		}
-		return writeDoc(env.Stdout, events, f.json)
+		return writeDoc(env.Stdout, events, opts.json)
 	}
 	return c
+}
+
+// writeReleaseLog prints one release's own log. It is the file the release
+// writes while it runs, named by the release id, so following one release is
+// a path rather than a grep through everything the box ever did.
+func writeReleaseLog(env *Env, deps boxDeps, opts *logsOptions) error {
+	sd := deps.stack
+	if opts.root != "" {
+		sd.root = opts.root
+	}
+	// A release's log is found by looking in the stack it is in, and the
+	// release id is unique enough that the box can answer without being told
+	// which service it belongs to: it walks the services under the root.
+	path, err := releaseLogPath(sd, opts.release)
+	if err != nil {
+		// An unknown release id is a USAGE mistake: nothing was asked of the
+		// box that it could misread, and the answer is the list of what is on
+		// it rather than a failure.
+		return fmt.Errorf("%w: cafe box logs --release %s: %v (usage: %s)", errUsage, opts.release, err, "cafe box logs --release <id>")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read release %s's log at %s: %w", opts.release, path, err)
+	}
+	fmt.Fprintf(env.Stdout, "%s", raw)
+	return nil
 }
 
 func newBoxVerifyCommand(deps boxDeps) *Command {
