@@ -666,7 +666,8 @@ fail to load at exactly the wrong moment. `internal/run` holds to it for a third
 reason of its own: it is the state a box installs itself into, and the phases it
 records are the ones that run before anything else is on the box — a store that
 needed a library could not be read by the `cafe` binary that has to recover the
-install, only by a newer one. `internal/lock` holds to it for a second reason: thefailure it exists to catch is two processes disagreeing about a vendored schema
+install, only by a newer one. `internal/lock` holds to it for a second reason: the
+failure it exists to catch is two processes disagreeing about a vendored schema
 or a generated client, and a verifier that cannot be rebuilt from a release
 tarball with nothing but a standard library is a verifier nobody can run in the
 one place a tarball gets checked. `internal/cve` is the exception that proves the paragraph, in the other direction:
@@ -677,7 +678,7 @@ cannot fail to build, or fail to run, because of a dependency tree on the
 operator's machine. A scanner that needed a library would be a scanner whose
 answer depended on somebody else's release schedule.
 
-`internal/scaffold` is stdlib plus`internal/contract` and brings that package's two libraries with it, which is
+`internal/scaffold` is stdlib plus `internal/contract` and brings that package's two libraries with it, which is
 the deliberate answer rather than an accident of the import: the manifest a
 template renders is validated by the same compiled schema `cafe contract lint`
 runs, and the generator cannot be allowed a second, weaker copy of the check its
