@@ -99,6 +99,7 @@ a run in which they passed.
 | `cafe box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
 | `cafe box deploy --build <name@sha256:…> --host <name>` | ship a pantry build to this box: stage it, switch traffic to it, roll back if it does not answer | **works** |
 | `cafe box rollback [<release-id>] [--service <name>]` | put the previous release back: one symlink, no rebuild, no control plane | **works** |
+| `cafe box verify --observe <observe.report.json> [--state-dir <dir>] [--mint <name>]` | the verifier the box runs under: which secrets are on it and where they are sealed for the control plane, the three signals the edge frets about (Disk/Health/Certificate per machine), and — when it says `health: degraded` — who reads the next line, where, and what changes it to `ok`; `--mint` records a value this box minted, read from stdin and kept only as a fingerprint, so an enclave build never mints a second `SECRET_KEY_BASE` | **works** |
 | `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to box — the agent never sees the value | **works** |
 | `cafe provider status --json` | which providers this box is connected to, as box reports it; opens no envelope | **works** |
 | `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the eleven documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
@@ -1562,7 +1563,7 @@ read a credential, because neither route exists to be asked for.
 | Route | What it does | Mutates? |
 |---|---|---|
 | `box.status` | the box's enrolled identity, the daemon's version, where its control plane is | no |
-| `observe.report` | the observe stream: health, deployed version, certificate expiry, disk, the last backup drill per service and across the box, and which releases are pending against the box's version range — as one machine-readable JSON document | no |
+| `observe.report` | the observe stream: health, deployed version, certificate expiry, disk, the last backup drill per service and across the box, and which releases are pending against the box's version range — as one machine-readable JSON document. It also carries the per-service settings NAMES and the names sealed for the control plane, which is what lets a box answer which secrets it holds without ever being able to answer what they are worth | no |
 | `stack.status` | the substrate's phase, and the phase the install plan reached | no |
 | `stack.apply` | apply one phase of the recorded install plan, idempotently | yes |
 | `provider.connect` | install a provider credential sealed to this box as a Kubernetes Secret | yes |
