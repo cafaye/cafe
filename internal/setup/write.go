@@ -202,10 +202,12 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 	}
 
 	if out, err := t.run(ctx, "mv "+shellQuote(tmp)+" "+shellQuote(path), nil); err != nil {
-		return fmt.Errorf("cafe box setup: write %s on %s: the bytes are on the host and match, but the move into place died: %v", path, t.name, err)
+		return fmt.Errorf("cafe box setup: write %s on %s: the bytes are on the host and match, but the move into place died: %v. "+
+			"The verified file is at %s; move it by hand and the host is whole.", path, t.name, err, tmp)
 	} else if !out.OK() {
-		return fmt.Errorf("cafe box setup: write %s on %s: the bytes are on the host and match, but the move into place failed: %s",
-			path, t.name, firstLine(out.Stderr+out.Stdout))
+		return fmt.Errorf("cafe box setup: write %s on %s: the bytes are on the host and match, but the move into place failed: %s. "+
+			"The verified file is at %s; move it by hand and the host is whole.",
+			path, t.name, firstLine(out.Stderr+out.Stdout), tmp)
 	}
 	return nil
 }
