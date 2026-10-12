@@ -320,7 +320,7 @@ func probeFlags(r *runRecord) func(fs *flag.FlagSet) {
 // newTestEnv is an Env that writes to buffers, so a test can read back exactly
 // what a command printed.
 func newTestEnv() *Env {
-	return &Env{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, Version: testVersion}
+	return &Env{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, Stdin: strings.NewReader(""), Version: testVersion}
 }
 
 // written returns what a command wrote to one of the test env's streams.

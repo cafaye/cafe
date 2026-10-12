@@ -56,6 +56,10 @@ type Options struct {
 	// discarded, so a caller that only wants an exit code can pass nothing.
 	Stdout io.Writer
 	Stderr io.Writer
+	// Stdin is what a command that reads one gets. Nil means the process's
+	// own, and a test sets it so `cafe box setup --token -` can be driven
+	// without touching the test binary's standard input.
+	Stdin io.Reader
 	// Context is cancelled when the process is interrupted. A nil context is a
 	// background one, so a caller that only wants an exit code passes nothing.
 	Context context.Context
@@ -68,6 +72,13 @@ type Env struct {
 	Version Version
 	Stdout  io.Writer
 	Stderr  io.Writer
+	// Stdin is what a command may read. It is a third stream rather than the
+	// process's own standard input for the reason the other two are streams:
+	// `cafe box setup --token -` takes the capability off a pipe, and a test
+	// has to be able to hand it one without redirecting the test binary's own
+	// standard input. Nil means the process's stdin, which is what a real
+	// invocation wants.
+	Stdin io.Reader
 	// Context is cancelled when the process is interrupted. It is optional: a
 	// caller that only wants an exit code passes nothing, and the router fills
 	// in a background context. `cafe dev` is the one command that reads it, and
@@ -218,8 +229,18 @@ func (o Options) env() Env {
 		Version: version,
 		Stdout:  writerOrDiscard(o.Stdout),
 		Stderr:  writerOrDiscard(o.Stderr),
+		// A nil Stdin is the process's own, which is what a command that reads
+		// one (`cafe box setup --token -`) needs and what a test overrides.
+		Stdin:   readerOrStdin(o.Stdin),
 		Context: ctx,
 	}
+}
+
+func readerOrStdin(r io.Reader) io.Reader {
+	if r != nil {
+		return r
+	}
+	return os.Stdin
 }
 
 func writerOrDiscard(w io.Writer) io.Writer {

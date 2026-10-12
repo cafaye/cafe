@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/setup"
 )
 
 // boxDeps is what `cafe box` needs from the world, and it is a struct of
@@ -32,6 +33,12 @@ type boxDeps struct {
 	// environment variable, and an empty environment variable is a refusal
 	// rather than a guess.
 	url string
+	// setup is what `cafe box setup` needs from the world: a host to reach and
+	// a binary to install. It is a field rather than a second command's own
+	// wiring because the box verbs share one set of seams, and a verb that
+	// reached around its parent would be a verb no test could drive through
+	// the real router.
+	setup boxSetupDeps
 }
 
 // defaultConfigDir is the config directory a box's non-secrets and an agent's
@@ -98,6 +105,7 @@ func boxVerbs(deps boxDeps) []boxVerb {
 		{name: "enroll", cmd: newBoxEnrollCommand(deps)},
 		{name: "logs", cmd: newBoxLogsCommand(deps)},
 		{name: "plan", cmd: newBoxPlanCommand(deps)},
+		{name: "setup", cmd: newBoxSetupCommand(deps.setup)},
 		{name: "status", cmd: newBoxStatusCommand(deps)},
 		{name: "verify", cmd: newBoxVerifyCommand(deps)},
 	}
@@ -277,6 +285,8 @@ func writeDoc(w io.Writer, v any, asJSON bool) error {
 	switch doc := v.(type) {
 	case box.EnrollResult:
 		return writeHuman(w, doc.Message)
+	case setup.Result:
+		return writeSetupHuman(w, doc)
 	case *box.Status:
 		return writeStatusHuman(w, doc)
 	case *box.Plan:
@@ -289,6 +299,33 @@ func writeDoc(w io.Writer, v any, asJSON bool) error {
 		return writeVerifyHuman(w, doc)
 	}
 	return writeJSON(v, w)
+}
+
+// writeSetupHuman renders the human half: the steps and the box this host now
+// holds. Plain text, because this repository has no TUI framework and `cafe
+// dev` prints plain ordered progress for the same reason.
+func writeSetupHuman(w io.Writer, res setup.Result) error {
+	if _, err := fmt.Fprintf(w, "cafe box setup %s\n", res.Host); err != nil {
+		return err
+	}
+	for _, step := range res.Steps {
+		if _, err := fmt.Fprintf(w, "  %-18s %-13s %s\n", step.Name, step.Action, step.Title); err != nil {
+			return err
+		}
+	}
+	if res.Enrolled != nil {
+		if _, err := fmt.Fprintf(w, "  box %s enrolled against %s\n", res.Enrolled.BoxID, res.Enrolled.ControlPlane); err != nil {
+			return err
+		}
+	}
+	if res.Report != nil {
+		if _, err := fmt.Fprintf(w, "  report: health %s, certificate %s, disk %s\n",
+			res.Report.Health.Status, res.Report.Certificate.Status, res.Report.Disk.Status); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintf(w, "  capabilities presented: %d\n", res.Redemptions)
+	return err
 }
 
 func newBoxStatusCommand(deps boxDeps) *Command {
