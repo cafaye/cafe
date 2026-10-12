@@ -29,15 +29,13 @@ internal/telemetry/ GENERATED, and compiled: cafe's own copy of `cafe gen teleme
 internal/mcp/       the MCP server: transports, the served table, the SDK seam
 internal/boxd/      the box daemon: the whitelisted route table, the Seam-ed world,
                      and the outbound-only mTLS channel to box
-<<<<<<< HEAD
 internal/setup/     cafe box setup: the host bootstrap plan, its walk, and the SSH
                      transport behind the Host seam
-||||||| 275f9d7
-=======
 internal/edge/      boxd's embedded edge: host routing, the three TLS modes, the
                      release directories and the atomic `current` switch — the one
                      piece of state the edge owns so nothing else keeps a copy
->>>>>>> roll/box-edge
+internal/emitter/   the one span a cafe invocation earns: the OTel SDK wired to
+                     core's closed contract, over the OTLP/gRPC exporter
 internal/ledger/    the reclamation ledger: what cafe created, so cleanup is not memory
 internal/ports/     the port block, the reservation that holds a port, the prober
 internal/provider/  cafe provider: the client half of boundary 6 — the envelope sealed to the box's public key, the control-plane seam
@@ -53,6 +51,10 @@ gate.yml            what the gate is, what it needs, and what its own output mus
 tests/              the self-test that proves gate.yml can go red; not part of bin/prime
 .github/workflows/  ci.yml calls kit's shared workflow; two jobs carry what kit cannot know
 ```
+
+The dependency rule is the prose at the foot of this section, keyed
+**Packages with dependencies** — a library is the default there, and every
+package that carries none says why in its own words.
 
 `internal/cli` is split by pipeline stage, the way `refs/goreleaser` splits
 `cmd/` and `internal/`:
@@ -631,7 +633,30 @@ assertions in the gate rather than a screenshot in a report.
 with, and a rollback that needed a library fetched over the network would be a
 rollback that could not run on the box that needs it.
 
-the standard library cannot do the job. `internal/box`, `internal/ledger`,
+**A dependency is the default, and the exception is the thing that has to be
+argued for.** The old rule here was "write it ourselves unless the standard
+library cannot do the job", and it is inverted: a good existing library is
+encouraged, because the failure mode it prevents is a wheel reinvented badly and
+reported as working. This tree has already lived that: `internal/emitter`'s
+first wire test was a socket that read five bytes and replied with a fixed
+frame, it counted a TLS ClientHello as a delivered span, and the lie hid the
+bug until a real collector caught it. A hand-rolled transport does not fail
+loudly; it reports success. So the default is: find the library, check it fits
+the stack, use it. Writing our own is the exception, and **the exception needs
+its reason at the code site** — which library was considered, and what "fit"
+failed on: bloat, a wrong model of the problem, a dependency that drags in a
+tree, a licence. A comment that says "we do not take dependencies" is not a
+reason. A comment that says what the library could not do is.
+
+**The cost of a dependency is measured here, and measuring it is usually the
+whole job.** `golang.org/x/crypto` is already in this repository's module graph
+— v0.32.0, required transitively by `x/net@v0.34.0`, with its own `x/sys` and
+`x/term` already pinned beside it — so a direct `golang.org/x/crypto/ssh`
+would add a line to `require`, not a module tree. The packages below that carry
+none were argued for one at a time on their own facts, not on a count.
+
+Where a package carries NO dependency, the reason is specific and it is written
+here rather than assumed. `internal/box`, `internal/ledger`,
 `internal/ports`, `internal/reclaim`, `internal/ryuk`,
 `internal/lock` and
 `internal/run` have none, and that is a constraint rather than an accident: the
@@ -678,29 +703,44 @@ that keeps a box serving, so a dependency graph there is a graph that can fail
 to load at exactly the wrong moment; and because it imports nothing else in
 this tree, it is the first thing a box can bring up.
 
-`internal/setup` has none either, and it is the clearest case of the argument the
-paragraph above makes: the walk runs on the path that reclaims after a failed
-bootstrap, and a setup that needed a library to reach a host would be a setup
-that could not be rebuilt from a release tarball on a machine with nothing on
-it. What it imports from `internal/boxd` is ONE type — `Observation`, the
-document the heartbeat step parses — and that import is stdlib-to-stdlib, so
-nothing that reaches a network comes with it. The transport is the operator's
-own `ssh` under `os/exec` for the same reason: a fourth direct dependency for a
-transport the operator already has, with their agent, their known_hosts and
-their ProxyJump, is a poor trade.
+`internal/setup` has none either, and under the new rule that needs its reason
+too — here it is the transport reason below, not the tarball one: the walk
+runs on the path that reclaims after a failed bootstrap, and what it imports
+from `internal/boxd` is ONE type — `Observation`, the document the heartbeat
+step parses — which is stdlib-to-stdlib, so nothing that reaches a network
+comes with it. The transport is the operator's own `ssh` under `os/exec`, and
+the argument is fitness rather than count. `golang.org/x/crypto/ssh` is already
+in the module graph, so it would cost a `require` line and not a tree — the
+rule does not refuse it on cost. What a client library would not resolve is
+the operator's own `ssh_config`: the `Host contabo` / HostName entry this
+repository has been running against for two days, ProxyJump, ControlMaster,
+the agent and the known_hosts. `ssh` reads all of that for free, and a
+reimplementation that resolves a config file almost-right is a host that
+connects on the operator's machine and on nobody else's. What exec costs is
+one process per step — about a dozen in the walk, each with a bounded
+timeout — and, measured live on 2026-10-13, a large payload handed to ssh on
+stdin can be truncated by the write side. That is paid for rather than
+hidden: a write lands on a sibling and moves into place, so a truncated one
+leaves the previous binary behind, and the step that follows verifies the
+installed bytes by sha256.
 
 `internal/contract` has two: `github.com/goccy/go-yaml` for YAML (chosen for
 parse errors with a line and a column, and for zero dependencies) and
 `github.com/santhosh-tekuri/jsonschema/v6` for draft 2020-12 validation.
 
-**Six packages have dependencies** — `internal/contract` (two),
-`internal/backup` (one, the same YAML library), `internal/scaffold` (both of
-`internal/contract`'s, for the same reason that package uses them),
-`internal/resolve` (`internal/contract` again, for the ONE type it must not
-have an opinion about), `internal/mcp` (`modelcontextprotocol/go-sdk`) and
-`internal/failure` (`internal/boxd`). Everything else is standard library
-only, and that is a claim about the tree: a package added to the list has to
-say why in its own doc, because the default is "no".
+**Packages with dependencies, and the argument each one rests on** — seven
+packages: `internal/contract` (two: the YAML library and the draft 2020-12
+validator), `internal/backup` (one, the same YAML library),
+`internal/scaffold` (both of `internal/contract`'s, for the same reason that
+package uses them), `internal/resolve` (`internal/contract` again, for the ONE
+type it must not have an opinion about), `internal/mcp` (the official Go SDK)
+and `internal/emitter` (the OTel SDK and the OTLP/gRPC exporter) — plus
+`internal/failure`, which imports `internal/boxd` and nothing else, in-tree
+stdlib on both ends. Everything else is standard library only, and that is a
+claim about the tree in the OTHER direction now: a package that carries none
+says why in its own doc, because the default is a library, not a count. A
+dependency added anywhere in this tree needs the same argument at its own code
+site — which library, what it saves, and why the alternative is worse.
 
 `internal/backup` has one, and it is the first of those: `github.com/goccy/go-yaml`
 again, to read `config/kamal-backup.yml` and the accessory block out of the document
@@ -731,8 +771,22 @@ Go SDK for the Model Context Protocol. The standard library has no JSON-RPC, no
 protocol-version negotiation and no tool-call semantics, and MCP's wire format
 has moved several times — so a hand-rolled framing layer is a month of work that
 never stops being maintained. That package doc holds the full argument and the
-three candidates that were measured against it. A fourth dependency needs the
-same argument in the package doc.
+three candidates that were measured against it. A dependency added anywhere in
+this tree needs the same argument at its own code site.
+
+`internal/emitter` is the biggest of the seven, and it is the argument the rule
+above is written for. It carries five of this repository's eight direct
+`require` lines — the OTel SDK, the OTLP/gRPC exporter, `otel/sdk`,
+`otel/trace` and `google.golang.org/grpc` — because the standard library has no
+OTLP, no protobuf and no exporter semantics, and because the measurement is
+already on the record: the package's first wire test spoke to a hand-rolled
+socket that read five bytes and replied with a fixed frame, the socket counted
+a TLS ClientHello as a delivered span, and the lie hid the bug until a real
+collector caught it. **A transport written by hand does not fail loudly — it
+reports success.** So this package emits through the SDK and is proven against
+a real OTLP receiver on a real loopback port
+(`TestTheSpanReachesARealOTLPReceiverOverTheWire`), which is the only shape of
+proof that catches the failure the first version had.
 
 **The schema is vendored, never fetched.** `internal/contract/schemas/` holds
 a byte-identical copy of core's manifest schema, pinned by sha256 in
