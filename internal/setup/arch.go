@@ -438,8 +438,3 @@ func refuseArch(result Result, arch archFact) (Result, error) {
 	result.Log = append(result.Log, "  "+step.Name+": REFUSED — "+clip(step.Refusal, 3))
 	return result, fmt.Errorf("cafe box setup %s: %s", result.Host, step.Name)
 }
-
-// hostKernel is what this host calls its own kernel, for the SETUP's own
-// document. It is not part of the preflight: the preflight asks the HOST, and
-// this is a fact about the machine the controller runs on.
-func hostKernel() string { return runtime.GOOS }
