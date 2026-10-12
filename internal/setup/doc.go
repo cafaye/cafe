@@ -42,13 +42,17 @@
 //
 // The real Host is SSHHost, which speaks the local `ssh` binary through
 // os/exec rather than implementing the SSH protocol itself. That is a decision
-// rather than an omission: the repository's dependency discipline
-// (AGENTS.md's "packages with dependencies" paragraph) is the reason
-// internal/box and the reclamation path carry no dependencies at all, and an
-// SSH client library would be the fourth direct dependency in the tree for a
-// transport the operator's own `ssh` already speaks — with their agent, their
-// known_hosts, their ProxyJump and their config file. Delegating to `ssh`
-// costs one process per command and inherits all of that for free.
+// rather than an omission, and since AGENTS.md inverted its dependency rule it
+// is a decision about fitness rather than about count: a good library is the
+// default, so the hand-rolled transport owes its reason here. The candidate
+// was golang.org/x/crypto/ssh, and cost is not the objection — it is already
+// in this module's graph, so a direct import is a line in `require`, not a
+// module tree. The objection is what a client library does not resolve: the
+// operator's own ssh_config, ProxyJump, ControlMaster, agent and known_hosts,
+// all of which `ssh` gives for free. Delegating costs one process per command;
+// the write side of that channel can truncate a large payload (measured live
+// on 2026-10-13), which is why a write lands on a sibling and the step after
+// it verifies the installed bytes by sha256.
 //
 // Password authentication is the one thing `ssh` will not do without a
 // terminal. SSHHost answers it the way the protocol intends: a tiny
