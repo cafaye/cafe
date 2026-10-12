@@ -113,7 +113,7 @@ gate:
       # roll/box-deploy added the ops-half and stack tables. The two numbers
       # measure different things and a packet that moved one without the other
       # is a packet that was counted, not rounded.
-      minimum: 1341
+      minimum: 1358
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1245, measured on this tree. 1234 stood until the roll/box wave

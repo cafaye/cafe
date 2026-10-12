@@ -462,3 +462,45 @@ func TestTheSingleRedemptionCountCanFail(t *testing.T) {
 		t.Errorf("the control plane counted %d redemptions, want 2 — the control can fail", cp.calls)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// the transfer's progress, which is the operator's only window into a write
+// that takes minutes
+// ---------------------------------------------------------------------------
+
+// The two lines an operator sees while a 29 MB binary crosses a slow link,
+// plus the byte counts spelled in units a person reads while waiting. "27.9
+// MiB" is a number they hold; "29250507" is a number they have to parse.
+func TestTheTransferProgressIsReadable(t *testing.T) {
+	var out strings.Builder
+	sink := setupProgress(&out, "box.test")
+	sink(setup.WriteChunk, 1<<20, 29_250_507)
+	sink(setup.WriteVerified, 29_250_507, 29_250_507)
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("%d progress lines, want one per chunk and one for the match", len(lines))
+	}
+	if !strings.Contains(lines[0], "1.0 MiB of 27.9 MiB written to box.test") {
+		t.Errorf("the chunk line reads %q", lines[0])
+	}
+	if !strings.Contains(lines[1], "27.9 MiB on box.test written and verified") ||
+		!strings.Contains(lines[1], "sha256 matches the local binary") {
+		t.Errorf("the verified line reads %q", lines[1])
+	}
+}
+
+func TestBytesHumanSpellsWhatAnOperatorReads(t *testing.T) {
+	for _, tc := range []struct {
+		n    int
+		want string
+	}{
+		{0, "0 B"},
+		{512, "512 B"},
+		{2048, "2.0 KiB"},
+		{29_250_507, "27.9 MiB"},
+	} {
+		if got := bytesHuman(tc.n); got != tc.want {
+			t.Errorf("bytesHuman(%d) = %q, want %q", tc.n, got, tc.want)
+		}
+	}
+}

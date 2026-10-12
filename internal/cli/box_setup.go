@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/cafaye/cafe/internal/setup"
@@ -122,7 +123,7 @@ enrollment command's stdin over the SSH connection and exists nowhere else.`,
 			return err
 		}
 		res, setupErr := setup.Setup(env.Context, setup.Options{
-			Host:         setupHostFor(deps, host, opts),
+			Host:         setupHostFor(deps, host, opts, env.Stderr),
 			Name:         host,
 			Capability:   opts.token,
 			BinaryPath:   self,
@@ -189,16 +190,61 @@ func readSetupToken(stdin io.Reader, opts *setupFlags) (*boxSetupOptions, error)
 // so a test's injected host wins, and so the real one is constructed exactly
 // once, at the point of use, rather than at construction time when the flags
 // have not been parsed yet.
-func setupHostFor(deps boxSetupDeps, host string, opts *boxSetupOptions) setup.Host {
+//
+// The progress sink is wired here rather than inside setup.Setup because this
+// is the only place in the tree that owns a stderr: a library that printed from
+// inside a transfer would put operator prose into a stream some caller is
+// parsing.
+func setupHostFor(deps boxSetupDeps, host string, opts *boxSetupOptions, progress io.Writer) setup.Host {
 	if deps.host != nil {
 		return deps.host
 	}
-	return setup.SSHHost{
+	real := setup.SSHHost{
 		Name:         host,
 		User:         opts.user,
 		Port:         opts.port,
 		IdentityFile: opts.identity,
 		Password:     setupPassword(opts),
+	}
+	real.Progress = setupProgress(progress, host)
+	return real
+}
+
+// setupProgress is what an operator watches while a 29 MB binary crosses a slow
+// link: one line per chunk and a final one that says the bytes that arrived
+// were proven to be the bytes sent. Both go to stderr, for the reason
+// printSetupResult names — stdout is the document, and a machine parsing it
+// must not have to skip progress lines.
+func setupProgress(w io.Writer, host string) func(setup.WriteEvent, int, int) {
+	if w == nil {
+		return nil
+	}
+	return func(event setup.WriteEvent, wrote, total int) {
+		switch event {
+		case setup.WriteChunk:
+			fmt.Fprintf(w, "cafe box setup: %s of %s written to %s\n", bytesHuman(wrote), bytesHuman(total), host)
+		case setup.WriteVerified:
+			fmt.Fprintf(w, "cafe box setup: %s on %s written and verified — the host's sha256 matches the local binary\n",
+				bytesHuman(total), host)
+		}
+	}
+}
+
+// bytesHuman renders a byte count for a progress line: bytes under a kibibyte,
+// one decimal above it. "27.9 MiB" is a number an operator holds in their head
+// while they wait, and "29250507" is a number nobody reads.
+func bytesHuman(n int) string {
+	const (
+		ki = 1024.0
+		mi = ki * 1024.0
+	)
+	switch f := float64(n); {
+	case f < ki:
+		return strconv.Itoa(n) + " B"
+	case f < mi:
+		return strconv.FormatFloat(f/ki, 'f', 1, 64) + " KiB"
+	default:
+		return strconv.FormatFloat(f/mi, 'f', 1, 64) + " MiB"
 	}
 }
 
