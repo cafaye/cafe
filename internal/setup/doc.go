@@ -72,4 +72,13 @@
 // that reimplemented enrollment in the controller would put the box's private
 // key on the machine that is supposed to be the least trusted one in the
 // system.
+//
+// # The architecture preflight
+//
+// Between the superuser probe and the cafe-installed step, the host is asked
+// `uname -sm` and the answer decides WHICH BYTES cross the connection: see
+// arch.go. It is the one place in this package where a controller is allowed
+// to be a different machine from the host it is setting up, which means it is
+// also the one place that can get it wrong — and the defect it was measured on
+// got it wrong quietly, nine steps in, with a symptom nobody could act on.
 package setup

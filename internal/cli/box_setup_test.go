@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -76,6 +77,22 @@ func newBoxHostSim(t *testing.T, cp *countingBoxControlPlane) *boxHostSim {
 	}
 }
 
+// unameSm is what a host answers the arch preflight with, for the platform the
+// sim is running on. Linux says aarch64 where Go says arm64, which is the
+// whole translation the preflight exists to perform.
+func unameSm() string {
+	machine := runtime.GOARCH
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		return "Darwin arm64"
+	}
+	if runtime.GOARCH == "amd64" {
+		machine = "x86_64"
+	} else if runtime.GOARCH == "arm64" {
+		machine = "aarch64"
+	}
+	return "Linux " + machine
+}
+
 // Run answers one command. The interesting branch is the enrollment: rather
 // than returning a canned document, it runs the REAL store, which is what makes
 // the count below a count of real redemptions rather than of a fake's calls.
@@ -87,6 +104,15 @@ func (s *boxHostSim) Run(_ context.Context, command string, stdin []byte) (setup
 	switch {
 	case strings.Contains(command, "sudo -nl usermod"):
 		return setup.Output{Code: 0, Stdout: "yes"}, nil
+	case strings.Contains(command, "uname -sm"):
+		// The arch preflight's question. The sim answers with the platform it
+		// is running on, in the kernel's own spelling, because that is the
+		// one case a controller setting up a box of its own kind is in.
+		return setup.Output{Code: 0, Stdout: unameSm()}, nil
+	case strings.Contains(command, setup.CafeBinPath+" version"):
+		// The executable probe: can this host's kernel run what is installed.
+		// The sim is a linux box, so a sim binary runs.
+		return setup.Output{Code: 0, Stdout: "cafe sim"}, nil
 	case strings.Contains(command, `[ "${EUID:-$(id -u)}" -eq 0 ]`):
 		return setup.Output{Code: 0, Stdout: "sudo"}, nil
 	case strings.HasPrefix(command, "docker -v"):
