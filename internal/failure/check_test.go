@@ -27,6 +27,12 @@ func TestTheSeedEvaluatesAgainstTheBoxItWasWrittenFor(t *testing.T) {
 		"gateway-sessions-per-process":     Holds,
 		"courier-password-reset-503":       Holds,
 		"secrets-frozen-cannot-rotate":     Holds,
+		// The eleventh is the edge's own, and in this fixture the edge is
+		// serving — so the condition the entry identifies (an edge that is
+		// ABSENT while the box is up) is evaluated and does not hold. That is
+		// the honest answer rather than an unknown: the fixture supplies the
+		// fact, so the checker is entitled to answer.
+		"edge-down-while-every-readyz-is-green": DoesNotHold,
 	}
 	if len(report.Findings) != len(want) {
 		t.Fatalf("the report has %d findings for %d rules", len(report.Findings), len(want))
@@ -115,11 +121,12 @@ func TestTheBoxDaemonsObservationAnswersNothingAndSaysSo(t *testing.T) {
 	}
 
 	// The missing facts are named, and they are the specification of what the
-	// substrate packet owes this library. Seven distinct fields: eight facts
+	// substrate packet owes this library. Eight distinct fields: nine facts
 	// exist in the Observation and Publishers is not among them, because rule
 	// 7's FIRST predicate already went unknown and the walk stops at the
 	// first fact it cannot answer rather than naming all of them at once.
-	want := []string{"Databases", "Healthchecks", "Instrumented", "Outbox", "Probes", "Replicas", "Settings"}
+	// Edge is the tenth and it is the one the edge packet owes.
+	want := []string{"Databases", "Edge", "Healthchecks", "Instrumented", "Outbox", "Probes", "Replicas", "Settings"}
 	if got := report.SortedMissing(); strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("the observation is missing %v, want %v — the library's facts moved, or a rule "+
 			"started reading something the surface does not carry", got, want)
@@ -307,7 +314,7 @@ func TestTheReportRendersEveryHoldAndNamesEveryUnknown(t *testing.T) {
 	// passed and nothing was claimed to have passed.
 	thin := Evaluate(Library(), Observation{Services: []string{"courier", "identity", "gateway", "kit", "muse"}})
 	got := thin.String()
-	if !strings.Contains(got, "10 rule(s) evaluated: 0 hold, 0 do not hold, 10 unknown") {
+	if !strings.Contains(got, "11 rule(s) evaluated: 0 hold, 0 do not hold, 11 unknown") {
 		t.Errorf("the header does not say what it counted:\n%s", got)
 	}
 	if !strings.Contains(got, "CONDITIONS THAT COULD NOT BE ANSWERED") {

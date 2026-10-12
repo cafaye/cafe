@@ -11,6 +11,14 @@
 // (CAFAYE-OPS.md:758-763), and it is the Attended tier's actual product
 // (CAFAYE-OPS.md:816).
 //
+// THE ELEVENTH ENTRY is the box's edge, and it is here because it is the one
+// failure mode this tree can produce a fact for rather than only a sentence:
+// internal/edge is code in this repository, its health path is the one thing on
+// the box that answers for the edge itself, and nothing anywhere probes it yet.
+// The rule reads an observation field nothing populates — which the checker
+// answers UNKNOWN and names, the same honest answer the other ten get from the
+// box daemon. See Library's comment for why the floor stopped moving at eleven.
+//
 // WHAT A RULE IS. One entry per failure mode, with the four things the doc's
 // table carries and one it does not:
 //
@@ -41,7 +49,7 @@
 // reached — and nothing else yet (internal/boxd/route.go:26-28 deliberately
 // carries names and phase, never a service's configuration, because a service's
 // configuration is where credentials live). So a checker driven by the box's
-// own observation surface answers "unknown" for the nine rules that need more,
+// own observation surface answers "unknown" for the ten rules that need more,
 // and names the fact each one needs. That is the honest answer and it is also
 // the useful one: it is the specification for the facts the substrate packet
 // owes this package, and a false "does not hold" would be a green light over a

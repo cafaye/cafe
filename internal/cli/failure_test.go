@@ -63,10 +63,13 @@ func TestFailureCheckEvaluatesTheLibraryAgainstADocument(t *testing.T) {
 	if !strings.Contains(out, "identity-mfa-routes-absent") {
 		t.Errorf("the MFA row is not reported as holding:\n%s", out)
 	}
-	if !strings.Contains(out, "10 rule(s) evaluated") {
+	if !strings.Contains(out, "11 rule(s) evaluated") {
 		t.Errorf("the report does not say how many rules it evaluated:\n%s", out)
 	}
-	if !strings.Contains(out, "cafe failure: 10 rule(s), 9 condition(s) hold, 0 unknown") {
+	// The eleventh is the edge's, and this document carries no edge fact — so
+	// the count is one unknown and the summary says so rather than rounding
+	// the library down to the ten the document can answer.
+	if !strings.Contains(out, "cafe failure: 11 rule(s), 9 condition(s) hold, 1 does not hold, 1 unknown") {
 		t.Errorf("the summary line is not the count the report produced:\n%s", out)
 	}
 }

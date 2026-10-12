@@ -86,33 +86,35 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^cafe: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 29, measured with `go list ./...` on this tree: internal/publish landed with W11 (cafe publish).
-      # 28 stood until W14 (cafe box setup) added `internal/setup` — the host
-      # bootstrap plan and its walk, which is a package of its own because the
-      # SSH transport and the plan table are a different subject from `cafe box
+      # 29, measured with `go list ./...` on this tree. 28 stood until this
+      # session added two: W14 (cafe box setup) added `internal/setup` — the
+      # host bootstrap plan and its walk, a package of its own because the SSH
+      # transport and the plan table are a different subject from `cafe box
       # enrol`'s keyring and journal, and because the stdlib-only rule that
-      # governs internal/box and the reclamation path is easier to keep when the
-      # thing that speaks to a network lives somewhere its own doc can defend.
+      # governs internal/box is easier to keep when the thing that speaks to a
+      # network lives somewhere its own doc can defend; and Phase B's
+      # `internal/edge` — the per-box host-routing proxy the deploy verbs run
+      # behind, similarly stdlib-only and similarly self-defending.
       # The security and substance packages are pinned by name and existence:
       # emitter, box, boxd, agent, provider, run, resolve, scaffold, publish.
       minimum: 29
     - id: suite
       match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
-      # 1276, measured with `./bin/prime` on this tree (29 packages, 1234 subtests, 8 skips).
-      # W14 (cafe box setup) is what moved it from 1259: the top-level table in
-      # internal/setup and the end-to-end table in internal/cli, plus the
-      # setup verb's own row. It added subtests too, which is the third floor.
-      # The floor moved twice in the Cafaye Ops wave: OPS-P9 (backup drill) and
-      # OPS-P10/P11/P12 (secret inventory, cve surface, failure library) and
-      # OPS-P13 (the monthly report) each added top-level tests and no subtests,
-      # so only this number changed. W11 (cafe publish) added both: the
-      # decision table in internal/cli and the proposal/sequence tests in
-      # internal/publish. W13 (cafe owner addressing) added top-level tests in
-      # internal/resolve (the address read, the ambiguity retry, the wrong-owner
-      # refusal), internal/publish (the 201 body's address) and internal/cli
-      # (the slash form); W14 (cafe box setup) added the setup tables in
-      # internal/setup and internal/cli.
-      minimum: 1276
+      # 1295, measured with `./bin/prime` on this tree (29 packages, 1234 subtests, 8 skips).
+      # 1259 was the floor the session started at. It moved four times in the
+      # roll/box wave and each move is named: W14 (cafe box setup) added the
+      # top-level table in internal/setup and the end-to-end table in
+      # internal/cli plus the setup verb's own row, taking it to 1276;
+      # roll/box-edge added 11 top-level tests and no subtests — seven in
+      # internal/edge driving a real gateway over a real loopback TLS handshake
+      # plus the atomic-switch and retired-host controls, two in
+      # internal/failure (the edge entry firing, and the control rule over the
+      # symmetric counterpart), and five in internal/cli for the three deploy
+      # verbs; roll/box-ops-verify added the ops-half tables; and roll/box-deploy
+      # added the stack's own release-history cases. The two numbers measure
+      # different things and a packet that moved one without the other is a
+      # packet that was counted, not rounded.
+      minimum: 1289
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1234, measured: internal/cve's classification tables, the cve CLI

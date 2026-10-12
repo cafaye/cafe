@@ -14,7 +14,7 @@ import (
 // failureDeps is what `cafe failure check` needs from the world, and it is a
 // struct of parameters for the reason resolveDeps and deployDeps are: a test
 // hands the command a reader it owns and drives the whole path — a document
-// in, ten rules over it, a report out — without a file, a box, or a stream the
+// in, eleven rules over it, a report out — without a file, a box, or a stream the
 // test cannot see.
 type failureDeps struct {
 	// stdin is where a document with no path comes from. Nil means the
@@ -51,7 +51,7 @@ paths, the declared databases, the outbox depths, the publishers, the
 collectors and the instrumented services.
 
 NOTHING CONFIGURED IS READ. The observation carries the names of the settings
-a service has set and never their values — the facts the ten rules need are a
+a service has set and never their values — the facts the eleven rules need are a
 name's presence and a probe's answer, which is why the library can be checked
 with no credential anywhere in this process.
 
@@ -109,7 +109,7 @@ func failureCheckCommand(deps failureDeps) *Command {
 		Summary: "evaluate the library's rules against an observation document",
 		Usage:   "cafe failure check [<observation.json>]",
 		LongHelp: "Reads an observation document — the facts the failure-mode library's rules read,\n" +
-			"as JSON — evaluates the library's ten rules against it, and prints which\n" +
+			"as JSON — evaluates the library's eleven rules against it, and prints which\n" +
 			"conditions hold, which do not, and which the observation could not answer.\n" +
 			"\n" +
 			"With no path (or \"-\") the document is read from stdin. Run `cafe failure` for\n" +
