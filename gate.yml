@@ -100,7 +100,7 @@ gate:
       minimum: 29
     - id: suite
       match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
-      # 1295, measured with `./bin/prime` on this tree (29 packages, 1234 subtests, 8 skips).
+      # 1352, measured with `./bin/prime` on this tree (29 packages, 1234 subtests, 8 skips).
       # 1259 was the floor the session started at. It moved four times in the
       # roll/box wave and each move is named: W14 (cafe box setup) added the
       # top-level table in internal/setup and the end-to-end table in
@@ -111,10 +111,15 @@ gate:
       # internal/failure (the edge entry firing, and the control rule over the
       # symmetric counterpart), and five in internal/cli for the three deploy
       # verbs; roll/box-ops-verify added the ops-half tables; and roll/box-deploy
-      # added the stack's own release-history cases. The two numbers measure
-      # different things and a packet that moved one without the other is a
-      # packet that was counted, not rounded.
-      minimum: 1335
+      # added the stack's own release-history cases. roll/setup-chunk added 17 —
+      # fifteen in internal/setup over the chunked, hash-verified Write (the
+      # chunk-count table, the 1 MiB boundary, the 29 MB / 28-chunk happy path,
+      # the measured truncation refusing with both hashes, the previous binary
+      # preserved, the transport cut in three places, the shell-shaped payload,
+      # and the rest) and two in internal/cli for the progress lines an operator
+      # watches. The two numbers measure different things and a packet that
+      # moved one without the other is a packet that was counted, not rounded.
+      minimum: 1352
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1234, measured: internal/cve's classification tables, the cve CLI

@@ -325,6 +325,9 @@ test pins them:
 - `ssh.go` — `SSHHost`, the real `Host`: the local `ssh` binary under `os/exec`,
   and the askpass helper that carries a password on a pipe so it reaches
   neither argv, an environment variable nor a file.
+- `write.go` — `SSHHost.Write` and the transfer under it, and it is the one
+  method in this package whose shape was decided by a measurement rather than
+  by a preference. See the paragraph below.
 
 **A step is a check and an apply, and the check runs first every time.** That is
 the whole idempotence claim and it is not satisfied by an apply that happens to
@@ -351,6 +354,38 @@ the response and the record is the one window that cannot be closed from this
 side, and it is stated rather than hidden — cafe answers an honest refusal naming
 it. Everything else is drivable into a table with one row per state a cafe
 process can stop in, each row asserting the NUMBER of redemptions performed.
+
+**A 29 MB write must not be one 29 MB pipe write, and that is a measurement
+rather than a preference.** 17,625,600 bytes of a 29,250,507-byte cafe binary
+reached a Contabo box, the write reported success, and the next step failed
+with "Exec format error" — a symptom that names the binary and not the
+transport. The cause was `SSHHost.Write` putting the whole payload on one
+`ssh "cat > tmp"` child's stdin: a pipe the sandbox's proxy caps in silence.
+So `write.go` streams: N bounded chunks of 1 MiB appended with `cat >>`, a
+remote `sha256sum` compared against the local hash, and only on a match the
+`mv` into place. The destination is never opened for writing, so a failure the
+transport can have — a cut pipe, a dead child — leaves the host with its
+previous binary or with nothing, and never with a truncated one. The hash gate
+is what makes the rename worth anything, and it is what a verifier without one
+cannot have: a mismatch refuses naming BOTH hashes and BOTH byte counts, and
+takes the sibling with it.
+
+The shape is kamal's — sshkit ships with `ssh.scp.upload!`, net-scp over the
+same connection, never one giant write (`moon/refs/sshkit`) — and the reason
+it is copied by hand rather than with a dependency is `internal/setup`'s
+stdlib-only rule: the walk runs on the path that reclaims after a failed
+bootstrap, and it imports nothing that could fail to be fetched. What the
+chunking costs is one process per chunk, which is the same trade the walk
+already made for its dozen commands, said out loud.
+
+`transfer` is the loop with the runner passed in, and that is what makes the
+defect a gate assertion rather than a war story: the test's `shellHost` is a
+small interpreter that PERFORMS the commands — mkdir, cat with a redirect,
+sha256sum, wc, mv — with a `pipeCap` set to the measured 17,625,600, so a
+29,250,507-byte payload is refused in the suite, with both hashes named and the
+destination untouched. The control half writes the same payload without the
+cap and watches it land, because a test that only asserted the refusal would
+pass against a transfer that always failed.
 
 
 `internal/boxd` is `cafe boxd`, split the same way, and it is where invariant 4
