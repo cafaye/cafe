@@ -6,12 +6,46 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/cafaye/cafe/internal/boxd"
 )
+
+// kernelSpelling is what a unix calls its own kernel. It is a table rather
+// than a capitalise because the two kernels this package cares about spell
+// themselves differently and a third is not a thing cafe ships a box for.
+var kernelSpelling = map[string]string{"linux": "Linux", "darwin": "Darwin"}
+
+// unameSpelling is what a real host answers `uname -sm` with for a platform.
+// Linux says aarch64 where macOS says arm64 for the same silicon, so the
+// mapping needs the OS as well as the architecture: a fake that answered in
+// Go's spelling for both would never exercise the translation, which is the
+// part of this packet that could be wrong.
+func unameSpelling(goos, goarch string) string {
+	kernel, ok := kernelSpelling[goos]
+	if !ok {
+		kernel = goos
+	}
+	machine := goarch
+	switch goarch {
+	case "amd64":
+		machine = "x86_64"
+	case "arm64":
+		if goos == "darwin" {
+			machine = "arm64"
+		} else {
+			machine = "aarch64"
+		}
+	case "arm":
+		machine = "armv7l"
+	case "386":
+		machine = "i686"
+	}
+	return kernel + " " + machine
+}
 
 // The fake host: a machine the plan can be driven against, that keeps the state
 // a real host keeps and answers the checks the way a real host answers them.
@@ -73,6 +107,20 @@ type fakeHost struct {
 	sudoNeeded bool
 	// binaryHash is the hash of the binary the fake thinks is installed.
 	binaryHash string
+	// binaryRuns is whether this host's kernel can execute what sits at
+	// CafeBinPath. A darwin binary on a linux box is `-x`, and it hashes to
+	// something: the hash check alone would report "a different version" over
+	// a file that is not a program at all. This field is the kernel's answer,
+	// and the executable probe is the question.
+	binaryRuns bool
+
+	// goos/goarch is what `uname -sm` answers: the host's platform, in the
+	// kernel's own spelling. It defaults to the CONTROLLER's, because that is
+	// the ordinary case — a laptop setting up a box of its own kind — and the
+	// arch tests move it. The arch refusal tests set it to a platform this
+	// machine is not, which is the case the packet exists for.
+	goos   string
+	goarch string
 
 	// transportFail makes Run answer with a transport error, which is the one
 	// error the walk must not treat as "the check failed".
@@ -103,6 +151,9 @@ func newFakeHost() *fakeHost {
 		groups:     map[string]bool{},
 		units:      map[string]unitState{},
 		sudoNeeded: true,
+		binaryRuns: true,
+		goos:       runtime.GOOS,
+		goarch:     runtime.GOARCH,
 	}
 }
 
@@ -146,6 +197,15 @@ func (h *fakeHost) Run(ctx context.Context, command string, stdin []byte) (Outpu
 		return Output{Code: 1, Stderr: "cat: " + EnrolledJSON + ": No such file or directory"}, nil
 	}
 
+	// The architecture preflight. The answer is in the KERNEL's spelling,
+	// because that is what a real host gives, and the translation is what this
+	// packet is about — a fake that answered "arm64" where Linux says
+	// "aarch64" would be lying to the resolver about the very thing it is
+	// supposed to be checking.
+	if strings.Contains(command, archProbe) {
+		return Output{Code: 0, Stdout: unameSpelling(h.goos, h.goarch)}, nil
+	}
+
 	// The install and start of Docker.
 	switch {
 	case strings.HasPrefix(command, "docker -v"):
@@ -187,6 +247,23 @@ func (h *fakeHost) Run(ctx context.Context, command string, stdin []byte) (Outpu
 	if strings.Contains(command, "usermod -aG docker") {
 		h.groups["docker"] = true
 		return Output{Code: 0}, nil
+	}
+
+	// The executable probe: can THIS host's kernel run what is at CafeBinPath?
+	// It is asked before the hash because the two answer different questions,
+	// and only one of them can tell a wrong-architecture binary from a
+	// different build. sha256sum reads bytes and does not care what they are.
+	if strings.Contains(command, CafeBinPath+" version") {
+		if _, ok := h.fs[CafeBinPath]; !ok {
+			return Output{Code: 127, Stderr: "sh: 1: " + CafeBinPath + ": not found"}, nil
+		}
+		if !h.binaryRuns {
+			// What a Linux kernel answers a Mach-O file with. It is not a
+			// permission problem and it is not a corrupt download: it is the
+			// architecture, which is the whole reason the probe exists.
+			return Output{Code: 126, Stderr: "sh: 1: " + CafeBinPath + ": cannot execute binary file: Exec format error"}, nil
+		}
+		return Output{Code: 0, Stdout: "cafe 1.2.3 (commit test)"}, nil
 	}
 
 	// The binary's hash check.
@@ -286,6 +363,14 @@ func (h *fakeHost) Write(_ context.Context, path string, data []byte, mode os.Fi
 	h.writes = append(h.writes, fakeWrite{Path: path, Mode: mode, Data: append([]byte(nil), data...)})
 	h.fs[path] = append([]byte(nil), data...)
 	h.mode[path] = mode
+	if path == CafeBinPath {
+		// A binary this setup has just written is a binary this setup built
+		// for this host, so the kernel can run it. Flipping it here is what
+		// makes the wrong-architecture test able to assert that a SECOND
+		// setup now finds the box in order — otherwise the fake would keep
+		// answering "Exec format error" over a file that was just replaced.
+		h.binaryRuns = true
+	}
 	return nil
 }
 
@@ -382,7 +467,7 @@ func TestTheFirstSetupOnABareHostDoesEverythingInOrder(t *testing.T) {
 	}
 
 	want := []string{
-		StepSuperuser, StepDockerInstalled, StepDockerGroup, StepDockerRunning,
+		StepSuperuser, StepHostArch, StepDockerInstalled, StepDockerGroup, StepDockerRunning,
 		StepCafeInstalled, StepBoxEnrolled, StepBoxdIdentity, StepBoxdUnit, StepBoxdReport,
 	}
 	if len(res.Steps) != len(want) {
@@ -700,7 +785,7 @@ func TestADryRunPrintsThePlanAndRunsNothing(t *testing.T) {
 	// The plan is the real table, not a summary: the same nine steps in the
 	// same order a real run walks.
 	want := []string{
-		StepSuperuser, StepDockerInstalled, StepDockerGroup, StepDockerRunning,
+		StepSuperuser, StepHostArch, StepDockerInstalled, StepDockerGroup, StepDockerRunning,
 		StepCafeInstalled, StepBoxEnrolled, StepBoxdIdentity, StepBoxdUnit, StepBoxdReport,
 	}
 	for i, name := range want {
@@ -821,7 +906,8 @@ func TestSetupWithoutACapabilityRefusesToStart(t *testing.T) {
 // rather than as a surprise on a host.
 func TestThePlanIsPureData(t *testing.T) {
 	opts := setupOptions(t, newFakeHost(), writeFakeBinary(t))
-	steps := plan(opts, "sudo -n -H", "deadbeef", []byte("binary"), &identityRead{BoxID: "box_1"})
+	steps := plan(opts, "sudo -n -H", "deadbeef", []byte("binary"), &identityRead{BoxID: "box_1"},
+		archFact{Answer: unameSpelling(runtime.GOOS, runtime.GOARCH), Refusal: "refused"})
 
 	if len(steps) == 0 {
 		t.Fatal("the plan is empty")
@@ -844,6 +930,13 @@ func TestThePlanIsPureData(t *testing.T) {
 			continue
 		}
 		if s.Name == StepSuperuser || s.Name == StepDockerInstalled || s.Name == StepDockerRunning {
+			continue
+		}
+		if s.Name == StepHostArch {
+			// `uname` is nobody's secret and needs no root to answer. The step
+			// runs it bare for the same reason the docker group's does, and a
+			// prefix here would be a claim that reading /proc/version is a
+			// privileged act.
 			continue
 		}
 		if !strings.HasPrefix(s.Check, "sudo -n -H") {

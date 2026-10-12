@@ -62,9 +62,12 @@ var ErrNoBinary = errors.New("cafe box setup: the cafe binary to install could n
 // It runs in three phases, and the split matters because it is the difference
 // between a retry that converges and one that spends capability:
 //
-//  1. PROBE. Two read-only questions — can this operator get root, and is this
-//     host already enrolled — because the plan is a function of their answers
-//     and a plan built on a guess is a plan that runs the wrong commands.
+//  1. PROBE. Three read-only questions — can this operator get root, what
+//     architecture is this host, and is it already enrolled — because the plan
+//     is a function of their answers and a plan built on a guess is a plan
+//     that runs the wrong commands. The architecture question is the one that
+//     decides WHICH file crosses, so it is asked before the plan is built and
+//     a byte is written: see arch.go.
 //  2. WALK. The table, in order. Every step checks first; a check that passes
 //     runs nothing.
 //  3. VERIFY. Read the host's own enrollment document back and attach the
@@ -80,10 +83,6 @@ func Setup(ctx context.Context, o Options) (Result, error) {
 	}
 	if strings.TrimSpace(o.Capability) == "" {
 		return Result{}, ErrNoCapability
-	}
-	binary, hash, err := readBinary(o.BinaryPath)
-	if err != nil {
-		return Result{}, err
 	}
 
 	result := Result{Host: o.Name, DryRun: o.DryRun}
@@ -105,13 +104,37 @@ func Setup(ctx context.Context, o Options) (Result, error) {
 	})
 	result.Log = append(result.Log, "cafe box setup "+o.Name+": root is "+sudoOrRoot(sudo))
 
+	// The architecture preflight, immediately after it: what architecture is
+	// this host, and which local file can run there. It is a probe and not a
+	// row of the table because the plan carries the answer — the binary's
+	// bytes and the hash of them — and neither is known until this has been
+	// asked. A transport failure is an error; a host the controller cannot
+	// build for is a REFUSAL recorded as a step, and nothing crosses. See
+	// arch.go for the whole argument.
+	asked, err := probeArch(ctx, o.Host)
+	if err != nil {
+		return result, fmt.Errorf("cafe box setup %s: %w", o.Name, err)
+	}
+	pick, err := decideBinary(controllerTarget(), asked, o.BinaryPath)
+	if err != nil {
+		return Result{}, err
+	}
+	fact := archFact{Answer: asked.Answer, Refusal: pick.Refusal}
+	if !pick.Ships() {
+		return refuseArch(result, fact)
+	}
+	// The bytes that cross are the ones the preflight chose, which is not
+	// necessarily the file o.BinaryPath named.
+	result.Arch = pick.document(controllerTarget(), asked)
+	result.Log = append(result.Log, "cafe box setup "+o.Name+": "+pick.Reason)
+
 	enrolled, enrolledOut, err := readEnrollment(ctx, o.Host, sudo)
 	if err != nil {
 		return result, fmt.Errorf("cafe box setup %s: %w", o.Name, err)
 	}
 	_ = enrolledOut
 
-	steps := plan(o, sudo, hash, binary, enrolled)
+	steps := plan(o, sudo, pick.Hash, pick.Binary, enrolled, fact)
 	if o.DryRun {
 		return dryRun(result, steps), nil
 	}
@@ -132,9 +155,16 @@ func Setup(ctx context.Context, o Options) (Result, error) {
 			return result, err
 		}
 		if out.OK() {
+			detail := "the host already had this; nothing was run"
+			if step.Name == StepHostArch {
+				// The arch step's check is the question the preflight already
+				// asked, so its answer is the decision, not "the host had it".
+				// The row says which binary shipped and why, because that is
+				// the one thing about this run nobody can work out afterwards.
+				detail = pick.Reason
+			}
 			result.Steps = append(result.Steps, StepResult{
-				Name: step.Name, Title: step.Title, Action: ActionAlreadyDone,
-				Detail: "the host already had this; nothing was run",
+				Name: step.Name, Title: step.Title, Action: ActionAlreadyDone, Detail: detail,
 			})
 			result.Log = append(result.Log, "  "+step.Name+": already done")
 			if step.Report {
@@ -268,7 +298,7 @@ func probeSuperuser(ctx context.Context, host Host) (sudo string, ok bool, err e
 // document reads the same whether the refusal came from the probe or from a
 // step.
 func refuseRoot(result Result) (Result, error) {
-	step := plan(Options{}, "", "", nil, nil)[0]
+	step := superuserRow()
 	result.Steps = append(result.Steps, StepResult{
 		Name: StepSuperuser, Title: step.Title, Action: ActionRefused, Detail: step.Refusal,
 	})

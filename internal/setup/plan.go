@@ -45,6 +45,7 @@ const (
 // the string a second time.
 const (
 	StepSuperuser       = "superuser"
+	StepHostArch        = "host-arch"
 	StepDockerInstalled = "docker-installed"
 	StepDockerRunning   = "docker-running"
 	StepDockerGroup     = "docker-group"
@@ -113,15 +114,73 @@ type Step struct {
 	Report bool
 }
 
+// superuserRow is the first step, hoisted out of the table for one reason:
+// refuseRoot needs it before a plan exists. The superuser refusal is the only
+// one that happens in phase 1, when the architecture has not been asked and
+// there is no binary to name, so building a whole plan to read one row off it
+// would be a plan built from facts nobody had.
+func superuserRow() Step {
+	return Step{
+		Name:  StepSuperuser,
+		Title: "this operator can install packages and write to /etc",
+		// Kamal's superuser?, spelled the way its test pins it: root, or a
+		// sudo that may run usermod without a password. It asks about
+		// `usermod` rather than `true` because that is the command the
+		// install path actually needs, and a check that asked a different
+		// question would pass on a host the install then failed on.
+		Check: superuserCheck,
+		Refusal: "installing Docker, writing to /usr/local/bin and enabling a systemd " +
+			"unit all need root; this operator is not root and has no passwordless sudo. " +
+			"Grant passwordless sudo for the install commands, or run this as root.",
+	}
+}
+
+// archFact is what the preflight learned, as the plan needs it: the host's own
+// answer to `uname -sm`, and the remedy for the case where nothing here can run
+// there. It is the only fact in the plan that came from a command run OUTSIDE
+// the walk, which is why it is a row of its own rather than a closure over a
+// probe the table cannot do for itself.
+type archFact struct {
+	// Answer is the host's own words, e.g. "Linux x86_64".
+	Answer string
+	// Refusal names the controller's arch, the host's, and the one command
+	// that produces the right binary.
+	Refusal string
+}
+
+// archRow is the architecture preflight as a step. Its check asks the SAME
+// question the preflight asked and compares against the answer the host
+// already gave: not because a host changes its architecture mid-run, but
+// because a row that could not fail would be a row that was not asking
+// anything — and the table's own rule is that every row is a question.
+func archRow(arch archFact) Step {
+	return Step{
+		Name:  StepHostArch,
+		Title: "this host's architecture has a cafe binary this controller can ship",
+		Check: `[ "$(` + archProbe + `)" = "` + arch.Answer + `" ]`,
+		// No apply: there is nothing to install here. The refusal is the
+		// whole content of the step, and the preflight that resolved the bytes
+		// writes it. A step that had an apply would be a step that tried to
+		// make the host a different machine.
+		Refusal: arch.Refusal,
+	}
+}
+
 // plan is the whole setup as an ordered table. It is a function of the facts
 // that vary — which sudo spelling the host needs, the local binary's hash, the
-// box already on the host — and of nothing else, which is why a dry run can
-// print it without running anything and why a test can build one and read it.
+// box already on the host, what the architecture preflight resolved — and of
+// nothing else, which is why a dry run can print it without running anything
+// and why a test can build one and read it.
 //
 // The order is the dependency order and it is not negotiable: Docker before the
 // daemon, the daemon after its identity, the identity after the enrollment, the
 // heartbeat last because it is the only step that proves all the others landed.
-func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityRead) []Step {
+// The architecture row sits between the superuser probe and cafe-installed
+// because it is the last question whose answer changes WHICH BYTES cross — a
+// setup that installed Docker first and then refused the architecture would
+// have spent a package install learning something it could have asked before
+// touching the host.
+func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityRead, arch archFact) []Step {
 	root := func(cmd string) string {
 		if sudo == "" {
 			return cmd
@@ -129,19 +188,8 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 		return sudo + " " + cmd
 	}
 	return []Step{
-		{
-			Name:  StepSuperuser,
-			Title: "this operator can install packages and write to /etc",
-			// Kamal's superuser?, spelled the way its test pins it: root, or a
-			// sudo that may run usermod without a password. It asks about
-			// `usermod` rather than `true` because that is the command the
-			// install path actually needs, and a check that asked a different
-			// question would pass on a host the install then failed on.
-			Check: `[ "${EUID:-$(id -u)}" -eq 0 ] || sudo -nl usermod >/dev/null 2>&1`,
-			Refusal: "installing Docker, writing to /usr/local/bin and enabling a systemd " +
-				"unit all need root; this operator is not root and has no passwordless sudo. " +
-				"Grant passwordless sudo for the install commands, or run this as root.",
-		},
+		superuserRow(),
+		archRow(arch),
 		{
 			Name:  StepDockerInstalled,
 			Title: "Docker is installed",
@@ -190,7 +238,18 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 			// under the root prefix because the write does, and a check that
 			// could read a file the apply could not write would be a check
 			// that passed on a host the install then failed on.
-			Check: root(`test -x ` + CafeBinPath + ` && [ "$(sha256sum ` + CafeBinPath + ` | cut -c1-64)" = "` + binaryHash + `" ]`),
+			//
+			// The probe BEFORE the hash is the architecture guard's second
+			// half. `sha256sum` reads bytes and does not care what they are:
+			// a darwin binary on a linux box is `-x` and it hashes to
+			// something, so the hash check alone reports "a different
+			// version" — a sentence that sends an operator hunting for a
+			// build artefact when the truth is that there is no usable cafe
+			// on this box at all. `<bin> version` asks the only authority
+			// that can answer — the host's own kernel — and when it fails,
+			// the file reads as ABSENT, which is what it is.
+			Check: root(`test -x ` + CafeBinPath + ` && ` + CafeBinPath + ` version >/dev/null 2>&1` +
+				` && [ "$(sha256sum ` + CafeBinPath + ` | cut -c1-64)" = "` + binaryHash + `" ]`),
 			Apply: apply{Path: CafeBinPath, Data: binary, Mode: 0o755},
 		},
 		{
@@ -340,6 +399,12 @@ type Enrollment struct {
 type Result struct {
 	Host   string `json:"host"`
 	DryRun bool   `json:"dry_run"`
+	// Arch is the preflight's answer: which binary crossed and why it was the
+	// right one. It is in the document because the one thing an operator
+	// reading a log needs after a setup is "which architecture is installed on
+	// that box", and because a field that is present is a field that cannot be
+	// quietly forgotten.
+	Arch *Arch `json:"arch,omitempty"`
 	// Steps is one row per thing the host needed, in the order they ran.
 	Steps []StepResult `json:"steps"`
 	// Sudo names how the run got root: "", "root" or "sudo". Empty on a dry
