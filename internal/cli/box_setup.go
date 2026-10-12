@@ -83,6 +83,15 @@ them finishes on the next attempt without spending the token again.
 DRY RUN. ` + "`--dry-run`" + ` prints the plan and asks the host nothing except
 whether the operator can get root. No package is installed, no keypair is made.
 
+ARCHITECTURE. ` + "`cafe box setup`" + ` asks the host what it runs before it
+installs anything, and installs a binary that can run there. If this controller
+is a Mac and the host is a linux box, it looks for ` + "`cafe-linux-amd64`" + `
+beside the running binary and ships that — saying in the log which path it chose
+and why. If neither exists, it REFUSES, naming both architectures and the one
+command that produces the right one, before a byte crosses: a darwin binary on
+a linux host is ` + "`Exec format error`" + ` nine steps later, which is a
+sentence with no action in it.
+
 THE TOKEN. ` + "`--token`" + ` reads the capability from $` + setupTokenEnv + `, or from
 standard input when it is ` + "`-`" + `. It is never an argument, never written to a
 file and never in an environment variable on the HOST — it reaches the

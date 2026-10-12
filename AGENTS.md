@@ -319,8 +319,18 @@ test pins them:
 - `host.go` — the `Host` seam and `Output`, where a non-zero exit code is an
   ANSWER rather than an error, because a check is a command whose exit status
   says whether the thing is already done.
-- `plan.go` — the nine steps as data, the two documents the host gets, and the
-  three actions a step can conclude.
+- `plan.go` — the ten steps as data, the two documents the host gets, and the
+  four actions a step can conclude.
+- `arch.go` — the architecture preflight, the one question whose answer changes
+  WHICH BYTES cross the SSH connection. `uname -sm` on the host and three
+  outcomes: the running binary ships when it is built for this host; a
+  `cafe-<goos>-<goarch>` beside it ships when its BYTES say they are for this
+  host; and otherwise the run refuses, naming both platforms and the one build
+  command that produces the right one — before Docker, before any write, and
+  with no capability presented. The bytes decide, not the filename: a sibling
+  named for the host and built for another machine is not shipped, and that
+  negative control is a test because it is the defect this package was measured
+  on.
 - `setup.go` — the three phases: probe, walk, verify.
 - `ssh.go` — `SSHHost`, the real `Host`: the local `ssh` binary under `os/exec`,
   and the askpass helper that carries a password on a pipe so it reaches

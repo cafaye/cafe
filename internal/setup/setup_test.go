@@ -1,7 +1,11 @@
 package setup
 
 import (
+	"bytes"
 	"context"
+	"debug/elf"
+	"debug/macho"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"os"
@@ -894,6 +898,329 @@ func TestSetupWithoutACapabilityRefusesToStart(t *testing.T) {
 	}
 	if len(host.commands) != 0 {
 		t.Errorf("the host was contacted %d times without a capability", len(host.commands))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// the architecture preflight
+// ---------------------------------------------------------------------------
+
+// The three cases the packet exists for, and the fourth it closed on the way.
+// They are written against decideBinary and probeArch directly — pure
+// functions of a platform, an answer and a directory — so nothing here needs
+// an SSH host, a container runtime or a cross-compiler on the machine that
+// runs the gate.
+
+// otherPlatform is a platform this controller is NOT, which is the case the
+// packet is about: it must be derived rather than written down, or the test
+// would be passing on a linux/amd64 CI runner only because the machine it ran
+// on happened to be arm64.
+func otherPlatform(t *testing.T) target {
+	t.Helper()
+	mine := controllerTarget()
+	if mine.GOOS == "darwin" {
+		if mine.GOARCH == "arm64" {
+			return target{"linux", "amd64"}
+		}
+		return target{"linux", "arm64"}
+	}
+	return target{"darwin", "arm64"}
+}
+
+// elfBytes is a recognisable ELF64 header for a machine. It is not a program:
+// it is the 64 bytes the preflight reads to learn which one it is, which is
+// all the decision needs and all the test needs to exercise the check that a
+// filename cannot be trusted.
+func elfBytes(machine elf.Machine) []byte {
+	h := make([]byte, 64)
+	h[0], h[1], h[2], h[3] = 0x7f, 'E', 'L', 'F'
+	h[4], h[5], h[6] = 2, 1, 1                             // ELFCLASS64, ELFDATA2LSB, EV_CURRENT
+	binary.LittleEndian.PutUint16(h[16:], 3)               // e_type = ET_DYN
+	binary.LittleEndian.PutUint16(h[18:], uint16(machine)) // e_machine
+	binary.LittleEndian.PutUint32(h[20:], 1)               // e_version
+	return h
+}
+
+// machoBytes is a recognisable 64-bit Mach-O header for a CPU.
+func machoBytes(cpu macho.Cpu) []byte {
+	h := make([]byte, 32)
+	binary.LittleEndian.PutUint32(h[0:], 0xfeedfacf)
+	binary.LittleEndian.PutUint32(h[4:], uint32(cpu))
+	binary.LittleEndian.PutUint32(h[12:], 1) // ncmds
+	return h
+}
+
+// unameFor is what `uname -sm` answers on a host running that platform, in
+// the kernel's own spelling — Linux says aarch64 where Go says arm64.
+func unameFor(t2 target) string {
+	kernel := "Linux"
+	machine := t2.GOARCH
+	if t2.GOOS == "darwin" {
+		kernel = "Darwin"
+	}
+	switch t2.GOARCH {
+	case "amd64":
+		machine = "x86_64"
+	case "arm64":
+		if t2.GOOS != "darwin" {
+			machine = "aarch64"
+		}
+	case "arm":
+		machine = "armv7l"
+	case "386":
+		machine = "i686"
+	}
+	return kernel + " " + machine
+}
+
+// A cross-built sibling beside the running binary is shipped, and its bytes
+// decide that it is the right one. This is the workaround the operator
+// reached for by hand, made into the path the command takes.
+func TestASiblingBinaryForTheHostsArchIsShipped(t *testing.T) {
+	other := otherPlatform(t)
+	dir := t.TempDir()
+	local := filepath.Join(dir, "cafe")
+	if err := os.WriteFile(local, []byte("#!/bin/sh\nthe running binary\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// The sibling is named for the host and IS for the host.
+	want := elfBytes(elf.EM_X86_64)
+	if other.GOARCH == "arm64" {
+		want = elfBytes(elf.EM_AARCH64)
+	}
+	sibling := filepath.Join(dir, siblingName(other))
+	if err := os.WriteFile(sibling, want, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	pick, err := decideBinary(controllerTarget(), hostArch{Answer: unameFor(other), Target: other, OK: true}, local)
+	if err != nil {
+		t.Fatalf("decideBinary: %v", err)
+	}
+	if pick.Action != archShipSibling {
+		t.Fatalf("action = %q, want %q (%s)", pick.Action, archShipSibling, pick.Refusal)
+	}
+	if pick.Path != sibling {
+		t.Errorf("shipped %s, want %s", pick.Path, sibling)
+	}
+	if !bytes.Equal(pick.Binary, want) {
+		t.Errorf("the bytes that crossed are not the sibling's")
+	}
+	if pick.Hash != sha256Hex(want) {
+		t.Errorf("the hash is not the hash of the bytes that crossed")
+	}
+	if got, ok := fileTarget(pick.Binary); !ok || got != other {
+		t.Errorf("the shipped bytes are for %s, want %s", fileTargetString(pick.Binary), other)
+	}
+	if !strings.Contains(pick.Reason, sibling) || !strings.Contains(pick.Reason, local) {
+		t.Errorf("the reason does not name the path it chose and the one it did not:\n%s", pick.Reason)
+	}
+}
+
+// The negative control over the sibling check: a file NAMED for the host that
+// is built for something else is not shipped. Without this, the refusal test
+// below would pass against a check that trusted the filename — which is the
+// defect this packet measured, re-created.
+func TestASiblingNamedForTheHostButBuiltForAnotherMachineIsNotShipped(t *testing.T) {
+	other := otherPlatform(t)
+	dir := t.TempDir()
+	local := filepath.Join(dir, "cafe")
+	if err := os.WriteFile(local, []byte("the running binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Named cafe-linux-amd64, but a darwin/arm64 Mach-O inside.
+	sibling := filepath.Join(dir, siblingName(other))
+	if err := os.WriteFile(sibling, machoBytes(macho.CpuArm64), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	pick, err := decideBinary(controllerTarget(), hostArch{Answer: unameFor(other), Target: other, OK: true}, local)
+	if err != nil {
+		t.Fatalf("decideBinary: %v", err)
+	}
+	if pick.Ships() {
+		t.Fatalf("a sibling whose bytes are %s was shipped to a %s host", fileTargetString(pick.Binary), other)
+	}
+	if pick.Action != archRefuse {
+		t.Errorf("action = %q, want %q", pick.Action, archRefuse)
+	}
+}
+
+// fileTargetString is a test helper: the platform a binary's bytes say they
+// are, or "unreadable".
+func fileTargetString(raw []byte) string {
+	if got, ok := fileTarget(raw); ok {
+		return got.String()
+	}
+	return "unreadable"
+}
+
+// The case this packet was measured on: the controller holds only its own
+// architecture, the host runs another, and there is no sibling. The refusal
+// names both platforms AND the one command that produces the right binary.
+func TestAnArchTheControllerCannotBuildForIsRefusedByName(t *testing.T) {
+	other := otherPlatform(t)
+	dir := t.TempDir()
+	local := filepath.Join(dir, "cafe")
+	if err := os.WriteFile(local, []byte("the running binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	host := newFakeHost()
+	host.goos, host.goarch = other.GOOS, other.GOARCH
+	host.binaryHash = sha256Hex([]byte("the running binary"))
+	opts := setupOptions(t, host, local)
+
+	res, err := Setup(context.Background(), opts)
+	if err == nil {
+		t.Fatal("a controller that cannot build for this host must be refused")
+	}
+	if res.FailedStep() != StepHostArch {
+		t.Fatalf("failed step = %q, want %q", res.FailedStep(), StepHostArch)
+	}
+	refusal := res.Steps[len(res.Steps)-1].Detail
+	// The two platforms, in the spellings a build command uses.
+	for _, want := range []string{
+		controllerTarget().String(), other.String(),
+		"GOOS=" + other.GOOS, "GOARCH=" + other.GOARCH,
+		"go build -o", "./cmd/cafe", siblingName(other),
+	} {
+		if !strings.Contains(refusal, want) {
+			t.Errorf("the refusal does not name %q:\n%s", want, refusal)
+		}
+	}
+	// NOTHING crossed. Not Docker, not the binary, not the capability.
+	if host.installed["docker"] {
+		t.Error("the walk installed Docker on a host it had already refused")
+	}
+	if len(host.writes) != 0 {
+		t.Errorf("%d files were written to a host that was refused", len(host.writes))
+	}
+	if host.redemptions != 0 {
+		t.Errorf("the capability was presented on a refused run: %d", host.redemptions)
+	}
+	if host.ran("box enroll --token -") != 0 {
+		t.Error("the enrollment ran on a host that was refused")
+	}
+	if res.Arch != nil {
+		t.Errorf("a refused run carries an arch record: %+v", res.Arch)
+	}
+}
+
+// The same-arch case is unchanged, and now says which binary it shipped. The
+// whole first-setup table covers the walk; this is the row that has to name
+// the decision rather than read "the host already had this".
+func TestTheRunningBinaryShipsWhenTheHostMatches(t *testing.T) {
+	host := newFakeHost()
+	binary := writeFakeBinary(t)
+	host.binaryHash = mustBinaryHash(t)
+	host.controlPlaneURL = "https://box.test"
+
+	res, err := Setup(context.Background(), setupOptions(t, host, binary))
+	if err != nil {
+		t.Fatalf("Setup: %v\n%+v", err, res)
+	}
+	row := res.stepByName(StepHostArch)
+	if row == nil || row.Action != ActionAlreadyDone {
+		t.Fatalf("the arch step = %+v, want already-done", row)
+	}
+	if res.Arch == nil {
+		t.Fatal("the document carries no arch record")
+	}
+	if res.Arch.Sibling {
+		t.Errorf("a local ship was recorded as a sibling: %+v", res.Arch)
+	}
+	if res.Arch.Host != unameSpelling(runtime.GOOS, runtime.GOARCH) {
+		t.Errorf("arch.host = %q, want the host's own %q", res.Arch.Host, unameSpelling(runtime.GOOS, runtime.GOARCH))
+	}
+	if res.Arch.Controller != controllerTarget().String() {
+		t.Errorf("arch.controller = %q, want %q", res.Arch.Controller, controllerTarget())
+	}
+	if res.Arch.Path != binary {
+		t.Errorf("arch.path = %q, want the binary that shipped: %q", res.Arch.Path, binary)
+	}
+	// And the binary on the host is the local one, byte for byte.
+	if got := string(host.fs[CafeBinPath]); got != "#!/bin/sh\nexec cafe-real \"$@\"\n" {
+		t.Errorf("the host's cafe is %q, want the local binary's bytes", got)
+	}
+}
+
+// The host's kernel, not its hash table, decides whether the installed file is
+// a cafe. A darwin binary on a linux box is `-x` and it hashes to a perfectly
+// good sha256, so the old check reported "a different version" over a file the
+// kernel cannot execute at all. That file is ABSENT.
+func TestABinaryTheHostKernelCannotRunReadsAsAbsent(t *testing.T) {
+	// The host is the controller's OWN platform: the preflight ships the
+	// running binary and the walk reaches cafe-installed, which is the step
+	// this test is about. An arch mismatch is refused before the walk by the
+	// test above, and that is the point of it — the two cases are different
+	// questions and only one of them can reach this row.
+	host := newFakeHost()
+	binary := writeFakeBinary(t)
+	opts := setupOptions(t, host, binary)
+
+	// First round trip: nothing on the host, so everything applies.
+	res, err := Setup(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("Setup: %v\n%+v", err, res)
+	}
+	if !res.OK() {
+		t.Fatalf("the run refused at %s", res.FailedStep())
+	}
+
+	// The second run: the binary is there, its hash is right, and the host's
+	// kernel still cannot execute it — a `noexec` mount, a file something
+	// mangled on the way in, a binary that is not the one its name says. The
+	// old check would have said "already done" over an unusable file, because
+	// sha256sum is perfectly happy with bytes it does not have to run. The
+	// probe is what makes the row read as ABSENT instead.
+	host.binaryRuns = false
+	writes := len(host.writes)
+	res2, err := Setup(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("the second setup: %v\n%+v", err, res2)
+	}
+	row := res2.stepByName(StepCafeInstalled)
+	if row == nil || row.Action != ActionApplied {
+		t.Fatalf("cafe-installed = %+v, want applied — a file the kernel cannot run is not an installation", row)
+	}
+	if len(host.writes) != writes+1 {
+		t.Errorf("the unusable binary was written over %d times, want once", len(host.writes)-writes)
+	}
+
+	// And with the kernel answering again, the third run is in order: the
+	// probe failing is not a state the box gets stuck in.
+	host.binaryRuns = true
+	res3, err := Setup(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("the third setup: %v", err)
+	}
+	if row := res3.stepByName(StepCafeInstalled); row == nil || row.Action != ActionAlreadyDone {
+		t.Errorf("the third setup's cafe-installed = %+v, want %s", row, ActionAlreadyDone)
+	}
+}
+
+// A host whose `uname` says something this package has no row for is refused
+// with its own words quoted, not mapped onto the nearest architecture.
+func TestAnUnknownArchIsRefusedWithTheHostsOwnWords(t *testing.T) {
+	dir := t.TempDir()
+	local := filepath.Join(dir, "cafe")
+	if err := os.WriteFile(local, []byte("the running binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	asked := hostArch{Answer: "Linux loongarch64", OK: false}
+	pick, err := decideBinary(controllerTarget(), asked, local)
+	if err != nil {
+		t.Fatalf("decideBinary: %v", err)
+	}
+	if pick.Ships() {
+		t.Fatal("a host whose uname this package cannot read must not be shipped to")
+	}
+	if !strings.Contains(pick.Refusal, "loongarch64") {
+		t.Errorf("the refusal does not quote what the host said:\n%s", pick.Refusal)
+	}
+	if !strings.Contains(pick.Refusal, controllerTarget().String()) {
+		t.Errorf("the refusal does not name the controller:\n%s", pick.Refusal)
 	}
 }
 
