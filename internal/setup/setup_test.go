@@ -1271,3 +1271,49 @@ func TestThePlanIsPureData(t *testing.T) {
 		}
 	}
 }
+
+// TestTheIdentityDocumentsKeyIsBoxURL pins the one field in this packet that is
+// a contract rather than a spelling, and it pins it in both directions because
+// a tag renamed on one side of the seam and not the other is the failure a
+// symmetric test cannot see.
+//
+// The writer half reads the bytes the host's boxd is actually handed: a
+// document that spelled the old service's name is what the rename exists to
+// stop, so the assertion is on the bytes and not on the field.
+//
+// The reader half is the control. The enrolledDocument fixture above already
+// decodes, so a test that only asserted the writer would pass against a reader
+// keyed on `conductor` that never saw a document carrying it — which is the
+// whole defect this test is for. So the old spelling is fed in and MUST decode
+// to an empty control plane: that is the compatibility statement the rename
+// makes out loud (a box.json an older binary wrote reads back with no origin
+// until the host is re-enrolled) rather than a shim nobody can see.
+func TestTheIdentityDocumentsKeyIsBoxURL(t *testing.T) {
+	written := identityDocument(nil, Options{ControlPlane: "https://box.test", Version: "1.2.3"})
+	if !strings.Contains(string(written), `"box_url":"https://box.test"`) {
+		t.Errorf("the daemon's identity document does not carry the control plane under box_url:\n%s", written)
+	}
+	if strings.Contains(string(written), "conductor") {
+		t.Errorf("the daemon's identity document still names the old service:\n%s", written)
+	}
+
+	// The real fixture, not a literal: the enrolledDocument above is what the
+	// host's own `cafe box enroll` leaves behind, and this is what the walk
+	// reads back off it.
+	var writtenByEnroll identityRead
+	if err := json.Unmarshal([]byte(enrolledDocument), &writtenByEnroll); err != nil {
+		t.Fatalf("decode the enrolled document: %v", err)
+	}
+	if writtenByEnroll.ControlPlane != "https://box.test" {
+		t.Errorf("the enrolled document decoded the control plane as %q, want the document's own origin",
+			writtenByEnroll.ControlPlane)
+	}
+
+	var writtenByAnOldBinary identityRead
+	if err := json.Unmarshal([]byte(`{"box_id":"box_1","conductor":"https://old.test"}`), &writtenByAnOldBinary); err != nil {
+		t.Fatalf("decode a document in the old spelling: %v", err)
+	}
+	if writtenByAnOldBinary.ControlPlane != "" {
+		t.Errorf("the old spelling still decodes, so the wire name is not pinned: %+v", writtenByAnOldBinary)
+	}
+}
