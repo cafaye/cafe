@@ -162,8 +162,18 @@ over the tunnel is the fallback if the control plane decides against a CA.
   unformatted at `b6d507d`**; aligned so the gate is green — a pre-existing
   condition this packet fixed, not introduced).
 - Focused packages: `go test ./internal/boxd/... ./internal/cli/... ./internal/setup/... ./internal/verify/... ./internal/box/...` — all `ok`.
-- Full gate: `./bin/prime` — see the run log for the suite totals (the
-  three-floors accounting in `gate.yml` is unchanged).
+- Full gate `./bin/prime`: **32 packages, 1364 top-level passes, 1246 subtest
+  passes, 1 failure, 8 skips.** The gate-floor arithmetic this packet moved
+  is exact: the tree declares 1373 top-level tests, the suite floor is 1365,
+  1373 − 1365 = 8 = `expectedSkips` — the ratchet passes. The floors were
+  raised in `gate.yml` (suite 1358 → 1365, subtests 1245 → 1246) and `caf.lock`
+  was re-pinned in the same commit, per the house rule.
+- The one failure is **pre-existing and unrelated**: `TestEveryCitationPointsAtSomething`
+  in `internal/secret` walks `kit`'s `install.sh` and asserts every refusal
+  citation mentions a secret or password; kit's template has drifted from
+  that rule. It fails identically at `b6d507d` (verified in a worktree), this
+  packet never touched `internal/secret` or kit, and the fix is a kit-side
+  change — out of scope here, named so the next packet does not re-discover it.
 
 ## The successor's first move
 
