@@ -24,7 +24,7 @@ no partial work to keep or discard.
     because a parse-into-struct + marshal would drop the prose above each floor.
   - `Measured` / `Measured.Floors()` turn one gate run into the floors the tree
     implies.
-  - `Delta` is the review signal: `"floors moved 1370→1380, subtests 1248→1250"`.
+  - `Delta` is the review signal: `"floors moved 1376→1380, subtests 1248→1250"`.
   - `CountTestFuncs`, `NotASourceTree`, `IsTestFunc` and `ExpectedSkips` moved
     here from `internal/ci`, so the ratchet's `declared` count and the writer's
     suite floor are the same code and the same constant.
