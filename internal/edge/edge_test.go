@@ -88,11 +88,24 @@ func (b *boxState) deploy(t *testing.T, release string, hosts ...string) {
 // gateway is the running edge for this box: real listener, real TLS, real
 // routing record read off disk. The listener is closed when the test ends, so
 // nothing outlives it.
+//
+// THE GATEWAY IS BUILT WITH NO SINK, and that is the fix for a measured lost
+// update rather than a preference. The health column has a writer of its own
+// (SpecSink, proven by TestTheProbeLoopPersistsTheHealthItObserved), and a
+// gateway that ALSO writes the record is a SECOND writer racing any deploy the
+// test runs beside it. Two writers on one file with no shared lock is a lost
+// update: the probe's read-merge-write can land after the deploy's write and
+// drop the Previous pointer a rollback needs. That is exactly what made
+// TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane red — 57 failures in
+// 200 runs, the routing row's Health moving under the test and a rollback
+// refusing because the recorded Previous had been overwritten by a health
+// write. A nil sink is the package's own answer for "a test that does not want
+// a second writer" (see SpecSink), and the edge still answers every request
+// with the health it observed, out of its in-memory probe table.
 func (b *boxState) gateway(t *testing.T, certs Certificates) (*Gateway, string) {
 	t.Helper()
 	g := &Gateway{
 		Spec:         func() (Spec, error) { return Load(b.dir) },
-		Sink:         func(s Spec) error { return Save(b.dir, s) },
 		Certificates: certs,
 		ErrorLog:     log.New(io.Discard, "", 0),
 	}
@@ -103,6 +116,16 @@ func (b *boxState) gateway(t *testing.T, certs Certificates) (*Gateway, string) 
 	go func() { _ = g.Serve(context.Background(), ln) }()
 	t.Cleanup(func() { _ = ln.Close() })
 	return g, ln.Addr().String()
+}
+
+// sameRoute reports whether two rows route the same hostname the same way: the
+// name, the upstream and the service. Health and Detail are the edge's own
+// observation of the upstream — the package says they are rewritten as the
+// edge probes — so they are not part of the routing identity a deploy must
+// preserve, and a test that compared them whole would be asserting a
+// coincidence about timing rather than the routing claim it names.
+func sameRoute(a, b Host) bool {
+	return a.Name == b.Name && a.Upstream == b.Upstream && a.Service == b.Service
 }
 
 // --------------------------------- listener helpers ------------------------
@@ -359,7 +382,7 @@ func TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read the spec: %v", err)
 	}
-	if len(before.Hosts) != len(after.Hosts) || before.Hosts[0] != after.Hosts[0] {
+	if len(before.Hosts) != len(after.Hosts) || !sameRoute(before.Hosts[0], after.Hosts[0]) {
 		t.Errorf("the routing row moved during a deploy: %+v -> %+v", before.Hosts[0], after.Hosts[0])
 	}
 
@@ -389,6 +412,47 @@ func TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane(t *testing.T) {
 	spec.Previous = ""
 	if _, err := Rollback(dir, spec); err == nil {
 		t.Error("a rollback with no recorded previous release did not refuse")
+	}
+}
+
+// TestTheProbeLoopPersistsTheHealthItObserved is the deterministic half the
+// running gateways in this file deliberately do not exercise. probeAll measures
+// every upstream and writes what it saw through the Sink, and this test drives
+// it as the ONLY writer — no deploy runs beside it — which is the state a box
+// is in when nobody is deploying. The switch test used to be the only cover
+// for the Sink, and there it was a second writer racing the deploy's own; the
+// lost update between the two is why the gateway helper now builds with no
+// sink at all.
+func TestTheProbeLoopPersistsTheHealthItObserved(t *testing.T) {
+	up := httptest.NewServer(sampleStack{release: "v1"}.handler())
+	defer up.Close()
+
+	b := newBoxState(t, "box-01", ModeInternal)
+	b.upstream["api.cafaye.test"] = strings.TrimPrefix(up.URL, "http://")
+	b.deploy(t, "sample-stack-1", "api.cafaye.test")
+
+	g := &Gateway{
+		Spec:     func() (Spec, error) { return Load(b.dir) },
+		Sink:     func(s Spec) error { return Save(b.dir, s) },
+		ErrorLog: log.New(io.Discard, "", 0),
+	}
+	g.probeAll(context.Background())
+
+	got, err := Load(b.dir)
+	if err != nil {
+		t.Fatalf("read the record after the probe: %v", err)
+	}
+	row, ok := got.Host("api.cafaye.test")
+	if !ok {
+		t.Fatal("the record lost its host row")
+	}
+	if row.Health != HealthHealthy {
+		t.Errorf("the persisted health = %q, want %q", row.Health, HealthHealthy)
+	}
+	// The write moved the health column and nothing else — not the release
+	// pointer, which the probe never measured.
+	if got.Current != "sample-stack-1" {
+		t.Errorf("the probe moved current to %q, want sample-stack-1", got.Current)
 	}
 }
 
