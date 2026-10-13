@@ -870,7 +870,7 @@ func TestTheDaemonIdentityDocumentIsTheHonestStub(t *testing.T) {
 		Options{ControlPlane: "https://box.test", Version: "1.2.3"})
 	var written struct {
 		BoxID        string `json:"box_id"`
-		ControlPlane string `json:"conductor"`
+		ControlPlane string `json:"box_url"`
 		Version      string `json:"version"`
 		Certificate  string `json:"certificate"`
 		Key          string `json:"key"`
