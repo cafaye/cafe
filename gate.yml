@@ -94,10 +94,24 @@ gate:
       minimum: 32
     - id: suite
       match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
-      # 1341, measured with `./bin/prime` on this tree (32 packages, 1245 subtests, 8 skips).
-      # 1335 stood until roll/setup-arch, which added SIX top-level tests to
-      # internal/setup and no subtests — which is why this floor moved and the
-      # one below did not:
+      # 1362, measured with `./bin/prime` on this tree (32 packages, 1247 subtests, 8 skips).
+      # 1358 stood until roll/c3-enroll-stdin, which added FOUR top-level tests
+      # and no subtests of its own to the suite floor — the two subtests in the
+      # empty-pipe table are counted by the row below. The four are the packet's
+      # proof and they are the reason the number moved:
+      #
+      #   `cafe box enroll --token -` reads the capability off the command's
+      #   stdin and the value that reaches the control plane is that
+      #   capability, not the literal dash,
+      #   a dash whose pipe is empty is a USAGE error (exit 2, nothing
+      #   attempted) rather than an enrollment from a blank,
+      #   a token named by the flag never opens the stream,
+      #   the pipe the SETUP side writes carries the capability and nothing
+      #   else, which is where readSetupToken's own trim is observable.
+      #
+      # The earlier moves are named above and stay named: roll/setup-arch added
+      # SIX top-level tests to internal/setup and no subtests — which is why that
+      # floor moved and the one below did not:
       #
       #   the arch mismatch (refusal, named build command, nothing written),
       #   the sibling case (a cross-built cafe-linux-<arch> is shipped),
@@ -108,9 +122,8 @@ gate:
       #   ABSENT, not "a different version"),
       #   the unknown-uname case (the host's own words are quoted).
       #
-      # The earlier moves are named above and stay named: roll/box-edge added
-      # 11 top-level tests and no subtests; roll/box-ops-verify and
-      # roll/box-deploy added the ops-half and stack tables. The two numbers
+      # roll/box-edge added 11 top-level tests and no subtests; roll/box-ops-verify
+      # and roll/box-deploy added the ops-half and stack tables. The two numbers
       # measure different things and a packet that moved one without the other
       # is a packet that was counted, not rounded.
       #
@@ -122,13 +135,15 @@ gate:
       # symmetric and a tag renamed on one side of the seam and not the other
       # is a difference no symmetric test can see. It was watched red on a
       # reverted tag before it was landed.
-      minimum: 1359
+      minimum: 1362
+      # 1362, not 1359: roll/c3-enroll-stdin's tests land in the same merge;
+      # the floor is the higher of the two packets' own measurements.
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # 1245, measured on this tree. 1234 stood until the roll/box wave
-      # finished; roll/setup-arch added no subtests of its own. The floor
-      # follows the measurement rather than the other way round.
-      minimum: 1245
+      # 1247, measured on this tree. 1245 stood until roll/c3-enroll-stdin added
+      # the empty-pipe table's two cases. The floor follows the measurement
+      # rather than the other way round.
+      minimum: 1247
 
     - id: live-tier
       match: '^cafe: live tier: [0-9]+ of 7 executed'

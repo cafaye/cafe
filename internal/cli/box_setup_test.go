@@ -158,16 +158,15 @@ func (s *boxHostSim) Run(_ context.Context, command string, stdin []byte) (setup
 		// The enrollment happens HERE, on the host, with the host's own ring
 		// and the host's own config directory. The token arrives on stdin and
 		// exists nowhere else.
-		store := box.NewStore(s.boxDir, s.ring, s.controlPlane)
-		res, err := store.Enroll(context.Background(), string(stdin), "https://box.test")
-		if err != nil {
-			return setup.Output{Code: 1, Stderr: err.Error()}, nil
-		}
-		raw, err := json.Marshal(res)
-		if err != nil {
-			return setup.Output{Code: 1, Stderr: err.Error()}, nil
-		}
-		return setup.Output{Code: 0, Stdout: string(raw)}, nil
+		//
+		// And the sim runs the HOST'S OWN `cafe box enroll` — the real command,
+		// through the real flag parser, against the store — rather than calling
+		// the store directly. A sim that skipped the command would pass on the
+		// tree where the command never opened the pipe: the store would have
+		// been handed the literal dash, box would have answered 404 for a
+		// token it never minted, and the count below would still have been 1.
+		out := runHostEnroll(s, hostEnrollArgs(command), stdin)
+		return out, nil
 	case strings.Contains(command, "test -s /etc/cafe/box-identity.json"):
 		if _, ok := s.fs[setup.IdentityPath]; ok {
 			return setup.Output{Code: 0}, nil
@@ -214,6 +213,61 @@ func (s *boxHostSim) ran(sub string) int {
 	return n
 }
 
+// runHostEnroll performs the enrollment the controller asked for by running the
+// HOST'S OWN command: `cafe box enroll --token - --box <url>`, with the
+// controller's capability on its stdin and the host's own ring, config
+// directory and control plane. It answers the way a remote shell would — exit
+// code, stdout, stderr — so the walk cannot tell it from an ssh round trip.
+func runHostEnroll(s *boxHostSim, args []string, stdin []byte) setup.Output {
+	var out, errOut strings.Builder
+	env := &Env{
+		Stdout:  &out,
+		Stderr:  &errOut,
+		Stdin:   strings.NewReader(string(stdin)),
+		Version: testVersion,
+		Context: context.Background(),
+	}
+	host := boxDeps{dir: s.boxDir, ring: s.ring, controlPlane: s.controlPlane, url: "https://box.test"}
+	if err := newBoxCommand(host).Execute(env, args); err != nil {
+		// Both streams, because the exit code alone is what a failed walk
+		// refuses with and a refusal the operator cannot read is a refusal
+		// nobody can act on.
+		return setup.Output{Code: 1, Stderr: err.Error() + "\n" + errOut.String()}
+	}
+	return setup.Output{Code: 0, Stdout: out.String()}
+}
+
+// hostEnrollArgs pulls the invocation out of the command the controller built,
+// so the sim runs what the plan actually wrote — under whatever root prefix the
+// walk carried — rather than a copy of it that could drift from plan.go's
+// spelling. The URL is quoted the way a shell wants it, so it is unquoted the
+// same way.
+func hostEnrollArgs(command string) []string {
+	const verb = "box enroll"
+	at := strings.Index(command, verb)
+	if at < 0 {
+		return nil
+	}
+	// Everything after the word "box", so the array starts at the verb — which
+	// is what Execute takes.
+	fields := strings.Fields(command[at+len("box "):])
+	args := make([]string, 0, len(fields))
+	for _, f := range fields {
+		args = append(args, unquoteShell(f))
+	}
+	return args
+}
+
+// unquoteShell reverses the one quoting the plan applies to an argument. It
+// lives here rather than in setup because shellQuote is setup's and the
+// controller's quoting is the controller's business.
+func unquoteShell(s string) string {
+	if len(s) < 2 || s[0] != '\'' || s[len(s)-1] != '\'' {
+		return s
+	}
+	return strings.ReplaceAll(s[1:len(s)-1], `'\''`, "'")
+}
+
 // setupDepsFor wires the verb tree to a simulated host and a host-side box
 // store the test can inspect.
 func setupDepsFor(t *testing.T, host *boxHostSim, cp *countingBoxControlPlane) (boxDeps, *boxTestRing) {
@@ -237,6 +291,51 @@ func setupDepsFor(t *testing.T, host *boxHostSim, cp *countingBoxControlPlane) (
 		controlPlane: cp,
 		url:          "https://box.test",
 	}, ring
+}
+
+// The pipe the controller writes carries the capability and nothing else — not
+// even the newline the operator's `echo` left on it, and never the flag value.
+//
+// This is the one place readSetupToken's own trim is observable. The host's
+// enroll trims what it is handed as well, so an assertion about what box was
+// told would pass either way; only the bytes that crossed the seam say anything
+// about which side did the trimming, and a controller that left a newline on the
+// pipe is a controller whose "nothing else" claim is one string comparison away
+// from being false.
+func TestTheSetupPipeCarriesTheCapabilityAndNothingElse(t *testing.T) {
+	cp := &countingBoxControlPlane{answer: &box.Installation{
+		BoxID: "box_pipe_01", AccountID: "acct_1", Status: "active", Phase: "enrolled",
+	}}
+	sim := newBoxHostSim(t, cp)
+	deps, _ := setupDepsFor(t, sim, cp)
+
+	var out, errOut strings.Builder
+	env := &Env{Stdout: &out, Stderr: &errOut, Stdin: strings.NewReader("  cap_pipe\n"), Version: testVersion}
+	if err := newBoxCommand(deps).Execute(env, []string{"setup", "--token", "-", "--json", "box.test"}); err != nil {
+		if !errors.Is(err, errReported) {
+			t.Fatalf("cafe box setup: %v", err)
+		}
+	}
+
+	ran := false
+	for _, c := range sim.commands {
+		if !strings.Contains(c.Command, "box enroll --token -") {
+			continue
+		}
+		ran = true
+		if c.Stdin != "cap_pipe" {
+			t.Errorf("the enroll pipe carried %q, want exactly the capability", c.Stdin)
+		}
+		if strings.Contains(c.Command, "cap_pipe") {
+			t.Errorf("the capability appeared in a COMMAND ARGUMENT: %s", c.Command)
+		}
+	}
+	if !ran {
+		t.Fatal("the enroll step never ran, so no pipe carried the capability")
+	}
+	if len(cp.tokens) != 1 || cp.tokens[0] != "cap_pipe" {
+		t.Errorf("the host's control plane was presented %v, want [cap_pipe]", cp.tokens)
+	}
 }
 
 // The whole command, end to end, and then again. The second run presents no
@@ -316,6 +415,15 @@ func TestBoxSetupEndToEndIsIdempotent(t *testing.T) {
 	}
 	if sim.ran("box enroll --token -") != 1 {
 		t.Errorf("the enroll command ran %d times across two setups, want 1", sim.ran("box enroll --token -"))
+	}
+	// The host's own enroll READ the pipe. The capability the host's control
+	// plane was presented is the one the controller wrote on it — the assertion
+	// the packet is for, because the value that crossed was the literal dash
+	// until the host's command opened the stream: box answered 404 for a token
+	// it had never minted, and a count of redemptions looked correct the whole
+	// time.
+	if len(cp.tokens) == 0 || cp.tokens[0] != "cap_e2e_once" {
+		t.Errorf("the host's control plane was presented %v, want [cap_e2e_once]", cp.tokens)
 	}
 	if len(ring.entries) != 0 {
 		t.Errorf("the controller's keyring holds %d entries after two setups, want 0", len(ring.entries))

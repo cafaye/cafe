@@ -703,10 +703,24 @@ func TestTheCapabilityTravelsOnAPipeAndNowhereElse(t *testing.T) {
 		}
 		if strings.Contains(c.Stdin, token) {
 			seen++
+			// The pipe it travels on is the enroll step's own, and the step is
+			// `cafe box enroll --token - --box <url>`: the dash is what tells the
+			// host's command to open the stream it was handed. A setup that
+			// wrote `--token <the value>` would be caught by the argv assertion
+			// above; one that handed the capability to a command with no dash
+			// in it would not be, and that command would send the dash to box
+			// as the capability. This is the assertion that keeps the two halves
+			// of the protocol describing each other.
+			if !strings.Contains(c.Command, "box enroll --token -") {
+				t.Errorf("the capability was handed to a command that does not read it off stdin: %s", c.Command)
+			}
 		}
 	}
 	if seen != 1 {
 		t.Errorf("the capability appeared on %d stdins, want exactly 1", seen)
+	}
+	if host.ran("box enroll --token -") == 0 {
+		t.Errorf("the enroll step never ran, so the pipe it was handed went nowhere")
 	}
 	for _, w := range host.writes {
 		if strings.Contains(string(w.Data), token) {

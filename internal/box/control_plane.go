@@ -98,11 +98,11 @@ type controlPlaneResponse struct {
 		// future non-integer id surfaces as a decode failure rather than a
 		// silent 0 — the same discipline Redeem applies to a non-JSON body.
 		ID         json.Number `json:"id"`
-		BoxID      string `json:"box_id"`
-		AccountID  string `json:"account_id"`
-		Status     string `json:"status"`
-		Phase      string `json:"current_phase"`
-		EnrolledAt string `json:"enrolled_at"`
+		BoxID      string      `json:"box_id"`
+		AccountID  string      `json:"account_id"`
+		Status     string      `json:"status"`
+		Phase      string      `json:"current_phase"`
+		EnrolledAt string      `json:"enrolled_at"`
 	} `json:"installation"`
 }
 

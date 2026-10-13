@@ -261,14 +261,59 @@ type boxEnrollOptions struct {
 	box   string
 }
 
+const (
+	// stdinTokenDashes is the flag value that means "the value is on stdin". It
+	// is the operator's own word for a pipe, and the same convention `cafe box
+	// setup` uses for the capability it is given.
+	stdinTokenDashes = "-"
+)
+
+// enrollCapability resolves the capability: `--token -` means "this comes on
+// stdin", and every other value is the flag's own, trimmed.
+//
+// The dash is the operator's word for a pipe and it was never a capability.
+// `cafe box setup` runs this command ON THE HOST with the capability on the pipe
+// it hands the enroll step and nowhere else (internal/setup/plan.go: `cafe box
+// enroll --token - --box <url>`, Stdin is the capability), so the host's own
+// enroll has to read the stream it was handed. When it did not, it sent the
+// literal "-" to box's redeem lookup, box answered 404 for a token it had never
+// minted, and setup failed at box-enrolled with "box does not know this
+// capability" — a sentence naming box's database rather than the host's command,
+// which is why it took a measurement to find.
+//
+// readerOrStdin is the seam `Run` already fills in: a nil Stdin is the process's
+// own standard input here exactly as it is there, and a test can hand the
+// command a reader instead of redirecting the test binary's stdin.
+func enrollCapability(env *Env, fromFlag string) (string, error) {
+	if value := strings.TrimSpace(fromFlag); value != stdinTokenDashes {
+		return value, nil
+	}
+	raw, err := io.ReadAll(readerOrStdin(env.Stdin))
+	if err != nil {
+		// A stream that failed is a failure, not a usage mistake: the command
+		// was asked to read something and could not, and exit 1 says so.
+		return "", fmt.Errorf("cafe box enroll: read the capability from stdin: %w", err)
+	}
+	return strings.TrimSpace(string(raw)), nil
+}
+
+// boxEnrollUsage is the refusal for a capability that never arrived. It is a
+// USAGE mistake rather than a failure because the command cannot be run at all
+// without it, and the distinction is the difference between exit 2 and exit 1 in
+// every script that calls this. An empty pipe is the same mistake with a stream
+// attached: nothing was attempted, so nothing can have gone wrong.
+func boxEnrollUsage(c *Command) error {
+	return fmt.Errorf("%w: cafe box enroll wants --token <capability>, the single-use box.enroll capability minted for this box — or `--token -`, which reads it from stdin (usage: %s)", errUsage, c.Usage)
+}
+
 func newBoxEnrollCommand(deps boxDeps) *Command {
 	opts := &boxEnrollOptions{}
 	c := &Command{
 		Name:    "box enroll",
 		Summary: "enroll this box: generate its keypair, redeem the capability, store its identity",
-		Usage:   "cafe box enroll --token <capability> [--box <url>]",
+		Usage:   "cafe box enroll --token <capability|-> [--box <url>]",
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.token, "token", "", "the single-use box.enroll capability minted for this box")
+			fs.StringVar(&opts.token, "token", "", "the single-use box.enroll capability minted for this box; - reads it from stdin, which is a pipe rather than argv")
 			fs.StringVar(&opts.box, "box", "", "box's origin; without it, "+boxURLEnv+" is read and an unset variable is a refusal")
 		},
 	}
@@ -276,11 +321,12 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
 			return err
 		}
-		// A missing token is a USAGE mistake, not a failure: the command cannot
-		// be run at all without it, and the distinction is the difference between
-		// exit 2 and exit 1 in every script that calls this.
-		if strings.TrimSpace(opts.token) == "" {
-			return fmt.Errorf("%w: cafe box enroll wants --token <capability>, the single-use box.enroll capability minted for this box (usage: %s)", errUsage, c.Usage)
+		token, err := enrollCapability(env, opts.token)
+		if err != nil {
+			return err
+		}
+		if token == "" {
+			return boxEnrollUsage(c)
 		}
 		url := opts.box
 		if url == "" {
@@ -288,7 +334,7 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 		}
 		deps.url = url
 		store := boxStoreFor(c, env, deps)
-		res, err := store.Enroll(env.Context, opts.token, url)
+		res, err := store.Enroll(env.Context, token, url)
 		if err != nil {
 			// The refusal is the honest half of the design: a capability that
 			// is gone is gone, and saying so is better than a client that
