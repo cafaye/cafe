@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -594,6 +595,186 @@ func TestTheTransferProgressIsReadable(t *testing.T) {
 	if !strings.Contains(lines[1], "27.9 MiB on box.test written and verified") ||
 		!strings.Contains(lines[1], "sha256 matches the local binary") {
 		t.Errorf("the verified line reads %q", lines[1])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// the flags may come after the host — the form the Circle-3 run was refused
+// with
+// ---------------------------------------------------------------------------
+
+// recordingReader fails whoever reads from it. It is the seam that makes
+// "refused before anything is read from stdin" assertable: a real pipe would
+// simply block, and a test that blocked would say nothing about the order.
+type recordingReader struct{ read bool }
+
+func (r *recordingReader) Read(p []byte) (int, error) {
+	r.read = true
+	return 0, io.EOF
+}
+
+// setupThroughTheRouter drives `cafe box setup` through the real verb tree,
+// against a simulator that performs every step on itself. It is here rather
+// than inline in each case because the interesting part of the flag question is
+// that the two forms must produce the SAME document and the same commands, and
+// a helper is what makes "the same" comparable.
+func setupThroughTheRouter(t *testing.T, stdin io.Reader, deps boxDeps, args ...string) (setup.Result, *boxHostSim, string, error) {
+	t.Helper()
+	var out, errOut strings.Builder
+	env := &Env{Stdout: &out, Stderr: &errOut, Stdin: stdin, Version: testVersion}
+	err := newBoxCommand(deps).Execute(env, append([]string{"setup"}, args...))
+	var doc setup.Result
+	// The document is parsed even on the refusal paths, because the shape of
+	// what was printed is part of what these cases assert.
+	_ = json.Unmarshal([]byte(out.String()), &doc)
+	sim, _ := deps.setup.host.(*boxHostSim)
+	return doc, sim, errOut.String(), err
+}
+
+// The measured friction, as a green test: `cafe box setup contabo
+// -control-plane …` is the SAME COMMAND as `cafe box setup -control-plane …
+// contabo`. The document is the same, the host is the same, and the flag
+// reaches the host's own `cafe box enroll` — which is the observable that
+// distinguishes "the flag was parsed" from "the flag was swallowed as an
+// argument count".
+func TestFlagsAfterTheHostAreTheSameCommandAsFlagsBefore(t *testing.T) {
+	const cpURL = "http://127.0.0.1:4003"
+	newDeps := func(t *testing.T) (boxDeps, *boxHostSim, *countingBoxControlPlane) {
+		cp := &countingBoxControlPlane{answer: &box.Installation{
+			BoxID: "box_flags_01", AccountID: "acct_1", Status: "active", Phase: "enrolled",
+		}}
+		sim := newBoxHostSim(t, cp)
+		deps, _ := setupDepsFor(t, sim, cp)
+		return deps, sim, cp
+	}
+
+	firstDeps, firstSim, _ := newDeps(t)
+	before, _, _, errBefore := setupThroughTheRouter(t, strings.NewReader("cap_flags\n"), firstDeps,
+		"--token", "-", "--control-plane", cpURL, "--json", "box.test")
+	if errBefore != nil && !errors.Is(errBefore, errReported) {
+		t.Fatalf("flags before the host: %v", errBefore)
+	}
+
+	secondDeps, secondSim, _ := newDeps(t)
+	after, _, _, errAfter := setupThroughTheRouter(t, strings.NewReader("cap_flags\n"), secondDeps,
+		"box.test", "-control-plane", cpURL, "--token", "-", "--json")
+	if errAfter != nil && !errors.Is(errAfter, errReported) {
+		t.Fatalf("flags after the host: %v", errAfter)
+	}
+
+	if !before.OK() || !after.OK() {
+		t.Fatalf("the two forms did not both succeed: before=%v after=%v", before.FailedStep(), after.FailedStep())
+	}
+	if after.Host != "box.test" || before.Host != "box.test" {
+		t.Errorf("host = %q then %q, want box.test both times", before.Host, after.Host)
+	}
+	if after.Redemptions != 1 || before.Redemptions != 1 {
+		t.Errorf("redemptions = %d then %d, want 1 both times", before.Redemptions, after.Redemptions)
+	}
+	if before.Enrolled == nil || after.Enrolled == nil {
+		t.Fatalf("one form did not enroll: before=%v after=%v", before.Enrolled, after.Enrolled)
+	}
+	// The flag reached the host's own command: `cafe box enroll --token - --box
+	// '<origin>'`. A parse that had counted it as an argument would never have
+	// written it there — and this is the only observable that says the flag was
+	// PARSED rather than merely tolerated.
+	wantEnroll := "box enroll --token - --box '" + cpURL + "'"
+	for _, sim := range []*boxHostSim{firstSim, secondSim} {
+		if sim.ran(wantEnroll) != 1 {
+			t.Errorf("the host ran the enrollment %d times; want once with --box %q:\n%s",
+				sim.ran(wantEnroll), cpURL, strings.Join(commandList(sim), "\n"))
+		}
+	}
+	// And the same steps ran, in the same order: the flag position changed
+	// nothing else about the walk.
+	beforeSteps, afterSteps := stepNames(before), stepNames(after)
+	if strings.Join(beforeSteps, ",") != strings.Join(afterSteps, ",") {
+		t.Errorf("the two forms walked different steps:\n%s\n%s", beforeSteps, afterSteps)
+	}
+}
+
+func stepNames(doc setup.Result) []string {
+	names := make([]string, 0, len(doc.Steps))
+	for _, s := range doc.Steps {
+		names = append(names, s.Name+":"+s.Action)
+	}
+	return names
+}
+
+func commandList(sim *boxHostSim) []string {
+	out := make([]string, 0, len(sim.commands))
+	for _, c := range sim.commands {
+		out = append(out, c.Command)
+	}
+	return out
+}
+
+// What is refused is refused as itself. One letter short of the flag name —
+// `-controlplane` — used to be answered with "wants 1 argument, got 3": a count
+// that names a shape rather than the typo, and a count is the one thing that
+// cannot send anybody to the fix.
+func TestAMisspelledFlagAfterTheHostIsRefusedAsAFlag(t *testing.T) {
+	cp := &countingBoxControlPlane{answer: &box.Installation{BoxID: "box_flags_02", Phase: "enrolled"}}
+	sim := newBoxHostSim(t, cp)
+	deps, _ := setupDepsFor(t, sim, cp)
+
+	_, _, _, err := setupThroughTheRouter(t, strings.NewReader("cap_flags\n"), deps,
+		"box.test", "-controlplane", "http://127.0.0.1:4003", "--token", "-", "--json")
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("err = %v, want errUsage", err)
+	}
+	if !strings.Contains(err.Error(), "-controlplane") {
+		t.Errorf("the refusal does not name the flag it did not recognise: %v", err)
+	}
+	if len(sim.commands) != 0 {
+		t.Errorf("the host was contacted %d times by a refused invocation", len(sim.commands))
+	}
+}
+
+// A second subject is still a usage error, and it is the one case the count
+// answers correctly: two boxes were named, and no flag position can explain
+// that away.
+func TestASecondSubjectIsStillAUsageError(t *testing.T) {
+	cp := &countingBoxControlPlane{}
+	sim := newBoxHostSim(t, cp)
+	deps, _ := setupDepsFor(t, sim, cp)
+
+	_, _, _, err := setupThroughTheRouter(t, strings.NewReader("cap_flags\n"), deps,
+		"box.test", "other.test", "--token", "-", "--json")
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("err = %v, want errUsage", err)
+	}
+	if !strings.Contains(err.Error(), "2") {
+		t.Errorf("the refusal does not say how many subjects were named: %v", err)
+	}
+	if len(sim.commands) != 0 {
+		t.Errorf("the host was contacted %d times by a refused invocation", len(sim.commands))
+	}
+}
+
+// An empty host is refused before stdin is read. It is reachable only now the
+// flags may follow the subject — `cafe box setup "" -control-plane …` used to be
+// caught by the argument count, which was the right answer for the wrong
+// reason — and a command that read the pipe first would block a terminal
+// forever on a run that had already failed.
+func TestAnEmptyHostIsRefusedBeforeAnythingIsReadFromStdin(t *testing.T) {
+	cp := &countingBoxControlPlane{}
+	sim := newBoxHostSim(t, cp)
+	deps, _ := setupDepsFor(t, sim, cp)
+	stdin := &recordingReader{}
+
+	_, _, _, err := setupThroughTheRouter(t, stdin, deps, "", "-control-plane", "http://127.0.0.1:4003", "--json")
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("err = %v, want errUsage", err)
+	}
+	if !strings.Contains(err.Error(), "host") {
+		t.Errorf("the refusal does not say what was missing: %v", err)
+	}
+	if stdin.read {
+		t.Error("the command read stdin for a capability it was never going to use")
+	}
+	if len(sim.commands) != 0 {
+		t.Errorf("the host was contacted %d times by a refused invocation", len(sim.commands))
 	}
 }
 

@@ -232,6 +232,115 @@ func TestCommandExecute(t *testing.T) {
 	}
 }
 
+// The two parses, as one table. The default is the flag package's own
+// stop-at-the-first-positional, which a command that forwards its tail to a
+// child process needs; Interspersed loops the parse so the flags may follow
+// the subject. The row that carries the packet is the unknown flag: it is
+// STILL refused as a flag, because a loop that quietly turned a misspelled
+// flag into a positional would make the interspersed form permissive rather
+// than honest — and "wants 1 argument, got 3" is the sentence that would come
+// back.
+func TestParseArgsTakesFlagsOnEitherSideOfAPositional(t *testing.T) {
+	tests := []struct {
+		name         string
+		interspersed bool
+		args         []string
+		wantArgs     []string
+		wantPort     int
+		wantErr      error
+		noRun        bool
+	}{
+		{
+			name:     "flags first, the default parse",
+			args:     []string{"-port", "8080", "acme"},
+			wantArgs: []string{"acme"},
+			wantPort: 8080,
+		},
+		{
+			name:     "flags after the subject are ARGUMENTS by default",
+			args:     []string{"acme", "-port", "8080"},
+			wantArgs: []string{"acme", "-port", "8080"},
+			wantPort: 80,
+		},
+		{
+			name:         "flags after the subject are FLAGS when interspersed",
+			interspersed: true,
+			args:         []string{"acme", "-port", "8080"},
+			wantArgs:     []string{"acme"},
+			wantPort:     8080,
+		},
+		{
+			name:         "both positions agree",
+			interspersed: true,
+			args:         []string{"-port", "8080", "acme"},
+			wantArgs:     []string{"acme"},
+			wantPort:     8080,
+		},
+		{
+			name:         "a value flag between two positionals",
+			interspersed: true,
+			args:         []string{"acme", "-port", "8080", "other"},
+			wantArgs:     []string{"acme", "other"},
+			wantPort:     8080,
+		},
+		{
+			name:         "positionals on both sides",
+			interspersed: true,
+			args:         []string{"a", "b", "-port", "1", "c"},
+			wantArgs:     []string{"a", "b", "c"},
+			wantPort:     1,
+		},
+		{
+			name:         "an unknown flag is still refused as a flag",
+			interspersed: true,
+			args:         []string{"acme", "-nope"},
+			wantPort:     80,
+			wantErr:      errUsage,
+			noRun:        true,
+		},
+		{
+			name:         "the help flag still prints help, after the subject too",
+			interspersed: true,
+			args:         []string{"acme", "-h"},
+			wantPort:     80,
+			noRun:        true,
+		},
+		{
+			name:         "-- ends the flags",
+			interspersed: true,
+			args:         []string{"acme", "--", "-port"},
+			wantArgs:     []string{"acme", "-port"},
+			wantPort:     80,
+		},
+		{
+			name:         "no arguments",
+			interspersed: true,
+			wantPort:     80,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			record := &runRecord{}
+			c := &Command{Name: "probe", Flags: probeFlags(record), Run: record.run, Interspersed: tt.interspersed}
+			err := c.Execute(newTestEnv(), tt.args)
+
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+			if strings.Join(record.args, " ") != strings.Join(tt.wantArgs, " ") {
+				t.Errorf("positional args = %v, want %v", record.args, tt.wantArgs)
+			}
+			if record.port != tt.wantPort {
+				t.Errorf("-port = %d, want %d", record.port, tt.wantPort)
+			}
+			if record.ran == tt.noRun {
+				t.Errorf("ran = %v, want %v", record.ran, !tt.noRun)
+			}
+		})
+	}
+}
+
 // The flagset is built per invocation, so a parsed value can never leak from
 // one run into the next.
 func TestCommandFlagSetIsFresh(t *testing.T) {

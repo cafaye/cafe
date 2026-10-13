@@ -52,10 +52,32 @@ const setupPasswordEnv = "CAF_BOX_PASSWORD"
 
 func newBoxSetupCommand(deps boxSetupDeps) *Command {
 	opts := &setupFlags{}
+	// Interspersed is on for this verb only, and it is the one decision the
+	// Circle-3 end-to-end run measured on the real host: `cafe box setup
+	// contabo -control-plane http://…` was refused with "wants 1 argument, got
+	// 3". The count was the tell. An operator's habit — and every
+	// kubectl/docker-shaped CLI's — puts the flags after the subject, and the
+	// only thing that number could name was a shape, never a mistake: the
+	// actual mistake in that form is a misremembered flag, and "got 3" sends
+	// nobody to it.
+	//
+	// So the flags are accepted in either position and the refusal is reserved
+	// for what it can name: a second subject, or a flag that does not exist
+	// — both of which now read as themselves rather than as an argument count.
+	//
+	// It is a per-command choice rather than the default because Go's flag
+	// package stops at the first positional, and stopping is the right rule for
+	// a command that hands its tail to a child process: `cafe dev logs [-f]`
+	// must not have a `-f` it does not know turned into an error. No other
+	// `cafe box` verb takes a positional host at this commit — deploy, rollback,
+	// logs and verify name theirs with a flag or in the box's own files — so
+	// there is nothing else to be consistent with yet. When a verb grows one,
+	// it gets the same line.
 	c := &Command{
-		Name:    "box setup",
-		Summary: "take a bare host to a running box daemon: Docker, cafe, enroll, boxd, heartbeat",
-		Usage:   "cafe box setup <host> [flags]",
+		Name:         "box setup",
+		Summary:      "take a bare host to a running box daemon: Docker, cafe, enroll, boxd, heartbeat",
+		Usage:        "cafe box setup <host> [flags]",
+		Interspersed: true,
 		LongHelp: `The one command between a host nobody has touched and a box that answers.
 
 It is kamal ` + "`setup`" + ` parity for the box side: SSH in, check what the host
@@ -69,6 +91,11 @@ WHAT RUNS WHERE. The keypair is generated ON THE HOST, by the host's own
 SSH connection is the capability on its way in and the box's three non-secret
 identifiers on the way out. That is the whole shape of the trust boundary, and
 it is why a controller can be a laptop.
+
+FLAG POSITION. The host goes first or the flags do: ` + "`cafe box setup contabo`" + `
+with ` + "`--dry-run`" + ` after it, and ` + "`cafe box setup --dry-run contabo`" + `, are the
+same command. What is still refused, and as itself rather than as a count, is a
+second non-flag word or a flag that does not exist.
 
 IDEMPOTENT. Every step asks the host a read-only question first. A second
 ` + "`cafe box setup`" + ` on a host that has had one runs nothing at all: no new
@@ -112,6 +139,16 @@ enrollment command's stdin over the SSH connection and exists nowhere else.`,
 	c.Run = func(args []string, env *Env) error {
 		if len(args) != 1 {
 			return wantArgs(c.Name, c.Usage, 1, len(args))
+		}
+		// An empty host is a usage mistake and it is named before anything is
+		// read from stdin: a command that would otherwise block on a pipe
+		// arrives at the refusal it deserved on the way in. It is reachable
+		// only now that the flags may follow the subject — `cafe box setup ""
+		// -control-plane …` used to be refused by the argument count, which was
+		// the right answer for the wrong reason.
+		if strings.TrimSpace(args[0]) == "" {
+			return fmt.Errorf("%w: cafe %s wants the box's host or ssh_config alias as its one argument (usage: %s)",
+				errUsage, c.Name, c.Usage)
 		}
 		host := args[0]
 		opts, err := readSetupToken(env.Stdin, opts)

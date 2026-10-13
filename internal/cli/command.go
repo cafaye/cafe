@@ -17,19 +17,25 @@ var errNotImplemented = errors.New("not implemented in v0")
 // Name is the word the user types, Summary is its one-line help, Usage is the
 // full usage line, LongHelp is optional prose printed under the usage, Flags
 // declares the flags it accepts and Run receives the positional arguments left
-// over after parsing. Flags must precede positional arguments, which is the
-// rule the standard flag package enforces.
+// over after parsing.
+//
+// Interspersed is off by default because Go's flag package stops at the first
+// positional argument, and stopping there is the right default for a command
+// that forwards its remaining arguments to another program. A command whose
+// subject is a word the operator types first — `cafe box setup contabo` — turns
+// it on; the reason is at its own code site.
 //
 // A subcommand of a subcommand is a Command too, with its full invocation as
 // its Name: `cafe contract lint` is one command named "contract lint", so its
-// help and its usage errors read exactly as the person typed them.
+// help and its usage errors read exactly as the words the person typed.
 type Command struct {
-	Name     string
-	Summary  string
-	Usage    string
-	LongHelp string
-	Flags    func(fs *flag.FlagSet)
-	Run      func(args []string, env *Env) error
+	Name         string
+	Summary      string
+	Usage        string
+	LongHelp     string
+	Flags        func(fs *flag.FlagSet)
+	Run          func(args []string, env *Env) error
+	Interspersed bool
 }
 
 // FlagSet builds a fresh flag set for the command. A new one per invocation
@@ -52,15 +58,55 @@ func (c *Command) FlagSet() *flag.FlagSet {
 // prints its help and succeeds, which is what a person typing `cafe new --help`
 // expects.
 func (c *Command) Execute(env *Env, args []string) error {
-	fs := c.FlagSet()
-	if err := fs.Parse(args); err != nil {
+	positional, err := parseArgs(c.FlagSet(), args, c.Interspersed)
+	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(env.Stdout, c)
 			return nil
 		}
 		return fmt.Errorf("%w: cafe %s: %w", errUsage, c.Name, err)
 	}
-	return c.Run(fs.Args(), env)
+	return c.Run(positional, env)
+}
+
+// parseArgs parses the flags out of args and returns the positionals.
+//
+// When interspersed is false it is the flag package's own behaviour: parsing
+// stops at the first non-flag argument, and everything from there on — flags
+// included — comes back as positional. That is the rule a command that forwards
+// its tail to a child process needs, and it is why it stays the default.
+//
+// When interspersed is true the command accepts the shape an operator actually
+// types: the subject first, then the flags. `cafe box setup contabo
+// -control-plane …` is the one the Circle-3 run measured as a usage error
+// counting three arguments, and the count was the tell — the operator's
+// mistake, if there was one, was a misspelled flag, and no count of arguments
+// can say so. So the parse is looped instead: fs stops at the first non-flag
+// word, that word is taken as ONE positional, and the rest is parsed again. A
+// value flag still consumes its value (`-user root contabo` puts root in the
+// flag and contabo in the positionals), `--` still ends the flags, and an
+// unknown flag is STILL refused as a flag rather than silently counted as a
+// subject — which is the half that makes accepting this shape honest rather
+// than permissive.
+func parseArgs(fs *flag.FlagSet, args []string, interspersed bool) ([]string, error) {
+	if !interspersed {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		return fs.Args(), nil
+	}
+	var positional []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			return positional, nil
+		}
+		positional = append(positional, rest[0])
+		args = rest[1:]
+	}
 }
 
 // Commands returns every subcommand, in the order `cafe help` lists them.

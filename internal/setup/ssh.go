@@ -96,8 +96,23 @@ const DefaultConnectTimeout = 60 * time.Second
 // command built here is not word-split by the local shell on the way out, and
 // the remote shell receives it as one string. It is also why the capability is
 // never part of the command — it goes on stdin, and stdin is not argv.
+//
+// An empty sock is one connection for one command, which is what a check, an
+// install or a `curl | sh` wants. A non-empty one is the control socket a
+// multi-chunk Write shares, and the reason it is a parameter rather than a
+// second method is that the walk's per-command connections must keep their own
+// policy untouched.
 func (h SSHHost) Run(ctx context.Context, command string, stdin []byte) (Output, error) {
+	return h.run(ctx, command, stdin, "")
+}
+
+// run is Run with the connection it rides. The write path passes a control
+// socket; everything else passes "" and gets exactly what it always got.
+func (h SSHHost) run(ctx context.Context, command string, stdin []byte, sock string) (Output, error) {
 	args := h.sshArgs()
+	if sock != "" {
+		args = append(args, controlArgs(sock)...)
+	}
 	args = append(args, h.target(), command)
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	cmd.Stdin = bytes.NewReader(stdin)
@@ -138,10 +153,25 @@ func (h SSHHost) Run(ctx context.Context, command string, stdin []byte) (Output,
 // a hash gate on it. They were one method once, and what came out of a 29 MB
 // write was 17,625,600 bytes on the far end and a success.
 
-// sshArgs builds the options every invocation carries. They are here rather
-// than at the call sites because there is one policy for reaching a host and
-// four places that would otherwise each have half of it.
+// sshArgs builds the options every invocation of the WALK carries. They are
+// here rather than at the call sites because there is one policy for reaching a
+// host and four places that would otherwise each have half of it.
 func (h SSHHost) sshArgs() []string {
+	return append(h.baseArgs(),
+		// One connection, one command. A master connection would make the walk
+		// faster and would keep a credential-bearing channel open for the whole
+		// run, which is a longer window than any step needs. The WRITE is the
+		// one place that share one, and its argument is in control.go.
+		"-o", "ControlMaster=no",
+	)
+}
+
+// baseArgs is the policy shared by the walk and the write: batch mode, the
+// host-key rule, the two timeouts, the port and the identity file. Both
+// policies are this plus their one ControlMaster line, which is why the write
+// cannot accidentally inherit the walk's rule — the two are asserted to differ
+// in exactly that line and nothing else.
+func (h SSHHost) baseArgs() []string {
 	timeout := h.Timeout
 	if timeout <= 0 {
 		timeout = DefaultTimeout
@@ -162,10 +192,6 @@ func (h SSHHost) sshArgs() []string {
 		// continuing would be wrong.
 		"-o", "StrictHostKeyChecking=accept-new",
 		"-o", "ConnectTimeout=" + connect.String(),
-		// One connection, one command. A master connection would make the walk
-		// faster and would keep a credential-bearing channel open for the whole
-		// run, which is a longer window than any step needs.
-		"-o", "ControlMaster=no",
 	}
 	if h.Port > 0 {
 		args = append(args, "-p", fmt.Sprint(h.Port))

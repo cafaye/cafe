@@ -78,12 +78,27 @@ func chunkBounds(i, total int) (int, int) {
 
 // Write puts a file on the host. The work is in transfer, because the transfer
 // has to be drivable without an SSH server — see that type.
+//
+// A payload big enough to go out in more than one chunk goes out over ONE
+// connection, and a payload of one chunk goes out exactly as it did before: see
+// control.go for the measurement that decided it and needsControl for the
+// boundary. What does NOT change either way is the delivery itself — the
+// bounded chunks, the sibling, the host's own sha256 and byte count, and the
+// rename that only happens once they match.
 func (h SSHHost) Write(ctx context.Context, path string, data []byte, mode os.FileMode) error {
-	return transfer{
-		name:     h.Name,
-		run:      h.Run,
-		progress: h.Progress,
-	}.write(ctx, path, data, mode)
+	if !needsControl(len(data)) {
+		return transfer{
+			name:     h.Name,
+			run:      h.Run,
+			progress: h.Progress,
+		}.write(ctx, path, data, mode)
+	}
+	sock, cleanup, err := h.controlPath()
+	if err != nil {
+		return fmt.Errorf("cafe box setup: write %s on %s: open the connection the chunks share: %w", path, h.Name, err)
+	}
+	defer cleanup()
+	return writeOver(ctx, sshMaster{host: h, sock: sock}, h.Name, h.Progress, path, data, mode)
 }
 
 // transfer is the chunked delivery with the two things it reaches for passed
