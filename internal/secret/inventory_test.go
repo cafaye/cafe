@@ -273,17 +273,19 @@ func TestEveryCitationPointsAtSomething(t *testing.T) {
 	}
 
 	// install.sh line ranges, keyed by the citation string the table uses.
+	// c3 substrate packets shifted the file by ~240 lines; these were
+	// re-measured against the sibling checkout at cafaye/kit.
 	ranges := map[string][2]int{
-		"cafaye/kit/templates/substrate/install.sh:1088-1093":   {1088, 1093},
-		"cafaye/kit/templates/substrate/install.sh:1084-1093":   {1084, 1093},
-		"cafaye/kit/templates/substrate/install.sh:1094-1100":   {1094, 1100},
-		"cafaye/kit/templates/substrate/install.sh:1101-1105":   {1101, 1105},
-		"cafaye/kit/templates/substrate/install.sh:1239-1245":   {1239, 1245},
-		"cafaye/kit/templates/substrate/install.sh:1263-1265":   {1263, 1265},
-		"cafaye/kit/templates/substrate/install.sh:1274-1277":   {1274, 1277},
-		"cafaye/kit/templates/substrate/install.sh:1106-1109":   {1106, 1109},
-		"cafaye/kit/templates/substrate/install.sh:933-939":     {933, 939},
-		"cafaye/kit/templates/substrate/install.sh:887,892-909": {887, 909},
+		"cafaye/kit/templates/substrate/install.sh:1324-1330": {1324, 1330},
+		"cafaye/kit/templates/substrate/install.sh:1334-1340": {1334, 1340},
+		"cafaye/kit/templates/substrate/install.sh:1344-1349": {1344, 1349},
+		"cafaye/kit/templates/substrate/install.sh:1348-1352": {1348, 1352},
+		"cafaye/kit/templates/substrate/install.sh:1481-1491": {1481, 1491},
+		"cafaye/kit/templates/substrate/install.sh:1499-1502": {1499, 1502},
+		"cafaye/kit/templates/substrate/install.sh:1510-1514": {1510, 1514},
+		"cafaye/kit/templates/substrate/install.sh:1475-1481": {1475, 1481},
+		"cafaye/kit/templates/substrate/install.sh:1182-1188": {1182, 1188},
+		"cafaye/kit/templates/substrate/install.sh:1127-1142": {1127, 1142},
 	}
 	installer := filepath.Join(root, ranges0Path(ranges))
 	if !fileReadable(installer) {
