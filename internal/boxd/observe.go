@@ -61,9 +61,9 @@ type Observation struct {
 	// reader would mistake for "no constraint".
 	VersionRange VersionRange `json:"version_range"`
 	// ControlPlane is the control plane this box answers to, for the reader that
-	// needs to route a question back to it. The JSON key stays `conductor`:
-	// it is wire, and a test proves the bytes.
-	ControlPlane string `json:"conductor,omitempty"`
+	// needs to route a question back to it. The JSON key is `box_url`, the same
+	// word the operator's flag and CAF_BOX_URL use for this one fact.
+	ControlPlane string `json:"box_url,omitempty"`
 	// CollectedAt is when the box assembled this. It is the box's clock, and
 	// it is separate from any drill or expiry timestamp for that reason.
 	CollectedAt time.Time `json:"collected_at"`

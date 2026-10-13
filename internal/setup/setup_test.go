@@ -304,7 +304,7 @@ func (h *fakeHost) Run(ctx context.Context, command string, stdin []byte) (Outpu
 			"redemptions": 1,
 			"identity": map[string]any{
 				"box_id":      "box_fake_01",
-				"conductor":   h.controlPlaneURL,
+				"box_url":     h.controlPlaneURL,
 				"enrolled_at": h.enrolledAt,
 				"public_key":  "ed25519:AAAA",
 				"phase":       "enrolled",
@@ -407,7 +407,7 @@ const enrolledDocument = `{
   "status": "active",
   "phase": "enrolled",
   "enrolled_at": "2026-10-12T10:00:00Z",
-  "conductor": "https://box.test"
+  "box_url": "https://box.test"
 }`
 
 // healthyReport is an observation a box in good order answers with: health ok,

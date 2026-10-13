@@ -173,7 +173,7 @@ func boxStatusRoute() Route {
 	type status struct {
 		BoxID        string `json:"box_id"`
 		Version      string `json:"version"`
-		ControlPlane string `json:"conductor"`
+		ControlPlane string `json:"box_url"`
 	}
 	h := Handler[struct{}, status](func(_ context.Context, w World, _ struct{}) (status, error) {
 		id := w.Identity()

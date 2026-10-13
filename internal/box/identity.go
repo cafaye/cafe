@@ -33,10 +33,11 @@ type Identity struct {
 	Status     string `json:"status"`
 	Phase      string `json:"phase"`
 	EnrolledAt string `json:"enrolled_at"`
-	// ControlPlane is the box service's origin this box enrolled against.
-	// The JSON key stays `conductor`: it is on-disk state, and a new binary
-	// must still read a box.json an old one wrote.
-	ControlPlane string `json:"conductor"`
+	// ControlPlane is the box service's origin this box enrolled against. The
+	// JSON key is `box_url` — the word the operator's flag and CAF_BOX_URL
+	// already use for this fact, so a document, a variable and a flag name one
+	// thing the same way.
+	ControlPlane string `json:"box_url"`
 }
 
 // Box is the keypair a box holds: the private half lives in the keyring for the

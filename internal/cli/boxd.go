@@ -239,7 +239,7 @@ func resolveBoxIdentityPath(flagPath string) (string, error) {
 // yet, so both sides have a contract to be checked against.
 type identityDocument struct {
 	BoxID        string `json:"box_id"`
-	ControlPlane string `json:"conductor"`
+	ControlPlane string `json:"box_url"`
 	Version      string `json:"version"`
 	Certificate  string `json:"certificate"`
 	Key          string `json:"key"`

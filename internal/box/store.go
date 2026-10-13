@@ -122,9 +122,9 @@ type journal struct {
 	Status    string `json:"status,omitempty"`
 	Phase     string `json:"phase,omitempty"`
 	// ControlPlane is the box service's origin the capability was redeemed
-	// against. The JSON key stays `conductor`: it is on-disk state, and a new
-	// binary must still read a journal an old one wrote.
-	ControlPlane string `json:"conductor,omitempty"`
+	// against. The JSON key is `box_url`, for the same reason box.Identity's
+	// is: one word for this fact across the flag, the variable and the document.
+	ControlPlane string `json:"box_url,omitempty"`
 	StartedAt    string `json:"started_at"`
 	RedeemedAt   string `json:"redeemed_at,omitempty"`
 }

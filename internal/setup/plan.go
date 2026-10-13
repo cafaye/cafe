@@ -323,7 +323,7 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 func identityDocument(enrolled *identityRead, o Options) []byte {
 	doc := struct {
 		BoxID        string `json:"box_id"`
-		ControlPlane string `json:"conductor"`
+		ControlPlane string `json:"box_url"`
 		Version      string `json:"version"`
 	}{
 		ControlPlane: o.ControlPlane,
@@ -382,10 +382,10 @@ type StepResult struct {
 type Enrollment struct {
 	// BoxID is enrollment's own name for this box.
 	BoxID string `json:"box_id"`
-	// ControlPlane is the origin the box enrolled against. The JSON key stays
-	// `conductor` for the same reason box.Identity's does: it is on-disk state
-	// and a new reader must read an old document.
-	ControlPlane string `json:"conductor"`
+	// ControlPlane is the origin the box enrolled against. The JSON key is
+	// `box_url`, for the same reason box.Identity's is: it is the word the
+	// operator's flag and CAF_BOX_URL use, so one fact has one name.
+	ControlPlane string `json:"box_url"`
 	// Action is the host's own `cafe box enroll` answer — "enrolled",
 	// "already-enrolled" or "refused". A retry that finds an already-enrolled
 	// box reports that word rather than synthesising its own.
@@ -489,7 +489,7 @@ type enrollment struct {
 // crosses the seam.
 type identityRead struct {
 	BoxID        string `json:"box_id"`
-	ControlPlane string `json:"conductor"`
+	ControlPlane string `json:"box_url"`
 	EnrolledAt   string `json:"enrolled_at"`
 }
 

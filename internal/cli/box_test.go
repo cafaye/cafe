@@ -216,7 +216,7 @@ func TestBoxEnrollRecoversFromAnInterruptedSequence(t *testing.T) {
 		"account_id":  inst.AccountID,
 		"status":      inst.Status,
 		"phase":       inst.Phase,
-		"conductor":   "https://box.test",
+		"box_url":     "https://box.test",
 		"started_at":  "2026-10-09T11:59:00Z",
 		"redeemed_at": "2026-10-09T12:00:00Z",
 	}

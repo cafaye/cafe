@@ -297,7 +297,7 @@ func TestTheIdentityFileRefusesAnUnusableDocument(t *testing.T) {
 		want string
 	}{
 		{"not JSON", "box-identity!", "not the JSON"},
-		{"no box_id", `{"conductor":"c:443"}`, "no box_id"},
+		{"no box_id", `{"box_url":"c:443"}`, "no box_id"},
 		{"no control plane", `{"box_id":"box-x"}`, "no control plane"},
 	}
 	for _, tt := range tests {
