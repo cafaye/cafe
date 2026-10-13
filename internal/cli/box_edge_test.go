@@ -139,6 +139,63 @@ func TestBoxPublishRefusesAnIdThatIsAlreadyDeployed(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// the flags may come after the positionals — publish's subjects are a release
+// id and a directory, not a host, and it takes the same treatment
+// ---------------------------------------------------------------------------
+
+// `publish` takes two positional subjects — the release id and the directory —
+// so the flags may sit on either side of them: `cafe box publish id dir
+// --json` is the same command as `cafe box publish --json id dir`. Before the
+// sweep the trailing `--json` was counted as a third argument and refused with
+// a count.
+func TestPublishTakesFlagsOnEitherSideOfThePositionals(t *testing.T) {
+	run := func(t *testing.T, order func(id, src string) []string) (int, string, string) {
+		t.Helper()
+		b := newBoxEdgeState(t)
+		src := b.src(t)
+		deps := boxDeps{dir: filepath.Join(b.dir, "config"), stateDir: b.dir}
+		code, stdout, stderr := runBoxCLI(t, deps, append([]string{"publish"}, order("sample-stack-1", src)...)...)
+		return code, stdout, stderr
+	}
+
+	beforeCode, beforeOut, beforeErr := run(t, func(id, src string) []string { return []string{"--json", id, src} })
+	if beforeCode != exitSuccess {
+		t.Fatalf("flags before the positionals exited %d (%s)", beforeCode, beforeErr)
+	}
+	afterCode, afterOut, afterErr := run(t, func(id, src string) []string { return []string{id, src, "--json"} })
+	if afterCode != exitSuccess {
+		t.Fatalf("flags after the positionals exited %d (%s)", afterCode, afterErr)
+	}
+	for name, out := range map[string]string{"before": beforeOut, "after": afterOut} {
+		var doc map[string]any
+		if err := json.Unmarshal([]byte(out), &doc); err != nil {
+			t.Fatalf("%s stdout is not JSON: %v (%s)", name, err, out)
+		}
+		if doc["current"] != "sample-stack-1" || doc["link"] != "sample-stack-1" {
+			t.Errorf("%s: current/link = %v/%v, want sample-stack-1/%v", name, doc["current"], doc["link"], "sample-stack-1")
+		}
+	}
+}
+
+// A misspelled flag after the positionals is refused as a flag, and no release
+// is written by the invocation that named it.
+func TestAPublishFlagTypoAfterThePositionalsIsRefusedAsAFlag(t *testing.T) {
+	b := newBoxEdgeState(t)
+	deps := boxDeps{dir: filepath.Join(b.dir, "config"), stateDir: b.dir}
+
+	code, _, stderr := runBoxCLI(t, deps, "publish", "sample-stack-1", b.src(t), "--jsonn")
+	if code != exitUsage {
+		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitUsage, stderr)
+	}
+	if !strings.Contains(stderr, "jsonn") {
+		t.Errorf("the refusal does not name the flag it did not recognise: %s", stderr)
+	}
+	if _, err := os.Stat(filepath.Join(b.dir, "edge", "releases", "sample-stack-1")); err == nil {
+		t.Error("a refused publish wrote a release")
+	}
+}
+
 // `cafe box rollback` flips the link back and needs nothing but the disk. This
 // is the plan's "a broken deploy demonstrates rollback" checklist item proved
 // through the real command rather than through the package underneath it.

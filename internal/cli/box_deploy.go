@@ -513,6 +513,11 @@ func newBoxRollbackCommand(deps boxDeps) *Command {
 		Name:    "box rollback",
 		Summary: "put the previous release back: one symlink, no rebuild, no control plane",
 		Usage:   "cafe box rollback [<release-id>] [--service <name>] [--root <dir>] [--json]",
+		// Interspersed, because the release id is an optional positional
+		// subject: `cafe box rollback sample-stack-1 --service api` is the
+		// shape a person types, and it is the same command as the flags first.
+		// See box_setup.go for the whole argument.
+		Interspersed: true,
 		Flags: func(fs *flag.FlagSet) {
 			opts.declare(fs)
 			fs.StringVar(&opts.service, "service", "", "the service to roll back; without it the service the release id names is used, and an id that names none is a refusal that lists what the box has")

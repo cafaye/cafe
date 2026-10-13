@@ -586,6 +586,62 @@ func TestBoxApplyTakesAnIndexOrAName(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// the flags may come after the phase — the same shape setup and wipe accept
+// ---------------------------------------------------------------------------
+
+// `apply` takes an optional positional phase, so the flags may sit on either
+// side of it: `cafe box apply substrate --json` is the same command as `cafe
+// box apply --json substrate`. Two fresh enrolled boxes, because applying the
+// same phase twice is refused by design.
+func TestApplyTakesFlagsOnEitherSideOfThePhase(t *testing.T) {
+	run := func(t *testing.T, args ...string) box.ApplyResult {
+		t.Helper()
+		deps, _, _ := boxTestEnv(t)
+		if code, _, stderr := runBoxCLI(t, deps, "enroll", "--token", boxTestToken); code != 0 {
+			t.Fatalf("enroll exited %d: %s", code, stderr)
+		}
+		code, stdout, stderr := runBoxCLI(t, deps, append([]string{"apply"}, args...)...)
+		if code != 0 {
+			t.Fatalf("apply %v exited %d: %s", args, code, stderr)
+		}
+		var res box.ApplyResult
+		if err := json.Unmarshal([]byte(stdout), &res); err != nil {
+			t.Fatalf("stdout is not the apply document: %v\n%s", err, stdout)
+		}
+		return res
+	}
+
+	before := run(t, "--phase", "substrate", "--json")
+	after := run(t, "substrate", "--json")
+	if before.To != "substrate" || after.To != "substrate" {
+		t.Errorf("the phase reached = %q then %q, want substrate both times", before.To, after.To)
+	}
+}
+
+// A misspelled flag after the phase is refused as a flag, and the box is not
+// moved by the invocation that named it.
+func TestAnApplyFlagTypoAfterThePhaseIsRefusedAsAFlag(t *testing.T) {
+	deps, _, _ := boxTestEnv(t)
+	if code, _, stderr := runBoxCLI(t, deps, "enroll", "--token", boxTestToken); code != 0 {
+		t.Fatalf("enroll exited %d: %s", code, stderr)
+	}
+	code, _, stderr := runBoxCLI(t, deps, "apply", "substrate", "--jsonn")
+	if code != exitUsage {
+		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitUsage, stderr)
+	}
+	if !strings.Contains(stderr, "jsonn") {
+		t.Errorf("the refusal does not name the flag it did not recognise: %s", stderr)
+	}
+	st, err := deps.store().Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Identity.Phase != box.Phases[0].Name {
+		t.Errorf("phase = %q after a refused apply, want %q", st.Identity.Phase, box.Phases[0].Name)
+	}
+}
+
 // The install is sequential, and refusing to skip is the refusal that keeps a
 // box honest about where it is. It is a fresh store because the question is
 // about the FIRST step being jumped, not about a later one.

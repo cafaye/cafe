@@ -132,7 +132,15 @@ func boxPublishCommand(deps boxDeps) *Command {
 		Name:    "box publish",
 		Summary: "deploy a release directory to this box and flip current at it",
 		Usage:   "cafe box publish <release-id> <directory>",
-		Flags:   func(fs *flag.FlagSet) { opts.declare(fs) },
+		// Interspersed, because this verb takes two positional subjects — the
+		// release id and the directory — and a person who types them first and
+		// then reaches for `--json` must not be told they named three
+		// arguments. It is the one verb here whose positionals are not a host,
+		// and the reason the sweep is over "every verb with a positional
+		// subject" rather than over "every verb with a host". See
+		// box_setup.go for the whole argument.
+		Interspersed: true,
+		Flags:        func(fs *flag.FlagSet) { opts.declare(fs) },
 	}
 	c.Run = func(args []string, env *Env) error {
 		if err := wantArgs(c.Name, c.Usage, 2, len(args)); err != nil {

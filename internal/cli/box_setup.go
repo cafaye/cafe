@@ -52,14 +52,14 @@ const setupPasswordEnv = "CAF_BOX_PASSWORD"
 
 func newBoxSetupCommand(deps boxSetupDeps) *Command {
 	opts := &setupFlags{}
-	// Interspersed is on for this verb only, and it is the one decision the
-	// Circle-3 end-to-end run measured on the real host: `cafe box setup
-	// contabo -control-plane http://…` was refused with "wants 1 argument, got
-	// 3". The count was the tell. An operator's habit — and every
-	// kubectl/docker-shaped CLI's — puts the flags after the subject, and the
-	// only thing that number could name was a shape, never a mistake: the
-	// actual mistake in that form is a misremembered flag, and "got 3" sends
-	// nobody to it.
+	// Interspersed is on because this verb's subject is a word the operator
+	// types first: `cafe box setup contabo -control-plane http://…`. That form
+	// was the one the Circle-3 end-to-end run measured on the real host, and it
+	// was refused with "wants 1 argument, got 3". The count was the tell. An
+	// operator's habit — and every kubectl/docker-shaped CLI's — puts the flags
+	// after the subject, and the only thing that number could name was a shape,
+	// never a mistake: the actual mistake in that form is a misremembered flag,
+	// and "got 3" sends nobody to it.
 	//
 	// So the flags are accepted in either position and the refusal is reserved
 	// for what it can name: a second subject, or a flag that does not exist
@@ -68,11 +68,16 @@ func newBoxSetupCommand(deps boxSetupDeps) *Command {
 	// It is a per-command choice rather than the default because Go's flag
 	// package stops at the first positional, and stopping is the right rule for
 	// a command that hands its tail to a child process: `cafe dev logs [-f]`
-	// must not have a `-f` it does not know turned into an error. No other
-	// `cafe box` verb takes a positional host at this commit — deploy, rollback,
-	// logs and verify name theirs with a flag or in the box's own files — so
-	// there is nothing else to be consistent with yet. When a verb grows one,
-	// it gets the same line.
+	// must not have a `-f` it does not know turned into an error.
+	//
+	// EVERY `cafe box` VERB WITH A POSITIONAL SUBJECT CARRIES THE SAME LINE —
+	// setup and wipe take a host, apply takes an optional phase, rollback an
+	// optional release id, publish a release id and a directory. They are one
+	// family and a person who learned the shape on `setup` must not have it
+	// refused on `wipe`, which is exactly the friction the Circle-5 run
+	// measured. Deploy, enroll, logs, plan, status, verify and edge name their
+	// subjects with a flag or read them from the box's own files, so they have
+	// no positional for the flags to sit beside and stay on the default.
 	c := &Command{
 		Name:         "box setup",
 		Summary:      "take a bare host to a running box daemon: Docker, cafe, enroll, boxd, heartbeat",

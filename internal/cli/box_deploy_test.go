@@ -289,6 +289,58 @@ func TestBoxRollbackToANamedRelease(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// the flags may come after the release id — the same shape the host verbs take
+// ---------------------------------------------------------------------------
+
+// `rollback` takes an optional positional release id, so the flags may sit on
+// either side of it: `cafe box rollback <id> --service api` is the same
+// command as `cafe box rollback --service api <id>`. Each form names its own
+// first release, so the assertion is that each lands on the id IT named.
+func TestRollbackTakesFlagsOnEitherSideOfTheReleaseID(t *testing.T) {
+	run := func(t *testing.T, order func(id string) []string) {
+		t.Helper()
+		deps, box := newDeployEnv(t)
+		box.writeEdge(t, fmt.Sprintf(goodEdge, expiry, expiry))
+		var firstID string
+		for _, d := range []string{"a", "b", "c"} {
+			code, stdout, stderr := runBoxCLI(t, deps, "deploy",
+				"--build", "ghcr.io/cafaye/api@sha256:"+strings.Repeat(d, 64),
+				"--host", "api.cafaye.test")
+			if code != 0 {
+				t.Fatalf("deploy: %d %s", code, stderr)
+			}
+			if firstID == "" {
+				firstID = deployDoc(t, stdout).Release.ID
+			}
+		}
+		code, stdout, stderr := runBoxCLI(t, deps, append([]string{"rollback"}, order(firstID)...)...)
+		if code != 0 {
+			t.Fatalf("rollback %v exited %d: %s", order(firstID), code, stderr)
+		}
+		if got := deployDoc(t, stdout).Release.ID; got != firstID {
+			t.Errorf("rollback %v landed on %q, want the named %q", order(firstID), got, firstID)
+		}
+	}
+
+	run(t, func(id string) []string { return []string{"--service", "api", id} })
+	run(t, func(id string) []string { return []string{id, "--service", "api"} })
+}
+
+// A misspelled flag after the release id is refused as a flag.
+func TestARollbackFlagTypoAfterTheReleaseIDIsRefusedAsAFlag(t *testing.T) {
+	deps, box := newDeployEnv(t)
+	box.writeEdge(t, fmt.Sprintf(goodEdge, expiry, expiry))
+
+	code, _, stderr := runBoxCLI(t, deps, "rollback", "sample-stack-1", "--servicee", "api")
+	if code != exitUsage {
+		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitUsage, stderr)
+	}
+	if !strings.Contains(stderr, "servicee") {
+		t.Errorf("the refusal does not name the flag it did not recognise: %s", stderr)
+	}
+}
+
 // TestBoxDeployRefusalsAreUsageErrors is the distinction every script that
 // calls this verb depends on: a request cafe cannot even make is exit 2, and
 // a request the box refused is exit 1 with the document still on stdout.

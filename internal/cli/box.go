@@ -518,6 +518,11 @@ func newBoxApplyCommand(deps boxDeps) *Command {
 		Name:    "box apply",
 		Summary: "record that the box has reached a phase; refuses a phase that is not next",
 		Usage:   "cafe box apply [--json] [--phase <name|index>]",
+		// Interspersed, because the phase is an optional positional subject:
+		// `cafe box apply substrate --json` and `cafe box apply --json
+		// substrate` are the same command, the way they are for setup and
+		// wipe. See box_setup.go for the whole argument.
+		Interspersed: true,
 		Flags: func(fs *flag.FlagSet) {
 			f.declare(fs)
 			fs.StringVar(&opts.phase, "phase", "", "the phase to take the box to, by name or by index in `cafe box plan`")

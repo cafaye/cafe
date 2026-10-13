@@ -233,6 +233,105 @@ func TestBoxWipeOnAStrangerHostIsRefusedBeforeThePrompt(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// the flags may come after the host — the form the Circle-5 run was refused
+// with
+// ---------------------------------------------------------------------------
+
+func wipeStepNames(res setup.WipeResult) []string {
+	names := make([]string, 0, len(res.Steps))
+	for _, s := range res.Steps {
+		names = append(names, s.Name+":"+s.Action)
+	}
+	return names
+}
+
+// The measured friction, as a green test: `cafe box wipe contabo --dry-run`
+// is the SAME command as `cafe box wipe --dry-run contabo`. Wipe is a newer
+// verb than setup and was left on the default parse, so the flags after the
+// host were counted as arguments — "wants 1 argument, got 2" — and an
+// operator's ordinary habit was answered with a number. Both forms must reach
+// the same host with the same plan and remove nothing.
+func TestWipeTakesFlagsOnEitherSideOfTheHost(t *testing.T) {
+	run := func(t *testing.T, args ...string) (setup.WipeResult, *wipeSim, error) {
+		t.Helper()
+		sim := newWipeSim()
+		deps := wipeDepsFor(sim, func(string) (bool, error) { return true, nil })
+		var out, errOut strings.Builder
+		env := &Env{Stdout: &out, Stderr: &errOut, Version: testVersion}
+		err := newBoxCommand(deps).Execute(env, append([]string{"wipe"}, args...))
+		var doc setup.WipeResult
+		// Parsed even on a refusal: the shape of what was printed is part of
+		// what these cases assert.
+		_ = json.Unmarshal([]byte(out.String()), &doc)
+		return doc, sim, err
+	}
+
+	before, beforeSim, errBefore := run(t, "--dry-run", "--json", "box.test")
+	if errBefore != nil {
+		t.Fatalf("flags before the host: %v", errBefore)
+	}
+	after, afterSim, errAfter := run(t, "box.test", "--dry-run", "--json")
+	if errAfter != nil {
+		t.Fatalf("flags after the host: %v", errAfter)
+	}
+
+	if before.Host != "box.test" || after.Host != "box.test" {
+		t.Errorf("host = %q then %q, want box.test both times", before.Host, after.Host)
+	}
+	if !before.DryRun || !after.DryRun {
+		t.Errorf("dry run = %v then %v, want true both times", before.DryRun, after.DryRun)
+	}
+	if beforeSim.applies != 0 || afterSim.applies != 0 {
+		t.Errorf("a dry run removed something: %d then %d applies", beforeSim.applies, afterSim.applies)
+	}
+	if strings.Join(wipeStepNames(before), ",") != strings.Join(wipeStepNames(after), ",") {
+		t.Errorf("the two forms planned different steps:\n%v\n%v", wipeStepNames(before), wipeStepNames(after))
+	}
+}
+
+// What is refused is refused as itself. A misspelled flag after the host used
+// to be answered with an argument count; it must name the flag, and the host
+// must never be contacted by a refused invocation.
+func TestAWipeFlagTypoAfterTheHostIsRefusedAsAFlag(t *testing.T) {
+	sim := newWipeSim()
+	deps := wipeDepsFor(sim, func(string) (bool, error) { return true, nil })
+
+	var out, errOut strings.Builder
+	env := &Env{Stdout: &out, Stderr: &errOut, Version: testVersion}
+	err := newBoxCommand(deps).Execute(env, []string{"wipe", "box.test", "-dryrun", "--json"})
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("err = %v, want errUsage", err)
+	}
+	if !strings.Contains(err.Error(), "dryrun") {
+		t.Errorf("the refusal does not name the flag it did not recognise: %v", err)
+	}
+	if len(sim.commands) != 0 {
+		t.Errorf("the host was contacted %d times by a refused invocation", len(sim.commands))
+	}
+}
+
+// A second subject is still a usage error, and it is the one case a count
+// answers correctly: two hosts were named, and no flag position explains that
+// away.
+func TestAWipeWithASecondSubjectIsAUsageError(t *testing.T) {
+	sim := newWipeSim()
+	deps := wipeDepsFor(sim, func(string) (bool, error) { return true, nil })
+
+	var out, errOut strings.Builder
+	env := &Env{Stdout: &out, Stderr: &errOut, Version: testVersion}
+	err := newBoxCommand(deps).Execute(env, []string{"wipe", "box.test", "other.test", "--json"})
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("err = %v, want errUsage", err)
+	}
+	if !strings.Contains(err.Error(), "2") {
+		t.Errorf("the refusal does not say how many subjects were named: %v", err)
+	}
+	if len(sim.commands) != 0 {
+		t.Errorf("the host was contacted %d times by a refused invocation", len(sim.commands))
+	}
+}
+
 // The verb exists, takes exactly one argument, and its help says what it keeps
 // and what it refuses — the three things a person needs before running a
 // command that uninstalls a cluster.

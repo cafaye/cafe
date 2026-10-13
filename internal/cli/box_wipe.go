@@ -110,6 +110,14 @@ func newBoxWipeCommand(deps boxWipeDeps) *Command {
 		Summary:  "take a box back to a bare host: stop boxd, remove cafe's state, uninstall k3s and Docker — keeping your SSH access and the releases",
 		Usage:    "cafe box wipe <host> [--dry-run] [--yes] [--json]",
 		LongHelp: boxWipeLongHelp,
+		// Interspersed is on for the reason box_setup.go spells out: the host
+		// is the operator's first word and the flags follow it —
+		// `cafe box wipe contabo --dry-run` is what a person types, and it was
+		// refused with "wants 1 argument, got 2" until the sweep the Circle-5
+		// run asked for. Same shape as setup, because the two are the same
+		// walk over the same SSH transport and a person should not have to
+		// learn two flag orders for one pair of commands.
+		Interspersed: true,
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.user, "user", "", "the login name; empty means ssh_config's own answer")
 			fs.IntVar(&opts.port, "port", 0, "the SSH port; 0 means 22")
