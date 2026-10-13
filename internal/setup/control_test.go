@@ -157,7 +157,13 @@ func TestTheSharedConnectionStillRefusesATruncatedArrival(t *testing.T) {
 // check depends on.
 func TestTheWritesPolicyDiffersFromTheWalksInOneLine(t *testing.T) {
 	host := SSHHost{Name: "contabo", Port: 2222, IdentityFile: "/keys/id"}
-	walk, write := host.sshArgs(), append(host.baseArgs(), controlArgs("/tmp/cafe-ctl-0000/s")...)
+	// Read the SAME construction the transport hands to ssh, in both modes. The
+	// first version of this test rebuilt the write's list itself — baseArgs plus
+	// controlArgs — while `run` built sshArgs plus controlArgs, and ssh honours
+	// the FIRST -o, so ControlMaster=no won and no master ever opened. A test
+	// that produces its own args cannot see the transport's. argsFor is the one
+	// function both now read.
+	walk, write := host.argsFor(""), host.argsFor("/tmp/cafe-ctl-0000/s")
 
 	dropControl := func(args []string) []string {
 		out := make([]string, 0, len(args))

@@ -109,11 +109,7 @@ func (h SSHHost) Run(ctx context.Context, command string, stdin []byte) (Output,
 // run is Run with the connection it rides. The write path passes a control
 // socket; everything else passes "" and gets exactly what it always got.
 func (h SSHHost) run(ctx context.Context, command string, stdin []byte, sock string) (Output, error) {
-	args := h.sshArgs()
-	if sock != "" {
-		args = append(args, controlArgs(sock)...)
-	}
-	args = append(args, h.target(), command)
+	args := append(h.argsFor(sock), h.target(), command)
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	cmd.Stdin = bytes.NewReader(stdin)
 	// The password's askpass helper needs the pipe to the child, and it needs
@@ -152,6 +148,26 @@ func (h SSHHost) run(ctx context.Context, command string, stdin []byte, sock str
 // is one process and one pipe, and the delivery's job is a bounded stream with
 // a hash gate on it. They were one method once, and what came out of a 29 MB
 // write was 17,625,600 bytes on the far end and a success.
+
+// argsFor builds the options for one invocation: the walk's one-connection-per-
+// command policy when sock is empty, and the share-one-connection policy when it
+// is not.
+//
+// It exists as ONE function returning the list the transport hands to ssh, and
+// that is a correction rather than a tidy-up. The first version of this change
+// had `run` build `sshArgs()`, which already carries `ControlMaster=no`, and
+// then APPEND `controlArgs(...)` with `ControlMaster=auto`. ssh honours the
+// FIRST `-o` for a repeated option, so `no` won and the master never opened —
+// measured: 28 chunks in 3m30s, no better than the per-command transport. The
+// test that was supposed to guard it built its own `baseArgs()+controlArgs()`
+// list instead of calling this path, so it stayed green over a no-op. One
+// function both the transport and the test read is the fix for both.
+func (h SSHHost) argsFor(sock string) []string {
+	if sock == "" {
+		return h.sshArgs()
+	}
+	return append(h.baseArgs(), controlArgs(sock)...)
+}
 
 // sshArgs builds the options every invocation of the WALK carries. They are
 // here rather than at the call sites because there is one policy for reaching a
