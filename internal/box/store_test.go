@@ -757,19 +757,41 @@ func TestTheClientPrivateKeyReachesNoPrintableDocument(t *testing.T) {
 		}
 	}
 
-	// box.json and the journal, by their bytes.
+	// box.json, the journal and every other file, by their bytes. The one file
+	// that DOES carry the key is box.key — the control half: a store that wrote
+	// nothing would pass the absence assertion by leaking nothing at all.
+	files, err := filepath.Glob(filepath.Join(s.Dir, "*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawKeyFile bool
+	for _, name := range files {
+		raw, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if filepath.Base(name) == PrivateKeyFileName {
+			if !strings.Contains(string(raw), key) {
+				t.Errorf("%s does not carry the key it exists to hold", PrivateKeyFileName)
+			}
+			sawKeyFile = true
+			continue
+		}
+		if strings.Contains(string(raw), key) {
+			t.Errorf("%s carries the client private key", filepath.Base(name))
+		}
+		if strings.Contains(string(raw), "PRIVATE KEY") {
+			t.Errorf("%s quotes a private key header", filepath.Base(name))
+		}
+	}
+	if !sawKeyFile {
+		t.Error("no file carries the key, so the absence assertions proved nothing")
+	}
+	var id Identity
 	idRaw, err := os.ReadFile(filepath.Join(s.Dir, identityFile))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(idRaw), key) {
-		t.Error("box.json carries the client private key")
-	}
-	if strings.Contains(string(idRaw), "PRIVATE KEY") {
-		t.Errorf("box.json quotes a private key header:\n%s", idRaw)
-	}
-	// The control: the certificate IS named by its relative path.
-	var id Identity
 	if err := json.Unmarshal(idRaw, &id); err != nil {
 		t.Fatal(err)
 	}
