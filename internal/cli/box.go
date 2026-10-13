@@ -179,6 +179,15 @@ capability is presented, the identity is not rewritten. A run that died
 between presenting the capability and writing the identity is finished on the
 next attempt without presenting it again.
 
+THE CAPABILITY ARRIVES ON A PIPE, NOT ON A COMMAND LINE. A token typed as an
+argument is a token in the shell's history, in the process table for as long
+as the process lives, and in the scrollback of whoever looked over the
+operator's shoulder. ` + "`--token -`" + ` reads it from stdin, and stdin is
+what ` + "`cafe box setup`" + ` hands it to when it runs this command ON THE
+HOST: the capability crosses the SSH connection inside that one command's
+input and appears in nothing else — not in an argument, not in a file the
+setup writes.
+
 THE EDGE VERBS ARE THE DEPLOY PATH. ` + "`cafe box publish <id> <dir>`" + ` writes a
 release into the box's own state directory and flips ` + "`current`" + ` at it with a
 rename, so the switch is atomic: a request either reaches the old release or
