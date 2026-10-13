@@ -50,6 +50,12 @@ type boxDeps struct {
 	// reached around its parent would be a verb no test could drive through
 	// the real router.
 	setup boxSetupDeps
+	// wipe is the setup verb's mirror: a host to reach and a confirmation to
+	// ask. It is separate from setup because the two carry different things —
+	// setup needs a binary and a capability, wipe needs a confirmation — and a
+	// struct that carried both would let a test that only wanted one hand the
+	// other a nil it did not mean.
+	wipe boxWipeDeps
 	// stack is the deploy verbs' half of the deps: the box's own stack root
 	// and the two seams a test injects. It is separate from the lifecycle
 	// half because it is separate state — a stack root and a keyring have
@@ -150,6 +156,7 @@ func boxVerbs(deps boxDeps) []boxVerb {
 		{name: "logs", cmd: newBoxLogsCommand(deps)},
 		{name: "plan", cmd: newBoxPlanCommand(deps)},
 		{name: "setup", cmd: newBoxSetupCommand(deps.setup)},
+		{name: "wipe", cmd: newBoxWipeCommand(deps.wipe)},
 		{name: "rollback", cmd: newBoxRollbackCommand(deps)},
 		{name: "status", cmd: newBoxStatusCommand(deps)},
 		{name: "verify", cmd: newBoxVerifyCommand(deps)},
@@ -215,8 +222,8 @@ func newBoxCommand(deps boxDeps) *Command {
 	verbs := boxVerbs(deps)
 	c := &Command{
 		Name:     "box",
-		Summary:  "the box lifecycle: enroll, then status, plan, apply, setup, deploy, rollback, logs, verify — and the edge: publish, edge",
-		Usage:    "cafe box <enroll|status|plan|apply|setup|deploy|rollback|logs|verify|publish|edge> [flags] [arguments]",
+		Summary:  "the box lifecycle: enroll, then status, plan, apply, setup, wipe, deploy, rollback, logs, verify — and the edge: publish, edge",
+		Usage:    "cafe box <enroll|status|plan|apply|setup|wipe|deploy|rollback|logs|verify|publish|edge> [flags] [arguments]",
 		LongHelp: boxLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -395,6 +402,8 @@ func writeDoc(w io.Writer, v any, asJSON bool) error {
 		return writeHuman(w, doc.Message)
 	case setup.Result:
 		return writeSetupHuman(w, doc)
+	case setup.WipeResult:
+		return writeWipeHuman(w, doc)
 	case *box.Status:
 		return writeStatusHuman(w, doc)
 	case *box.Plan:
