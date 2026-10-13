@@ -93,7 +93,11 @@ type redeemRequest struct {
 // there is no token in it, and no secret in any field.
 type controlPlaneResponse struct {
 	Installation struct {
-		ID         string `json:"id"`
+		// ID is a number on box's side: the installations table's bigint
+		// primary key. It is decoded as json.Number rather than an int64 so a
+		// future non-integer id surfaces as a decode failure rather than a
+		// silent 0 — the same discipline Redeem applies to a non-JSON body.
+		ID         json.Number `json:"id"`
 		BoxID      string `json:"box_id"`
 		AccountID  string `json:"account_id"`
 		Status     string `json:"status"`

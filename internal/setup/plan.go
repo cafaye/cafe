@@ -267,7 +267,7 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 			// this command targets, and a capability in argv is a capability
 			// in `ps aux` for as long as the process lives.
 			Apply: apply{
-				Command: root(CafeBinPath + ` box enroll --token -`),
+				Command: root(CafeBinPath + ` box enroll --token - --box ` + shellQuote(o.ControlPlane)),
 				Stdin:   []byte(o.Capability),
 			},
 		},
