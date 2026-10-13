@@ -318,6 +318,29 @@ func TestTheIdentityFileRefusesAnUnusableDocument(t *testing.T) {
 	}
 }
 
+// TestTheIdentityWithoutACertificateIsAPermanentRefusal: the document the
+// one-command path writes today names no certificate — issuance is deferred
+// to the Phase C packet named in boxd's package doc — and the daemon must
+// recognize that fact as the permanent failure it is: waiting cannot fix it,
+// so the daemon refuses after its bound rather than retry-looping. This is
+// the wiring that makes the live box's daemon honestly refusing instead of
+// failing the same way every 30 seconds, and it fails on a tree where the
+// store's error does not wrap the sentinel the daemon counts.
+func TestTheIdentityWithoutACertificateIsAPermanentRefusal(t *testing.T) {
+	path := writeIdentity(t, identityDocument{BoxID: "box-test", ControlPlane: "c:443"})
+	store, err := newFileIdentityStore(path)
+	if err != nil {
+		t.Fatalf("open the store: %v", err)
+	}
+	_, err = store.Certificate(context.Background())
+	if err == nil {
+		t.Fatal("an identity naming no certificate loaded a client credential anyway")
+	}
+	if !errors.Is(err, boxd.ErrNoClientCredential) {
+		t.Errorf("err = %v, want it to wrap boxd.ErrNoClientCredential so the daemon refuses after its bound", err)
+	}
+}
+
 // TestTheBoxWorldAppliesIdempotently: the daemon's own state file records the
 // applied phases, and re-applying one applies nothing. Agents retry, so the
 // second capability for the same phase must be a no-op with a zero count

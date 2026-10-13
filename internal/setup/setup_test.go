@@ -857,6 +857,35 @@ func TestAFailedDockerInstallIsARefusalThatNamesTheStep(t *testing.T) {
 	}
 }
 
+// The identity document the one-command path writes is the honest stub: it
+// names no certificate, because nothing in the fleet issues one until the
+// Phase C packet named in boxd's package doc. The daemon reads that fact as
+// the permanent failure it is and refuses after its bound. A document that
+// invented paths would turn an honest refusal into a confusing load failure;
+// a daemon that connected on invented paths would be connecting on a
+// credential nothing issued. This test pins the stub so the day Phase C
+// lands, the change is here and not in some other writer of the document.
+func TestTheDaemonIdentityDocumentIsTheHonestStub(t *testing.T) {
+	doc := identityDocument(&identityRead{BoxID: "box_fake_01", ControlPlane: "https://box.test"},
+		Options{ControlPlane: "https://box.test", Version: "1.2.3"})
+	var written struct {
+		BoxID        string `json:"box_id"`
+		ControlPlane string `json:"conductor"`
+		Version      string `json:"version"`
+		Certificate  string `json:"certificate"`
+		Key          string `json:"key"`
+	}
+	if err := json.Unmarshal(doc, &written); err != nil {
+		t.Fatalf("decode the document: %v", err)
+	}
+	if written.BoxID != "box_fake_01" || written.ControlPlane != "https://box.test" || written.Version != "1.2.3" {
+		t.Errorf("the document lost a fact it is supposed to carry: %+v", written)
+	}
+	if written.Certificate != "" || written.Key != "" {
+		t.Errorf("the document names a certificate (%q) and key (%q); nothing issues them until Phase C", written.Certificate, written.Key)
+	}
+}
+
 // A daemon that cannot report is a refusal that names the step and keeps the
 // daemon's own words, because "the heartbeat failed" with nothing else in it
 // sends a reader to a log that says nothing.

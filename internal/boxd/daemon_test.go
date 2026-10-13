@@ -350,6 +350,132 @@ func TestTheDaemonReportsAMissingEnrollment(t *testing.T) {
 	}
 }
 
+// TestTheDaemonRefusesAfterABoundOfPermanentFailures is the shape this packet
+// exists for. The enrolled identity names no client credential, waiting
+// cannot fix it, and after PermanentRounds consecutive rounds the daemon
+// stops and returns a refusal naming the missing fact and what fixes it —
+// rather than retry-looping forever, which is the defect where systemd's
+// is-active says "running" over a daemon that can do nothing. The run is
+// driven on a deadline: a daemon that has not refused within two seconds of
+// its bound is still looping, and the test says so rather than hanging.
+func TestTheDaemonRefusesAfterABoundOfPermanentFailures(t *testing.T) {
+	dialer := &fakeDialer{err: ErrNoClientCredential}
+	var log lockedBuffer
+	d, err := Open(Options{
+		Store:           &fakeStore{id: testIdentity()},
+		Keys:            &testKeys{},
+		Dial:            dialer,
+		WorldFor:        testWorldFor,
+		Log:             &log,
+		PermanentRounds: 3,
+	})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- d.Run(context.Background()) }()
+	select {
+	case err := <-done:
+		if !errors.Is(err, ErrNoClientCredential) {
+			t.Errorf("err = %v, want it to wrap ErrNoClientCredential", err)
+		}
+		if !strings.Contains(err.Error(), "what fixes it") {
+			t.Errorf("the refusal does not say what fixes it: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatalf("the daemon dialed %d times and never refused; it is retry-looping over a permanent failure", dialer.dials)
+	}
+	if dialer.dials != 3 {
+		t.Errorf("dials = %d, want 3: the bound is the whole point", dialer.dials)
+	}
+	if !strings.Contains(log.String(), "refusing to retry") {
+		t.Errorf("the refusal was not logged where an operator reads it: %q", log.String())
+	}
+}
+
+// TestTheDaemonKeepsRetryingATransientFailurePastTheBound is the control for
+// the test above: a failure waiting MIGHT fix keeps the backoff-and-retry
+// loop running past the bound, because the box's whole job is to be
+// reachable by the control plane. The bound is specific to the permanent
+// error — a daemon that gave up on a down control plane would be a daemon
+// the supervisor has to babysit.
+func TestTheDaemonKeepsRetryingATransientFailurePastTheBound(t *testing.T) {
+	dialer := &fakeDialer{err: errors.New("connection reset")}
+	d, err := Open(Options{
+		Store:           &fakeStore{id: testIdentity()},
+		Keys:            &testKeys{},
+		Dial:            dialer,
+		WorldFor:        testWorldFor,
+		PermanentRounds: 3,
+	})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- d.Run(ctx) }()
+	// Four dials is past the bound of three, and the wait is on the event
+	// (the dialer's count) rather than on a sleep — the backoff between dials
+	// is the daemon's own, and the assertion is about the dials happening.
+	deadline := time.After(5 * time.Second)
+	for dialer.dials < 4 {
+		select {
+		case <-deadline:
+			cancel()
+			t.Fatalf("a transient failure stopped the daemon after %d dials; the bound must not fire on errors waiting can fix", dialer.dials)
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("run returned %v after cancellation, want context.Canceled", err)
+	}
+}
+
+// TestTheDaemonOnceModeRefusesAfterOnePermanentRound: one round is the whole
+// life in once mode, so one permanent failure is the whole bound — an
+// operator watching a single round under their own eye gets the refusal
+// rather than a daemon that asked not to run.
+func TestTheDaemonOnceModeRefusesAfterOnePermanentRound(t *testing.T) {
+	dialer := &fakeDialer{err: ErrNoClientCredential}
+	d, err := Open(Options{
+		Store:    &fakeStore{id: testIdentity()},
+		Keys:     &testKeys{},
+		Dial:     dialer,
+		WorldFor: testWorldFor,
+		Once:     true,
+	})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	err = d.Run(context.Background())
+	if !errors.Is(err, ErrNoClientCredential) {
+		t.Fatalf("err = %v, want the permanent failure", err)
+	}
+	if dialer.dials != 1 {
+		t.Errorf("dials = %d, want 1: one round is the whole life in once mode", dialer.dials)
+	}
+}
+
+// TestOpenDefaultsTheRefusalBound: the bound is three consecutive permanent
+// rounds when the caller says nothing, so a daemon started with no opinion
+// about the bound still refuses rather than loops.
+func TestOpenDefaultsTheRefusalBound(t *testing.T) {
+	d, err := Open(Options{
+		Store:    &fakeStore{id: testIdentity()},
+		Keys:     &testKeys{},
+		Dial:     &fakeDialer{ch: &fakeControlPlane{}},
+		WorldFor: testWorldFor,
+	})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if d.opts.PermanentRounds != 3 {
+		t.Errorf("PermanentRounds = %d, want the default 3", d.opts.PermanentRounds)
+	}
+}
+
 // lockedBuffer is a writer several goroutines can race on: the daemon logs
 // from its own goroutine while the test reads.
 type lockedBuffer struct {

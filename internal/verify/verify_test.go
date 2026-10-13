@@ -132,6 +132,56 @@ func TestEverySignalIsAnsweredWithAReasonWhenItIsNotOk(t *testing.T) {
 	}
 }
 
+// TestACertificateThatDoesNotExistIsADegradedFactWithANextLine: the box
+// answered, and its answer is that it has no client certificate — the
+// credential it dials with does not exist yet. That is not a blind spot the
+// verifier can wave through as "unknown": the box cannot do its whole job,
+// the daemon refuses after its bound, and the verification carries the fact
+// as a degraded reason with the person's next line attached. Before the
+// packet that named this fact, the same observation verified as a box with
+// no reasons at all — a green light over a daemon that can do nothing.
+func TestACertificateThatDoesNotExistIsADegradedFactWithANextLine(t *testing.T) {
+	obs := wholeBox()
+	obs.Certificate = boxd.Certificate{
+		Status: "unknown",
+		Detail: "the enrolled identity names no certificate and key; issuance is deferred to the Phase C packet",
+	}
+	obs.Health = boxd.Health{
+		Status: "degraded",
+		Phase:  7,
+		Reasons: []string{
+			"the box has no client certificate and cannot dial box: " +
+				"the enrolled identity names no certificate and key; issuance is deferred to the Phase C packet",
+		},
+	}
+	v := Check(Probe{BoxID: "box-under-test", Now: testNow, Observation: obs})
+	if v.Status == StatusOK {
+		t.Fatalf("status = ok over a box that cannot dial: %s", mustJSON(t, v))
+	}
+	var absent *Reason
+	for i := range v.Reasons {
+		if v.Reasons[i].Key == "certificate_absent" {
+			absent = &v.Reasons[i]
+		}
+	}
+	if absent == nil {
+		t.Fatalf("reasons = %v, want certificate_absent among them", reasonKeys(v))
+	}
+	if absent.Human.Action == "" || !strings.Contains(absent.Human.Action, "Phase C") {
+		t.Errorf("the reason does not name the packet that fixes it: %+v", absent.Human)
+	}
+	if !strings.Contains(absent.Detail, "no certificate") {
+		t.Errorf("the reason does not name the missing fact: %q", absent.Detail)
+	}
+	// The box's own degraded health must not be reported a second time under
+	// a generic key: one fact, one sentence.
+	for _, r := range v.Reasons {
+		if r.Key == "health_degraded" {
+			t.Errorf("the certificate absence already explains the degraded health; %q repeats it", r.Key)
+		}
+	}
+}
+
 // TestTheBoxThatNeverAnsweredIsUnknownAndNotDegraded is the blind-spot rule.
 // A box that has not answered observe.report has no drill history, and
 // calling that "no drill has ever run" would send an operator to run a drill

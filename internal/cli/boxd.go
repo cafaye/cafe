@@ -233,10 +233,14 @@ func resolveBoxIdentityPath(flagPath string) (string, error) {
 // and key live. The paths are relative to the document, so an enrollment is
 // one directory a backup can carry.
 //
-// The document is the SEAM between the two packets. Enrollment owns the
-// keyring and the format going forward; this is the shape this daemon reads,
-// written down here rather than discovered from a file that does not exist
-// yet, so both sides have a contract to be checked against.
+// The certificate and key fields are the Phase C packet's to fill: nothing
+// in the fleet issues a client certificate yet, and until that lands a
+// document naming none is the honest stub the daemon reads as the permanent
+// failure it is (see boxd.ErrNoClientCredential and the package doc's
+// decision). The document is the SEAM between the packets. Enrollment owns
+// the keyring and the format going forward; this is the shape this daemon
+// reads, written down here rather than discovered from a file that does not
+// exist yet, so both sides have a contract to be checked against.
 type identityDocument struct {
 	BoxID        string `json:"box_id"`
 	ControlPlane string `json:"box_url"`
@@ -292,13 +296,20 @@ func (s *fileIdentityStore) Load(context.Context) (boxd.Identity, error) {
 // handshake, read from disk at the dial. The key is never cached here — a
 // store that held it between dials would hold the box key for the life of the
 // process, which is the memory-lifetime rule this daemon exists to keep.
+//
+// An identity that names no certificate is the permanent failure the daemon's
+// bound exists for: waiting cannot fix it, issuance is deferred to the Phase
+// C packet named in boxd's package doc. The error wraps boxd.ErrNoClientCredential
+// so the daemon classifies it as permanent and refuses after its bound
+// rather than retry-looping — which is what makes the live box's daemon
+// honestly refusing instead of failing the same way every 30 seconds.
 func (s *fileIdentityStore) Certificate(context.Context) (tls.Certificate, error) {
 	doc, err := s.read()
 	if err != nil {
 		return tls.Certificate{}, err
 	}
 	if doc.Certificate == "" || doc.Key == "" {
-		return tls.Certificate{}, fmt.Errorf("the enrolled identity names no certificate and key")
+		return tls.Certificate{}, fmt.Errorf("the enrolled identity names no certificate and key: %w", boxd.ErrNoClientCredential)
 	}
 	cert, err := tls.LoadX509KeyPair(s.resolve(doc.Certificate), s.resolve(doc.Key))
 	if err != nil {
@@ -529,7 +540,8 @@ func (w boxWorld) certificate(now time.Time) boxd.Certificate {
 		return boxd.Certificate{Status: "unknown", Detail: err.Error()}
 	}
 	if doc.Certificate == "" || doc.Key == "" {
-		return boxd.Certificate{Status: "unknown", Detail: "the enrolled identity names no certificate and key"}
+		return boxd.Certificate{Status: "unknown", Detail: "the enrolled identity names no certificate and key; " +
+			"issuance is deferred to the Phase C packet named in boxd's package doc, and until it lands the daemon refuses after its bound"}
 	}
 	pair, err := tls.LoadX509KeyPair(store.resolve(doc.Certificate), store.resolve(doc.Key))
 	if err != nil {

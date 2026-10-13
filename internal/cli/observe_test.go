@@ -118,6 +118,9 @@ func TestHealthStatusNamesEveryDegradedReason(t *testing.T) {
 		{"a failed drill is degraded and says so", okCert, failed, "degraded", "did not pass"},
 		{"no drill is degraded: a box that has never proved a restore", okCert, nil, "degraded", "no backup drill"},
 		{"an expiring certificate is degraded and names it", expiringCert, passed, "degraded", "close to expiry"},
+		{"no certificate is degraded: a box that cannot dial is not healthy",
+			boxd.Certificate{Status: "unknown", Detail: "the enrolled identity names no certificate and key"},
+			passed, "degraded", "no client certificate"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -49,6 +49,49 @@
 // the daemon. A daemon that caches the box key is a daemon whose core dump is
 // a keyring.
 //
+// # The client credential, and why this daemon refuses without it
+//
+// The outbound channel is mutual TLS: the box presents a client certificate
+// the control plane verifies. That certificate does not exist yet, and this
+// packet owns that fact rather than papering over it.
+//
+// Why it does not exist: enrollment generates the box's keypair and writes
+// the identity document, but nothing in the fleet issues a certificate — the
+// control plane (`cafaye/box`) has no signing endpoint, no CA, and no
+// certificate code at all. The mTLS half of this relationship is currently
+// the daemon's own requirement: nothing server-side enforces it.
+//
+// Why the naive fixes are rejected. A self-signed certificate is
+// authentication theater — anyone can mint one, so it proves nothing while
+// looking like it proves something, and it would put a credential-shaped
+// lie in the identity document. Connecting with no client certificate at all
+// would weaken the model to match a server that does not enforce it, and
+// would break again the day the server starts. Both make the box's state
+// untruthful, which is the defect this packet exists to end.
+//
+// So the daemon's rule is: it is either CONNECTING or HONESTLY REFUSING,
+// never a silent retry loop. A round that fails because the enrolled identity
+// names no client credential fails with ErrNoClientCredential, and after
+// PermanentRounds (three, by default) consecutive such rounds Run stops and
+// returns a refusal that names the missing fact and the packet that fixes it.
+// Every other failure — a down control plane, a dropped connection — is
+// transient and keeps the backoff-and-retry loop, because the box's whole job
+// is to be reachable by the control plane.
+//
+// The refusal is deliberately the systemd-visible failure state: the daemon
+// exits non-zero with the reason, the unit's journal carries it, and
+// `systemctl is-active` stops saying "running" over a daemon that can do
+// nothing — the exact lie this bound exists to end. Exiting zero would leave
+// the unit dead with no reason in its status; retrying forever is the defect.
+//
+// The deferral is dated and its trigger is named: the Phase C packet that
+// lands client-credential issuance in `cafaye/box` — a signing endpoint and
+// a CA the box trusts (enrollment-time issuance), or a key-bearer endpoint
+// over the SSH reverse tunnel that is already this fleet's Phase B transport.
+// At that point enrollment writes the real certificate and key paths into
+// the identity document and this daemon's dialer works unchanged; nothing
+// here needs to know which of the two shapes Phase C chose.
+//
 // # What this package deliberately is not
 //
 // It is not the enrollment flow — `cafe box enroll` (W2-P6) creates the box

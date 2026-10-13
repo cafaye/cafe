@@ -27,6 +27,16 @@ type Dialer interface {
 	Dial(ctx context.Context, id Identity) (ControlPlane, error)
 }
 
+// ErrNoClientCredential marks a round failure that waiting cannot fix: the
+// enrolled identity names no credential the daemon can dial with — today a
+// client certificate and key, whose issuance is deferred to Phase C (see the
+// package doc for the decision and its trigger). The daemon counts
+// consecutive rounds that fail with it and refuses loudly at the bound rather
+// than retrying silently forever; every other round failure is transient and
+// keeps the backoff-and-retry behavior, because the box's whole job is to be
+// reachable by the control plane.
+var ErrNoClientCredential = errors.New("the enrolled identity names no client credential")
+
 // Options is what the daemon needs before it will run. Every field is
 // required: a daemon started with a nil part of itself would be a daemon that
 // fails at the first capability rather than at startup, which is the failure
@@ -53,14 +63,23 @@ type Options struct {
 	// how a test drives a whole round trip, and how an operator runs one
 	// round under their own eye without a signal.
 	Once bool
+	// PermanentRounds is how many consecutive rounds may fail with a
+	// permanent error — the enrolled identity naming no client credential —
+	// before Run stops retrying and returns the refusal. Zero means three.
+	// The bound exists because a daemon whose identity cannot dial is either
+	// connecting or honestly refusing; a silent retry loop that makes
+	// systemd's is-active say "running" over a daemon that can do nothing
+	// is the third, worst shape.
+	PermanentRounds int
 }
 
 // Daemon is one running box daemon. It is a value with no package-level
 // state, per the house rule: two cafe boxd processes on one box are two
 // Daemons, and neither can reach the other's connection.
 type Daemon struct {
-	opts Options
-	log  io.Writer
+	opts    Options
+	log     io.Writer
+	backoff time.Duration
 }
 
 // Open validates the options and returns the daemon.
@@ -84,7 +103,10 @@ func Open(opts Options) (*Daemon, error) {
 	if opts.Table == nil {
 		opts.Table = Register()
 	}
-	return &Daemon{opts: opts, log: log}, nil
+	if opts.PermanentRounds <= 0 {
+		opts.PermanentRounds = 3
+	}
+	return &Daemon{opts: opts, log: log, backoff: minBackoff}, nil
 }
 
 // Run serves until ctx is cancelled or, with Once set, one capability has been
@@ -94,18 +116,44 @@ func Open(opts Options) (*Daemon, error) {
 // babysit, and the reconnect is bounded rather than immediate so a down
 // control plane is not a busy loop.
 //
+// The one failure that does not reconnect forever is the permanent one: the
+// enrolled identity naming no client credential. Waiting cannot fix it, so
+// after PermanentRounds consecutive rounds that failed with it the daemon
+// stops and returns the refusal — a box's daemon is either connecting or
+// honestly refusing, and a silent retry loop over a daemon that can do
+// nothing is the shape this bound exists to end (see ErrNoClientCredential
+// and the package doc). Transient errors leave the count alone: a permanent
+// problem does not stop being permanent because the network also flapped,
+// and a daemon that is connected is not failing rounds at all — the count
+// is about dial failures, and a round that blocks in Next is none.
+//
 // With Once, a round that completed without the context ending is the
 // daemon's whole life: `cafe boxd -once` returns after one capability, so an
 // operator can watch one round trip happen rather than signalling a daemon
-// they cannot see.
+// they cannot see. A round that FAILED is also the daemon's whole life in
+// once mode: it returns the round's error rather than becoming a daemon the
+// operator asked not to run.
 func (d *Daemon) Run(ctx context.Context) error {
-	backoff := minBackoff
+	backoff := d.backoff
+	permanent := 0
 	for {
 		err := d.round(ctx)
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if d.opts.Once && err == nil {
+		if err != nil && errors.Is(err, ErrNoClientCredential) {
+			// A permanent failure is a failure waiting cannot fix. Count
+			// the consecutive ones and refuse at the bound; in once mode one
+			// round is the whole bound, because one round is the whole life.
+			permanent++
+			if d.opts.Once || permanent >= d.opts.PermanentRounds {
+				return d.refuse(permanent, err)
+			}
+		}
+		if d.opts.Once {
+			if err != nil {
+				return err
+			}
 			return nil
 		}
 		// A round that ends without the context ending is a connection that
@@ -122,6 +170,21 @@ func (d *Daemon) Run(ctx context.Context) error {
 			backoff = maxBackoff
 		}
 	}
+}
+
+// refuse is the daemon's loud exit after a bound of permanent failures. The
+// error it returns is the operator's, and it answers the two questions the
+// bound exists for: what is wrong, and what will fix it. The last sentence
+// is the state the rest of the fleet reads while the fix is pending: the
+// observation says the certificate is unknown, and the verification carries
+// that fact as a degraded reason with this same sentence behind it.
+func (d *Daemon) refuse(permanent int, err error) error {
+	d.logf("boxd: refusing to retry after %d rounds: %v", permanent, err)
+	return fmt.Errorf("boxd: %d consecutive rounds ended the same permanent way: %w; "+
+		"what fixes it: client-credential issuance at enrollment, which lands with the Phase C packet "+
+		"named in the package doc — until then this box answers `cafe boxd --report` with the "+
+		"certificate unknown and `cafe box verify` reports the box degraded with the reason this refusal names",
+		permanent, err)
 }
 
 // round is one connection's life: load the identity, dial out, redeem until

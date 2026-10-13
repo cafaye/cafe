@@ -80,8 +80,11 @@ func pendingAgainstRange(rangeText, deployed string, candidates []boxd.Candidate
 // A pending release is NOT a degraded reason. A box running an in-range
 // version with a newer release available is the steady state the release flow
 // exists for — "an update is available" is a fact for the report, not a cry
-// for help. Only a drill that failed, an absent drill, or an expired/expiring
-// certificate are health events.
+// for help. A drill that failed, an absent drill, and an expired, expiring or
+// ABSENT certificate are health events: the certificate is how the box
+// authenticates to its control plane, so a box that cannot dial is not
+// healthy whatever its drills say — the reason carries the detail the world
+// measured, which names the missing fact and the packet that fills it.
 func healthStatus(phase int, cert boxd.Certificate, drill *boxd.DrillFact) boxd.Health {
 	var reasons []string
 	switch cert.Status {
@@ -89,6 +92,8 @@ func healthStatus(phase int, cert boxd.Certificate, drill *boxd.DrillFact) boxd.
 		reasons = append(reasons, "the client certificate has expired; this box can no longer dial box")
 	case "expiring":
 		reasons = append(reasons, "the client certificate is close to expiry")
+	case "unknown":
+		reasons = append(reasons, "the box has no client certificate and cannot dial box: "+cert.Detail)
 	}
 	if drill == nil {
 		reasons = append(reasons, "no backup drill has ever run on this box")

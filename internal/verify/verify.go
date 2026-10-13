@@ -228,6 +228,17 @@ func Check(p Probe) Verification {
 		}
 		v.add(p, key, cert.Detail)
 	}
+	if p.answered() && cert.Status == StatusUnknown {
+		// A certificate that does not exist is not a fact to paper over: the
+		// daemon refuses to dial without it, so the box cannot do its whole
+		// job and the verification says so with the box's own detail and the
+		// packet that fills the gap. It is a degraded reason rather than an
+		// unread one because the box HAS answered — the answer is that it
+		// cannot connect, which is a fault with a named fix, not a blind spot.
+		// The answered() guard is the whole distinction from the unread box,
+		// whose zero-value certificate is a blind spot and stays unknown.
+		v.add(p, "certificate_absent", cert.Detail)
+	}
 
 	if p.answered() {
 		// A drill that failed or never ran is a health fact the edge reads
@@ -455,6 +466,7 @@ func explainedBy(reasons []Reason) bool {
 	explains := map[string]bool{
 		"drill_absent": true, "drill_failed": true,
 		"certificate_expired": true, "certificate_expiring": true,
+		"certificate_absent": true,
 	}
 	for _, r := range reasons {
 		if explains[r.Key] {
@@ -478,7 +490,9 @@ func remedy(key, boxID string) Human {
 	action := "read the reason above; the next observe.report answers whether it still holds"
 	switch key {
 	case "certificate_expired", "certificate_expiring":
-		action = "re-enrol the box: `cafe box enroll --token <cap>` issues a fresh certificate, and the days-left number in this report is what says whether it worked"
+		action = "re-enrol the box (`cafe box enroll --token <cap>`); issuance is bound to enrollment, so the fresh enrollment is what the Phase C certificate packet signs — the days-left number in this report is what says whether it worked"
+	case "certificate_absent":
+		action = "nothing on this box is broken and there is nothing to fix on it: client-credential issuance lands with the Phase C packet named in boxd's package doc, and until then the daemon refuses loudly after three rounds, which is this report's degraded answer being the honest one"
 	case "disk_full":
 		action = "`cafe reclaim` releases what a failed session left behind, and the free-byte number in this report is what says it worked"
 	case "drill_absent", "drill_failed":
