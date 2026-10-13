@@ -83,7 +83,7 @@ a run in which they passed.
 | `cafe deploy <service>` | deploy a service or app: `--engine kamal` (default), `--engine argo` or `--engine remote` (the operated platform, pinned off until TG-D1) | **works** |
 | `cafe backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
 | `cafe backup drill <service>` | the same cycle unattended, with the outcome recorded and `--json` for a machine | **works** |
-| `cafe box enroll --token <cap>` | generate the box keypair, redeem the capability, store the box identity; safe to re-run | **works** |
+| `cafe box enroll --token <cap|->` | generate the box keypair, redeem the capability, store the box identity; safe to re-run. `--token -` reads the capability from stdin, which is the pipe `cafe box setup` gives it on the host — a token in argv is a token in `ps aux` | **works** |
 | `cafe box setup <host>` | the one command: SSH in, bootstrap Docker the kamal way, install cafe, enroll the box ON THE HOST, write the daemon's identity and unit, start boxd and verify it answers an observe.report — safe to re-run, and the controller holds no keypair | **works** |
 | `cafe agent register --name "Noel"` | ask identity for an unclaimed agent, store its token in the OS keyring, print the claim URL on stderr | **works** |
 | `cafe agent login` / `whoami` | make one saved agent session active, and ask identity who this machine is | **works** |
