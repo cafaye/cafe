@@ -14,18 +14,34 @@ import (
 // SSHHost is the real Host: the box, reached by running the operator's own
 // `ssh`.
 //
-// It is a decision rather than a shortcut. The obvious implementation is an SSH
-// client library, and this repository does not carry one: AGENTS.md's dependency
-// paragraph exists because the reclamation path and the enrollment path have to
-// keep working when nothing else does, and a fourth direct dependency for a
-// transport the operator already has is a poor trade. What `ssh` gives for free
-// is the agent, their known_hosts, their ProxyJump, their config file and their
-// key — all of which a hand-rolled client would have to reimplement badly.
+// It is a decision rather than a shortcut, and since the dependency rule was
+// inverted (AGENTS.md, "Packages with dependencies") it is a decision about
+// FIT rather than about count: a good library is the default now, so the
+// hand-rolled path is the one that has to argue, and here is the argument.
 //
-// What it costs is one process per command, and that is a real cost that this
-// package pays honestly: the walk makes about a dozen of them, each with a
-// bounded timeout, and none of them carry a secret that a process listing could
-// read.
+// The candidate was golang.org/x/crypto/ssh, and the count does not settle
+// it — that library is already in this module's graph (v0.32.0, required
+// transitively by x/net@v0.34.0, its own x/sys and x/term pinned beside it),
+// so a direct import is a line in `require`, not a module tree. What it would
+// not give is the operator's own ssh_config, which is the thing this
+// repository actually runs against: the `Host contabo` / HostName entry it has
+// been using for two days, ProxyJump, ControlMaster, the agent and the
+// known_hosts. ssh resolves all of that for free; a client library
+// reimplements each one, and a reimplementation that resolves a config file
+// almost-right is a host that connects on the operator's machine and on
+// nobody else's. It also inherits the diagnostics the operator already knows
+// how to read, and this package never has to keep in step with a protocol.
+//
+// What it costs is one process per step — about a dozen in the walk, each with
+// a bounded timeout, and none of them carrying a secret a process listing
+// could read, because the capability goes on stdin and the password through
+// the askpass pipe (see askpass), so argv is clean by construction — and one
+// failure measured live on 2026-10-13: a large payload handed to ssh on stdin
+// can be truncated by the write side. That is paid for rather than hidden: a
+// write lands on a sibling and moves into place, so a truncated one leaves the
+// previous binary behind, and the step after it verifies the installed bytes
+// by sha256. A later packet that swaps this transport owes the same comment:
+// the library, what it gains, and what it loses.
 type SSHHost struct {
 	// Name is the address, as the operator typed it: "box.example.com",
 	// "root@10.0.0.3", "deploy@box:2222". It is handed to ssh verbatim so the
