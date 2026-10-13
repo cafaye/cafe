@@ -87,6 +87,20 @@ func resolveCitation(lines []string, anchor string) (int, bool) {
 	return 0, false
 }
 
+// checkCitation resolves one citation against a file's lines, and on a miss
+// returns an error that names WHAT it looked for and WHERE. That sentence is the
+// product: a failure that said only "a citation is stale" would send the reader
+// to grep a hundred-line file by hand.
+func checkCitation(lines []string, c citation) (int, error) {
+	at, ok := resolveCitation(lines, c.Anchor)
+	if !ok {
+		return 0, fmt.Errorf("the citation %s no longer appears in %s: looked for %q on every line of the "+
+			"file. The statement the reason rests on is gone — deleted or reworded — so the reason now cites "+
+			"nothing", c, c.Path, c.Anchor)
+	}
+	return at, nil
+}
+
 // citationFixture is a stand-in for a fleet file. The real install.sh lives in
 // another repository and moves under this test; a fixture makes the two claims
 // below — survives a move, fails on a deletion — deterministic and independent
@@ -139,8 +153,17 @@ func TestACitationFailsWhenItsContentIsGone(t *testing.T) {
 			kept = append(kept, line)
 		}
 	}
-	if _, ok := resolveCitation(kept, gone); ok {
+
+	_, err := checkCitation(kept, citation{Path: citationFixture, Anchor: gone})
+	if err == nil {
 		t.Fatalf("%q still resolves after its line was deleted; the guard does not fire on a deletion", gone)
+	}
+	// The failure has to name both what it looked for and where, or it sends the
+	// reader to grep by hand.
+	for _, want := range []string{gone, citationFixture} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the failure does not name %q:\n%v", want, err)
+		}
 	}
 }
 

@@ -109,23 +109,42 @@ between two reads), which is the friction reproducing itself live.
 
 ## Idempotence proof
 
+Run 1 (`--write`) on the tree that carried the new tests but still the old
+floors — a red gate, which is exactly the case the writer has to survive:
+
 ```
-$ go run ./cmd/cafe gate floors --write .      # first run
+$ go run ./cmd/cafe gate floors --write .
 cafe gate floors: the gate reported 33 packages, 1376 top-level passes, 1250 subtest passes, 4 failures, 8 skips
 cafe gate floors: floors moved 1376→1380
 cafe gate floors: re-pinned caf.lock
+```
 
-$ go run ./cmd/cafe gate floors --write .      # second run
+Committed. Then, on the committed state, the writer run again:
+
+```
+$ md5 gate.yml caf.lock                                  # before
+MD5 (gate.yml) = 2284f231d2dbc0965e9c2a268ed9aee5
+MD5 (caf.lock) = fda9825b709087c94c9cce05c964da7b
+$ go run ./cmd/cafe gate floors --write .
 cafe gate floors: the gate reported 33 packages, 1380 top-level passes, 1250 subtest passes, 0 failures, 8 skips
 cafe gate floors: floors unchanged: packages 33, suite 1380, subtests 1250
 cafe gate floors: re-pinned caf.lock
-$ git status --short                            # after the second run
-                                                # (empty — nothing changed)
+$ md5 gate.yml caf.lock                                  # after
+MD5 (gate.yml) = 2284f231d2dbc0965e9c2a268ed9aee5
+MD5 (caf.lock) = fda9825b709087c94c9cce05c964da7b
+$ git status --short
+                                                         # (empty)
 ```
 
-The second `--write` derives the same three numbers and `RewriteFloors` reports
-`changed == false`; `caf.lock` is re-written with identical bytes, so `git diff`
-is empty. That is the property that makes it safe to run at every merge.
+The bytes are identical and the tree is clean. `RewriteFloors` reports
+`changed == false`, so `gate.yml` is not written at all, and `caf.lock` is
+re-written with identical bytes. That is the property that makes it safe to run
+at every merge.
+
+**Note the first run's red gate.** It reported 4 failures — the stale-floor
+ratchet among them — and the writer still derived the right number, because the
+floor is what RAN (`TopLevel + TopLevelFailures` = 1376 + 4 = 1380), not what
+passed. Counting only passes would have written 1376 and left the gate red.
 
 ---
 
@@ -140,8 +159,7 @@ cafe: live tier: set CAF_LIVE_DOCKER=1, CAF_LIVE_RYUK=1 and CAF_LIVE_KAMAL=1, or
 
 Green, exit 0. The three floors in `gate.yml` are `packages: 33`, `suite: 1380`,
 `subtests: 1250`, all three written by the writer, and `caf.lock` pins the new
-`gate.yml` bytes (`46f4563…` → re-pinned). `go vet ./...` clean, `gofmt -l .`
-empty.
+`gate.yml` bytes (`c2274ca3…`). `go vet ./...` clean, `gofmt -l .` empty.
 
 ---
 

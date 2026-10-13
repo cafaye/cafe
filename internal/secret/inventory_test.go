@@ -295,11 +295,9 @@ func TestEveryCitationPointsAtSomething(t *testing.T) {
 				continue
 			}
 			lines := fileLines(t, path)
-			at, ok := resolveCitation(lines, c.Anchor)
-			if !ok {
-				t.Errorf("%s: the citation %s no longer appears in %s. The statement the reason rests on is "+
-					"gone — deleted or reworded — so the reason now cites nothing. Looked for %q on every "+
-					"line of the file", e.Name, c, c.Path, c.Anchor)
+			at, err := checkCitation(lines, c)
+			if err != nil {
+				t.Errorf("%s: %v", e.Name, err)
 				continue
 			}
 			// The line number is derived output, never the stored form: it is
