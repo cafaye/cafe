@@ -141,7 +141,11 @@ gate:
       
       # Resolved at the merge: 1365 is the higher of the two packets' own
       # measurements and the merged tree carries both sets of tests.
-      minimum: 1365
+      # 1370: rebase onto master picked up roll/c3-boxd-identity's five plus
+      # rename-cafe's one and enroll-stdin's four, and the floor follows the
+      # merged measurement (1378 declared - 8 skips = 1370). The mechanical
+      # resolution left 1365, which is five short, and the ratchet names 1370.
+      minimum: 1370
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1247, measured on this tree. 1245 stood until roll/c3-enroll-stdin added
@@ -150,7 +154,9 @@ gate:
       
       # Resolved at the merge: 1247 is the higher of the two packets' own
       # measurements and the merged tree carries both sets of tests.
-      minimum: 1247
+      # 1248: the merged tree's subtests are 1248 (enroll-stdin's two), so the
+      # floor follows the measurement.
+      minimum: 1248
 
     - id: live-tier
       match: '^cafe: live tier: [0-9]+ of 7 executed'
