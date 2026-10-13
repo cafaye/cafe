@@ -32,6 +32,7 @@ type boxHostSim struct {
 	mu sync.Mutex
 
 	fs        map[string][]byte
+	modes     map[string]os.FileMode
 	installed map[string]bool
 	running   bool
 	groups    map[string]bool
@@ -69,6 +70,7 @@ func newBoxHostSim(t *testing.T, cp *countingBoxControlPlane) *boxHostSim {
 	}
 	return &boxHostSim{
 		fs:           map[string][]byte{},
+		modes:        map[string]os.FileMode{},
 		installed:    map[string]bool{},
 		groups:       map[string]bool{},
 		enabled:      map[string]bool{},
@@ -168,6 +170,32 @@ func (s *boxHostSim) Run(_ context.Context, command string, stdin []byte) (setup
 		// token it never minted, and the count below would still have been 1.
 		out := runHostEnroll(s, hostEnrollArgs(command), stdin)
 		return out, nil
+	case strings.Contains(command, "install -m 0600 -D") || strings.Contains(command, "install -m 0644 -D"):
+		// The identity step's copy of the certificate and key beside the
+		// daemon's identity. The real store wrote them into the host's config
+		// directory (s.boxDir); the controller's command names them at the
+		// host's real path (/root/.config/cafe/...), which in the sim is where
+		// boxDir actually is. The copy lands in the sim's filesystem, which is
+		// where /etc/cafe lives.
+		fields := strings.Fields(command)
+		for i, f := range fields {
+			if f != "install" || i+5 >= len(fields) || fields[i+1] != "-m" || fields[i+3] != "-D" {
+				continue
+			}
+			src := filepath.Join(s.boxDir, filepath.Base(strings.Trim(fields[i+4], "'")))
+			dst := strings.Trim(fields[i+5], "'")
+			data, err := os.ReadFile(src)
+			if err != nil {
+				return setup.Output{Code: 1, Stderr: "install: cannot stat '" + src + "': No such file or directory"}, nil
+			}
+			mode := os.FileMode(0o600)
+			if fields[i+2] == "0644" {
+				mode = 0o644
+			}
+			s.fs[dst] = append([]byte(nil), data...)
+			s.modes[dst] = mode
+		}
+		return setup.Output{Code: 0}, nil
 	case strings.Contains(command, "test -s /etc/cafe/box-identity.json"):
 		if _, ok := s.fs[setup.IdentityPath]; ok {
 			return setup.Output{Code: 0}, nil
@@ -345,7 +373,7 @@ func TestTheSetupPipeCarriesTheCapabilityAndNothingElse(t *testing.T) {
 func TestBoxSetupEndToEndIsIdempotent(t *testing.T) {
 	cp := &countingBoxControlPlane{answer: &box.Installation{
 		BoxID: "box_e2e_01", AccountID: "acct_1", Status: "active", Phase: "enrolled",
-	}}
+	}, cert: fakeBoxClientCertificate()}
 	sim := newBoxHostSim(t, cp)
 	deps, ring := setupDepsFor(t, sim, cp)
 
@@ -396,6 +424,36 @@ func TestBoxSetupEndToEndIsIdempotent(t *testing.T) {
 		t.Errorf("the controller's keyring holds %d entries, want 0: %v", len(ring.entries), ring.entries)
 	}
 
+	// The daemon's identity names the certificate and key, and the identity
+	// step placed them beside the document, at the modes that say which is
+	// which. The private key is in no stream the controller or the host
+	// printed: the seam carried two relative NAMES, never the bytes.
+	var idDoc struct {
+		Certificate string `json:"certificate"`
+		Key         string `json:"key"`
+	}
+	if err := json.Unmarshal(sim.fs[setup.IdentityPath], &idDoc); err != nil {
+		t.Fatalf("the daemon identity is not JSON: %v", err)
+	}
+	if idDoc.Certificate == "" || idDoc.Key == "" {
+		t.Fatalf("the daemon identity names no certificate/key: %+v", idDoc)
+	}
+	dest := filepath.Dir(setup.IdentityPath)
+	if len(sim.fs[filepath.Join(dest, idDoc.Key)]) == 0 {
+		t.Error("the key was not placed beside the daemon identity")
+	}
+	if got := sim.modes[filepath.Join(dest, idDoc.Key)]; got != 0o600 {
+		t.Errorf("the placed key's mode = %o, want 600", got)
+	}
+	if got := sim.modes[filepath.Join(dest, idDoc.Certificate)]; got != 0o644 {
+		t.Errorf("the placed certificate's mode = %o, want 644", got)
+	}
+	if strings.Contains(stdout, fakeBoxKeyPEM) {
+		t.Error("the setup document carries the client private key")
+	}
+	if strings.Contains(string(sim.fs[setup.IdentityPath]), fakeBoxKeyPEM) {
+		t.Error("the daemon identity document carries the client private key")
+	}
 	// The second run: the same host, the same controller state, a fresh token
 	// the setup must not need.
 	code, stdout, stderr = run()

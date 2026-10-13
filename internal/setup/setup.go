@@ -182,6 +182,21 @@ func Setup(ctx context.Context, o Options) (Result, error) {
 			result, err := refuse(result, step, detail)
 			return result, err
 		}
+		if step.Name == StepBoxdIdentity {
+			// The daemon's identity is built HERE, after enrollment, not when
+			// the plan was built. On a fresh box box.json does not exist until
+			// the enrollment step has run, so the box id and the certificate
+			// paths are only knowable now; a document built at plan time would
+			// carry an empty box_id and no certificate on the one run that
+			// matters. The pre-walk read is the fallback for a re-run, where
+			// the enrollment step is already done and prints nothing.
+			identity := enrolled
+			if enrollment != nil {
+				identity = enrollment.asIdentity()
+			}
+			step.Apply.Data = identityDocument(identity, o)
+			step.Apply.Command = placeCertificateCommand(sudo, identity)
+		}
 		if step.Apply.Path != "" {
 			mode := step.Apply.Mode
 			if mode == 0 {
@@ -376,6 +391,8 @@ func decodeEnrollment(stdout string) *enrollment {
 		e.BoxID = doc.Identity.BoxID
 		e.ControlPlane = doc.Identity.ControlPlane
 		e.EnrolledAt = doc.Identity.EnrolledAt
+		e.certificate = doc.Identity.Certificate
+		e.key = doc.Identity.Key
 	}
 	if e.Action == "" {
 		return nil

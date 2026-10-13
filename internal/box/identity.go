@@ -38,6 +38,15 @@ type Identity struct {
 	// already use for this fact, so a document, a variable and a flag name one
 	// thing the same way.
 	ControlPlane string `json:"box_url"`
+	// Certificate and Key are the RELATIVE paths of this box's client
+	// certificate and private key, beside this document. They are relative so
+	// the daemon resolves them against the identity document it reads rather
+	// than against whatever directory it happened to run in, and so an
+	// enrollment is one directory a backup can carry. Empty means the
+	// redemption issued no client credential, which the daemon reports as a
+	// certificate it cannot present with its own named reason.
+	Certificate string `json:"certificate,omitempty"`
+	Key         string `json:"key,omitempty"`
 }
 
 // Box is the keypair a box holds: the private half lives in the keyring for the

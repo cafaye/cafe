@@ -52,6 +52,12 @@ const (
 	JournalPrepared = journalPrepared
 	// JournalRedeemed is the journal state a retry FINISHES from.
 	JournalRedeemed = journalRedeemed
+	// CertificateFileName and PrivateKeyFileName are the client certificate and
+	// key a redemption writes beside the identity. They are relative names
+	// because the daemon resolves them against the identity document it reads.
+	CertificateFileName = "box.crt"
+	// PrivateKeyFileName is the private half, written 0600 and nothing else.
+	PrivateKeyFileName = "box.key"
 )
 
 // The three things Enroll can conclude. They are strings because they go into
@@ -139,8 +145,14 @@ type EnrollResult struct {
 	Redemptions int `json:"redemptions"`
 	// Recovered is true when the attempt found a redemption already recorded
 	// and finished from it, which is the case that makes a retry converge.
-	Recovered bool   `json:"recovered"`
-	Message   string `json:"message"`
+	Recovered bool `json:"recovered"`
+	// CertificateStored is true when this box holds a client certificate on
+	// disk. It is a boolean, not the credential: a redemption whose response
+	// carried no certificate (or a recovery, where the response is gone) leaves
+	// this false and the box honest — the daemon then reports the shed
+	// credential by its own name rather than retrying in silence.
+	CertificateStored bool   `json:"certificate_stored"`
+	Message           string `json:"message"`
 }
 
 func (s *Store) paths(name string) string { return filepath.Join(s.Dir, name) }
@@ -186,10 +198,11 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 	if id, ok := s.loadIdentity(); ok {
 		s.appendEvent("enroll", id.Phase, "box was already enrolled; the capability was not presented")
 		return EnrollResult{
-			Action:      ActionAlreadyEnrolled,
-			Identity:    id,
-			Redemptions: 0,
-			Message:     "this box is already enrolled as " + id.BoxID + "; nothing was redeemed",
+			Action:            ActionAlreadyEnrolled,
+			Identity:          id,
+			Redemptions:       0,
+			CertificateStored: id.Certificate != "",
+			Message:           "this box is already enrolled as " + id.BoxID + "; nothing was redeemed",
 		}, nil
 	}
 
@@ -202,18 +215,28 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 	// touching the network, and the assertion behind it is in
 	// store_test.go's table: a control plane that FAILS if it is called at all
 	// still produces an enrolled box here.
+	//
+	// The certificate is NOT recoverable here, and that is stated rather than
+	// worked around. The private key appeared exactly once, in a response this
+	// process no longer holds; box stores none, so nothing can re-mint it
+	// without a new capability. The recovery therefore finishes with an honest
+	// identity that names no client credential, and the daemon reports that
+	// fact by name rather than the client re-redeeming a spent token or
+	// inventing a path to a key that was never written.
 	if jr != nil && jr.State == journalRedeemed {
-		id, err := s.finish(*jr)
+		id, err := s.finish(*jr, nil)
 		if err != nil {
 			return EnrollResult{Action: ActionRefused}, err
 		}
 		s.appendEvent("enroll", id.Phase, "finished an enrollment whose redemption was already recorded; the capability was not presented again")
 		return EnrollResult{
-			Action:      ActionEnrolled,
-			Identity:    id,
-			Redemptions: 0,
-			Recovered:   true,
-			Message:     "recovered the recorded redemption and wrote the box identity",
+			Action:            ActionEnrolled,
+			Identity:          id,
+			Redemptions:       0,
+			Recovered:         true,
+			CertificateStored: id.Certificate != "",
+			Message: "recovered the recorded redemption and wrote the box identity; " +
+				"the redemption's client certificate was not recorded, so re-enroll with a freshly minted token to issue one",
 		}, nil
 	}
 
@@ -232,7 +255,7 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 		return EnrollResult{Action: ActionRefused}, err
 	}
 
-	inst, err := s.ControlPlane.Redeem(ctx, token, public)
+	inst, cert, err := s.ControlPlane.Redeem(ctx, token, public)
 	if err != nil {
 		// The journal is deliberately left in `prepared`: a transient failure
 		// (network, box restarting) must be retryable, and a failed
@@ -254,17 +277,30 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 		return EnrollResult{Action: ActionRefused, Redemptions: 1}, err
 	}
 
-	id, err := s.finish(*jr)
+	id, err := s.finish(*jr, cert)
 	if err != nil {
 		return EnrollResult{Action: ActionRefused, Redemptions: 1}, err
 	}
 	s.appendEvent("enroll", id.Phase, "box enrolled as "+id.BoxID)
 	return EnrollResult{
-		Action:      ActionEnrolled,
-		Identity:    id,
-		Redemptions: 1,
-		Message:     "box enrolled as " + id.BoxID,
+		Action:            ActionEnrolled,
+		Identity:          id,
+		Redemptions:       1,
+		CertificateStored: id.Certificate != "",
+		Message:           enrollMessage(id),
 	}, nil
+}
+
+// enrollMessage names the two outcomes an enrollment can have: an identity with
+// a client certificate the daemon can present, or an identity without one. The
+// second is not a failure — the box is enrolled — but it is a fact the operator
+// has to act on, and a sentence is where a person reads it.
+func enrollMessage(id *Identity) string {
+	if id.Certificate == "" {
+		return "box enrolled as " + id.BoxID + "; the redemption issued no client certificate, " +
+			"so the daemon cannot dial until one is issued with a freshly minted token"
+	}
+	return "box enrolled as " + id.BoxID
 }
 
 // pendingKey returns the keypair an in-progress enrollment is using, generating
@@ -305,7 +341,15 @@ func (s *Store) pendingKey(jr *journal) (ed25519.PrivateKey, error) {
 // finish converts a recorded redemption into a stored box. It is idempotent:
 // every write it makes is either an overwrite of identical bytes or a delete,
 // so running it twice reaches the same tree.
-func (s *Store) finish(jr journal) (*Identity, error) {
+//
+// cert is the client certificate the redemption returned, or nil when there was
+// none (a recovery from a recorded redemption, or a redemption whose response
+// carried no certificate). When it is present, the two files are written BEFORE
+// the identity that names them, which is `internal/ledger`'s ordering rule
+// applied here: an identity naming a key that is not on disk is a box that
+// cannot dial and cannot say why, while a key with no identity is inert and
+// overwritten by the next attempt.
+func (s *Store) finish(jr journal, cert *ClientCertificate) (*Identity, error) {
 	private, err := s.pendingKey(&jr)
 	if err != nil {
 		return nil, err
@@ -330,6 +374,13 @@ func (s *Store) finish(jr journal) (*Identity, error) {
 		EnrolledAt:   jr.RedeemedAt,
 		ControlPlane: jr.ControlPlane,
 	}
+	if cert != nil {
+		certPath, keyPath, err := s.writeClientCertificate(cert)
+		if err != nil {
+			return nil, err
+		}
+		id.Certificate, id.Key = certPath, keyPath
+	}
 	if err := s.writeIdentity(id); err != nil {
 		return nil, err
 	}
@@ -341,6 +392,24 @@ func (s *Store) finish(jr journal) (*Identity, error) {
 		return nil, fmt.Errorf("cafe box enroll: clear the enrollment journal: %w", err)
 	}
 	return id, nil
+}
+
+// writeClientCertificate writes the client certificate and its private key
+// beside box.json and returns their relative names.
+//
+// The key is written 0600 and the certificate 0644: the key is the box's, the
+// certificate is public by construction (box keeps a copy of it and signs with
+// a CA that does not), and the mode is the one place that distinction is
+// recorded on disk. Both go through writeFile, which creates the directory 0700
+// first, so the files never exist for an instant in a world-readable one.
+func (s *Store) writeClientCertificate(cert *ClientCertificate) (string, string, error) {
+	if err := writeFile(s.paths(PrivateKeyFileName), []byte(cert.key), 0o600); err != nil {
+		return "", "", fmt.Errorf("cafe box enroll: write the box client key: %w", err)
+	}
+	if err := writeFile(s.paths(CertificateFileName), []byte(cert.Certificate), 0o644); err != nil {
+		return "", "", fmt.Errorf("cafe box enroll: write the box client certificate: %w", err)
+	}
+	return CertificateFileName, PrivateKeyFileName, nil
 }
 
 // --- the two files, read and written as bytes -------------------------------
@@ -359,10 +428,15 @@ func (s *Store) writeJSON(name string, v any) error {
 // account it belongs to, and the directory it is in is the one a stray
 // `ls -la ~/.config` reads.
 func writePrivate(path string, raw []byte) error {
+	return writeFile(path, raw, 0o600)
+}
+
+// writeFile creates the parent directory 0700 and writes the file with mode.
+func writeFile(path string, raw []byte, mode os.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
 	}
-	return os.WriteFile(path, raw, 0o600)
+	return os.WriteFile(path, raw, mode)
 }
 
 func (s *Store) writeIdentity(id *Identity) error {

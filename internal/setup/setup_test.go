@@ -160,6 +160,7 @@ func newFakeHost() *fakeHost {
 		installed:  map[string]bool{},
 		groups:     map[string]bool{},
 		units:      map[string]unitState{},
+		boxJSON:    EnrolledJSON,
 		sudoNeeded: true,
 		binaryRuns: true,
 		goos:       runtime.GOOS,
@@ -313,6 +314,10 @@ func (h *fakeHost) Run(ctx context.Context, command string, stdin []byte) (Outpu
 		h.redemptions++
 		h.enrolledAt = "2026-10-12T10:00:00Z"
 		h.fs[h.boxJSON] = []byte(enrolledDocument)
+		// The two files the redemption returned, beside box.json, exactly as
+		// the real store writes them.
+		h.fs[filepath.Join(filepath.Dir(EnrolledJSON), "box.crt")] = []byte(fakeLeafPEM)
+		h.fs[filepath.Join(filepath.Dir(EnrolledJSON), "box.key")] = []byte(fakeKeyPEM)
 		doc := map[string]any{
 			"action":      "enrolled",
 			"redemptions": 1,
@@ -324,10 +329,38 @@ func (h *fakeHost) Run(ctx context.Context, command string, stdin []byte) (Outpu
 				"phase":       "enrolled",
 				"account_id":  "acct_1",
 				"status":      "active",
+				"certificate": "box.crt",
+				"key":         "box.key",
 			},
 		}
 		raw, _ := json.Marshal(doc)
 		return Output{Code: 0, Stdout: string(raw)}, nil
+	}
+
+	// The certificate and key copy the identity step runs, host side. The
+	// source is beside box.json, the destination beside the daemon's identity;
+	// the mode is what the command asks for. It is one `install` per file,
+	// chained with &&, so the branch matches on the flags rather than the path.
+	if strings.Contains(command, "install -m 0600 -D") || strings.Contains(command, "install -m 0644 -D") {
+		fields := strings.Fields(command)
+		// fields is [sudo -n -H] install -m <mode> -D <src> <dst> ...
+		for i, f := range fields {
+			if f == "install" && i+5 < len(fields) && fields[i+1] == "-m" && fields[i+3] == "-D" {
+				src := strings.Trim(fields[i+4], "'")
+				dst := strings.Trim(fields[i+5], "'")
+				data, ok := h.fs[src]
+				if !ok {
+					return Output{Code: 1, Stderr: "install: cannot stat '" + src + "': No such file or directory"}, nil
+				}
+				mode := os.FileMode(0o600)
+				if fields[i+2] == "0644" {
+					mode = 0o644
+				}
+				h.fs[dst] = append([]byte(nil), data...)
+				h.mode[dst] = mode
+			}
+		}
+		return Output{Code: 0}, nil
 	}
 
 	// The daemon's identity document and unit.
@@ -553,7 +586,9 @@ func firstWord(s string) string {
 
 // enrolledDocument is the box.json a host's own enroll leaves behind. Its shape
 // is internal/box's, and the facts in it are non-secrets — the private half is
-// in the keyring on the host and is not in this document.
+// in the keyring on the host and is not in this document. The certificate and
+// key fields name the two files beside it, which is what the daemon's identity
+// document has to carry.
 const enrolledDocument = `{
   "box_id": "box_fake_01",
   "account_id": "acct_1",
@@ -561,8 +596,18 @@ const enrolledDocument = `{
   "status": "active",
   "phase": "enrolled",
   "enrolled_at": "2026-10-12T10:00:00Z",
-  "box_url": "https://box.test"
+  "box_url": "https://box.test",
+  "certificate": "box.crt",
+  "key": "box.key"
 }`
+
+// The two files an enrollment writes beside box.json. The contents are the
+// shape of a PEM blob, not a real keypair: nothing in this package parses them,
+// and the assertion is that they are placed beside the daemon's identity.
+const (
+	fakeLeafPEM = "-----BEGIN CERTIFICATE-----\nMIIfakeleaf\n-----END CERTIFICATE-----\n"
+	fakeKeyPEM  = "-----BEGIN PRIVATE KEY-----\nMIIfakeboxkey\n-----END PRIVATE KEY-----\n"
+)
 
 // healthyReport is an observation a box in good order answers with: health ok,
 // certificate with a month on it, disk measured.
@@ -664,6 +709,37 @@ func TestTheFirstSetupOnABareHostDoesEverythingInOrder(t *testing.T) {
 	}
 	if _, ok := host.fs[IdentityPath]; !ok {
 		t.Errorf("the daemon identity was not written at %s", IdentityPath)
+	}
+	// The identity names the client certificate and key, and the identity step
+	// placed them beside the document — which is the directory the daemon's
+	// relative resolve uses.
+	var idDoc struct {
+		Certificate string `json:"certificate"`
+		Key         string `json:"key"`
+	}
+	if err := json.Unmarshal(host.fs[IdentityPath], &idDoc); err != nil {
+		t.Fatalf("the daemon identity is not JSON: %v", err)
+	}
+	if idDoc.Certificate == "" || idDoc.Key == "" {
+		t.Fatalf("the daemon identity names no certificate/key: %+v", idDoc)
+	}
+	destCert := filepath.Join(filepath.Dir(IdentityPath), idDoc.Certificate)
+	destKey := filepath.Join(filepath.Dir(IdentityPath), idDoc.Key)
+	if string(host.fs[destCert]) != fakeLeafPEM {
+		t.Error("the certificate was not placed beside the daemon identity")
+	}
+	if string(host.fs[destKey]) != fakeKeyPEM {
+		t.Error("the key was not placed beside the daemon identity")
+	}
+	if got := host.mode[destKey]; got != 0o600 {
+		t.Errorf("the placed key's mode = %o, want 600", got)
+	}
+	if got := host.mode[destCert]; got != 0o644 {
+		t.Errorf("the placed certificate's mode = %o, want 644", got)
+	}
+	// The identity's own document is readable but carries no private key.
+	if strings.Contains(string(host.fs[IdentityPath]), fakeKeyPEM) {
+		t.Error("the daemon identity document carries the private key")
 	}
 	if _, ok := host.fs[UnitPath]; !ok {
 		t.Errorf("the systemd unit was not written at %s", UnitPath)
@@ -1011,17 +1087,18 @@ func TestAFailedDockerInstallIsARefusalThatNamesTheStep(t *testing.T) {
 	}
 }
 
-// The identity document the one-command path writes is the honest stub: it
-// names no certificate, because nothing in the fleet issues one until the
-// Phase C packet named in boxd's package doc. The daemon reads that fact as
-// the permanent failure it is and refuses after its bound. A document that
-// invented paths would turn an honest refusal into a confusing load failure;
-// a daemon that connected on invented paths would be connecting on a
-// credential nothing issued. This test pins the stub so the day Phase C
-// lands, the change is here and not in some other writer of the document.
-func TestTheDaemonIdentityDocumentIsTheHonestStub(t *testing.T) {
-	doc := identityDocument(&identityRead{BoxID: "box_fake_01", ControlPlane: "https://box.test"},
-		Options{ControlPlane: "https://box.test", Version: "1.2.3"})
+// The identity document the one-command path writes names the client
+// certificate and key by their RELATIVE paths, so the daemon can resolve them
+// against the document it reads. An identity that carries no certificate — the
+// recovery path, where the redemption's certificate was lost with its response
+// — omits the two fields rather than naming a path that does not exist, which
+// is what keeps "no certificate" an honest unknown instead of a confusing load
+// failure.
+func TestTheDaemonIdentityDocumentNamesTheCertificateBesideIt(t *testing.T) {
+	doc := identityDocument(&identityRead{
+		BoxID: "box_fake_01", ControlPlane: "https://box.test",
+		Certificate: "box.crt", Key: "box.key",
+	}, Options{ControlPlane: "https://box.test", Version: "1.2.3"})
 	var written struct {
 		BoxID        string `json:"box_id"`
 		ControlPlane string `json:"box_url"`
@@ -1035,8 +1112,25 @@ func TestTheDaemonIdentityDocumentIsTheHonestStub(t *testing.T) {
 	if written.BoxID != "box_fake_01" || written.ControlPlane != "https://box.test" || written.Version != "1.2.3" {
 		t.Errorf("the document lost a fact it is supposed to carry: %+v", written)
 	}
-	if written.Certificate != "" || written.Key != "" {
-		t.Errorf("the document names a certificate (%q) and key (%q); nothing issues them until Phase C", written.Certificate, written.Key)
+	if written.Certificate != "box.crt" || written.Key != "box.key" {
+		t.Fatalf("the document names certificate=%q key=%q, want the relative names", written.Certificate, written.Key)
+	}
+	// Relative, because the daemon resolves them against this document: an
+	// absolute path would make the enrollment two places instead of one.
+	if strings.HasPrefix(written.Certificate, "/") || strings.HasPrefix(written.Key, "/") {
+		t.Errorf("the document names an absolute path: %+v", written)
+	}
+
+	// The honest no-certificate document omits both fields.
+	var bare map[string]json.RawMessage
+	if err := json.Unmarshal(identityDocument(&identityRead{BoxID: "box_fake_01"}, Options{}), &bare); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := bare["certificate"]; ok {
+		t.Error("an identity with no certificate still named one")
+	}
+	if _, ok := bare["key"]; ok {
+		t.Error("an identity with no certificate still named a key")
 	}
 }
 

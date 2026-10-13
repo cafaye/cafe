@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,22 +48,26 @@ func (r *testRing) Delete(service, account string) error {
 type countingControlPlane struct {
 	calls        int
 	installation *Installation
-	err          error
+	// certificate is what the redemption answers with. Nil is a legitimate
+	// answer — a recovery, or a redemption whose response carried none — and
+	// the tests that want to watch the honest no-certificate path set it so.
+	certificate *ClientCertificate
+	err         error
 	// failIfCalled turns the fake into a tripwire: any attempt to redeem fails
 	// the test. It is how the "already recorded" rows are proved — they must
 	// reach an enrolled box WITHOUT asking the server anything.
 	tripwire bool
 }
 
-func (c *countingControlPlane) Redeem(_ context.Context, _ string, _ ed25519.PublicKey) (*Installation, error) {
+func (c *countingControlPlane) Redeem(_ context.Context, _ string, _ ed25519.PublicKey) (*Installation, *ClientCertificate, error) {
 	c.calls++
 	if c.tripwire {
 		panic("unreachable: a recovered enrollment must never present the capability again")
 	}
 	if c.err != nil {
-		return nil, c.err
+		return nil, nil, c.err
 	}
-	return c.installation, nil
+	return c.installation, c.certificate, nil
 }
 
 func fakeInstallation() *Installation {
@@ -74,11 +79,24 @@ func fakeInstallation() *Installation {
 	}
 }
 
+// fakeClientCertificate is a client certificate and key in PEM shape. The key
+// is not a real RSA key — nothing here parses it — but it is a distinct,
+// searchable string so "the private key reached no document" can be asserted by
+// value rather than by shape.
+func fakeClientCertificate() *ClientCertificate {
+	return &ClientCertificate{
+		Certificate: "-----BEGIN CERTIFICATE-----\nMIIfakecertificate\n-----END CERTIFICATE-----\n",
+		ExpiresAt:   "2027-10-13T00:00:00Z",
+		Fingerprint: "aa:bb:cc",
+		key:         "-----BEGIN PRIVATE KEY-----\nMIIfakeboxprivatekey\n-----END PRIVATE KEY-----\n",
+	}
+}
+
 // openTestStore is a store in a directory the test owns, with a clock the test
 // controls so a timestamp is never the reason an assertion failed.
 func openTestStore(t *testing.T) (*Store, *countingControlPlane) {
 	t.Helper()
-	cp := &countingControlPlane{installation: fakeInstallation()}
+	cp := &countingControlPlane{installation: fakeInstallation(), certificate: fakeClientCertificate()}
 	s := NewStore(t.TempDir(), newTestRing(), cp)
 	s.now = func() time.Time { return time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC) }
 	return s, cp
@@ -630,4 +648,205 @@ func mustJSON(t *testing.T, v any) string {
 		t.Fatal(err)
 	}
 	return string(raw)
+}
+
+// --- the client certificate the redemption returns -------------------------
+
+// The certificate and key land beside box.json with the modes that say what
+// they are: the certificate 0644, the key 0600. The relative names are on the
+// identity record so the daemon resolves them against the document it reads.
+func TestTheClientCertificateLandsBesideTheIdentityWithTheModes(t *testing.T) {
+	s, cp := openTestStore(t)
+	res, err := s.Enroll(context.Background(), testToken, "https://box.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.CertificateStored {
+		t.Fatal("the document reports no stored certificate after a redemption that carried one")
+	}
+
+	certPath := filepath.Join(s.Dir, CertificateFileName)
+	keyPath := filepath.Join(s.Dir, PrivateKeyFileName)
+	certInfo, err := os.Stat(certPath)
+	if err != nil {
+		t.Fatalf("the certificate is not on disk: %v", err)
+	}
+	keyInfo, err := os.Stat(keyPath)
+	if err != nil {
+		t.Fatalf("the key is not on disk: %v", err)
+	}
+	if certInfo.Mode().Perm() != 0o644 {
+		t.Errorf("the certificate mode is %o, want 644", certInfo.Mode().Perm())
+	}
+	if keyInfo.Mode().Perm() != 0o600 {
+		t.Errorf("the key mode is %o, want 600", keyInfo.Mode().Perm())
+	}
+
+	certRaw, err := os.ReadFile(certPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyRaw, err := os.ReadFile(keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(certRaw) != cp.certificate.Certificate {
+		t.Error("the file on disk is not the certificate the redemption returned")
+	}
+	if string(keyRaw) != cp.certificate.key {
+		t.Error("the file on disk is not the key the redemption returned")
+	}
+
+	id, err := s.Identity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id.Certificate != CertificateFileName || id.Key != PrivateKeyFileName {
+		t.Errorf("the identity names certificate=%q key=%q, want the two relative names", id.Certificate, id.Key)
+	}
+	if filepath.IsAbs(id.Certificate) || filepath.IsAbs(id.Key) {
+		t.Errorf("the identity names an absolute path: cert=%q key=%q", id.Certificate, id.Key)
+	}
+}
+
+// The private key the redemption returned reaches no document and no place a
+// person reads. The assertion is over every JSON document the store produces
+// AND every file it wrote, because the failure this guards against is a value
+// that reached a field nobody thought to check. The control half is that the
+// certificate IS on disk and named: a store that redacted everything would pass
+// the absence assertion by writing nothing at all.
+func TestTheClientPrivateKeyReachesNoPrintableDocument(t *testing.T) {
+	s, cp := openTestStore(t)
+	res, err := s.Enroll(context.Background(), testToken, "https://box.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := cp.certificate.key
+	if key == "" {
+		t.Fatal("the fixture key is empty; the assertion would prove nothing")
+	}
+
+	var documents []string
+	documents = append(documents, mustJSON(t, res))
+	if st, err := s.Status(); err == nil {
+		documents = append(documents, mustJSON(t, st))
+	} else {
+		t.Fatal(err)
+	}
+	if pl, err := s.Plan(); err == nil {
+		documents = append(documents, mustJSON(t, pl))
+	} else {
+		t.Fatal(err)
+	}
+	if evs, err := s.Logs(); err == nil {
+		documents = append(documents, mustJSON(t, evs))
+	} else {
+		t.Fatal(err)
+	}
+	if v, err := s.Verify(); err == nil {
+		documents = append(documents, mustJSON(t, v))
+	} else {
+		t.Fatal(err)
+	}
+	// The Certificate value itself: a %v over it must be redacted, because that
+	// is how a value ends up in a log without anyone marshalling it on purpose.
+	documents = append(documents, fmt.Sprintf("%v", *cp.certificate), fmt.Sprintf("%+v", *cp.certificate), fmt.Sprintf("%#v", *cp.certificate))
+	for _, doc := range documents {
+		if strings.Contains(doc, key) {
+			t.Fatalf("a document carries the client private key:\n%s", doc)
+		}
+	}
+
+	// box.json and the journal, by their bytes.
+	idRaw, err := os.ReadFile(filepath.Join(s.Dir, identityFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(idRaw), key) {
+		t.Error("box.json carries the client private key")
+	}
+	if strings.Contains(string(idRaw), "PRIVATE KEY") {
+		t.Errorf("box.json quotes a private key header:\n%s", idRaw)
+	}
+	// The control: the certificate IS named by its relative path.
+	var id Identity
+	if err := json.Unmarshal(idRaw, &id); err != nil {
+		t.Fatal(err)
+	}
+	if id.Certificate != CertificateFileName {
+		t.Errorf("the control half failed: box.json does not name the certificate (%q)", id.Certificate)
+	}
+}
+
+// A redemption whose response carries no certificate still enrolls the box, and
+// leaves it honest: an identity that names no client credential and reports the
+// fact. The alternative — inventing a path, or failing an enrollment that
+// actually happened — is the defect this path exists to avoid.
+func TestARedemptionWithNoCertificateLeavesTheBoxHonest(t *testing.T) {
+	s, cp := openTestStore(t)
+	cp.certificate = nil
+
+	res, err := s.Enroll(context.Background(), testToken, "https://box.test")
+	if err != nil {
+		t.Fatalf("a redemption with no certificate must still enroll the box: %v", err)
+	}
+	if res.Action != ActionEnrolled || res.Redemptions != 1 {
+		t.Errorf("result = %+v, want an enrolled box with one redemption", res)
+	}
+	if res.CertificateStored {
+		t.Error("the document claims a stored certificate a redemption never returned")
+	}
+	if !strings.Contains(res.Message, "certificate") {
+		t.Errorf("the message does not name the missing certificate: %q", res.Message)
+	}
+	id, err := s.Identity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id.Certificate != "" || id.Key != "" {
+		t.Errorf("the identity names a certificate (%q) and key (%q) that do not exist", id.Certificate, id.Key)
+	}
+	for _, name := range []string{CertificateFileName, PrivateKeyFileName} {
+		if _, err := os.Stat(filepath.Join(s.Dir, name)); err == nil {
+			t.Errorf("%s exists after a redemption that issued no certificate", name)
+		}
+	}
+}
+
+// The recovery path: a redemption was recorded, the process died before the
+// identity was written, and the returned certificate is gone with the response.
+// The box stores no private key, so nothing can re-mint it without a new
+// capability. The recovery finishes WITH an identity and WITHOUT a certificate,
+// and says so — never a second redemption of a spent token, and never a made-up
+// path to a key that was never written.
+func TestARecoveredEnrollmentFinishesWithoutTheCertificateAndSaysSo(t *testing.T) {
+	s, cp := openTestStore(t)
+	prepare(t, s, journalRedeemed)
+	cp.tripwire = true
+
+	res, err := s.Enroll(context.Background(), testToken, "https://box.test")
+	if err != nil {
+		t.Fatalf("the recovery must finish: %v", err)
+	}
+	if !res.Recovered || res.Redemptions != 0 {
+		t.Errorf("result = %+v, want a recovery with no redemption", res)
+	}
+	if res.CertificateStored {
+		t.Error("the recovery claims a certificate the lost response carried")
+	}
+	if !strings.Contains(res.Message, "certificate") {
+		t.Errorf("the recovery does not name the lost certificate: %q", res.Message)
+	}
+	id, err := s.Identity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id.Certificate != "" {
+		t.Errorf("the recovered identity names a certificate (%q)", id.Certificate)
+	}
+	for _, name := range []string{CertificateFileName, PrivateKeyFileName} {
+		if _, err := os.Stat(filepath.Join(s.Dir, name)); err == nil {
+			t.Errorf("%s exists after a recovery that had no certificate to write", name)
+		}
+	}
 }

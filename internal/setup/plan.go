@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/cafaye/cafe/internal/boxd"
@@ -181,12 +182,7 @@ func archRow(arch archFact) Step {
 // have spent a package install learning something it could have asked before
 // touching the host.
 func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityRead, arch archFact) []Step {
-	root := func(cmd string) string {
-		if sudo == "" {
-			return cmd
-		}
-		return sudo + " " + cmd
-	}
+	root := func(cmd string) string { return rooted(sudo, cmd) }
 	return []Step{
 		superuserRow(),
 		archRow(arch),
@@ -278,9 +274,20 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 			// The apply is a WRITE, not a command: setup derives the daemon's
 			// document from what enrollment left behind and puts it where the
 			// unit will point. It carries the box's non-secret facts and no
-			// credential of any kind — the private key stays in the keyring
-			// enrollment put it in, on this host, and never crosses the seam.
-			Apply: apply{Path: IdentityPath, Data: identityDocument(enrolled, o), Mode: 0o644},
+			// credential of any kind — the private key stays on this host, in
+			// the keyring and in the 0600 file beside box.json, and never
+			// crosses the seam as a value. The Command copies the certificate
+			// and key to this document's directory, because a relative name in
+			// the document resolves against that directory; the walk fills
+			// both Path's data and this command with the POST-enrollment
+			// identity, which is the only point at which a first enrollment
+			// knows the certificate at all.
+			Apply: apply{
+				Path:    IdentityPath,
+				Data:    identityDocument(enrolled, o),
+				Mode:    0o644,
+				Command: placeCertificateCommand(sudo, enrolled),
+			},
 		},
 		{
 			Name:  StepBoxdUnit,
@@ -314,20 +321,38 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 	}
 }
 
-// identityDocument is what the daemon reads. It carries the three facts the
-// daemon cannot discover for itself and no credential: the certificate and key
-// fields are deliberately absent rather than filled with a path that does not
-// exist, because `cafe boxd` reports an identity that names no certificate as
-// Certificate "unknown" WITH that reason, and a plausible-looking path would
-// turn an honest unknown into a confusing load failure. The fields stay absent
-// until the Phase C issuance packet named in boxd's package doc; the test
-// TestTheDaemonIdentityDocumentIsTheHonestStub pins this shape so the day
-// Phase C lands, the change is here and not in some other writer.
+// rooted prefixes a command with the sudo spelling the host needs. It is the
+// one place that prefix is spelled, so the plan's rows and the certificate
+// placement cannot disagree about how this run gets root.
+func rooted(sudo, cmd string) string {
+	if sudo == "" {
+		return cmd
+	}
+	return sudo + " " + cmd
+}
+
+// identityDocument is what the daemon reads. It carries the facts the daemon
+// cannot discover for itself and no credential: the box's name, its control
+// plane, the cafe build, and the RELATIVE paths of the client certificate and
+// key the daemon presents on its dial.
+//
+// The paths are relative because the daemon resolves them against this document
+// (fileIdentityStore.resolve), so the certificate and key have to sit beside it.
+// Setup puts them there: enrollment writes them beside box.json, and the
+// identity step copies them into this document's directory — see
+// placeCertificateCommand for why that is a host-side copy and not a Write from
+// here. An identity that names no certificate (the recovery path, where the
+// redemption's certificate was lost with its response) omits the two fields
+// rather than naming a path that does not exist, so the daemon reports an
+// unknown certificate with its own named reason instead of a confusing load
+// failure.
 func identityDocument(enrolled *identityRead, o Options) []byte {
 	doc := struct {
 		BoxID        string `json:"box_id"`
 		ControlPlane string `json:"box_url"`
 		Version      string `json:"version"`
+		Certificate  string `json:"certificate,omitempty"`
+		Key          string `json:"key,omitempty"`
 	}{
 		ControlPlane: o.ControlPlane,
 		Version:      o.Version,
@@ -337,8 +362,37 @@ func identityDocument(enrolled *identityRead, o Options) []byte {
 		if enrolled.ControlPlane != "" {
 			doc.ControlPlane = enrolled.ControlPlane
 		}
+		doc.Certificate = enrolled.Certificate
+		doc.Key = enrolled.Key
 	}
 	return mustJSON(doc)
+}
+
+// placeCertificateCommand copies the enrolled certificate and key from beside
+// box.json to beside the daemon's identity document, ON THE HOST.
+//
+// It is a command rather than two Writes because the private key must not cross
+// the seam: the controller holds the two relative NAMES and never the bytes, so
+// only the host can perform the copy. The destination is the identity document's
+// own directory, which is the one fact that makes the relative names in the
+// document resolve — enrollment writes to root's config directory while the
+// daemon reads /etc/cafe, and a relative name is meaningful only against the
+// reader's directory.
+//
+// Empty when the identity names no certificate: the recovery path, where a
+// redemption was recorded but its certificate is gone, and there is nothing to
+// copy. The daemon then reports the certificate as unknown with its own named
+// reason, which is the honest answer.
+func placeCertificateCommand(sudo string, id *identityRead) string {
+	if id == nil || id.Certificate == "" || id.Key == "" {
+		return ""
+	}
+	src := path.Dir(EnrolledJSON)
+	dst := path.Dir(IdentityPath)
+	copyOne := func(name string, mode string) string {
+		return rooted(sudo, `install -m `+mode+` -D `+shellQuote(path.Join(src, name))+` `+shellQuote(path.Join(dst, name)))
+	}
+	return copyOne(id.Key, "0600") + ` && ` + copyOne(id.Certificate, "0644")
 }
 
 // unitDocument is the systemd unit. It is written by hand rather than generated
@@ -481,19 +535,42 @@ type enrollmentOf struct {
 
 // enrollment is the decoded form of the host's own answer, carrying the
 // redemption count in an unexported field so it cannot be marshalled into a
-// document by accident.
+// document by accident, and the two relative certificate paths the host's
+// enrollment recorded.
 type enrollment struct {
 	Enrollment
 	redemptions int
+	certificate string
+	key         string
+}
+
+// asIdentity turns the enrollment's host facts back into the shape the daemon's
+// identity document is written from, so the walk can build that document from
+// the POST-enrollment answer rather than from the pre-walk read (which is nil
+// on the one run that matters).
+func (e *enrollment) asIdentity() *identityRead {
+	if e == nil {
+		return nil
+	}
+	return &identityRead{
+		BoxID:        e.BoxID,
+		ControlPlane: e.ControlPlane,
+		EnrolledAt:   e.EnrolledAt,
+		Certificate:  e.certificate,
+		Key:          e.key,
+	}
 }
 
 // identityRead is what the host's box.json holds. Only the facts this package
 // reports are named; the rest of the document is read by the host and never
-// crosses the seam.
+// crosses the seam. Certificate and Key are the RELATIVE paths the host's
+// enrollment wrote, which is what the daemon's identity document has to carry.
 type identityRead struct {
 	BoxID        string `json:"box_id"`
 	ControlPlane string `json:"box_url"`
 	EnrolledAt   string `json:"enrolled_at"`
+	Certificate  string `json:"certificate"`
+	Key          string `json:"key"`
 }
 
 // mustJSON encodes a document or dies. It is used only for the two documents

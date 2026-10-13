@@ -48,20 +48,21 @@ type countingBoxControlPlane struct {
 	calls    int
 	tokens   []string
 	answer   *box.Installation
+	cert     *box.ClientCertificate
 	err      error
 	tripwire bool
 }
 
-func (c *countingBoxControlPlane) Redeem(_ context.Context, token string, _ ed25519.PublicKey) (*box.Installation, error) {
+func (c *countingBoxControlPlane) Redeem(_ context.Context, token string, _ ed25519.PublicKey) (*box.Installation, *box.ClientCertificate, error) {
 	c.calls++
 	c.tokens = append(c.tokens, token)
 	if c.tripwire {
 		panic("unreachable: an enrollment that recovered from its journal must not present the capability again")
 	}
 	if c.err != nil {
-		return nil, c.err
+		return nil, nil, c.err
 	}
-	return c.answer, nil
+	return c.answer, c.cert, nil
 }
 
 func fakeBoxInstallation() *box.Installation {
@@ -73,6 +74,20 @@ func fakeBoxInstallation() *box.Installation {
 	}
 }
 
+// fakeBoxClientCertificate is the client certificate a redemption returns. The
+// key is a distinct, searchable string so "the private key reached no stream"
+// is asserted by value: nothing parses it.
+func fakeBoxClientCertificate() *box.ClientCertificate {
+	return box.NewClientCertificate(
+		"-----BEGIN CERTIFICATE-----\nMIIcli fake leaf\n-----END CERTIFICATE-----\n",
+		fakeBoxKeyPEM,
+	)
+}
+
+// fakeBoxKeyPEM is the private half fakeBoxClientCertificate returns, named so
+// a test can search every document and stream for it.
+const fakeBoxKeyPEM = "-----BEGIN PRIVATE KEY-----\nMIIcli fake box key\n-----END PRIVATE KEY-----\n"
+
 // boxTestEnv is the deps every case below wires a command tree to: a directory
 // the test owns, a keyring in memory, and a control plane that answers with a
 // planted installation. Nothing here touches the machine's config directory,
@@ -80,7 +95,7 @@ func fakeBoxInstallation() *box.Installation {
 // a bare CI runner.
 func boxTestEnv(t *testing.T) (deps boxDeps, cp *countingBoxControlPlane, ring *boxTestRing) {
 	t.Helper()
-	cp = &countingBoxControlPlane{answer: fakeBoxInstallation()}
+	cp = &countingBoxControlPlane{answer: fakeBoxInstallation(), cert: fakeBoxClientCertificate()}
 	ring = newBoxTestRing()
 	deps = boxDeps{dir: t.TempDir(), ring: ring, controlPlane: cp, url: "https://box.test"}
 	return deps, cp, ring

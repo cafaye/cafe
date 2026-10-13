@@ -38,7 +38,58 @@ type ControlPlane interface {
 	// Redeem presents a capability and the box's public key. The public key is
 	// sent so the enrollment binds a key box can later verify a signature
 	// from; the private half never leaves the box.
-	Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, error)
+	//
+	// The second return is the client certificate box issued for this box when
+	// the redemption was a box.enroll, or nil when it issued none. It is a
+	// separate value from the Installation on purpose: the Installation is a
+	// printable document, and the certificate's private key is not printable.
+	Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, *ClientCertificate, error)
+}
+
+// ClientCertificate is the client certificate box issued during a redemption:
+// the public half, its expiry, and — in an unexported field — the private key
+// the box presents on its mTLS dial.
+//
+// It is deliberately NOT a printable document. encoding/json marshals only
+// exported fields, so the key cannot reach box.json, the enrollment journal,
+// EnrollResult or setup.Result through this type; and String/GoString redact it
+// so a %v, %+v or %#v over a value cannot carry it into a log or a test failure
+// either. The key is here at all because the redemption is its ONE appearance:
+// box stores no private key (BoxCertificate: "a courier, never a vault"), so
+// this value is the box's single chance to write it down.
+//
+// It is a return value of Redeem rather than more fields on Installation for
+// one reason: Installation is documented as carrying no field that could hold a
+// credential, and adding a key field to it would make that comment false.
+type ClientCertificate struct {
+	// Certificate is the PEM-encoded leaf certificate box signed.
+	Certificate string
+	// ExpiresAt is box's own notAfter as ISO-8601, or "" when box did not say.
+	ExpiresAt string
+	// Fingerprint is box's fingerprint of the certificate, or "".
+	Fingerprint string
+	// key is the PEM-encoded private key. Unexported ON PURPOSE: it is the
+	// type-level guarantee that no JSON document can carry it.
+	key string
+}
+
+// String redacts the key, so a value printed with %v, %+v or %s is safe.
+func (c ClientCertificate) String() string {
+	return fmt.Sprintf("box.ClientCertificate{certificate: %d bytes, expires_at: %q, key: [redacted]}",
+		len(c.Certificate), c.ExpiresAt)
+}
+
+// GoString redacts the key for %#v.
+func (c ClientCertificate) GoString() string { return c.String() }
+
+// NewClientCertificate assembles a client certificate. In production the HTTP
+// control plane is the only caller; it is exported because a test, or a second
+// transport, lives outside this package and has no other way to hand back the
+// private half that was returned once. The key stays unexported, so assembling
+// one is the only way to give the key back and never a way to marshal it out:
+// the constructor hands over a value, not a document.
+func NewClientCertificate(certificate, key string) *ClientCertificate {
+	return &ClientCertificate{Certificate: certificate, key: key}
 }
 
 // The three honest refusals box can answer, mapped to sentinels so a
@@ -89,8 +140,10 @@ type redeemRequest struct {
 	PublicKey string `json:"public_key"`
 }
 
-// controlPlaneResponse is what comes back. The installation is the whole answer;
-// there is no token in it, and no secret in any field.
+// controlPlaneResponse is what comes back. The installation is a document; the
+// certificate fields are the box's one-time client credential. The private half
+// lives in the CertificateKey field only as far as this function's stack — it
+// is moved into ClientCertificate immediately and never into a printable type.
 type controlPlaneResponse struct {
 	Installation struct {
 		// ID is a number on box's side: the installations table's bigint
@@ -104,10 +157,43 @@ type controlPlaneResponse struct {
 		Phase      string      `json:"current_phase"`
 		EnrolledAt string      `json:"enrolled_at"`
 	} `json:"installation"`
+	// The issued client certificate, siblings of `installation` on the wire.
+	// box sends them only for a box.enroll redemption, and only when its CA is
+	// configured (see box's capabilities_controller.rb), so a redemption can
+	// legitimately carry none.
+	Certificate            string `json:"certificate"`
+	CertificateKey         string `json:"certificate_key"`
+	CertificateExpiresAt   string `json:"certificate_expires_at"`
+	CertificateFingerprint string `json:"certificate_fingerprint"`
+}
+
+// clientCertificate lifts the issued certificate off the decoded response. It
+// returns nil when box issued none: a redemption that carries no certificate is
+// not an error here, because the enrollment still happened — the box has an
+// identity and no client credential, which the daemon reports as a certificate
+// it cannot present rather than as a failure the client invented. A response
+// carrying exactly one half of the pair is refused, because half a keypair can
+// present nothing and dropping the stray half silently would hide a broken
+// control plane.
+func (r controlPlaneResponse) clientCertificate(url string) (*ClientCertificate, error) {
+	cert, key := strings.TrimSpace(r.Certificate), strings.TrimSpace(r.CertificateKey)
+	switch {
+	case cert == "" && key == "":
+		return nil, nil
+	case cert == "" || key == "":
+		return nil, fmt.Errorf("redemption response from %s carried only one half of the client keypair (certificate=%t, key_present=%t)", url, cert != "", key != "")
+	}
+	return &ClientCertificate{
+		Certificate: cert,
+		ExpiresAt:   r.CertificateExpiresAt,
+		Fingerprint: r.CertificateFingerprint,
+		key:         key,
+	}, nil
 }
 
 // Redeem POSTs the capability and maps box's four answers onto the three
-// sentinels and success.
+// sentinels and success. The success answer also carries the client certificate
+// box issued, in a value that cannot be marshalled into a document.
 //
 // The mapping is explicit rather than a switch on strings because box's
 // error vocabulary is not this package's, and a fifth code appearing in a
@@ -115,55 +201,59 @@ type controlPlaneResponse struct {
 // folded into the nearest familiar one. `get` is built by hand rather than
 // unmarshalled lazily so a body that is not JSON at all — a proxy's HTML error
 // page, a captive portal — is reported as what it is.
-func (c HTTPControlPlane) Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, error) {
+func (c HTTPControlPlane) Redeem(ctx context.Context, token string, publicKey ed25519.PublicKey) (*Installation, *ClientCertificate, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
-		return nil, fmt.Errorf("redeem capability: no box URL configured; set it with `cafe box enroll --token … --box <url>` or in %s", identityFile)
+		return nil, nil, fmt.Errorf("redeem capability: no box URL configured; set it with `cafe box enroll --token … --box <url>` or in %s", identityFile)
 	}
 	body, err := json.Marshal(redeemRequest{Token: token, PublicKey: publicKeyText(publicKey)})
 	if err != nil {
-		return nil, fmt.Errorf("encode redemption: %w", err)
+		return nil, nil, fmt.Errorf("encode redemption: %w", err)
 	}
 	url := strings.TrimSuffix(c.BaseURL, "/") + "/v1/capabilities/redeem"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("build redemption request: %w", err)
+		return nil, nil, fmt.Errorf("build redemption request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
 	res, err := clientFor(c).Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("redeem capability against %s: %w", url, err)
+		return nil, nil, fmt.Errorf("redeem capability against %s: %w", url, err)
 	}
 	defer res.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
-		return nil, fmt.Errorf("read redemption response: %w", err)
+		return nil, nil, fmt.Errorf("read redemption response: %w", err)
 	}
 
 	switch res.StatusCode {
 	case http.StatusOK:
 		var parsed controlPlaneResponse
 		if err := json.Unmarshal(raw, &parsed); err != nil {
-			return nil, fmt.Errorf("decode redemption response from %s: %w", url, err)
+			return nil, nil, fmt.Errorf("decode redemption response from %s: %w", url, err)
 		}
 		if parsed.Installation.BoxID == "" {
-			return nil, fmt.Errorf("redemption response from %s named no box", url)
+			return nil, nil, fmt.Errorf("redemption response from %s named no box", url)
+		}
+		cert, err := parsed.clientCertificate(url)
+		if err != nil {
+			return nil, nil, err
 		}
 		return &Installation{
 			BoxID:     parsed.Installation.BoxID,
 			AccountID: parsed.Installation.AccountID,
 			Status:    parsed.Installation.Status,
 			Phase:     parsed.Installation.Phase,
-		}, nil
+		}, cert, nil
 	case http.StatusNotFound:
-		return nil, ErrCapabilityUnknown
+		return nil, nil, ErrCapabilityUnknown
 	case http.StatusGone:
-		return nil, ErrCapabilityExpired
+		return nil, nil, ErrCapabilityExpired
 	case http.StatusConflict:
-		return nil, ErrCapabilityRedeemed
+		return nil, nil, ErrCapabilityRedeemed
 	default:
-		return nil, fmt.Errorf("redeem capability against %s: unexpected HTTP %d: %s", url, res.StatusCode, firstLine(raw))
+		return nil, nil, fmt.Errorf("redeem capability against %s: unexpected HTTP %d: %s", url, res.StatusCode, firstLine(raw))
 	}
 }
 
