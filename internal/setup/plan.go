@@ -319,7 +319,10 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 // fields are deliberately absent rather than filled with a path that does not
 // exist, because `cafe boxd` reports an identity that names no certificate as
 // Certificate "unknown" WITH that reason, and a plausible-looking path would
-// turn an honest unknown into a confusing load failure.
+// turn an honest unknown into a confusing load failure. The fields stay absent
+// until the Phase C issuance packet named in boxd's package doc; the test
+// TestTheDaemonIdentityDocumentIsTheHonestStub pins this shape so the day
+// Phase C lands, the change is here and not in some other writer.
 func identityDocument(enrolled *identityRead, o Options) []byte {
 	doc := struct {
 		BoxID        string `json:"box_id"`
