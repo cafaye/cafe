@@ -1274,32 +1274,35 @@ func TestThePlanIsPureData(t *testing.T) {
 
 // TestTheIdentityDocumentsKeyIsBoxURL pins the one field in this packet that is
 // a contract rather than a spelling, and it pins it in both directions because
-// a tag renamed on one side of the seam and not the other is the failure a
-// symmetric test cannot see.
+// a tag renamed on one side of the seam and not the other is a difference no
+// symmetric test can see: every fixture this packet touched wrote and read the
+// same name, so each of them passed under any tag at all.
 //
-// The writer half reads the bytes the host's boxd is actually handed: a
-// document that spelled the old service's name is what the rename exists to
-// stop, so the assertion is on the bytes and not on the field.
+// The writer half asserts the document's KEY SET rather than the absence of a
+// spelling. A document that carried the old service's name as well as the new
+// one has four keys here, and a check that hunted for a spelling would have to
+// write that spelling down in order to search for it — which is the thing this
+// packet is deleting from the tree.
 //
-// The reader half is the control. The enrolledDocument fixture above already
-// decodes, so a test that only asserted the writer would pass against a reader
-// keyed on `conductor` that never saw a document carrying it — which is the
-// whole defect this test is for. So the old spelling is fed in and MUST decode
-// to an empty control plane: that is the compatibility statement the rename
-// makes out loud (a box.json an older binary wrote reads back with no origin
-// until the host is re-enrolled) rather than a shim nobody can see.
+// The reader half reads the enrolledDocument fixture above, which is what the
+// host's own `cafe box enroll` writes and what the walk decodes. A reader
+// keyed on a name the writer does not emit answers with an empty origin, and
+// that is the whole failure this test is for.
 func TestTheIdentityDocumentsKeyIsBoxURL(t *testing.T) {
 	written := identityDocument(nil, Options{ControlPlane: "https://box.test", Version: "1.2.3"})
-	if !strings.Contains(string(written), `"box_url":"https://box.test"`) {
-		t.Errorf("the daemon's identity document does not carry the control plane under box_url:\n%s", written)
+
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(written, &keys); err != nil {
+		t.Fatalf("the daemon's identity document is not JSON: %v", err)
 	}
-	if strings.Contains(string(written), "conductor") {
-		t.Errorf("the daemon's identity document still names the old service:\n%s", written)
+	if _, ok := keys["box_url"]; !ok {
+		t.Errorf("the daemon's identity document carries no box_url key:\n%s", written)
+	}
+	if len(keys) != 3 {
+		t.Errorf("the daemon's identity document carries %d keys, want exactly box_id, box_url and version:\n%s",
+			len(keys), written)
 	}
 
-	// The real fixture, not a literal: the enrolledDocument above is what the
-	// host's own `cafe box enroll` leaves behind, and this is what the walk
-	// reads back off it.
 	var writtenByEnroll identityRead
 	if err := json.Unmarshal([]byte(enrolledDocument), &writtenByEnroll); err != nil {
 		t.Fatalf("decode the enrolled document: %v", err)
@@ -1307,13 +1310,5 @@ func TestTheIdentityDocumentsKeyIsBoxURL(t *testing.T) {
 	if writtenByEnroll.ControlPlane != "https://box.test" {
 		t.Errorf("the enrolled document decoded the control plane as %q, want the document's own origin",
 			writtenByEnroll.ControlPlane)
-	}
-
-	var writtenByAnOldBinary identityRead
-	if err := json.Unmarshal([]byte(`{"box_id":"box_1","conductor":"https://old.test"}`), &writtenByAnOldBinary); err != nil {
-		t.Fatalf("decode a document in the old spelling: %v", err)
-	}
-	if writtenByAnOldBinary.ControlPlane != "" {
-		t.Errorf("the old spelling still decodes, so the wire name is not pinned: %+v", writtenByAnOldBinary)
 	}
 }
