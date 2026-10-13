@@ -195,7 +195,7 @@ func cite(path, anchor string) string { return path + `: "` + anchor + `"` }
 var (
 	srcRecord     = cite(installer, "SECRET RECORD (the drift tripwire")
 	srcGenerated  = cite(installer, "generated on the box, never printed, generated ONCE and read back")
-	srcMinted     = cite(installer, "minted on the box in step 11, never printed, never an input")
+	srcMinted     = cite(installer, "minted on the box in step 12, never printed, never an input")
 	srcExternal   = cite(installer, "from the environment, shape-validated, never echoed")
 	srcRelayHdr   = cite(installer, "KIT_SUBSTRATE_COURIER_ERROR_RELAY_TOKEN")
 	srcDerived    = cite(installer, "agrees with the Cluster by construction")
@@ -203,7 +203,7 @@ var (
 	srcKeyBase    = cite(installer, "Generated here: SECRET_KEY_BASE")
 	srcRedisURL   = cite(installer, "read_secret_key data redis-password password")
 	srcRedisPW    = cite(installer, "create secret generic redis-password")
-	srcRoles      = cite(installer, "Role passwords: generated ONCE, read back on a re-run.")
+	srcRoles      = cite(installer, "password (step 8), and gateway's ASSERTION_SIGNING_KEY")
 	srcNeverPatch = cite(installer, "refusing to overwrite")
 
 	srcIDReadme    = cite("cafaye/identity/README.md", "SIGNUP_SIGNING_KEY")
