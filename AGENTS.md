@@ -22,6 +22,7 @@ internal/cve/       cafe cve: the box's component inventory, the advisory match,
 internal/backup/    cafe backup: the cross-file contract, the plan, the cycle
 internal/dev/       the local stack: the planner, the renderer, two seams
 internal/failure/   cafe failure: the failure-mode library, and the checker over it
+internal/gate/      cafe gate: the floors gate.yml derives from the tree, and the writer that sets them
 internal/gen/       cafe gen: the pure generator, and the drift gate that keeps it honest
 internal/scaffold/  cafe new and cafe init: the template catalog, the render, the write
 internal/lock/      cafe lock: the pin over specs, vendored schemas and generated output, and its verifier
@@ -705,7 +706,12 @@ install, only by a newer one. `internal/lock` holds to it for a second reason: t
 failure it exists to catch is two processes disagreeing about a vendored schema
 or a generated client, and a verifier that cannot be rebuilt from a release
 tarball with nothing but a standard library is a verifier nobody can run in the
-one place a tarball gets checked. `internal/cve` is the exception that proves the paragraph, in the other direction:
+one place a tarball gets checked. `internal/gate` holds to it for a reason of its
+own: its whole job is to be the one place two numbers cannot disagree — the
+ratchet's `declared` count and the writer's suite floor are the same count — and
+a dependency that changed what "a test" is would move a floor silently. It is the
+standard library and nothing else, and it imports nothing else in this tree.
+`internal/cve` is the exception that proves the paragraph, in the other direction:
 it holds to no-dependency for the reason the paragraphs above give for the
 reclamation path, and for one of its own — the advisory source is `net/http` and
 `encoding/json`, so the scan that answers "what on my box has a known advisory"

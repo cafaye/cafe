@@ -77,6 +77,7 @@ func Commands() []*Command {
 		newDoctorCommand(),
 		newEnvCommand(),
 		newFailureCommand(failureDeps{}),
+		newGateCommand(gateDeps{}),
 		newGenCommand(),
 		newInitCommand(),
 		newLockCommand(),

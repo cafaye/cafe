@@ -1,7 +1,6 @@
 package secret
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,10 +38,11 @@ func TestEveryEntryHasAClassAReasonAndACitation(t *testing.T) {
 			if strings.TrimSpace(e.Source) == "" {
 				t.Error("no source: a reason with no citation is an opinion nobody can check")
 			}
-			// The citation has to name a file and a line, because "see the
-			// runbook" is not a citation.
-			if !strings.Contains(e.Source, ".md:") && !strings.Contains(e.Source, ".sh:") {
-				t.Errorf("source = %q, want a file:line citation", e.Source)
+			// The citation has to name a file and the content it is about,
+			// because "see the runbook" is not a citation and neither is a
+			// line range that has to be re-counted when the file moves.
+			if _, err := parseSource(e.Source); err != nil {
+				t.Errorf("source = %q: %v", e.Source, err)
 			}
 			switch e.Provenance {
 			case Generated, Minted, External, Derived, Configuration:
@@ -250,16 +250,22 @@ func TestDueIsAFunctionOfTheStateAndTheClock(t *testing.T) {
 	}
 }
 
-// Every citation names a fleet file and a line range, and this walks them so a
-// citation that drifts is caught here rather than by an operator who follows it
-// and finds the wrong sentence. The files are not in this repository — doc.go
-// says why — so the walk skips silently when the fleet is not checked out
-// beside this one, which is the ordinary case on a CI runner and the reason
-// this is a walk rather than a fetch.
+// Every citation names a fleet file and the content it is about, and this walks
+// them so a citation whose content is GONE is caught here rather than by an
+// operator who follows it and finds the wrong sentence. The files are not in
+// this repository — doc.go says why — so the walk skips when the fleet is not
+// checked out beside this one, which is the ordinary case on a CI runner and the
+// reason this is a walk rather than a fetch.
+//
+// A citation that has MOVED is not a failure: the anchor is searched for and the
+// line it lands on is logged as derived output. That is the whole point of the
+// content form — kit shifts install.sh by a hundred lines and this stays green.
 func TestEveryCitationPointsAtSomething(t *testing.T) {
 	roots := []string{
 		os.Getenv("HOME") + "/Code/any/moon",
-		"../../moon",
+		// The fleet checkout beside this worktree, resolved without HOME so the
+		// check also runs on a machine whose layout differs.
+		"../../../..",
 	}
 	var root string
 	for _, candidate := range roots {
@@ -272,98 +278,41 @@ func TestEveryCitationPointsAtSomething(t *testing.T) {
 		t.Skip("the fleet is not checked out beside this worktree; the citations are checkable by hand")
 	}
 
-	// install.sh line ranges, keyed by the citation string the table uses.
-	// c3 substrate packets shifted the file by ~240 lines; these were
-	// re-measured against the sibling checkout at cafaye/kit.
-	ranges := map[string][2]int{
-		"cafaye/kit/templates/substrate/install.sh:1324-1330": {1324, 1330},
-		"cafaye/kit/templates/substrate/install.sh:1334-1340": {1334, 1340},
-		"cafaye/kit/templates/substrate/install.sh:1344-1349": {1344, 1349},
-		"cafaye/kit/templates/substrate/install.sh:1348-1352": {1348, 1352},
-		"cafaye/kit/templates/substrate/install.sh:1481-1491": {1481, 1491},
-		"cafaye/kit/templates/substrate/install.sh:1499-1502": {1499, 1502},
-		"cafaye/kit/templates/substrate/install.sh:1510-1514": {1510, 1514},
-		"cafaye/kit/templates/substrate/install.sh:1475-1481": {1475, 1481},
-		"cafaye/kit/templates/substrate/install.sh:1182-1188": {1182, 1188},
-		"cafaye/kit/templates/substrate/install.sh:1127-1142": {1127, 1142},
-	}
-	installer := filepath.Join(root, ranges0Path(ranges))
-	if !fileReadable(installer) {
-		t.Skipf("the fleet's install.sh is not at %s", installer)
-	}
-	installerLines := fileLines(t, installer)
-	for citation, span := range ranges {
-		lo, hi := span[0], span[1]
-		if hi > len(installerLines) {
-			t.Errorf("%s ends past the end of install.sh (%d lines)", citation, len(installerLines))
+	checked := 0
+	for _, e := range Inventory() {
+		cites, err := parseSource(e.Source)
+		if err != nil {
+			t.Errorf("%s: %v", e.Name, err)
 			continue
 		}
-		block := strings.ToLower(strings.Join(installerLines[lo-1:hi], "\n"))
-		if !strings.Contains(block, "secret") && !strings.Contains(block, "password") {
-			t.Errorf("%s does not mention a secret or a password:\n%s", citation, block)
+		for _, c := range cites {
+			path := filepath.Join(root, c.Path)
+			if !fileReadable(path) {
+				// A file this checkout does not carry (moon/CAFAYE-OPS.md, or a
+				// repository not checked out beside this one). Not a failure:
+				// the citation is checkable where that repository is.
+				t.Logf("%s: %s is not checked out under %s; not checked", e.Name, c.Path, root)
+				continue
+			}
+			lines := fileLines(t, path)
+			at, ok := resolveCitation(lines, c.Anchor)
+			if !ok {
+				t.Errorf("%s: the citation %s no longer appears in %s. The statement the reason rests on is "+
+					"gone — deleted or reworded — so the reason now cites nothing. Looked for %q on every "+
+					"line of the file", e.Name, c, c.Path, c.Anchor)
+				continue
+			}
+			// The line number is derived output, never the stored form: it is
+			// here so a reader can follow the citation, not so the table can be
+			// re-counted when kit moves.
+			t.Logf("%s: %s:%d %q", e.Name, c.Path, at, c.Anchor)
+			checked++
 		}
 	}
-
-	// The runbook line citations, one by one, each named by a word that has to
-	// be on the line it claims.
-	lineWords := map[string]string{
-		filepath.Join(root, "cafaye/identity/README.md:299"):       "SIGNUP_SIGNING_KEY",
-		filepath.Join(root, "cafaye/identity/README.md:310"):       "OAUTH_ENCRYPTION_KEY",
-		filepath.Join(root, "cafaye/identity/README.md:356"):       "expires one hour",
-		filepath.Join(root, "cafaye/identity/README.md:1348"):      "One key",
-		filepath.Join(root, "cafaye/muse/README.md:332-333"):       "per request",
-		filepath.Join(root, "cafaye/identity/README.md:1035-1039"): "MFA_ENCRYPTION_KEY",
+	if checked == 0 {
+		t.Fatal("no citation could be checked, so this test proved nothing. Either the fleet root is wrong " +
+			"or every citation names a file this checkout does not carry")
 	}
-	for citation, want := range lineWords {
-		path, span, ok := splitRange(citation)
-		if !ok {
-			continue
-		}
-		if !fileReadable(path) {
-			continue
-		}
-		lines := fileLines(t, path)
-		if span[1] > len(lines) {
-			t.Errorf("%s ends past the end of the file (%d lines)", citation, len(lines))
-			continue
-		}
-		block := strings.Join(lines[span[0]-1:span[1]], "\n")
-		if !strings.Contains(block, want) {
-			t.Errorf("%s does not contain %q", citation, want)
-		}
-	}
-}
-
-// The path install.sh lives at under every root, taken once so the two halves
-// above agree.
-func ranges0Path(ranges map[string][2]int) string {
-	for citation := range ranges {
-		if path, _, ok := splitRange(citation); ok {
-			return path
-		}
-	}
-	return ""
-}
-
-// splitRange splits a "path:lo-hi" or "path:lo" citation.
-func splitRange(citation string) (string, [2]int, bool) {
-	i := strings.LastIndex(citation, ":")
-	if i < 0 {
-		return "", [2]int{}, false
-	}
-	path, span := citation[:i], citation[i+1:]
-	var lo, hi int
-	if strings.Contains(span, "-") {
-		if _, err := fmt.Sscanf(span, "%d-%d", &lo, &hi); err != nil {
-			return "", [2]int{}, false
-		}
-	} else {
-		if _, err := fmt.Sscanf(span, "%d", &lo); err != nil {
-			return "", [2]int{}, false
-		}
-		hi = lo
-	}
-	return path, [2]int{lo, hi}, true
 }
 
 func fileReadable(path string) bool {

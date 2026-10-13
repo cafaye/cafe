@@ -103,6 +103,7 @@ a run in which they passed.
 | `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to box — the agent never sees the value | **works** |
 | `cafe provider status --json` | which providers this box is connected to, as box reports it; opens no envelope | **works** |
 | `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the eleven documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
+| `cafe gate floors [--write] [path]` | derive `gate.yml`'s countable floors from the tree — print the delta, or with `--write` set them and re-pin `caf.lock` | **works** |
 | `cafe gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
 | `cafe gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
 | `cafe lock <path>` | pin this tree's specs, vendored schemas and generated clients in `caf.lock` | **works** |

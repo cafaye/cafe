@@ -86,77 +86,36 @@ gate:
     # not colourise when its output is not a terminal anyway.
     - id: packages
       match: '^cafe: ([0-9]+) packages, [0-9]+ top-level passes, [0-9]+ subtest passes, 0 failures, [0-9]+ skips$'
-      # 32, measured with `go list ./...` on this tree. 29 stood until the
-      # roll/box wave finished landing; this packet added no package of its
-      # own, and the three that arrived are counted by their own rows.
-      # The security and substance packages are pinned by name and existence:
-      # emitter, box, boxd, agent, provider, run, resolve, scaffold, publish.
-      minimum: 32
+      # How many packages `go list ./...` reports. A floor, so a package deleted
+      # without a deliberate decision is caught here. DERIVED, never hand-edited:
+      # `cafe gate floors --write` sets it and re-pins `caf.lock`.
+      minimum: 33
     - id: suite
       match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
-      # 1362, measured with `./bin/prime` on this tree (32 packages, 1247 subtests, 8 skips).
-      # 1358 stood until roll/c3-enroll-stdin, which added FOUR top-level tests
-      # and no subtests of its own to the suite floor — the two subtests in the
-      # empty-pipe table are counted by the row below. The four are the packet's
-      # proof and they are the reason the number moved:
+      # How many top-level tests RAN — passed or failed, not skipped. The ratchet
+      # identity is `declared - minimum == 8`, held exactly by `internal/ci`'s
+      # TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave: a floor below the
+      # tree's count is red, and a test deleted without the floor following it
+      # down is red.
       #
-      #   `cafe box enroll --token -` reads the capability off the command's
-      #   stdin and the value that reaches the control plane is that
-      #   capability, not the literal dash,
-      #   a dash whose pipe is empty is a USAGE error (exit 2, nothing
-      #   attempted) rather than an enrollment from a blank,
-      #   a token named by the flag never opens the stream,
-      #   the pipe the SETUP side writes carries the capability and nothing
-      #   else, which is where readSetupToken's own trim is observable.
-      #
-      # The earlier moves are named above and stay named: roll/setup-arch added
-      # SIX top-level tests to internal/setup and no subtests — which is why that
-      # floor moved and the one below did not:
-      #
-      #   the arch mismatch (refusal, named build command, nothing written),
-      #   the sibling case (a cross-built cafe-linux-<arch> is shipped),
-      #   the NEGATIVE CONTROL over it (a sibling named for the host but built
-      #   for another machine is not),
-      #   the same-arch case (the running binary ships, unchanged),
-      #   the executable probe (a file the host's kernel cannot run reads as
-      #   ABSENT, not "a different version"),
-      #   the unknown-uname case (the host's own words are quoted).
-      #
-      # roll/box-edge added 11 top-level tests and no subtests; roll/box-ops-verify
-      # and roll/box-deploy added the ops-half and stack tables. The two numbers
-      # measure different things and a packet that moved one without the other
-      # is a packet that was counted, not rounded.
-      #
-      # ONE more, from roll/c3-rename-cafe, which added exactly one top-level
-      # test and no subtests: TestTheIdentityDocumentsKeyIsBoxURL in
-      # internal/setup. It pins the one field that rename changed which is a
-      # contract and not a spelling — the `box_url` key in the daemon's identity
-      # document — in both directions, because the fixtures it replaced were
-      # symmetric and a tag renamed on one side of the seam and not the other
-      # is a difference no symmetric test can see. It was watched red on a
-      # reverted tag before it was landed.
-      # 1363: the merged tree carries both packets' tests — rename-cafe's one
-      # and enroll-stdin's four — and the floor follows the merged measurement
-      # (the floor test's own rule: added tests raise it in the same change).
-      
-      # Resolved at the merge: 1365 is the higher of the two packets' own
-      # measurements and the merged tree carries both sets of tests.
-      # 1370: rebase onto master picked up roll/c3-boxd-identity's five plus
-      # rename-cafe's one and enroll-stdin's four, and the floor follows the
-      # merged measurement (1378 declared - 8 skips = 1370). The mechanical
-      # resolution left 1365, which is five short, and the ratchet names 1370.
-      minimum: 1370
+      # DERIVED, NOT HAND-EDITED. This number is a function of the tree, and
+      # retyping it on every test-adding change is what left a merge one test
+      # short — twice in one day, once in a rebase whose mechanical resolution
+      # kept the lower of two correct numbers. So `cafe gate floors --write`
+      # runs the gate, derives this floor from what it reported, sets it, and
+      # re-pins `caf.lock` in the same run. The delta it prints — "floors moved
+      # 1370→1376, subtests 1248→1250" — is the review signal, so a floor that
+      # moves is visible in the command's output and in the diff, and a floor
+      # that moves DOWN still needs a human to have run the writer and read it.
+      # internal/gate holds the argument in full.
+      minimum: 1376
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
-      # 1247, measured on this tree. 1245 stood until roll/c3-enroll-stdin added
-      # the empty-pipe table's two cases. The floor follows the measurement
-      # rather than the other way round.
-      
-      # Resolved at the merge: 1247 is the higher of the two packets' own
-      # measurements and the merged tree carries both sets of tests.
-      # 1248: the merged tree's subtests are 1248 (enroll-stdin's two), so the
-      # floor follows the measurement.
-      minimum: 1248
+      # How many subtests RAN, by the same derivation and the same writer. It is
+      # a separate floor from the suite's because the two measure different
+      # things: a test folded into a subtest keeps the "any-level" count and
+      # loses the top-level one, and only the suite floor notices.
+      minimum: 1250
 
     - id: live-tier
       match: '^cafe: live tier: [0-9]+ of 7 executed'

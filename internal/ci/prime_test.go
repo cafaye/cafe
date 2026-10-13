@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cafaye/cafe/internal/gate"
 	"github.com/goccy/go-yaml"
 )
 
@@ -254,7 +255,7 @@ func liveTestsInTree(t *testing.T) []liveTest {
 		if entry.IsDir() {
 			// Generated, hidden and fixture trees hold no cafe test source, and
 			// walking them is how a check turns into a slow one.
-			if notASourceTree(entry.Name()) {
+			if gate.NotASourceTree(entry.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -321,7 +322,7 @@ func liveTestsInFile(rel, path string) []liveTest {
 	var found []liveTest
 	for _, decl := range parsed.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || !isTestFunc(fn) {
+		if !ok || !gate.IsTestFunc(fn) {
 			continue
 		}
 		if readsLiveGate(fn, gates) {
@@ -329,37 +330,6 @@ func liveTestsInFile(rel, path string) []liveTest {
 		}
 	}
 	return found
-}
-
-// isTestFunc is a top-level `func TestX(t *testing.T)`.
-//
-// The parameter type is the whole test. A name prefix is not enough, and this
-// file has the counterexample in its own tree: `internal/ports/live_test.go`
-// declares `func TestMain(m *testing.M)`, which reads the live gate so it can
-// clean up after the demonstration, and which the name rule would have counted
-// as a third live test. It is not one. `go test` prints no `--- PASS:` line
-// for it, so counting it would put a floor in `gate.yml` that no run of any
-// gate could ever satisfy — a floor that is not a detector but a wall.
-func isTestFunc(fn *ast.FuncDecl) bool {
-	if fn.Recv != nil || !strings.HasPrefix(fn.Name.Name, "Test") {
-		return false
-	}
-	params := fn.Type.Params
-	if params == nil || len(params.List) != 1 {
-		return false
-	}
-	star, ok := params.List[0].Type.(*ast.StarExpr)
-	if !ok {
-		return false
-	}
-	// `testing.T` is a selector expression, not one identifier: the pointer to
-	// the `T` of the `testing` package.
-	sel, ok := star.X.(*ast.SelectorExpr)
-	if !ok {
-		return false
-	}
-	pkg, ok := sel.X.(*ast.Ident)
-	return ok && pkg.Name == "testing" && sel.Sel.Name == "T"
 }
 
 // readsLiveGate is whether the function's body calls os.Getenv on a CAF_LIVE_*
@@ -461,7 +431,12 @@ type declaration struct {
 // The eight above are not machine-capability skips. They skip in every run of
 // the declared gate, on every machine, by construction. That is the
 // distinction this constant draws.
-const expectedSkips = 8
+//
+// The number itself lives in `internal/gate`, beside the counter the ratchet's
+// left side is measured with and the writer that raises the right side: the
+// writer and this check have to agree about the margin, and two spellings of 8
+// is the second copy this repository forbids.
+const expectedSkips = gate.ExpectedSkips
 
 // suiteProofID is the proof whose `minimum` is the suite's floor. Named in one
 // place so renaming it in gate.yml is a one-line change here that fails loudly,
@@ -610,6 +585,11 @@ func suiteFloor(t *testing.T) int {
 // testFuncsInTree returns how many top-level `func TestX(t *testing.T)` the
 // tree declares.
 //
+// The walk itself lives in `internal/gate`, beside the writer that derives the
+// floor from it: the ratchet's left side (`declared`) and the writer's suite
+// floor have to be the same count, and two walkers would eventually disagree
+// about what a test is. This wrapper only turns the error into a t.Fatal.
+//
 // It is a static count, so it is worth being clear about what it therefore does
 // not prove. It cannot see a test behind a `//go:build` tag that is compiled
 // out on this platform. Today the tagged files in this tree
@@ -620,73 +600,9 @@ func suiteFloor(t *testing.T) int {
 func testFuncsInTree(t *testing.T) int {
 	t.Helper()
 
-	root := repoRoot(t)
-	declared := 0
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			if notASourceTree(entry.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		declared += testFuncsInFile(path)
-		return nil
-	})
+	declared, err := gate.CountTestFuncs(repoRoot(t))
 	if err != nil {
-		t.Fatalf("walk the tree for test functions: %v", err)
-	}
-	return declared
-}
-
-// notASourceTree is whether a directory holds no cafe test source, whatever it is
-// called.
-//
-// `testdata` is here because the go toolchain excludes it from every package, and
-// that is not a convention this file is free to ignore. It stopped being
-// theoretical when `internal/gen` began keeping its drift gate's goldens there as
-// real Go files: the golden `telemetry_test.go` declares twelve top-level tests,
-// `go test` runs none of them because they are not part of any package, and this
-// walker's count came out twelve above the gate's.
-//
-// The ratchet is what caught it. `TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave`
-// reported twenty-one skips where `expectedSkips` says eight, which is a number
-// nobody could account for — and the fix belongs in this walker's idea of what a
-// test is, not in `expectedSkips`. Raising the floor to match a count that
-// includes tests `go test` never runs would have been the exact "edit the assertion
-// to make it green" that the ratchet's own comment forbids.
-//
-// The other four names are unchanged from the first version of this file and are
-// for the ordinary reasons: version control, two package managers' dependency
-// trees, and a vendored build.
-func notASourceTree(name string) bool {
-	switch name {
-	case ".git", "node_modules", "dist", "vendor", "testdata":
-		return true
-	}
-	return false
-}
-
-// testFuncsInFile counts the test functions in one file. An unparseable file is
-// a compile error that the gate reports far more loudly than this could, and
-// counting it would send the reader after a ratchet problem that does not
-// exist — so it counts as none.
-func testFuncsInFile(path string) int {
-	fset := token.NewFileSet()
-	parsed, err := parser.ParseFile(fset, path, nil, 0)
-	if err != nil {
-		return 0
-	}
-	declared := 0
-	for _, decl := range parsed.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok && isTestFunc(fn) {
-			declared++
-		}
+		t.Fatalf("count the tree's top-level test functions: %v", err)
 	}
 	return declared
 }

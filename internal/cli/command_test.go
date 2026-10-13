@@ -22,6 +22,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 		"doctor",
 		"env",
 		"failure",
+		"gate",
 		"gen",
 		"init",
 		"lock",
