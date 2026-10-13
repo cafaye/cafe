@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -100,6 +101,27 @@ func runBoxCLI(t *testing.T, deps boxDeps, args ...string) (code int, stdout, st
 	env := &Env{Stdout: &out, Stderr: &errOut, Version: testVersion, Context: context.Background()}
 	err := newBoxCommand(deps).Execute(env, args)
 	return codeFor(*env, err), out.String(), errOut.String()
+}
+
+// runBoxCLIStdin is runBoxCLI with a stream the test can hand a value on. It is
+// a second helper rather than a parameter on the first because the commands that
+// read a stream are the exception, and a reader every invocation had to fill in
+// would end up empty in most of them — and empty is a refusal.
+func runBoxCLIStdin(t *testing.T, deps boxDeps, stdin io.Reader, args ...string) (code int, stdout, stderr string) {
+	t.Helper()
+	var out, errOut bytes.Buffer
+	env := &Env{Stdout: &out, Stderr: &errOut, Stdin: stdin, Version: testVersion, Context: context.Background()}
+	err := newBoxCommand(deps).Execute(env, args)
+	return codeFor(*env, err), out.String(), errOut.String()
+}
+
+// explodingReader fails the test if it is read. It is the guard that a command
+// given what it needs another way never opens the stream.
+type explodingReader struct{ t *testing.T }
+
+func (r *explodingReader) Read([]byte) (int, error) {
+	r.t.Error("the command read stdin when it was given what it needed another way")
+	return 0, io.EOF
 }
 
 // enrollResult decodes the document an enroll wrote, so an assertion is made
@@ -251,6 +273,87 @@ func TestBoxEnrollRecoversFromAnInterruptedSequence(t *testing.T) {
 	}
 	if _, err := store.Ring.Get(box.KeyringService, box.KeyringAccountPending); !errors.Is(err, box.ErrNotFound) {
 		t.Error("the pending keypair was not cleared, so a later enrollment would reuse it")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// the capability on a pipe
+// ---------------------------------------------------------------------------
+
+// `cafe box enroll --token -` reads the capability off the command's stdin.
+//
+// This is the command `cafe box setup` runs ON THE HOST, over SSH: the plan's
+// enroll step is `/usr/local/bin/cafe box enroll --token - --box <url>` with the
+// capability on the pipe and nowhere else. Measured on the Contabo box, the
+// host's enroll answered box's redeem lookup for sha256("-") — the literal dash
+// went out AS the capability, box answered 404, and setup failed at
+// box-enrolled. b67f561's commit message said the stdin read was there; its diff
+// did not contain it, which is the whole reason this test exists.
+func TestBoxEnrollReadsTheCapabilityFromStdinAtDash(t *testing.T) {
+	deps, cp, _ := boxTestEnv(t)
+
+	// A pipe delivers whatever the transport left on the end of it, so the
+	// capability here carries surrounding whitespace the way a real one does.
+	code, stdout, stderr := runBoxCLIStdin(t, deps,
+		strings.NewReader("\n  "+boxTestToken+"\t\n"),
+		"enroll", "--token", "-", "--box", "https://box.test")
+	if code != 0 {
+		t.Fatalf("enroll --token - exited %d (stderr: %s)", code, stderr)
+	}
+	if cp.calls != 1 {
+		t.Fatalf("the control plane was called %d times, want 1", cp.calls)
+	}
+	if len(cp.tokens) != 1 {
+		t.Fatalf("the control plane was presented %v, want one capability", cp.tokens)
+	}
+	if cp.tokens[0] != boxTestToken {
+		t.Fatalf("the capability presented = %q, want the token from stdin (%q)", cp.tokens[0], boxTestToken)
+	}
+	// The document is still the enroll document, on stdout, with the private key
+	// nowhere in either stream.
+	if got := enrollResult(t, stdout); got.Identity == nil || got.Identity.BoxID != fakeBoxInstallation().BoxID {
+		t.Errorf("the enroll document's identity = %+v, want the enrolled box", got.Identity)
+	}
+}
+
+// A dash whose pipe is empty is a USAGE mistake rather than a failure: the
+// command was handed a stream with nothing on it, so nothing was attempted, and
+// exit 2 says so — which is also what tells this apart from the store's own
+// refusal of a blank token, which would be exit 1.
+func TestBoxEnrollWithAnEmptyPipeIsAUsageError(t *testing.T) {
+	for name, stdin := range map[string]string{"empty": "", "blank lines": "  \n\t\n"} {
+		t.Run(name, func(t *testing.T) {
+			// A fresh directory per case: the first case must not leave an
+			// enrolled box behind that would let the second answer
+			// "already enrolled" instead of reporting the pipe.
+			deps, cp, _ := boxTestEnv(t)
+			code, _, stderr := runBoxCLIStdin(t, deps, strings.NewReader(stdin),
+				"enroll", "--token", "-", "--box", "https://box.test")
+			if code != exitUsage {
+				t.Errorf("enroll --token - with %s exited %d, want %d (stderr: %s)", name, code, exitUsage, stderr)
+			}
+			if !strings.Contains(stderr, "--token") {
+				t.Errorf("stderr = %q, want it to name --token", stderr)
+			}
+			if cp.calls != 0 {
+				t.Errorf("the control plane was called %d times with no capability", cp.calls)
+			}
+		})
+	}
+}
+
+// A token named by the flag is read from the flag, and stdin is not touched: a
+// command that opens a stream nobody asked it to read blocks forever on a
+// terminal, which is the failure this reader turns into a test failure.
+func TestBoxEnrollWithAFlagTokenDoesNotReadStdin(t *testing.T) {
+	deps, cp, _ := boxTestEnv(t)
+	code, _, stderr := runBoxCLIStdin(t, deps, &explodingReader{t: t},
+		"enroll", "--token", boxTestToken, "--box", "https://box.test")
+	if code != 0 {
+		t.Fatalf("enroll --token <value> exited %d (stderr: %s)", code, stderr)
+	}
+	if len(cp.tokens) != 1 || cp.tokens[0] != boxTestToken {
+		t.Errorf("the control plane was presented %v, want the flag's token", cp.tokens)
 	}
 }
 
