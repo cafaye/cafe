@@ -138,12 +138,18 @@ gate:
       # 1363: the merged tree carries both packets' tests — rename-cafe's one
       # and enroll-stdin's four — and the floor follows the merged measurement
       # (the floor test's own rule: added tests raise it in the same change).
-      minimum: 1363
+      
+      # Resolved at the merge: 1365 is the higher of the two packets' own
+      # measurements and the merged tree carries both sets of tests.
+      minimum: 1365
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # 1247, measured on this tree. 1245 stood until roll/c3-enroll-stdin added
       # the empty-pipe table's two cases. The floor follows the measurement
       # rather than the other way round.
+      
+      # Resolved at the merge: 1247 is the higher of the two packets' own
+      # measurements and the merged tree carries both sets of tests.
       minimum: 1247
 
     - id: live-tier
