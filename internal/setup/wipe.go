@@ -90,22 +90,73 @@ const (
 	SSHAuthorizedKeys = "/root/.ssh"
 )
 
-// The k3s paths, from a live box: the binary and its symlink, the three helper
-// scripts the installer writes, and the four directories it creates. The
-// kernel's own `kubepods-*.slice` units are transient and are gone with k3s;
-// nothing here names them.
+// The k3s paths, from a live box: the binary, the three helper scripts the
+// installer writes, and the four directories it creates. The kernel's own
+// `kubepods-*.slice` units are transient and are gone with k3s; nothing here
+// names them.
+//
+// `/usr/local/bin/kubectl` is DELIBERATELY ABSENT. It is a name every cluster
+// tool writes into, and a wipe that removed it would be removing a tool it did
+// not install — the same category as the operator's SSH keys. k3s's own killall
+// script knows whether it created that symlink and removes it if it did, so the
+// uninstall scripts run first and the explicit list stops at names that belong
+// to exactly one product.
 const (
 	k3sBinary         = "/usr/local/bin/k3s"
-	k3sKubectl        = "/usr/local/bin/kubectl"
 	k3sKillall        = "/usr/local/bin/k3s-killall.sh"
 	k3sUninstall      = "/usr/local/bin/k3s-uninstall.sh"
 	k3sAgentUninstall = "/usr/local/bin/k3s-agent-uninstall.sh"
+
+	// RancherEtcDir is k3s's configuration (the cluster's kubeconfig) and
+	// RancherLibDir is its data store. The uninstall script removes
+	// `/var/lib/rancher/k3s` and leaves the directory above it, which is why
+	// the wipe names the directory too.
+	RancherEtcDir = "/etc/rancher"
+	RancherLibDir = "/var/lib/rancher"
+	// KubeletDir is the node's own runtime state.
+	KubeletDir = "/var/lib/kubelet"
+	// KubeConfigDir is root's kubectl configuration, which k3s writes on its
+	// first start. It is k3s's own file, not the operator's: the operator's
+	// credentials live under SSHAuthorizedKeys.
+	KubeConfigDir = "/root/.kube"
+
+	// DockerDataDir and ContainerdDataDir are the container runtime's state,
+	// DockerEtcDir its configuration, and DockerSourceList the apt source the
+	// convenience script wrote — so a host cannot reinstall Docker from a stale
+	// entry after a wipe.
+	DockerDataDir     = "/var/lib/docker"
+	ContainerdDataDir = "/var/lib/containerd"
+	DockerEtcDir      = "/etc/docker"
+	DockerSourceList  = "/etc/apt/sources.list.d/docker.list"
 )
 
 // wipeKeptPaths is what the wipe deliberately does not remove, and the help
 // says so in as many words. It is a variable rather than a constant so the
 // result can copy it without a caller reaching into a package-level slice.
 var wipeKeptPaths = []string{SSHAuthorizedKeys, CafayeReleases}
+
+// wipeRemovablePaths is the CLOSED SET of paths any destructive command in this
+// package is allowed to name. It is the answer to "how do you know the wipe
+// never touched anything else": a test walks every apply command, takes the
+// arguments of every `rm`, and asserts each one is in this list — so a step
+// added later with a path of its own cannot quietly widen the blast radius
+// without also widening the list the test reads.
+//
+// It is a function rather than a variable so a caller cannot append to it, and
+// so every path in it is spelled by a constant above rather than by a second
+// copy of the table.
+func wipeRemovablePaths() []string {
+	return []string{
+		// cafaye's own: the binary, the unit, and the three state directories.
+		CafeBinPath, UnitPath, EtcCafeDir, EnrolledDir, KitStatePath,
+		CafayeBinDir, CafayeSubstrate, CafayeEdge,
+		// k3s's, and only the paths named for k3s.
+		k3sBinary, k3sKillall, k3sUninstall, k3sAgentUninstall,
+		RancherEtcDir, RancherLibDir, KubeletDir, KubeConfigDir,
+		// Docker's.
+		DockerDataDir, ContainerdDataDir, DockerEtcDir, DockerSourceList,
+	}
+}
 
 // WipeOptions is one `cafe box wipe`. It is a struct of parameters for the
 // reason Setup's is: a test hands the command a host it owns, and nothing else
@@ -120,9 +171,15 @@ type WipeOptions struct {
 	// run, exactly as setup's do.
 	DryRun bool
 	// Confirm is asked once, AFTER the read-only probes and BEFORE the first
-	// removal, and only when this is not a dry run. Nil means "already
-	// confirmed" — a library caller that has asked already, or one that means
-	// it. The CLI always supplies one; `--yes` supplies one that returns true.
+	// removal, and only when this is not a dry run. NIL MEANS NO CONFIRMATION
+	// WAS GIVEN, and the run then refuses: a WIPE with no gate is the shape of
+	// the hand-rolled script this command exists to replace, and a library
+	// default that destroyed a host because nobody passed a callback would be
+	// the same defect with a Go signature on it.
+	//
+	// The CLI always supplies one. `--yes` supplies one that answers true, and
+	// an interactive run supplies one that asks on stdin — the same gate either
+	// way, so a pipeline and a person walk the same table.
 	//
 	// It is here rather than in the CLI because the probes are what tell a box
 	// from a stranger's machine, and a prompt that appeared before the
@@ -177,7 +234,10 @@ func (r WipeResult) FailedStep() string {
 //  1. PROBE. Can this operator get root, and is this a box cafe set up? Both
 //     are read-only, which is why a dry run may run them, and the second is the
 //     refusal that keeps a stranger's k3s safe.
-//  2. CONFIRM. Once, naming what will be removed and what will be kept.
+//  2. CONFIRM. Once, naming what will be removed and what will be kept. A run
+//     with no confirmation gate is refused rather than trusted: a WIPE is the
+//     hand-rolled SSH script this command replaces, and the difference between
+//     the two is that this one will not run without being asked.
 //  3. WALK. The table, in order. Every step checks first; a check that passes
 //     runs nothing, which is what makes a second wipe a no-op.
 func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
@@ -200,22 +260,24 @@ func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
 	// artifacts is refused here, before the confirmation and before any
 	// removal, because the alternative is uninstalling a k3s this command did
 	// not install.
-	isBox, err := probeBoxFingerprint(ctx, o.Host)
+	found, err := probeBoxFingerprint(ctx, o.Host)
 	if err != nil {
 		return result, fmt.Errorf("cafe box wipe %s: %w", o.Name, err)
 	}
-	if !isBox {
+	if len(found) == 0 {
 		row := wipeFingerprintRow()
 		return refuseWipe(result, row, row.Refusal)
 	}
+	// The two probes, in the plan's order so the document a dry run prints and
+	// the document a real run prints line up row for row.
 	result.Steps = append(result.Steps,
 		StepResult{Name: StepWipeFingerprint, Title: wipeFingerprintRow().Title,
-			Action: ActionAlreadyDone, Detail: "this host holds cafaye's own artifacts; it is a box cafe set up"},
+			Action: ActionAlreadyDone, Detail: "cafaye's own artifacts on this host: " + strings.Join(found, ", ")},
 		StepResult{Name: StepSuperuser, Title: superuserRow().Title,
 			Action: ActionAlreadyDone, Detail: "this operator can remove root-owned state; got root with " + sudoOrRoot(sudo)},
 	)
 	result.Log = append(result.Log, "cafe box wipe "+o.Name+": root is "+sudoOrRoot(sudo))
-	result.Log = append(result.Log, "  "+StepWipeFingerprint+": this is a box cafe set up")
+	result.Log = append(result.Log, "  "+StepWipeFingerprint+": this is a box cafe set up: "+strings.Join(found, ", "))
 
 	steps := wipePlan(sudo)
 	if o.DryRun {
@@ -224,15 +286,19 @@ func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
 
 	// Phase 2. Confirm, once, now that the plan is known to be a plan for a
 	// box rather than for a stranger's machine.
-	if o.Confirm != nil {
-		ok, err := o.Confirm("cafe box wipe " + o.Name + ": remove cafaye's state, k3s and Docker" +
-			" (keeping " + strings.Join(wipeKeptPaths, ", ") + ")? [y/N] ")
-		if err != nil {
-			return result, err
-		}
-		if !ok {
-			return wipeDryRun(result, steps), ErrWipeDeclined
-		}
+	if o.Confirm == nil {
+		// No gate, no wipe. The sentinel is the same one a "no" answers with
+		// because the operator's response is not the interesting difference:
+		// in both cases nothing was removed.
+		result.Log = append(result.Log, "cafe box wipe "+o.Name+": nothing was removed; no confirmation was given")
+		return wipeDryRun(result, steps), ErrWipeDeclined
+	}
+	ok, err := o.Confirm(wipePrompt(o.Name, steps))
+	if err != nil {
+		return result, err
+	}
+	if !ok {
+		return wipeDryRun(result, steps), ErrWipeDeclined
 	}
 
 	// Phase 3. The walk. A refusal stops the run: the steps after a failed one
@@ -263,6 +329,24 @@ func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
 		if !applied.OK() {
 			return refuseWipe(result, step, "the removal failed:\n"+clip(applied.Stderr+applied.Stdout, 10))
 		}
+		// The step's own question, asked again. `rm -f` exits 0 on a path it
+		// could not remove, and `apt-get purge` exits 0 on a package that was
+		// never there, so an exit status is the command's OPINION about what
+		// happened. The check is the host's state, and it is the only authority
+		// that can say the artifact is gone. A removal that reported success
+		// and left the thing in place is the failure this catches, and it is
+		// the reason a second wipe is an honest no-op rather than a run of
+		// commands that were always going to be skipped.
+		again, err := o.Host.Run(ctx, step.Check, nil)
+		if err != nil {
+			return refuseWipe(result, step, "removed, but could not ask the host again: "+err.Error())
+		}
+		if !again.OK() {
+			// The check SUCCEEDS when the artifact is gone, so a check that
+			// still fails means the removal did not happen.
+			return refuseWipe(result, step, "the removal reported success and the artifact is still there:\n"+
+				clip(again.Stdout+again.Stderr, 10))
+		}
 		result.Steps = append(result.Steps, StepResult{
 			Name: step.Name, Title: step.Title, Action: ActionApplied,
 			Detail: "the host had this; cafe removed it",
@@ -270,6 +354,21 @@ func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
 		result.Log = append(result.Log, "  "+step.Name+": removed")
 	}
 	return result, nil
+}
+
+// wipePrompt is the sentence the operator is asked to answer. It names every
+// path the wipe will remove and every path it will keep, because a prompt that
+// says "remove this host?" is a prompt people approve without reading — and the
+// one thing an operator must not approve unread is the half that deletes a
+// cluster.
+//
+// The paths are the plan's own constants rather than a sentence written beside
+// them, so a step added to the table with a path of its own shows up in the
+// question it changed.
+func wipePrompt(name string, steps []Step) string {
+	return "cafe box wipe " + name + ": remove cafaye's own artifacts, k3s and Docker with their data " +
+		"(" + strings.Join(wipeRemovablePaths(), ", ") + ") " +
+		"— keeping " + strings.Join(wipeKeptPaths, ", ") + " and everything cafaye did not create. Remove? [y/N] "
 }
 
 // wipeFingerprintRow is the first read-only question: is this a box cafe set
@@ -359,13 +458,20 @@ func wipePlan(sudo string) []Step {
 	}
 }
 
-// wipeFingerprintProbe answers "is this a box cafe set up?". It is a pure read
-// of the filesystem and it counts EVERY artifact the wipe would remove plus the
-// releases directory it keeps: a box whose only remaining cafaye artifact is
-// its release history is still a box, which is what makes the second wipe of an
-// already-wiped host an idempotent no-op rather than a refusal.
-const wipeFingerprintProbe = `if [ -x ` + CafeBinPath + ` ] || [ -d ` + EtcCafeDir + ` ] || [ -d ` + EnrolledDir +
-	` ] || [ -d ` + KitStatePath + ` ] || [ -d ` + CafayeStateDir + ` ]; then echo box; else echo bare; fi`
+// wipeFingerprintProbe answers "is this a box cafe set up?" by PRINTING every
+// cafaye artifact it finds, one path per line, and nothing when there are none.
+// It counts the artifacts the wipe would remove plus the releases directory it
+// keeps: a box whose only remaining cafaye artifact is its release history is
+// still a box, which is what makes the second wipe of an already-wiped host an
+// idempotent no-op rather than a refusal.
+//
+// It prints the paths rather than a yes/no because the fingerprint row reports
+// them: "not a box" is a better sentence when it can also say "and I looked for
+// exactly these five things". The leading comment is a marker the CLI-level
+// simulator matches on, so the two cannot drift onto different commands.
+const wipeFingerprintProbe = `# cafe-box-wipe-fingerprint
+for p in ` + CafeBinPath + ` ` + EtcCafeDir + ` ` + EnrolledDir + ` ` + KitStatePath + ` ` + CafayeStateDir + `; do [ -e "$p" ] && echo "$p"; done
+true`
 
 // The destructive steps. The check succeeds when the thing is ALREADY gone, so
 // the walk's "a passing check runs nothing" rule reads the same way it does in
@@ -385,35 +491,57 @@ const (
 	wipeStateApply = `rm -rf -- ` + EtcCafeDir + ` ` + EnrolledDir + ` ` + KitStatePath + ` ` +
 		CafayeBinDir + ` ` + CafayeSubstrate + ` ` + CafayeEdge
 
-	wipeK3sCheck = `test ! -e ` + k3sBinary + ` && test ! -e /etc/rancher && test ! -e /var/lib/rancher && test ! -e /var/lib/kubelet`
+	// The k3s check asks whether k3s is present at all, and it deliberately
+	// does NOT ask about `~/.kube`: a stray kubeconfig on a host with no k3s is
+	// the operator's own file, and a check that named it would make a host
+	// whose only leftover is one config file look like a host with a cluster on
+	// it. When k3s IS present its kubeconfig goes with it.
+	wipeK3sCheck = `test ! -e ` + k3sBinary + ` && test ! -e ` + RancherEtcDir +
+		` && test ! -e ` + RancherLibDir + ` && test ! -e ` + KubeletDir
+	// The installer's own uninstall script first — it knows about the service
+	// units, the data store and the CNI that the directories alone do not —
+	// then the directories and the k3s files the installer left in
+	// /usr/local/bin. Each script is run only when it is there and executable,
+	// and a failure in one does not stop the removals after it: the guarantee
+	// is that nothing k3s wrote is left, and the step's own re-check answers
+	// for it.
 	wipeK3sApply = `if [ -x ` + k3sUninstall + ` ]; then ` + k3sUninstall + `; fi; ` +
 		`if [ -x ` + k3sAgentUninstall + ` ]; then ` + k3sAgentUninstall + `; fi; ` +
-		`rm -rf -- /etc/rancher /var/lib/rancher /var/lib/kubelet /root/.kube ` +
-		k3sBinary + ` ` + k3sKubectl + ` ` + k3sKillall + ` ` + k3sUninstall + ` ` + k3sAgentUninstall
+		`rm -rf -- ` + RancherEtcDir + ` ` + RancherLibDir + ` ` + KubeletDir + ` ` + KubeConfigDir + ` ` +
+		k3sBinary + ` ` + k3sKillall + ` ` + k3sUninstall + ` ` + k3sAgentUninstall
 
 	// The Docker the setup command installs is the convenience script's, which
 	// is apt on every distribution this command targets; the purge names the
 	// packages that script installs, including the plugins. A `|| true` on
 	// each half is deliberate: the guarantee is the rm that follows, and a
 	// purge that fails because a package was never installed must not stop the
-	// data directories from going.
-	wipeDockerCheck = `! command -v docker >/dev/null 2>&1 && test ! -e /etc/docker && test ! -e /var/lib/docker`
+	// data directories from going. The service stop is first so the daemon is
+	// not writing into the directories as they are removed.
+	wipeDockerCheck = `! command -v docker >/dev/null 2>&1 && test ! -e ` + DockerEtcDir +
+		` && test ! -e ` + DockerDataDir + ` && test ! -e ` + ContainerdDataDir
 	wipeDockerApply = `systemctl disable --now docker docker.socket containerd >/dev/null 2>&1 || true; ` +
 		`if command -v apt-get >/dev/null 2>&1; then ` +
 		`apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-model-plugin >/dev/null 2>&1 || true; ` +
 		`fi; ` +
-		`rm -rf -- /var/lib/docker /var/lib/containerd /etc/docker; ` +
-		`rm -f -- /etc/apt/sources.list.d/docker.list`
+		`rm -rf -- ` + DockerDataDir + ` ` + ContainerdDataDir + ` ` + DockerEtcDir + `; ` +
+		`rm -f -- ` + DockerSourceList
 )
 
 // probeBoxFingerprint asks the host the one question that decides whether the
-// rest of the table is allowed to run.
-func probeBoxFingerprint(ctx context.Context, host Host) (bool, error) {
+// rest of the table is allowed to run, and returns the artifact paths it found.
+// An empty answer is a host that is not a box this command set up.
+func probeBoxFingerprint(ctx context.Context, host Host) ([]string, error) {
 	out, err := host.Run(ctx, wipeFingerprintProbe, nil)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return strings.TrimSpace(out.Stdout) == "box", nil
+	var found []string
+	for _, line := range strings.Split(out.Stdout, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			found = append(found, line)
+		}
+	}
+	return found, nil
 }
 
 // wipeDryRun renders the plan as a result without running any of it, and it is

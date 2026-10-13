@@ -129,6 +129,12 @@ type fakeHost struct {
 	// transportFail makes Run answer with a transport error, which is the one
 	// error the walk must not treat as "the check failed".
 	transportFail bool
+
+	// leaveBinaryBehind makes the binary's removal lie: the apply reports
+	// success and the artifact stays. It is the control over the post-apply
+	// re-check, which is the assertion that a `rm` exiting 0 is not proof that
+	// anything was removed.
+	leaveBinaryBehind bool
 }
 
 type unitState struct {
@@ -171,6 +177,14 @@ func (h *fakeHost) Run(ctx context.Context, command string, stdin []byte) (Outpu
 	h.stdins = append(h.stdins, string(stdin))
 	if h.transportFail {
 		return Output{}, errors.New("ssh: connect to host: connection refused")
+	}
+
+	// The wipe's own commands. They are answered from the same state the setup
+	// branches change, which is what makes the wipe's idempotence proof real:
+	// the second wipe passes its checks because the first wipe removed the
+	// things, and for no other reason.
+	if handled, out := h.runWipe(command); handled {
+		return out, nil
 	}
 
 	// The superuser probe, then which spelling.
@@ -389,6 +403,146 @@ func (h *fakeHost) ran(sub string) int {
 }
 
 func (h *fakeHost) commandCount() int { return len(h.commands) }
+
+// ---------------------------------------------------------------------------
+// the wipe's simulator
+// ---------------------------------------------------------------------------
+
+// runWipe answers the commands `cafe box wipe` runs, against the same state the
+// setup branches change. It reports whether it handled the command, so the
+// setup branches below are reached only by setup's own commands.
+func (h *fakeHost) runWipe(command string) (bool, Output) {
+	switch {
+	case strings.Contains(command, wipeFingerprintProbe):
+		return true, Output{Code: 0, Stdout: strings.Join(h.boxArtifacts(), "\n")}
+
+	case strings.Contains(command, wipeDaemonCheck):
+		if !h.units[UnitName].enabled && !h.units[UnitName].active {
+			return true, Output{Code: 0}
+		}
+		return true, Output{Code: 1}
+
+	case strings.Contains(command, wipeDaemonApply):
+		h.units[UnitName] = unitState{}
+		return true, Output{Code: 0}
+
+	case strings.Contains(command, wipeUnitCheck):
+		if _, ok := h.fs[UnitPath]; !ok {
+			return true, Output{Code: 0}
+		}
+		return true, Output{Code: 1}
+
+	case strings.Contains(command, wipeUnitApply):
+		delete(h.fs, UnitPath)
+		return true, Output{Code: 0}
+
+	case strings.Contains(command, wipeBinaryCheck):
+		if !h.leaveBinaryBehind {
+			if _, ok := h.fs[CafeBinPath]; !ok {
+				return true, Output{Code: 0}
+			}
+		}
+		return true, Output{Code: 1}
+
+	case strings.Contains(command, wipeBinaryApply):
+		if !h.leaveBinaryBehind {
+			delete(h.fs, CafeBinPath)
+		}
+		return true, Output{Code: 0}
+
+	case strings.Contains(command, wipeStateCheck):
+		if !h.anyPrefix(wipeStatePaths()) {
+			return true, Output{Code: 0}
+		}
+		return true, Output{Code: 1}
+
+	case strings.Contains(command, wipeStateApply):
+		h.removePrefixes(wipeStatePaths())
+		return true, Output{Code: 0}
+
+	case strings.Contains(command, wipeK3sCheck):
+		if !h.anyPrefix([]string{k3sBinary, RancherEtcDir, RancherLibDir, KubeletDir}) {
+			return true, Output{Code: 0}
+		}
+		return true, Output{Code: 1}
+
+	case strings.Contains(command, wipeK3sApply):
+		h.removePrefixes([]string{
+			RancherEtcDir, RancherLibDir, KubeletDir, KubeConfigDir,
+			k3sBinary, k3sKillall, k3sUninstall, k3sAgentUninstall,
+		})
+		return true, Output{Code: 0}
+
+	case strings.Contains(command, wipeDockerCheck):
+		if !h.installed["docker"] && !h.anyPrefix([]string{DockerEtcDir, DockerDataDir, ContainerdDataDir}) {
+			return true, Output{Code: 0}
+		}
+		return true, Output{Code: 1}
+
+	case strings.Contains(command, wipeDockerApply):
+		h.installed["docker"] = false
+		h.running = false
+		h.removePrefixes([]string{DockerDataDir, ContainerdDataDir, DockerEtcDir, DockerSourceList})
+		return true, Output{Code: 0}
+	}
+	return false, Output{}
+}
+
+// wipeStatePaths is the state step's own list, read off the plan's constants so
+// the simulator and the command cannot disagree about what the step removes.
+func wipeStatePaths() []string {
+	return []string{EtcCafeDir, EnrolledDir, KitStatePath, CafayeBinDir, CafayeSubstrate, CafayeEdge}
+}
+
+// hasPrefix reports whether any path in the fake filesystem is p or lives under
+// it, which is how a directory answers a `test -d`.
+func (h *fakeHost) hasPrefix(p string) bool {
+	for path := range h.fs {
+		if path == p || strings.HasPrefix(path, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *fakeHost) anyPrefix(paths []string) bool {
+	for _, p := range paths {
+		if h.hasPrefix(p) {
+			return true
+		}
+	}
+	return false
+}
+
+// boxArtifacts is the fingerprint's own question — the artifact paths a box
+// holds — and it includes the releases directory the wipe KEEPS: a box whose
+// only remaining cafaye artifact is its release history is still a box, which
+// is what makes a second wipe of an already-wiped host a no-op rather than a
+// refusal.
+func (h *fakeHost) boxArtifacts() []string {
+	var found []string
+	for _, p := range []string{CafeBinPath, EtcCafeDir, EnrolledDir, KitStatePath, CafayeStateDir} {
+		if h.hasPrefix(p) {
+			found = append(found, p)
+		}
+	}
+	return found
+}
+
+// removePrefixes deletes every path that is p or lives under it. It is
+// deliberately one path at a time rather than a `strings.HasPrefix` sweep: a
+// removal of "/var/lib/cafaye" must not take "/var/lib/cafaye/releases" with
+// it, and the simulator must reproduce that.
+func (h *fakeHost) removePrefixes(paths []string) {
+	for path := range h.fs {
+		for _, p := range paths {
+			if path == p || strings.HasPrefix(path, p+"/") {
+				delete(h.fs, path)
+				break
+			}
+		}
+	}
+}
 
 func firstWord(s string) string {
 	if i := strings.IndexByte(s, ' '); i > 0 {

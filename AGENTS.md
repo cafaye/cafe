@@ -30,8 +30,8 @@ internal/telemetry/ GENERATED, and compiled: cafe's own copy of `cafe gen teleme
 internal/mcp/       the MCP server: transports, the served table, the SDK seam
 internal/boxd/      the box daemon: the whitelisted route table, the Seam-ed world,
                      and the outbound-only mTLS channel to box
-internal/setup/     cafe box setup: the host bootstrap plan, its walk, and the SSH
-                     transport behind the Host seam
+internal/setup/     cafe box setup and its inverse, cafe box wipe: the host bootstrap
+                     plan, its walk, and the SSH transport behind the Host seam
 internal/edge/      boxd's embedded edge: host routing, the three TLS modes, the
                      release directories and the atomic `current` switch — the one
                      piece of state the edge owns so nothing else keeps a copy
@@ -335,6 +335,12 @@ test pins them:
   negative control is a test because it is the defect this package was measured
   on.
 - `setup.go` — the three phases: probe, walk, verify.
+- `wipe.go` — the mirror: `cafe box wipe`'s ordered check-and-apply table
+  (boxd, its unit, the binary, cafaye's state, k3s, Docker), the read-only
+  fingerprint that refuses a host setup did not install, the KEPT list the help
+  and the document both read, and the one confirmation seam — asked after the
+  probes and before the first removal, so a stranger's machine is refused rather
+  than offered a prompt.
 - `ssh.go` — `SSHHost`, the real `Host`: the local `ssh` binary under `os/exec`,
   and the askpass helper that carries a password on a pipe so it reaches
   neither argv, an environment variable nor a file.
