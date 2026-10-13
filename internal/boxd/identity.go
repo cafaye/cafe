@@ -20,7 +20,11 @@ type Identity struct {
 	// ControlPlane is the address the daemon dials out to. It is in the identity
 	// rather than in a flag because enrollment is what establishes which
 	// control plane this box answers to — a flag that overrode it would be a
-	// second authority about the box's owner.
+	// second authority about the box's owner. It is stored in the URL form a
+	// human typed (`http://host:port`, the `--box`/CAF_BOX_URL spelling) and
+	// the dialer normalises it to host:port at the dial (see dialTarget in
+	// client.go), so identities written before the dialer learned the URL
+	// form connect without being rewritten.
 	ControlPlane string
 	// Version is the cafe build this box enrolled as, which is what
 	// box.status reports rather than the version currently running; when the

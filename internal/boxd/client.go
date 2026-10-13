@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -60,15 +62,12 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) 
 	if err != nil {
 		return nil, fmt.Errorf("load the box key for one connection: %w", err)
 	}
-	host, _, err := net.SplitHostPort(id.ControlPlane)
+	addr, host, err := dialTarget(id.ControlPlane)
 	if err != nil {
-		// An identity whose control-plane address has no port is an enrollment
-		// that was read wrong, and naming the field beats a tls error about
-		// the hostname.
-		return nil, fmt.Errorf("control plane %q is not host:port", id.ControlPlane)
+		return nil, err
 	}
 	dialer := &net.Dialer{Timeout: dialTimeout}
-	conn, err := tls.DialWithDialer(dialer, "tcp", id.ControlPlane, &tls.Config{
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{
 		// The box's client certificate: this is what makes the channel
 		// MUTUAL. Box verifies it, and this is the only credential the
 		// box presents.
@@ -78,10 +77,48 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) 
 		MinVersion:   tls.VersionTLS13,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("mTLS to %s: %w", id.ControlPlane, err)
+		return nil, fmt.Errorf("mTLS to %s: %w", addr, err)
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	return &tlsControlPlane{conn: conn, rw: rw, dec: json.NewDecoder(rw)}, nil
+}
+
+// dialTarget turns the identity's control-plane fact into what the network
+// needs: the host:port to dial and the hostname to verify the server against.
+//
+// The identity stores the URL form — `http://host:port`, the spelling `--box`
+// and CAF_BOX_URL accept and the form already on every enrolled box — because
+// that is what a human typed, what `cafe boxd --report` shows, and what the
+// enrollment HTTP client needs. The dial needs a bare host:port, so the
+// translation happens HERE, where a stored fact becomes a network address,
+// rather than in the writer: a writer that normalised would leave every
+// already-written identity undialable until a re-enrollment, while a dialer
+// that accepts both heals those boxes with a binary upgrade alone. The scheme
+// and any path are irrelevant to the dial — the channel is always TLS over
+// TCP — so they are stripped, and a value with no port is still refused with
+// the same sentence, because an address without a port is an enrollment that
+// was read wrong and naming the field beats a tls error about the hostname.
+func dialTarget(controlPlane string) (addr, host string, err error) {
+	raw := strings.TrimSpace(controlPlane)
+	if raw == "" {
+		return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
+	}
+	if strings.Contains(raw, "://") {
+		u, uerr := url.Parse(raw)
+		if uerr != nil || u.Host == "" {
+			return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
+		}
+		host, port, serr := net.SplitHostPort(u.Host)
+		if serr != nil || host == "" || port == "" {
+			return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
+		}
+		return net.JoinHostPort(host, port), host, nil
+	}
+	host, port, serr := net.SplitHostPort(raw)
+	if serr != nil || host == "" || port == "" {
+		return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
+	}
+	return net.JoinHostPort(host, port), host, nil
 }
 
 // NewTLSDialer is the real Dialer for a box: mutual TLS to the control plane the
