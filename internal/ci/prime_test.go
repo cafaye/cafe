@@ -453,11 +453,13 @@ const suiteProofID = "suite"
 // floor in `gate.yml` is raised in the same commit. Do not 'fix' that test by
 // lowering the assertion; raise the number, which is the point of it."
 //
-// This packet is the first commit in cafe to move that number, and it moved it
-// three times while the packet was being written — 428 to 430 to 431 — each
-// time by adding a test. So the thing being described is not hypothetical.
-// Without this test the ratchet is a convention, and a convention is what the
-// whole `gate.yml` format exists to replace.
+// In cafe the number is no longer raised by hand. `cafe gate floors --write`
+// derives it from the merged tree, sets it, re-pins `caf.lock`, and prints the
+// delta — the argument is in `internal/gate`. What has NOT changed is the
+// detector: this test still holds the identity exactly, so a floor below the
+// tree's count is red and a test deleted without the floor following it down is
+// red. The hand-editing the ratchet used to require is what moved into the
+// writer; the ratchet is what makes the writer's output a thing to check.
 //
 // The arithmetic, and it is exact rather than a bound:
 //
@@ -503,13 +505,14 @@ func TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave(t *testing.T) {
 
 	if got, want := declared-floor, expectedSkips; got != want {
 		t.Errorf("the tree declares %d top-level test(s) and gate.yml's %q proof sets minimum: %d, so this "+
-			"gate runs %d of them and skips %d. The skips are supposed to be exactly %d: the two live tests "+
-			"and the re-exec'd child, all three named at the constant.\n"+
-			"  If you ADDED tests, raise minimum to %d in this same commit.\n"+
-			"  If tests now SKIP that did not, find out why before raising it: a new skip is a new tier, and "+
+			"gate runs %d of them and skips %d. The skips are supposed to be exactly %d: the seven live "+
+			"tests and the re-exec'd child, all eight named at the constant.\n"+
+			"  If you ADDED tests, run `cafe gate floors --write`: it derives the floor from the merged tree, "+
+			"sets it, re-pins caf.lock, and prints the delta — %d is the number it will write.\n"+
+			"  If tests now SKIP that did not, find out why before writing: a new skip is a new tier, and "+
 			"an unexplained one is the defect this whole format exists to catch.\n"+
-			"  Do not fix this by editing the assertion, and do not fix it by editing expectedSkips "+
-			"without saying in the commit message which test started skipping and why.",
+			"  Do not hand-edit minimum, do not fix this by editing the assertion, and do not fix it by editing "+
+			"expectedSkips without saying in the commit message which test started skipping and why.",
 			declared, suiteProofID, floor, declared-got, got, want, declared-want)
 	}
 	t.Logf("gate.yml floor %d, tree declares %d top-level tests, so the gate runs %d and skips %d",
