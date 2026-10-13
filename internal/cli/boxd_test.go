@@ -318,14 +318,14 @@ func TestTheIdentityFileRefusesAnUnusableDocument(t *testing.T) {
 	}
 }
 
-// TestTheIdentityWithoutACertificateIsAPermanentRefusal: the document the
-// one-command path writes today names no certificate — issuance is deferred
-// to the Phase C packet named in boxd's package doc — and the daemon must
-// recognize that fact as the permanent failure it is: waiting cannot fix it,
-// so the daemon refuses after its bound rather than retry-looping. This is
-// the wiring that makes the live box's daemon honestly refusing instead of
-// failing the same way every 30 seconds, and it fails on a tree where the
-// store's error does not wrap the sentinel the daemon counts.
+// TestTheIdentityWithoutACertificateIsAPermanentRefusal: an identity document
+// that names no certificate — the recovery path, where a redemption was
+// recorded but its certificate was lost with the response, or a redemption box
+// issued none for — is the permanent failure the daemon's bound exists for:
+// waiting cannot fix it, so the daemon refuses after its bound rather than
+// retry-looping. This is the wiring that makes the live box's daemon honestly
+// refusing instead of failing the same way every 30 seconds, and it fails on a
+// tree where the store's error does not wrap the sentinel the daemon counts.
 func TestTheIdentityWithoutACertificateIsAPermanentRefusal(t *testing.T) {
 	path := writeIdentity(t, identityDocument{BoxID: "box-test", ControlPlane: "c:443"})
 	store, err := newFileIdentityStore(path)
