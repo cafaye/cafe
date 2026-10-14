@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ---------------------------------------------------------------------------
@@ -457,6 +458,211 @@ func TestALeftoverSiblingCannotContaminateTheNextWrite(t *testing.T) {
 	got, _ := host.read("/usr/local/bin/cafe")
 	if string(got) != string(payload) {
 		t.Errorf("the leftover sibling leaked into the new file: %d bytes on the host, want %d", len(got), len(payload))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// the stall: a chunk that stops being acknowledged must become an error,
+// not a line that stops moving
+// ---------------------------------------------------------------------------
+
+// stallHost is a host whose reader stops acknowledging: on the nth `cat` it
+// waits for the caller's context to die and answers with its error, the way a
+// wedged ssh child behaves — the pipe is open, nothing arrives, the process
+// sleeps. A transfer with no deadline waits here forever, which is the
+// measured 10 m 50 s hang at "8.0 MiB of 19.9 MiB written".
+type stallHost struct {
+	*shellHost
+	stallOnCat int
+}
+
+func (s *stallHost) Run(ctx context.Context, command string, stdin []byte) (Output, error) {
+	if strings.HasPrefix(command, "cat ") && s.cats+1 == s.stallOnCat {
+		s.cats++
+		s.commands = append(s.commands, command)
+		<-ctx.Done()
+		return Output{}, ctx.Err()
+	}
+	return s.shellHost.Run(ctx, command, stdin)
+}
+
+// slowHost is the control over the bound: it acks every chunk, but slowly —
+// just under the deadline. A bound that killed this transfer would be worse
+// than the hang, because it would turn every slow link into a refusal.
+type slowHost struct {
+	*shellHost
+	perCat time.Duration
+}
+
+func (s *slowHost) Run(ctx context.Context, command string, stdin []byte) (Output, error) {
+	if strings.HasPrefix(command, "cat ") {
+		select {
+		case <-ctx.Done():
+			return Output{}, ctx.Err()
+		case <-time.After(s.perCat):
+		}
+	}
+	return s.shellHost.Run(ctx, command, stdin)
+}
+
+// A stalled chunk times out at the bound, naming the chunk, the bytes
+// acknowledged and the elapsed time — the three numbers the measured hang's
+// last line did not carry. The payload is three chunks stalling on the
+// second, the shape of "8.0 MiB of 19.9 MiB written" stopping mid-sentence.
+func TestAStalledChunkTimesOutInsteadOfHanging(t *testing.T) {
+	base := newShellHost(t)
+	host := &stallHost{shellHost: base, stallOnCat: 2}
+	var events []progressEvent
+	tr := transfer{
+		name: "box.test", run: host.Run,
+		progress:     func(e WriteEvent, wrote, total int) { events = append(events, progressEvent{event: e, wrote: wrote, total: total}) },
+		chunkTimeout: 150 * time.Millisecond,
+		totalTimeout: 10 * time.Second,
+	}
+
+	payload := make([]byte, 2*WriteChunkSize+513)
+	start := time.Now()
+	err := tr.write(context.Background(), "/usr/local/bin/cafe", payload, 0o755)
+	took := time.Since(start)
+	if err == nil {
+		t.Fatal("a stalled chunk was reported as success — the hang is back")
+	}
+	var stall writeStall
+	if !errors.As(err, &stall) {
+		t.Fatalf("the refusal is a %T, want a writeStall: %v", err, err)
+	}
+	if stall.at != 1 {
+		t.Errorf("the stall names chunk index %d, want 1 (the second chunk)", stall.at)
+	}
+	if stall.chunks != 3 {
+		t.Errorf("the stall names %d chunks, want 3", stall.chunks)
+	}
+	if stall.crossed != WriteChunkSize {
+		t.Errorf("the stall names %d bytes acknowledged, want the first chunk's %d", stall.crossed, WriteChunkSize)
+	}
+	if stall.total != len(payload) {
+		t.Errorf("the stall names %d total bytes, want %d", stall.total, len(payload))
+	}
+	for _, want := range []string{"STALLED", "chunk 2 of 3", strconv.Itoa(WriteChunkSize), "elapsed", "restarts from zero"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the stall does not carry %q: %v", want, err)
+		}
+	}
+	// The bound discriminates by time: the error arrived at the bound, not at
+	// the patience of whoever watched it. Ten seconds would be a hang with a
+	// nicer message; the assertion is that it answered in about the bound.
+	if took > 5*time.Second {
+		t.Errorf("the stall took %s to answer, want about the 150 ms bound", took)
+	}
+	// One chunk crossed before the stall, so one progress event ran — the
+	// operator saw the line move and then the refusal, not silence.
+	if len(events) != 1 || events[0].wrote != WriteChunkSize {
+		t.Errorf("progress before the stall = %v, want the first chunk's event", events)
+	}
+	if host.exists("/usr/local/bin/cafe") {
+		t.Error("the destination holds a file after a stalled write")
+	}
+	if host.exists("/usr/local/bin/.cafe.cafe-tmp") {
+		t.Error("the partial sibling was left behind after a stalled write")
+	}
+}
+
+// A slow-but-steady reader must NOT trip the deadline: every chunk acked just
+// under the bound still lands whole. This is the control that keeps the bound
+// honest — a deadline that refused a working transfer would be worse than the
+// hang it was written for.
+func TestASlowButSteadyTransferDoesNotTripTheDeadline(t *testing.T) {
+	base := newShellHost(t)
+	host := &slowHost{shellHost: base, perCat: 80 * time.Millisecond}
+	tr := transfer{
+		name: "box.test", run: host.Run,
+		chunkTimeout: 2 * time.Second,
+		totalTimeout: 30 * time.Second,
+	}
+
+	payload := make([]byte, 3*WriteChunkSize)
+	for i := range payload {
+		payload[i] = byte(i * 11)
+	}
+	if err := tr.write(context.Background(), "/usr/local/bin/cafe", payload, 0o755); err != nil {
+		t.Fatalf("a slow-but-working transfer was refused: %v", err)
+	}
+	if got, _ := base.read("/usr/local/bin/cafe"); string(got) != string(payload) {
+		t.Error("the bytes on the host are not the bytes sent")
+	}
+}
+
+// The whole-transfer bound fires too: a reader that acks every chunk but
+// takes longer than the transfer allows is refused with the bytes so far and
+// the elapsed time, because a transfer that outlives the capability's TTL has
+// already spent the token it was setting up to use.
+func TestTheWholeTransferBoundFires(t *testing.T) {
+	base := newShellHost(t)
+	host := &slowHost{shellHost: base, perCat: 120 * time.Millisecond}
+	tr := transfer{
+		name: "box.test", run: host.Run,
+		chunkTimeout: 5 * time.Second,
+		totalTimeout: 200 * time.Millisecond,
+	}
+
+	err := tr.write(context.Background(), "/usr/local/bin/cafe", make([]byte, 5*WriteChunkSize), 0o755)
+	if err == nil {
+		t.Fatal("a transfer past its whole-transfer bound was reported as success")
+	}
+	var stall writeStall
+	if !errors.As(err, &stall) {
+		t.Fatalf("the refusal is a %T, want a writeStall: %v", err, err)
+	}
+	if !strings.Contains(err.Error(), "whole-transfer bound") {
+		t.Errorf("the refusal does not say which bound fired: %v", err)
+	}
+	if !strings.Contains(err.Error(), "elapsed") || !strings.Contains(err.Error(), "restarts from zero") {
+		t.Errorf("the refusal does not carry the elapsed time and the retry cost: %v", err)
+	}
+}
+
+// The red control, in-gate: the SAME stalled reader against a transfer with
+// both bounds disabled — the write as it stands on master — never answers on
+// its own. It returns only when the CALLER gives up, and what it answers then
+// is a dead transport, not a stall naming the chunk. A test that asserted a
+// stall here would hang until `go test -timeout` killed it; the assertion
+// below is that the bound is what discriminates, because without it there is
+// no stall error at all.
+func TestTheUnboundedWriteNeverAnswersAStallOnItsOwn(t *testing.T) {
+	base := newShellHost(t)
+	host := &stallHost{shellHost: base, stallOnCat: 2}
+	tr := transfer{
+		name: "box.test", run: host.Run,
+		chunkTimeout: -1,
+		totalTimeout: -1,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	err := tr.write(ctx, "/usr/local/bin/cafe", make([]byte, 2*WriteChunkSize+513), 0o755)
+	if err == nil {
+		t.Fatal("a stalled write with no bound reported success")
+	}
+	var stall writeStall
+	if errors.As(err, &stall) {
+		t.Fatalf("the unbounded write answered as a stall — the bound cannot be what discriminates: %v", err)
+	}
+	if !strings.Contains(err.Error(), "the transport died") {
+		t.Errorf("the unbounded write answered %v, want the caller's own timeout as a dead transport", err)
+	}
+	// And the control half: the same fixture with the bound DOES name the
+	// chunk. Without this half a transfer that always failed would pass.
+	base2 := newShellHost(t)
+	host2 := &stallHost{shellHost: base2, stallOnCat: 2}
+	tr2 := transfer{
+		name: "box.test", run: host2.Run,
+		chunkTimeout: 100 * time.Millisecond,
+		totalTimeout: 10 * time.Second,
+	}
+	err2 := tr2.write(context.Background(), "/usr/local/bin/cafe", make([]byte, 2*WriteChunkSize+513), 0o755)
+	var stall2 writeStall
+	if !errors.As(err2, &stall2) {
+		t.Fatalf("the bounded write against the same fixture is a %T, want a writeStall: %v", err2, err2)
 	}
 }
 

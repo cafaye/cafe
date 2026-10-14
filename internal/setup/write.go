@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // WriteChunkSize bounds what ONE pipe write carries, and why it is not the
@@ -32,6 +33,44 @@ import (
 // 11 and 17 MB cannot swallow a chunk, and large enough that a 29 MB binary
 // is 28 processes rather than 290.
 const WriteChunkSize = 1 << 20
+
+// The two bounds that keep a write from becoming a silent stall, and the
+// measurement behind each one.
+//
+// A `cafe box setup` hung 10 m 50 s at "8.0 MiB of 19.9 MiB written" — the
+// process alive in state S, holding nothing but pipes, the host healthy and
+// carrying no partial file — while the capability it was about to spend lives
+// 15 minutes by design. The retry sent the whole 19.9 MiB in 139 s, so the
+// stall was intermittent: nothing about the box had changed. An unbounded
+// foreground chunk is a stall nobody can see into, and this fleet's rule is
+// that such a command must become an error with a number in it.
+//
+// DefaultChunkTimeout bounds ONE chunk. A 1 MiB chunk crossed a healthy
+// Contabo link in seconds (19.9 MiB in 139 s is ~7 s per chunk including the
+// handshake), so two minutes is an order of magnitude of headroom: a chunk
+// that made no progress for that long is stuck, not slow. The slow-but-steady
+// control — a reader that acks every chunk just under the bound — must NOT
+// trip it, and a bound that kills a working transfer would be worse than the
+// hang, so the bound is per-chunk silence rather than per-chunk speed.
+//
+// DefaultTotalTimeout bounds the WHOLE transfer. Fifteen minutes is the
+// capability's own TTL (box's Capability::TTL_MINUTES = 15): a transfer that
+// outlives it has already spent the token it was setting up to use, so going
+// on is spending minutes the run does not have. Both bounds fail loudly —
+// naming the chunk, the bytes acknowledged and the elapsed time — and both
+// leave the transfer restarting from zero, for the reason restartNote names.
+const (
+	DefaultChunkTimeout = 2 * time.Minute
+	DefaultTotalTimeout = 15 * time.Minute
+)
+
+// restartNote is the tail of every write refusal that cost bytes on the wire.
+// The write is deliberately NOT resumable: a failed transfer removes the
+// sibling, and the hash gate proves the whole file or nothing — resuming
+// would need verified offsets the host has no protocol for. So a retry
+// re-sends the whole file from zero, and the operator's cost of a stall is
+// the whole payload, stated rather than discovered on the second run.
+const restartNote = "The transfer is not resumable: a retry restarts from zero and re-sends the whole file."
 
 // WriteEvent is what progress reports. Two events, not one, because "how much
 // crossed" and "the bytes that arrived were proven equal to the bytes sent"
@@ -123,6 +162,36 @@ type transfer struct {
 	// a package that printed from inside a transfer would put operator prose
 	// into a stream some caller is parsing.
 	progress func(WriteEvent, int, int)
+	// chunkTimeout bounds one chunk's silence; totalTimeout bounds the whole
+	// transfer. Zero means the Default above, and a test sets them to seconds
+	// so the suite proves the bound without waiting for it. Negative disables
+	// the bound, which is how the red control — the write as it stands on
+	// master, hanging forever against a stalled reader — is driven: the same
+	// transfer, the same fixture, no deadline.
+	chunkTimeout time.Duration
+	totalTimeout time.Duration
+}
+
+// chunkBound is the per-chunk deadline in force for this transfer.
+func (t transfer) chunkBound() time.Duration {
+	if t.chunkTimeout < 0 {
+		return 0
+	}
+	if t.chunkTimeout == 0 {
+		return DefaultChunkTimeout
+	}
+	return t.chunkTimeout
+}
+
+// totalBound is the whole-transfer deadline in force for this transfer.
+func (t transfer) totalBound() time.Duration {
+	if t.totalTimeout < 0 {
+		return 0
+	}
+	if t.totalTimeout == 0 {
+		return DefaultTotalTimeout
+	}
+	return t.totalTimeout
 }
 
 // write is the delivery, and the six steps are the whole argument.
@@ -153,8 +222,23 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 	tmp := filepath.Join(dir, "."+filepath.Base(path)+".cafe-tmp")
 	total := len(data)
 	chunks := chunkCount(total)
+	start := time.Now()
 
-	if out, err := t.run(ctx, "mkdir -p "+shellQuote(dir)+" && rm -f "+shellQuote(tmp), nil); err != nil {
+	// The whole transfer runs under one deadline, because a transfer that
+	// outlives the capability's TTL has already spent the token it was
+	// setting up to use. A non-positive bound disables it — the red
+	// control's configuration, never production's.
+	totalCtx := ctx
+	totalCancel := context.CancelFunc(func() {})
+	if bound := t.totalBound(); bound > 0 {
+		totalCtx, totalCancel = context.WithTimeout(ctx, bound)
+	}
+	defer totalCancel()
+
+	if out, err := t.run(totalCtx, "mkdir -p "+shellQuote(dir)+" && rm -f "+shellQuote(tmp), nil); err != nil {
+		if t.totalBound() > 0 && totalCtx.Err() == context.DeadlineExceeded {
+			return t.stalled(path, tmp, total, local, 0, chunks, 0, start, true, false)
+		}
 		return t.transportLost(path, tmp, total, local, 0, chunks, 0, err, false)
 	} else if !out.OK() {
 		return fmt.Errorf("cafe box setup: write %s on %s: %s", path, t.name, firstLine(out.Stderr+out.Stdout))
@@ -170,13 +254,38 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 		if i == 0 {
 			redirect = ">"
 		}
-		out, err := t.run(ctx, "cat "+redirect+" "+shellQuote(tmp), data[lo:hi])
+		// One deadline per chunk: a chunk that made no progress for the
+		// bound is stuck, not slow, and the run must say so with the chunk's
+		// number in it rather than stop moving its progress line.
+		chunkCtx := totalCtx
+		chunkCancel := context.CancelFunc(func() {})
+		if bound := t.chunkBound(); bound > 0 {
+			chunkCtx, chunkCancel = context.WithTimeout(totalCtx, bound)
+		}
+		out, err := t.run(chunkCtx, "cat "+redirect+" "+shellQuote(tmp), data[lo:hi])
+		chunkCancel()
+		// A deadline is not a death: it is the stall this packet was
+		// measured on, and it answers as one — naming the chunk, the
+		// bytes acknowledged and the elapsed time — rather than as a
+		// transport that died. The bound being enabled is part of the
+		// condition: with no bound in force a cancelled caller is just a
+		// dead transport, which is the red control's whole point.
+		chunkStalled := t.chunkBound() > 0 && chunkCtx.Err() == context.DeadlineExceeded && totalCtx.Err() != context.DeadlineExceeded
+		totalStalled := t.totalBound() > 0 && totalCtx.Err() == context.DeadlineExceeded
 		if err != nil {
 			// The transport died mid-stream. The destination was never opened
 			// for writing, so this is the one failure that cannot truncate
 			// anything: the host keeps its previous file, or nothing.
+			if chunkStalled || totalStalled {
+				cleaned := t.removeSibling(context.Background(), tmp)
+				return t.stalled(path, tmp, total, local, crossed, chunks, i, start, totalStalled, cleaned)
+			}
 			cleaned := t.removeSibling(ctx, tmp)
 			return t.transportLost(path, tmp, total, local, crossed, chunks, i, err, cleaned)
+		}
+		if totalStalled {
+			cleaned := t.removeSibling(context.Background(), tmp)
+			return t.stalled(path, tmp, total, local, crossed, chunks, i, start, true, cleaned)
 		}
 		if !out.OK() {
 			cleaned := t.removeSibling(ctx, tmp)
@@ -192,8 +301,12 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 	// The gate. The host hashes what it actually holds, and its size, before
 	// anything moves: a hash taken after the rename would be a hash of a
 	// thing nobody can fix any more.
-	remote, remoteBytes, out, err := t.verifyOnHost(ctx, tmp, mode)
+	remote, remoteBytes, out, err := t.verifyOnHost(totalCtx, tmp, mode)
 	if err != nil {
+		if t.totalBound() > 0 && totalCtx.Err() == context.DeadlineExceeded {
+			cleaned := t.removeSibling(context.Background(), tmp)
+			return t.stalled(path, tmp, total, local, crossed, chunks, chunks, start, true, cleaned)
+		}
 		cleaned := t.removeSibling(ctx, tmp)
 		return t.transportLost(path, tmp, total, local, crossed, chunks, chunks, err, cleaned)
 	}
@@ -216,7 +329,7 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 		t.progress(WriteVerified, total, total)
 	}
 
-	if out, err := t.run(ctx, "mv "+shellQuote(tmp)+" "+shellQuote(path), nil); err != nil {
+	if out, err := t.run(totalCtx, "mv "+shellQuote(tmp)+" "+shellQuote(path), nil); err != nil {
 		return fmt.Errorf("cafe box setup: write %s on %s: the bytes are on the host and match, but the move into place died: %v. "+
 			"The verified file is at %s; move it by hand and the host is whole.", path, t.name, err, tmp)
 	} else if !out.OK() {
@@ -289,8 +402,46 @@ func siblingNote(tmp string, cleaned bool) string {
 // remote hash could be established rather than inventing one.
 func (t transfer) transportLost(path, tmp string, total int, localHash string, crossed, chunks, at int, err error, cleaned bool) error {
 	return fmt.Errorf("cafe box setup: write %s on %s REFUSED: the transport died after %d of %d bytes, in chunk %d of %d: %v. "+
-		"Local sha256 is %s; no remote hash could be taken, so the bytes that arrived are unproven. %s",
-		path, t.name, crossed, total, at+1, chunks, err, localHash, siblingNote(tmp, cleaned))
+		"Local sha256 is %s; no remote hash could be taken, so the bytes that arrived are unproven. %s %s",
+		path, t.name, crossed, total, at+1, chunks, err, localHash, siblingNote(tmp, cleaned), restartNote)
+}
+
+// stalled builds the refusal the hang becomes: a chunk (or the whole
+// transfer) that made no progress inside its deadline. It names the chunk
+// index, the bytes acknowledged so far, the host and the elapsed time,
+// because the measured failure's last line — a progress line that stopped
+// moving — distinguished none of "slow" from "stuck".
+func (t transfer) stalled(path, tmp string, total int, localHash string, crossed, chunks, at int, start time.Time, isTotal, cleaned bool) error {
+	elapsed := time.Since(start).Round(time.Second)
+	what := fmt.Sprintf("chunk %d of %d made no progress for %s", at+1, chunks, t.chunkBound())
+	if isTotal {
+		what = fmt.Sprintf("the transfer made no progress inside the whole-transfer bound of %s", t.totalBound())
+	}
+	return writeStall{
+		name: t.name, path: path, sibling: tmp, cleaned: cleaned,
+		crossed: crossed, total: total, chunks: chunks, at: at,
+		elapsed: elapsed, what: what, isTotal: isTotal,
+	}
+}
+
+// writeStall is the hang as an error: which chunk stopped, how many bytes had
+// been acknowledged, and how long the run had been going. It is a type rather
+// than a format string so a test asserts on the fields — the chunk, the bytes,
+// the elapsed time — rather than on English.
+type writeStall struct {
+	name, path, sibling string
+	cleaned             bool
+	crossed, total      int
+	chunks, at          int
+	elapsed             time.Duration
+	what                string
+	isTotal             bool
+}
+
+func (s writeStall) Error() string {
+	return fmt.Sprintf("cafe box setup: write %s on %s STALLED: %s after %d of %d bytes acknowledged (elapsed %s). "+
+		"This is a stall, not slowness: kill it and retry rather than wait. %s %s",
+		s.path, s.name, s.what, s.crossed, s.total, s.elapsed, siblingNote(s.sibling, s.cleaned), restartNote)
 }
 
 // writeMismatch is the refusal the whole packet exists for: the host holds a
@@ -307,6 +458,6 @@ type writeMismatch struct {
 
 func (m writeMismatch) Error() string {
 	return fmt.Sprintf("cafe box setup: write %s on %s REFUSED: the bytes that arrived are not the bytes held locally — "+
-		"local %d bytes sha256 %s, remote %d bytes sha256 %s. %s",
-		m.path, m.name, m.localBytes, m.localHash, m.remoteBytes, m.remoteHash, siblingNote(m.sibling, m.cleaned))
+		"local %d bytes sha256 %s, remote %d bytes sha256 %s. %s %s",
+		m.path, m.name, m.localBytes, m.localHash, m.remoteBytes, m.remoteHash, siblingNote(m.sibling, m.cleaned), restartNote)
 }
