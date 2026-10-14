@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -25,14 +26,16 @@ type fakeControlPlane struct {
 	acks    []Ack
 	nextErr error
 	ackErr  error
-	closed  bool
-	// nextCalls counts how many times Next was called, which is how a test
-	// sees that a daemon with an empty channel is waiting rather than looping.
-	nextCalls int
+	// closed and nextCalls are touched by the daemon's own goroutine while
+	// the test goroutine reads them, so they are atomics rather than plain
+	// fields: the daemon's concurrency is the thing under test, and a
+	// fixture that races it reports verdicts nobody can trust.
+	closed    atomic.Bool
+	nextCalls atomic.Int64
 }
 
 func (f *fakeControlPlane) Next(context.Context) (Capability, error) {
-	f.nextCalls++
+	f.nextCalls.Add(1)
 	if f.nextErr != nil {
 		return Capability{}, f.nextErr
 	}
@@ -58,21 +61,22 @@ func (f *fakeControlPlane) Ack(_ context.Context, ack Ack) error {
 }
 
 func (f *fakeControlPlane) Close() error {
-	f.closed = true
+	f.closed.Store(true)
 	return nil
 }
 
 // fakeDialer hands the daemon one prepared control plane, and counts the dials so
-// a test can watch a reconnect happen.
+// a test can watch a reconnect happen. The count is an atomic: Dial runs on the
+// daemon's goroutine while the test polls the count on its own.
 type fakeDialer struct {
 	ch     *fakeControlPlane
 	err    error
-	dials  int
+	dials  atomic.Int64
 	lastID Identity
 }
 
 func (d *fakeDialer) Dial(_ context.Context, id Identity) (ControlPlane, error) {
-	d.dials++
+	d.dials.Add(1)
 	d.lastID = id
 	if d.err != nil {
 		return nil, d.err
@@ -81,15 +85,17 @@ func (d *fakeDialer) Dial(_ context.Context, id Identity) (ControlPlane, error) 
 }
 
 // fakeStore is an IdentityStore returning one identity, and a KeySource
-// returning a self-signed certificate generated in the test.
+// returning a self-signed certificate generated in the test. The load count
+// is an atomic: Load runs on the daemon's goroutine while the test polls the
+// count on its own.
 type fakeStore struct {
 	id   Identity
 	err  error
-	load int
+	load atomic.Int64
 }
 
 func (s *fakeStore) Load(context.Context) (Identity, error) {
-	s.load++
+	s.load.Add(1)
 	if s.err != nil {
 		return Identity{}, s.err
 	}
@@ -159,11 +165,11 @@ func TestTheDaemonRedeemsOneCapabilityAndStops(t *testing.T) {
 	if ch.acks[0].Answer == nil {
 		t.Error("an accepted capability's ack carried no answer; the route declares a return type for a reason")
 	}
-	if !ch.closed {
+	if !ch.closed.Load() {
 		t.Error("the connection was not closed; a round that ends with the channel open leaks it")
 	}
-	if store.load != 1 {
-		t.Errorf("loaded the identity %d times, want 1 per connection", store.load)
+	if store.load.Load() != 1 {
+		t.Errorf("loaded the identity %d times, want 1 per connection", store.load.Load())
 	}
 }
 
@@ -221,11 +227,11 @@ func TestTheDaemonReconnectsAfterTheChannelEnds(t *testing.T) {
 	// dialer counts its dials, so this waits on the EVENT rather than on a
 	// sleep — the difference AGENTS.md draws between a deadline and a wait.
 	deadline := time.After(2 * time.Second)
-	for dialer.dials < 2 {
+	for dialer.dials.Load() < 2 {
 		select {
 		case <-deadline:
 			cancel()
-			t.Fatalf("the daemon dialed %d times and never reconnected", dialer.dials)
+			t.Fatalf("the daemon dialed %d times and never reconnected", dialer.dials.Load())
 		default:
 			time.Sleep(time.Millisecond)
 		}
@@ -234,10 +240,10 @@ func TestTheDaemonReconnectsAfterTheChannelEnds(t *testing.T) {
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("run returned %v after cancellation, want context.Canceled", err)
 	}
-	if dialer.dials < 2 {
-		t.Fatalf("dials = %d, want at least one reconnect", dialer.dials)
+	if dialer.dials.Load() < 2 {
+		t.Fatalf("dials = %d, want at least one reconnect", dialer.dials.Load())
 	}
-	if !ch.closed {
+	if !ch.closed.Load() {
 		t.Error("the dropped connection was never closed")
 	}
 }
@@ -296,11 +302,11 @@ func TestTheDaemonLoadsTheIdentityPerConnection(t *testing.T) {
 	// connection dropping is a fact the store reports, so the assertion is
 	// about that fact rather than about the scheduler.
 	deadline := time.After(2 * time.Second)
-	for store.load < 2 {
+	for store.load.Load() < 2 {
 		select {
 		case <-deadline:
 			cancel()
-			t.Fatalf("the identity was loaded %d times; a reconnect did not reload it", store.load)
+			t.Fatalf("the identity was loaded %d times; a reconnect did not reload it", store.load.Load())
 		default:
 			time.Sleep(time.Millisecond)
 		}
@@ -345,8 +351,8 @@ func TestTheDaemonReportsAMissingEnrollment(t *testing.T) {
 	}
 	cancel()
 	<-done
-	if dialer.dials != 0 {
-		t.Errorf("dialed %d times with no identity; an unenrolled box must not connect", dialer.dials)
+	if dialer.dials.Load() != 0 {
+		t.Errorf("dialed %d times with no identity; an unenrolled box must not connect", dialer.dials.Load())
 	}
 }
 
@@ -383,10 +389,10 @@ func TestTheDaemonRefusesAfterABoundOfPermanentFailures(t *testing.T) {
 			t.Errorf("the refusal does not say what fixes it: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatalf("the daemon dialed %d times and never refused; it is retry-looping over a permanent failure", dialer.dials)
+		t.Fatalf("the daemon dialed %d times and never refused; it is retry-looping over a permanent failure", dialer.dials.Load())
 	}
-	if dialer.dials != 3 {
-		t.Errorf("dials = %d, want 3: the bound is the whole point", dialer.dials)
+	if dialer.dials.Load() != 3 {
+		t.Errorf("dials = %d, want 3: the bound is the whole point", dialer.dials.Load())
 	}
 	if !strings.Contains(log.String(), "refusing to retry") {
 		t.Errorf("the refusal was not logged where an operator reads it: %q", log.String())
@@ -418,11 +424,11 @@ func TestTheDaemonKeepsRetryingATransientFailurePastTheBound(t *testing.T) {
 	// (the dialer's count) rather than on a sleep — the backoff between dials
 	// is the daemon's own, and the assertion is about the dials happening.
 	deadline := time.After(5 * time.Second)
-	for dialer.dials < 4 {
+	for dialer.dials.Load() < 4 {
 		select {
 		case <-deadline:
 			cancel()
-			t.Fatalf("a transient failure stopped the daemon after %d dials; the bound must not fire on errors waiting can fix", dialer.dials)
+			t.Fatalf("a transient failure stopped the daemon after %d dials; the bound must not fire on errors waiting can fix", dialer.dials.Load())
 		default:
 			time.Sleep(time.Millisecond)
 		}
@@ -453,8 +459,8 @@ func TestTheDaemonOnceModeRefusesAfterOnePermanentRound(t *testing.T) {
 	if !errors.Is(err, ErrNoClientCredential) {
 		t.Fatalf("err = %v, want the permanent failure", err)
 	}
-	if dialer.dials != 1 {
-		t.Errorf("dials = %d, want 1: one round is the whole life in once mode", dialer.dials)
+	if dialer.dials.Load() != 1 {
+		t.Errorf("dials = %d, want 1: one round is the whole life in once mode", dialer.dials.Load())
 	}
 }
 

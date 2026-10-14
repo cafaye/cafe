@@ -172,10 +172,17 @@ func TestTheGateReportsItsOwnCounts(t *testing.T) {
 	// only what `go test` prints could not be given a floor at all — which is
 	// the state cafe was in until this packet: 12,480 lines of code, and
 	// nothing countable to put a minimum against.
-	if strings.Contains(prime, "go test ./...\n") && !strings.Contains(prime, "go test -v ./...") {
-		t.Errorf("bin/prime runs `go test` without -v, so it has no `--- PASS:` lines to count. " +
-			"The floors in gate.yml are read out of that count, and a suite that quietly lost forty " +
-			"tests has to be caught by something")
+	//
+	// The invocation is matched verbatim, both flags. `-v` is what the counts
+	// are read out of, and `-race` is the flag CI's `go` job runs:
+	// roll-c5-race-parity is the packet that put it here, after three data
+	// races in internal/boxd's test doubles lived on master while this gate
+	// stayed green without it and CI went red with it. A gate that lost
+	// either flag has to be caught by something in this tree.
+	if !strings.Contains(prime, "go test -race -v ./...") {
+		t.Errorf("bin/prime no longer runs `go test -race -v ./...`. " +
+			"Without -v there are no `--- PASS:` lines to count, and the floors in gate.yml are read out of that count; " +
+			"without -race the local gate cannot catch what CI's `go test -race` job catches")
 	}
 }
 

@@ -25,7 +25,7 @@
 #    not tell 428 tests from 4, and neither could a declaration. The two
 #    `cafe:` lines below are the only countable output this gate has, and
 #    `gate.yml`'s three floors are read out of the first of them. They are
-#    counted from `go test -v`, which replays a cached run's verbose output
+#    counted from `go test -race -v`, which replays a cached run's verbose output
 #    verbatim -- so a second `bin/prime` on an unchanged tree reports the same
 #    numbers as the first, and `-count=1` is deliberately NOT here, because
 #    adding it would change what a green `bin/prime` means (AGENTS.md).
@@ -55,7 +55,7 @@ usage() {
   cat <<'USAGE'
 usage: bin/prime [--live]
 
-  (no flags)  go mod download, go build ./..., go test ./...
+  (no flags)  go mod download, go build ./..., go test -race -v ./...
   --live      the same, with CAF_LIVE_DOCKER=1 and CAF_LIVE_RYUK=1 set, so the
               four live tests run instead of skipping. Needs a container runtime,
               and is asserted: if the live tier did not run, this exits nonzero.
@@ -193,7 +193,17 @@ LOG="$(mktemp "${TMPDIR:-/tmp}/caf-prime.XXXXXX")"
 trap 'rm -f "$LOG"' EXIT
 
 status=0
-go test -v ./... >"$LOG" 2>&1 || status=$?
+# -race, because the gate and CI's `go` job run the same detector over the same
+# tree. kit's job runs `go test -race -count=1 -coverprofile=coverage.out ./...`;
+# the gate runs `-race -v` without `-count=1` (AGENTS.md: a cached run replays
+# its verbose output verbatim, so the counted floors read the same either way).
+# roll-c5-race-parity is why the flag is here: three data races in
+# internal/boxd's test doubles lived on master while this gate stayed green
+# without it, and CI went red with it. The command is echoed so the gate's own
+# output proves which detector ran: a gate whose output cannot show the flag
+# is a gate that cannot prove it.
+echo "test command: go test -race -v ./..."
+go test -race -v ./... >"$LOG" 2>&1 || status=$?
 
 cat "$LOG"
 
