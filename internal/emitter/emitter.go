@@ -71,7 +71,7 @@ type Options struct {
 
 	// TenantID is the tenant_id resource attribute, and only ever a resource
 	// attribute. core's traces schema says identity here "and never on a
-	// measurement", and this is a case where honouring that costs nothing.
+	// measurement", and this is a case where honoring that costs nothing.
 	TenantID string
 
 	// Lookup reads an environment variable. os.Getenv by default; a map in

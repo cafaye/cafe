@@ -42,8 +42,8 @@ type Finding struct {
 	// as absent data.
 	ReleaseTo string `json:"release_to,omitempty"`
 	// Impact is what applying the fix touches. It is taken from the
-	// substrate catalogue, and it is empty for a component the catalogue does
-	// not characterise.
+	// substrate catalog, and it is empty for a component the catalog does
+	// not characterize.
 	Impact Blast `json:"impact,omitempty"`
 	// ImpactUnknown says the blast radius is not known, so the report can say
 	// so rather than printing an empty impact block that reads as "touches
@@ -182,7 +182,7 @@ func whyFor(c Component, a Advisory, class Class) string {
 
 func blastOf(c Component) string {
 	if c.Blast.Apply == "" {
-		return "an unknown blast radius — nobody has characterised what installing this touches"
+		return "an unknown blast radius — nobody has characterized what installing this touches"
 	}
 	restarts := "nothing else restarts"
 	if len(c.Blast.Restarts) > 0 {

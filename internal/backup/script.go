@@ -88,7 +88,7 @@ func connectionPreamble() string {
 //     `… : 1: Syntax error: end of file unexpected (expecting ")")`.
 //
 // So the polled step is one command with no shell, whose OUTPUT is the answer, and
-// the runner recognises the answer by its shape rather than by anybody's wording.
+// the runner recognizes the answer by its shape rather than by anybody's wording.
 const LockObservation = "restic list locks"
 
 // LockStep is the step's argv: the one read-only restic command that answers
@@ -162,7 +162,7 @@ const ResticLockExit = 11
 // is what an operator reads. On a collision kamal-backup's `restic snapshots --json`
 // answers 11, the gem reads any nonzero as "repository not ready", runs `restic init`
 // to recover, and *that* fails with "config file already exists" — because the
-// accessory's own cycle had already initialised the repository, which is precisely
+// accessory's own cycle had already initialized the repository, which is precisely
 // the evidence that a cycle ran. So the error line names a missing repository and
 // the log line above it names a held lock, and only the log line is the cause.
 //

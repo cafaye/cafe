@@ -35,12 +35,12 @@ import (
 // two byte sequences, and no configuration error anywhere.
 
 // h2ClientPreface is what a plaintext HTTP/2 client sends before anything else.
-// Comparing against it is what makes "dialled in the clear" a fact rather than an
+// Comparing against it is what makes "dialed in the clear" a fact rather than an
 // inference from an absence.
 var h2ClientPreface = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 
-// dialled says whether the bytes a dial produced were plaintext.
-func dialled(first []byte) bool { return bytes.HasPrefix(first, h2ClientPreface) }
+// dialed says whether the bytes a dial produced were plaintext.
+func dialed(first []byte) bool { return bytes.HasPrefix(first, h2ClientPreface) }
 
 // The four cases the documented precedence distinguishes, plus the one that was
 // wrong.
@@ -54,9 +54,9 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 		name string
 		// values builds each variable's setting from the two loopback addresses,
 		// so one row can point the two variables at DIFFERENT sockets — which is
-		// the only way "the cafaye one was dialled" is a statement about anything.
+		// the only way "the cafaye one was dialed" is a statement about anything.
 		values func(mine, theirs string) (cafaye, standard string)
-		// winner is the socket the documented precedence says was dialled.
+		// winner is the socket the documented precedence says was dialed.
 		winner string
 		// wantPlaintext is whether cafe must dial WITHOUT TLS. It is an answer, not
 		// a restatement of the input: `only-standard` and `both-conflict` differ in
@@ -139,7 +139,7 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 			}
 			emitAndFlush(t, sess)
 
-			// The address. Exactly one of the two sockets was dialled, so both are
+			// The address. Exactly one of the two sockets was dialed, so both are
 			// checked and "neither" is distinguished from "both".
 			mineDialed := mine.dialed(t)
 			theirsDialed := theirs.dialed(t)
@@ -149,7 +149,7 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 			}
 			wantMine := row.winner == "the cafaye variable"
 			if mineDialed != wantMine {
-				t.Errorf("%s was dialled; the documented precedence says %s was. %s",
+				t.Errorf("%s was dialed; the documented precedence says %s was. %s",
 					dialledName(mineDialed), row.winner, row.why)
 			}
 
@@ -159,8 +159,8 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 				recorder = mine
 			}
 			first := recorder.firstBytes(t)
-			if got := dialled(first); got != row.wantPlaintext {
-				t.Errorf("dialled in the clear = %t, want %t. First bytes on the wire: % x. %s",
+			if got := dialed(first); got != row.wantPlaintext {
+				t.Errorf("dialed in the clear = %t, want %t. First bytes on the wire: % x. %s",
 					got, row.wantPlaintext, first, row.why)
 			}
 		})
@@ -207,7 +207,7 @@ func emitAndFlush(t *testing.T, sess Session) {
 // connection and reports them.
 //
 // It is deliberately NOT a gRPC server. This test is about which socket was
-// dialled and in what transport, and a gRPC server would have to complete a
+// dialed and in what transport, and a gRPC server would have to complete a
 // handshake to say anything — which is precisely what a wrong-scheme exporter
 // cannot do. The bytes are the evidence.
 type dialRecorder struct {
@@ -241,11 +241,11 @@ func startDialRecorder(t *testing.T) *dialRecorder {
 	return recorder
 }
 
-// dialed reports whether this socket was dialled, and keeps the bytes so
+// dialed reports whether this socket was dialed, and keeps the bytes so
 // firstBytes can still answer for it afterwards. Consuming them would mean the
 // scheme assertion silently read an empty slice, and `bytes.HasPrefix` on an
 // empty slice is false — which is to say it would read "TLS" for a socket that
-// dialled in the clear.
+// dialed in the clear.
 func (d *dialRecorder) dialed(t *testing.T) bool {
 	t.Helper()
 	select {
@@ -258,11 +258,11 @@ func (d *dialRecorder) dialed(t *testing.T) bool {
 }
 
 // firstBytes is what the dial produced, for a socket already known to have been
-// dialled.
+// dialed.
 func (d dialRecorder) firstBytes(t *testing.T) []byte {
 	t.Helper()
 	if d.seen == nil {
-		t.Fatalf("no bytes were read from a socket the address assertion says was dialled. " +
+		t.Fatalf("no bytes were read from a socket the address assertion says was dialed. " +
 			"This is the failure mode of a recorder that consumed them: an empty read is not a " +
 			"plaintext dial, and treating it as one would fail this for the wrong reason")
 	}

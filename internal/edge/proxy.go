@@ -99,7 +99,7 @@ type Gateway struct {
 	// them would make a deploy rewrite something it did not measure.
 	probes probeTable
 
-	// writeMu serialises the probe loop's read-merge-write against itself and
+	// writeMu serializes the probe loop's read-merge-write against itself and
 	// against a concurrent probeAll a test drives by hand.
 	writeMu sync.Mutex
 
@@ -147,7 +147,7 @@ func (g *Gateway) Handler() http.Handler {
 }
 
 // Serve starts the probe loop and blocks serving until the context is
-// cancelled. The probe loop is started here rather than in a constructor
+// canceled. The probe loop is started here rather than in a constructor
 // because a gateway that is constructed and never served should not have a
 // goroutine waking every fifteen seconds for nothing.
 func (g *Gateway) Serve(ctx context.Context, ln net.Listener) error {
@@ -358,7 +358,7 @@ func (g *Gateway) detailFor(row Host) string {
 }
 
 // probeLoop asks every upstream how it is, on the interval. It stops when the
-// context is cancelled or the gateway stops serving.
+// context is canceled or the gateway stops serving.
 //
 // IT WRITES WHAT IT MEASURED, and that is the edge owning its own state rather
 // than being handed a health column by whoever deployed. A health nobody
@@ -464,7 +464,7 @@ func (g *Gateway) probe(ctx context.Context, row Host) (Health, string) {
 	if err != nil {
 		return HealthUnhealthy, err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return HealthHealthy, ""
 	}

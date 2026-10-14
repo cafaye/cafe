@@ -106,7 +106,7 @@ func planPublishingOn(base func(dev.Project) (dev.Stack, error), hostPort int) f
 }
 
 // planFor wraps a planner so the project is published on an explicit port, which
-// is the only way a port outside the cafe block reaches a plan: cafe honours an
+// is the only way a port outside the cafe block reaches a plan: cafe honors an
 // explicit -port rather than overriding it, which is what makes the check's job
 // to say so rather than to move it.
 func planWithHostPort(base func(dev.Project) (dev.Stack, error), hostPort int) func(dev.Project) (dev.Stack, error) {
@@ -163,7 +163,7 @@ func freeMachine(t *testing.T) *triMachine {
 // CPUs, so a case that arranges one fact is not also quietly failing the
 // "the machine is too small" one.
 // readyMachine is a machine sized for a stack, with a port inside cafe's block so
-// that "nothing is wrong" means something a caf-managed stack would recognise.
+// that "nothing is wrong" means something a caf-managed stack would recognize.
 func readyMachine(t *testing.T) *triMachine {
 	t.Helper()
 	m := readyTriMachine(t)
@@ -590,7 +590,7 @@ func projectFor(state string) string {
 // It is a switch over the state strings rather than a parallel table, and that
 // is a deliberate risk: if a row's `state` is edited and its arrange branch is
 // not, the meta-test fails with "state X produced ok, want warn" — which is the
-// behaviour a meta-test is supposed to have. A second table would agree with the
+// behavior a meta-test is supposed to have. A second table would agree with the
 // first by construction and prove nothing.
 func arrange(t *testing.T, m *triMachine, state string) {
 	t.Helper()
@@ -800,7 +800,7 @@ func TestDoctorNamesAForeignOccupantOfTheBlock(t *testing.T) {
 
 // A port outside the block is not cafe's business at all. The check scans the
 // block and says nothing about 21101, because the whole point of the block is
-// that a port in it is recognisable as ours.
+// that a port in it is recognizable as ours.
 func TestTheBlockCheckSaysNothingAboutPortsOutsideIt(t *testing.T) {
 	dir := doctorProject(t, "go")
 	m := freeMachine(t)
@@ -835,7 +835,7 @@ func TestAnExhaustedBlockIsAFailure(t *testing.T) {
 
 // The block check probes both loopback families, because a port that is
 // genuinely held on ::1 and free on 127.0.0.1 is a collision the report has to
-// see. The prober's own dual-family behaviour is tested hermetically in
+// see. The prober's own dual-family behavior is tested hermetically in
 // internal/ports; what is asserted here is that the report reads the prober's
 // answer rather than forming its own opinion.
 // The block check and the ports check ask the same question — is this port held
@@ -843,7 +843,7 @@ func TestAnExhaustedBlockIsAFailure(t *testing.T) {
 // report that can contradict itself, and a report that contradicts itself is one
 // nobody trusts about the port it is warning about.
 //
-// The prober's own dual-family behaviour, against real sockets on both families,
+// The prober's own dual-family behavior, against real sockets on both families,
 // is tested hermetically in `internal/ports` (`TestAnIPv4OnlyProberMissesAnIPv6Listener`
 // and its mirror). What is asserted here is that the report reads the prober
 // rather than forming its own opinion about the block.
@@ -908,7 +908,7 @@ func TestTheSummaryCountsAllThreeStates(t *testing.T) {
 	}
 }
 
-// `doctor` used to always exit 0. The change is a real behaviour change to a
+// `doctor` used to always exit 0. The change is a real behavior change to a
 // shipped command, so it is asserted rather than assumed.
 func TestDoctorIsNowAGateForFailures(t *testing.T) {
 	dir := doctorProject(t, "go")

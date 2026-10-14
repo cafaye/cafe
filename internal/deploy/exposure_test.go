@@ -297,7 +297,7 @@ func TestADocumentThatIsNotAConfigIsAnErrorNotAPass(t *testing.T) {
 
 // Every accessory must be checked, not just the first, and the report must be in
 // a stable order: two runs over one config have to print the same thing, or the
-// refusal is not a diffable artefact.
+// refusal is not a diffable artifact.
 func TestEveryAccessoryIsCheckedInAStableOrder(t *testing.T) {
 	resolved := `---
 :accessories:

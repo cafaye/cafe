@@ -560,8 +560,8 @@ owner:
 // The two flags that name the origins, proven end to end against the REAL
 // HTTP clients rather than injected fakes. This is the test that would have
 // caught the first version, where withDefaults() built the clients out of the
-// URL and the flag overrides ran afterwards — so the flags were honoured
-// nowhere and the command dialled the environment's origin while looking
+// URL and the flag overrides ran afterwards — so the flags were honored
+// nowhere and the command dialed the environment's origin while looking
 // configurable. No injected fake can see that: a fake is the client, and
 // there is nobody to ask which URL it was given.
 func TestResolveFlagsNameTheOriginsEndToEnd(t *testing.T) {

@@ -240,7 +240,7 @@ func plan(o Options, sudo, binaryHash string, binary []byte, enrolled *identityR
 			// a darwin binary on a linux box is `-x` and it hashes to
 			// something, so the hash check alone reports "a different
 			// version" — a sentence that sends an operator hunting for a
-			// build artefact when the truth is that there is no usable cafe
+			// build artifact when the truth is that there is no usable cafe
 			// on this box at all. `<bin> version` asks the only authority
 			// that can answer — the host's own kernel — and when it fails,
 			// the file reads as ABSENT, which is what it is.
@@ -445,7 +445,7 @@ type Enrollment struct {
 	ControlPlane string `json:"box_url"`
 	// Action is the host's own `cafe box enroll` answer — "enrolled",
 	// "already-enrolled" or "refused". A retry that finds an already-enrolled
-	// box reports that word rather than synthesising its own.
+	// box reports that word rather than synthesizing its own.
 	Action string `json:"action"`
 	// EnrolledAt is when the enrollment completed, from the box's own clock.
 	EnrolledAt string `json:"enrolled_at,omitempty"`
@@ -534,7 +534,7 @@ type enrollmentOf struct {
 }
 
 // enrollment is the decoded form of the host's own answer, carrying the
-// redemption count in an unexported field so it cannot be marshalled into a
+// redemption count in an unexported field so it cannot be marshaled into a
 // document by accident, and the two relative certificate paths the host's
 // enrollment recorded.
 type enrollment struct {

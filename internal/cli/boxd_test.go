@@ -40,7 +40,7 @@ type boxdFakes struct {
 
 // writeIdentity writes the identity document the enrollment flow writes, and
 // returns its path. The paths inside are absolute, because a test's directory
-// is not where a real box keeps its enrollment and the document must honour
+// is not where a real box keeps its enrollment and the document must honor
 // both.
 func writeIdentity(t *testing.T, doc identityDocument) string {
 	t.Helper()

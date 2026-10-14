@@ -26,7 +26,7 @@ type Store struct {
 //	<dir>/runs/<id>.json          the run and its steps
 //	<dir>/runs/<id>.events.jsonl  the append-only log
 //	<dir>/runs/<id>.lease.json    who is driving it right now, if anybody
-//	<dir>/store.lock              the lock serialising mutations
+//	<dir>/store.lock              the lock serializing mutations
 //
 // It is Open and not New because opening a store that is already there is
 // the normal case — the second driver opens the same directory as the first.
@@ -482,7 +482,7 @@ func (s *Store) dropLease(l *Lease, record bool) error {
 
 // checkLease is the fencing check every write goes through. The lease object
 // a driver holds is only a claim about the world; the record on disk is the
-// world. A write whose epoch the store no longer honours is refused, and the
+// world. A write whose epoch the store no longer honors is refused, and the
 // sentence names the holder that does, so the refused driver knows who to
 // leave alone.
 func (s *Store) checkLease(l *Lease, run *Run) error {

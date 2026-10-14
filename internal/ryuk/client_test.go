@@ -428,7 +428,7 @@ func TestAGarbageDurationFallsBackToTheDefault(t *testing.T) {
 	if got.ConnectionTimeout != defaultConnectionTimeout {
 		t.Errorf("ConnectionTimeout = %s, want the default %s", got.ConnectionTimeout, defaultConnectionTimeout)
 	}
-	// The neighbouring field is asserted too, so that fixing one cannot come at
+	// The neighboring field is asserted too, so that fixing one cannot come at
 	// the cost of the other and a test still goes green.
 	if got.ReconnectionTimeout != 30*time.Second {
 		t.Errorf("ReconnectionTimeout = %s, want 30s", got.ReconnectionTimeout)

@@ -105,8 +105,8 @@ func (f *fakeRunner) Plan(cover Cover, cfg Config, opts Options) (Plan, error) {
 // document into the writer it was handed — so the production code's capture is
 // exercised rather than bypassed.
 func (f *fakeRunner) Run(ctx context.Context, dir string, step Step, stdout, stderr io.Writer) error {
-	// The context is HONOURED, and it is honoured before the lock rather than
-	// inside it, because a fake that answered a cancelled context with a normal
+	// The context is HONORED, and it is honored before the lock rather than
+	// inside it, because a fake that answered a canceled context with a normal
 	// answer made the cancellation case undrivable — and a test that skips
 	// itself for "this machine cannot prove it" is a test the gate's skip floor
 	// then has to account for, which is the ratchet's whole point: a skip that
@@ -1129,7 +1129,7 @@ func TestNoCredentialReachesAnyOutput(t *testing.T) {
 		"POSTGRES_PASSWORD": "throwaway-postgres-password",
 		"RESTIC_REPOSITORY": "s3:https://account.r2.cloudflarestorage.com/identity-db-backups",
 	}
-	// A secrets file whose values are all recognisable, so the assertion is about
+	// A secrets file whose values are all recognizable, so the assertion is about
 	// the values rather than about the names.
 	write(t, filepath.Join(dir, ".kamal", "secrets"), "")
 	for name, value := range secrets {
@@ -1279,7 +1279,7 @@ func TestARefusalIsPrintedOnStdoutAndReturnedAsASentinel(t *testing.T) {
 }
 
 // Every step the cycle runs goes through the deadline, and a context that is
-// already done must not start a new command — which is the only way a cancelled
+// already done must not start a new command — which is the only way a canceled
 // `cafe backup` can be a cancellation rather than a partially booted accessory.
 func TestACancelledContextStopsTheCycleBeforeItBoots(t *testing.T) {
 	dir := fixtureProject(t)
@@ -1295,11 +1295,11 @@ func TestACancelledContextStopsTheCycleBeforeItBoots(t *testing.T) {
 			"refusal and from a failed cycle, and a wrapped error is what keeps the three apart", err)
 	}
 	// Nothing ran at all, because the read-only steps go through the Runner too and
-	// the Runner is what honours the context. Asserting only on Boot would pass for a
+	// the Runner is what honors the context. Asserting only on Boot would pass for a
 	// cafe that booted the accessory and then failed — which is the accident a
 	// Ctrl-C in the wrong half-second causes.
 	if got := f.steps(); len(got) != 0 {
-		t.Errorf("a cancelled cycle still ran %v", got)
+		t.Errorf("a canceled cycle still ran %v", got)
 	}
 }
 

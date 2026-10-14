@@ -49,7 +49,7 @@ func TestRedeemCarriesTheIssuedCertificateOutWithoutADocument(t *testing.T) {
 		t.Fatal("the certificate lost a half")
 	}
 	if strings.Contains(mustJSON(t, cert), cert.key) {
-		t.Error("marshalling the certificate carried the private key")
+		t.Error("marshaling the certificate carried the private key")
 	}
 	// And the printable type stays printable and credential-free.
 	if strings.Contains(mustJSON(t, inst), cert.key) {

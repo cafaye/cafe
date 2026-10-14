@@ -790,7 +790,7 @@ func TestAMisspelledFlagAfterTheHostIsRefusedAsAFlag(t *testing.T) {
 		t.Fatalf("err = %v, want errUsage", err)
 	}
 	if !strings.Contains(err.Error(), "-controlplane") {
-		t.Errorf("the refusal does not name the flag it did not recognise: %v", err)
+		t.Errorf("the refusal does not name the flag it did not recognize: %v", err)
 	}
 	if len(sim.commands) != 0 {
 		t.Errorf("the host was contacted %d times by a refused invocation", len(sim.commands))

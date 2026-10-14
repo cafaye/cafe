@@ -49,7 +49,7 @@ const phaseEnrolled = "enrolled"
 var Phases = []Phase{
 	{
 		Name: phaseEnrolled, Title: "Enrolled",
-		Summary: "The box has a keypair, has redeemed its capability and is recognised by box.",
+		Summary: "The box has a keypair, has redeemed its capability and is recognized by box.",
 		Handoff: "cafe box enroll --token …",
 	},
 	{
@@ -367,7 +367,7 @@ func (s *Store) appendEvent(action, phase, message string) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	f.Write(append(raw, '\n'))
 }
 

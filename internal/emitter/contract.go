@@ -85,7 +85,7 @@ const otlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT"
 // DEFAULT state — core's endpoint declaration is `required: false` with the
 // collector as the default value, which is what makes observability on by
 // default without being mandatory. Telemetry being on with nowhere configured is
-// the shipped behaviour, not a misconfiguration, and returning a reason for it
+// the shipped behavior, not a misconfiguration, and returning a reason for it
 // would train an operator to read a line that means nothing.
 func NoOpReasonFor(lookup func(string) string) string {
 	if switchedOff(lookup, telemetry.SwitchSDKDisabled) {

@@ -14,8 +14,8 @@ import (
 // document is rendered twice — human prose for the operator, JSON for the
 // schedule's own state and for OPS-P13's monthly report — and two renderers
 // over one value cannot disagree about what was found. A report that was
-// written straight to a terminal could not be summarised without re-running
-// the scan, and a scan that has to be re-run to be summarised is a scan whose
+// written straight to a terminal could not be summarized without re-running
+// the scan, and a scan that has to be re-run to be summarized is a scan whose
 // numbers drift between the two prints.
 type Report struct {
 	// Box is the enrolled identity this is about.
@@ -39,7 +39,7 @@ type Report struct {
 	// Findings are the rows that matter, sorted severity-first.
 	Findings []Finding `json:"findings,omitempty"`
 	// Divergences are the places the box disagrees with the substrate
-	// catalogue. They are in the report even when there are no findings,
+	// catalog. They are in the report even when there are no findings,
 	// because a box running a version the substrate does not pin is a
 	// security fact whether or not an advisory covers it.
 	Divergences []Divergence `json:"divergences,omitempty"`
@@ -51,7 +51,7 @@ type Report struct {
 }
 
 // Clean reports whether there is nothing to act on. It is not "no findings";
-// an unreadable version and a divergence from the catalogue both mean
+// an unreadable version and a divergence from the catalog both mean
 // somebody has to look, and a report that said clean in either case would be
 // the loudest kind of wrong.
 func (r Report) Clean() bool {
@@ -138,7 +138,7 @@ func Render(w io.Writer, r Report) error {
 			fmt.Fprintf(&b, "    fix:       release %s\n", f.ReleaseTo)
 		}
 		if f.ImpactUnknown {
-			b.WriteString("    touches:   unknown — this component is not in the substrate catalogue, so nobody has said what installing it restarts\n")
+			b.WriteString("    touches:   unknown — this component is not in the substrate catalog, so nobody has said what installing it restarts\n")
 		} else {
 			fmt.Fprintf(&b, "    touches:   %s\n", blastOf(Component{Name: f.Component, Blast: f.Impact}))
 		}

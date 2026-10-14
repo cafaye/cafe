@@ -10,10 +10,10 @@
 // of one manifest, which is the property `internal/gen`'s drift gate depends on
 // and the reason a diff between two of the files is a diff between two manifests.
 //
-// ONE TARGET, and the reason is a division of labour rather than an omission.
+// ONE TARGET, and the reason is a division of labor rather than an omission.
 //
 // `cafe gen telemetry` emits the OpenTelemetry setup a service needs in order to
-// honour core's telemetry contract: the per-signal attribute allowlists, the
+// honor core's telemetry contract: the per-signal attribute allowlists, the
 // prohibition on unbounded identifiers, the resource attributes, the
 // `error.type` vocabulary, the span-name bound, the `*_OTEL_ENDPOINT` variable
 // and the no-op path. Every one of those is read out of the six schemas core
@@ -157,7 +157,7 @@ var targets = []struct {
 	},
 	{
 		name:      "telemetry",
-		summary:   "write the OpenTelemetry setup a service needs to honour core's telemetry contract",
+		summary:   "write the OpenTelemetry setup a service needs to honor core's telemetry contract",
 		languages: []string{"go"},
 	},
 }

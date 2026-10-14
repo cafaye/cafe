@@ -537,7 +537,7 @@ func (c HTTPPublisher) post(ctx context.Context, token, path string, body, out a
 	if err != nil {
 		return fmt.Errorf("call pantry: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
 		return fmt.Errorf("read pantry's answer: %w", err)

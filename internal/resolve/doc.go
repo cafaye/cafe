@@ -45,14 +45,14 @@
 //
 // required: false DEGRADES. The manifest schema's `required` field marks a
 // soft dependency ("the service runs without it, degraded"), and the resolver
-// honours it: a failed optional dependency is a warning, not a block. The
+// honors it: a failed optional dependency is a warning, not a block. The
 // decision is the command's — the resolver reports every failure with its
 // dependency's Required flag, and the caller decides warn-vs-block. Box
 // never sees `required`; it is cafe's side of the contract.
 //
 // WHAT THIS PACKAGE DOES NOT DO, and deliberately: it does not fetch artifact
 // bytes. There is no artifact-serving endpoint yet — tier 3's fetch grant is
-// the proof of entitlement, and the registry that honours it is a later
+// the proof of entitlement, and the registry that honors it is a later
 // packet's row. It does not decide which services are paid products; it
 // carries box's PRODUCTS list (see Products) for the reason
 // internal/provider carries box's PROVIDERS: the client has to refuse

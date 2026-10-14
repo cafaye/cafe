@@ -123,7 +123,7 @@ func (s Scan) Run(ctx context.Context) (Outcome, error) {
 	inv.Observed = observed
 	inv.Compare()
 	components := inv.Components()
-	emit.Emit("observe", fmt.Sprintf("%d components, %d divergent from the substrate catalogue",
+	emit.Emit("observe", fmt.Sprintf("%d components, %d divergent from the substrate catalog",
 		len(components), len(inv.Divergences)))
 
 	if s.Source == nil {
@@ -359,7 +359,7 @@ type workloadList struct {
 // parseImages turns every container image on the box into a component.
 //
 // An image is `repo/name:tag`, and the component is the last segment of the
-// repo path with the tag stripped — which is what the substrate catalogue
+// repo path with the tag stripped — which is what the substrate catalog
 // names. That is a convention rather than a rule and it is stated as one: an
 // image called `bitnami/redis:7.4.1` becomes `redis`, and if a feed indexes
 // it under another name the match fails and the report says the feed was

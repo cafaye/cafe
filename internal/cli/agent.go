@@ -97,7 +97,7 @@ func agentVerbs(deps agentDeps) []agentVerb {
 // to say are the split with `cafe box` and the claim step.
 const agentLongHelp = `The agent is a PRINCIPAL: it has a username, it becomes
 claimed by a human account, and it holds a token. ` + "`cafe box …`" + ` is a
-MACHINE — it has a keypair and it enrols. Two subjects, two verbs, and the split
+MACHINE — it has a keypair and it enrolls. Two subjects, two verbs, and the split
 is the one moon/AGENTS-FIRST.md chose so that ` + "`cafe agent register`" + ` never
 reads as "the agent is registering a box".
 

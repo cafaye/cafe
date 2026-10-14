@@ -21,7 +21,7 @@ const (
 //
 // There is deliberately NO private key field. That is the invariant expressed
 // in the type rather than in a comment: a struct with no key in it cannot be
-// marshalled into a document that carries one, cannot be returned by a command
+// marshaled into a document that carries one, cannot be returned by a command
 // that formats a struct with %v or %+v, and cannot be printed by a test that
 // round-trips it. A test asserting "no document carries the private key" over
 // a type that could hold it is a test that passes until somebody adds a field;

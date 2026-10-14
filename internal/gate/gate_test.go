@@ -44,7 +44,7 @@ func readGate(t *testing.T) []byte {
 //     must not weaken.
 //  3. Running the writer over that lowered declaration restores it BYTE FOR
 //     BYTE — every comment above every floor survives, which is the whole reason
-//     the writer edits lines rather than parsing and re-marshalling YAML.
+//     the writer edits lines rather than parsing and re-marshaling YAML.
 func TestTheWriterRoundTripsAndAHandLoweredFloorIsRed(t *testing.T) {
 	root := repoRoot(t)
 	raw := readGate(t)

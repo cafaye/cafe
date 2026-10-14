@@ -344,7 +344,7 @@ func boxStatePath(identityPath string) string {
 //   - Envelope is refused with the sentence that says why: opening a sealed
 //     provider credential and installing it as a Kubernetes Secret needs the
 //     substrate on the box, and that lands with the substrate packet. A route
-//     the world cannot fulfil yet answers `failed` with that reason — never a
+//     the world cannot fulfill yet answers `failed` with that reason — never a
 //     silent success, which would be the daemon lying to the control plane about a
 //     credential being installed.
 //
@@ -461,7 +461,7 @@ func (w boxWorld) Apply(_ context.Context, phase int) (boxd.ApplyResult, error) 
 }
 
 // Envelope refuses, by name, what v0 cannot do. The route exists in the
-// whitelist and the capability for it is valid; the world cannot fulfil it
+// whitelist and the capability for it is valid; the world cannot fulfill it
 // yet, and saying so is the difference between a capability that comes back
 // `failed` with a reason and a capability that looks like it worked.
 func (w boxWorld) Envelope(context.Context, boxd.Envelope) (boxd.EnvelopeResult, error) {
@@ -479,8 +479,8 @@ func (w boxWorld) Envelope(context.Context, boxd.Envelope) (boxd.EnvelopeResult,
 // writes). It computes which of box's candidate releases are pending
 // against the box's own version range.
 //
-// ctx is honoured at each bounded read: there is no long-running loop here —
-// every gather is one read of a local file and one syscall — but a cancelled
+// ctx is honored at each bounded read: there is no long-running loop here —
+// every gather is one read of a local file and one syscall — but a canceled
 // context stops the assembly rather than returning a stale report, because a
 // report assembled for a connection that has already gone away is a report
 // nobody will ack.

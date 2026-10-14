@@ -181,7 +181,7 @@ func (s Stack) PublishedPorts() []int {
 
 // Plan is the whole decision: a manifest and a registry in, a rendered compose
 // document and a start order out. It reads no file, opens no socket and runs
-// no command, which is what lets the interesting behaviour of `cafe dev` be
+// no command, which is what lets the interesting behavior of `cafe dev` be
 // tested without a container runtime anywhere in sight.
 //
 // The order of the checks is the order a developer needs them in. The closure

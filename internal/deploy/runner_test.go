@@ -140,7 +140,7 @@ func TestRunWiresBothStreamsToTheCommand(t *testing.T) {
 	}
 }
 
-// A cancelled context must stop the deploy, because an interrupt that leaves
+// A canceled context must stop the deploy, because an interrupt that leaves
 // `kamal setup` running is a deploy nobody chose to finish.
 func TestRunStopsWhenTheContextIsCancelled(t *testing.T) {
 	dir := t.TempDir()
@@ -153,7 +153,7 @@ func TestRunStopsWhenTheContextIsCancelled(t *testing.T) {
 	err := runner.Run(ctx, "", Step{Argv: []string{"kamal", "setup"}}, io.Discard, io.Discard)
 
 	if err == nil {
-		t.Fatal("got no error for a cancelled deploy")
+		t.Fatal("got no error for a canceled deploy")
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("err = %v, want it to wrap context.Canceled", err)

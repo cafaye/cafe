@@ -156,7 +156,7 @@ func (h SSHHost) run(ctx context.Context, command string, stdin []byte, sock str
 // It exists as ONE function returning the list the transport hands to ssh, and
 // that is a correction rather than a tidy-up. The first version of this change
 // had `run` build `sshArgs()`, which already carries `ControlMaster=no`, and
-// then APPEND `controlArgs(...)` with `ControlMaster=auto`. ssh honours the
+// then APPEND `controlArgs(...)` with `ControlMaster=auto`. ssh honors the
 // FIRST `-o` for a repeated option, so `no` won and the master never opened —
 // measured: 28 chunks in 3m30s, no better than the per-command transport. The
 // test that was supposed to guard it built its own `baseArgs()+controlArgs()`
@@ -260,7 +260,7 @@ func (h SSHHost) askpass() (path string, cleanup func(), err error) {
 
 // exitCode reads a command's status without treating a non-zero one as an
 // error. It is -1 when the process never ran — a missing binary, a context
-// cancelled before the exec — which is the one case the caller must distinguish
+// canceled before the exec — which is the one case the caller must distinguish
 // from the host answering "no".
 func exitCode(cmd *exec.Cmd, err error) int {
 	if cmd.ProcessState == nil {

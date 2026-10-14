@@ -481,7 +481,7 @@ func versionArgs(version string) []string {
 }
 
 // Command renders a step as the operator would type it, which is what the dry
-// run prints. Kamal's own output is YAML with symbol keys and an ANSI-coloured
+// run prints. Kamal's own output is YAML with symbol keys and an ANSI-colored
 // header, so it is printed rather than parsed; only the exposure check parses it,
 // and only the keys it must.
 func (s Step) Command() string { return strings.Join(s.Argv, " ") }

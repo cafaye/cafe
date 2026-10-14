@@ -111,7 +111,7 @@ func TestCveScanEndToEnd(t *testing.T) {
 		"redis 7.4.1-alpine",
 		"CVE-2025-1234",
 		"release 7.4.2",
-		// The blast radius is the DECLARED catalogue's, not the observer's:
+		// The blast radius is the DECLARED catalog's, not the observer's:
 		// a rewrite of the tag lives in kit, and an observer that saw a
 		// running pod has no opinion about which file to edit.
 		"bump the image tag in manifests/data/redis.yaml",

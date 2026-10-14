@@ -16,7 +16,7 @@ import (
 // The wiring: the paths a test that builds a command by hand does not exercise.
 //
 // The rule in AGENTS.md is that every subcommand needs a registry entry, a
-// behaviour test and a bad-argument test. The behaviour tests drive the run
+// behavior test and a bad-argument test. The behavior tests drive the run
 // functions with fakes; these cases drive the *wiring* — the constructors, the
 // flag surface, the help, and the paths that only a real invocation reaches —
 // because a command whose constructor is never called is a command whose flags
@@ -260,7 +260,7 @@ func TestTheInvocationGrammar(t *testing.T) {
 	}
 }
 
-// A child that was signalled has no status of its own. Reporting 0 for "it died"
+// A child that was signaled has no status of its own. Reporting 0 for "it died"
 // would turn a crash into a pass, which is the one thing a gate must never do.
 func TestASignalledChildDoesNotBecomeSuccess(t *testing.T) {
 	crashed := &childStatus{Code: 0, err: errors.New("signal: killed")}
@@ -290,7 +290,7 @@ func TestTheRouterPassesTheChildsExitCodeThrough(t *testing.T) {
 	}{
 		{name: "success", err: nil, want: exitSuccess},
 		{name: "a child that exited 3", err: &childStatus{Code: 3, err: errors.New("exit status 3")}, want: 3},
-		{name: "a child that was signalled", err: &childStatus{Code: 0, err: errors.New("signal: killed")}, want: exitFailure},
+		{name: "a child that was signaled", err: &childStatus{Code: 0, err: errors.New("signal: killed")}, want: exitFailure},
 		{name: "an ordinary failure", err: errors.New("something went wrong"), want: exitFailure, stderr: true},
 		{name: "a reported verdict", err: errReported, want: exitFailure},
 		{name: "a usage mistake", err: errUsage, want: exitUsage, stderr: true},
@@ -546,7 +546,7 @@ func TestEnvRejectsAnUnknownVerbWithTheRealOneNamed(t *testing.T) {
 	}
 }
 
-// A -port inside the block is the developer's decision and cafe honours it. cafe
+// A -port inside the block is the developer's decision and cafe honors it. cafe
 // holds that exact port rather than picking a different one, because overriding a
 // port somebody typed is the one thing this command must never do: the developer
 // has a URL, a bookmark, or a test that connects to it.
@@ -569,7 +569,7 @@ func TestAnExplicitPortInsideTheBlockIsHonoured(t *testing.T) {
 
 // A -port outside the block is refused, and the refusal names the range. cafe
 // checks a port it was given — it does not move it — but a port nobody arbitrates
-// is how 21101 and 55432 happened, so it is refused rather than honoured.
+// is how 21101 and 55432 happened, so it is refused rather than honored.
 func TestAnExplicitPortOutsideTheBlockIsRefused(t *testing.T) {
 	dir := envProject(t)
 	book := openTestLedger(t)
@@ -590,7 +590,7 @@ func TestAnExplicitPortOutsideTheBlockIsRefused(t *testing.T) {
 }
 
 // A -port outside the block is refused by name, because the whole point of the
-// block is that a port in it is recognisable as ours — and a refusal that does not
+// block is that a port in it is recognizable as ours — and a refusal that does not
 // name the range sends somebody to `lsof`.
 func TestAPortFlagOutsideTheBlockIsRefusedByName(t *testing.T) {
 	dir := envProject(t)

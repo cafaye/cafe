@@ -189,7 +189,7 @@ func TestAPublishFlagTypoAfterThePositionalsIsRefusedAsAFlag(t *testing.T) {
 		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitUsage, stderr)
 	}
 	if !strings.Contains(stderr, "jsonn") {
-		t.Errorf("the refusal does not name the flag it did not recognise: %s", stderr)
+		t.Errorf("the refusal does not name the flag it did not recognize: %s", stderr)
 	}
 	if _, err := os.Stat(filepath.Join(b.dir, "edge", "releases", "sample-stack-1")); err == nil {
 		t.Error("a refused publish wrote a release")

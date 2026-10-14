@@ -452,7 +452,7 @@ func TestServeHTTPAgreesWithARealClient(t *testing.T) {
 // fails the HTTP request itself: 400 with a plain-text body, and no JSON-RPC
 // frame at all. That is the SDK following the transport spec rather than a gap
 // in cafe, and it is still an answer — a client is told its method is unknown
-// rather than left waiting — but a client written against the stdio behaviour
+// rather than left waiting — but a client written against the stdio behavior
 // will not find the -32601 it expects. So it is asserted here, and the report
 // says which transport gives which.
 func TestAnUnknownMethodOverHTTPIsRefused(t *testing.T) {
@@ -603,7 +603,7 @@ func serveHTTP(t *testing.T, server *Server) (string, func()) {
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
-			t.Error("ServeHTTP did not return after its context was cancelled")
+			t.Error("ServeHTTP did not return after its context was canceled")
 		}
 	}
 }

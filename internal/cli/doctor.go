@@ -60,7 +60,7 @@ var tools = []tool{
 // rather than about the machine. It is here so that cleanup stops depending on
 // somebody remembering: a check nobody can be reminded of is a check nobody runs.
 //
-// The report is a gate now, and that is a behaviour change to a shipped command.
+// The report is a gate now, and that is a behavior change to a shipped command.
 // It is tri-state (`ok | warn | fail`) and only `fail` moves the exit code,
 // because a boolean gate forces a choice between failing on warnings (noisy, and
 // the first thing a team disables) and ignoring them (a report that lies). The

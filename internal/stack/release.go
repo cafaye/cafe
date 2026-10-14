@@ -80,7 +80,7 @@ type Release struct {
 	// question rather than an answer.
 	Service string `json:"service"`
 	// Version is the tag the build carried. Cosmetic: the digest is the
-	// identity, and this is what a person recognises.
+	// identity, and this is what a person recognizes.
 	Version string `json:"version,omitempty"`
 	// Image is the pinned OCI reference, name@digest. Never a tag alone —
 	// see Build.Validate.
@@ -94,7 +94,7 @@ type Release struct {
 	StartedAt time.Time `json:"started_at"`
 	// EndedAt is when it stopped being current. Nil while it is live, and a
 	// POINTER rather than a zero time because omitempty does not work on a
-	// time.Time struct — the zero value would be serialised into every
+	// time.Time struct — the zero value would be serialized into every
 	// release record as 0001-01-01T00:00:00Z, which is a date nobody can read
 	// and a fact nobody asked for.
 	EndedAt *time.Time `json:"ended_at,omitempty"`
@@ -390,7 +390,7 @@ func (s *Store) save(h History) error {
 	if err != nil {
 		return fmt.Errorf("write the release history: %w", err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	enc := json.NewEncoder(tmp)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(h); err != nil {

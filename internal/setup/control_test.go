@@ -159,7 +159,7 @@ func TestTheWritesPolicyDiffersFromTheWalksInOneLine(t *testing.T) {
 	host := SSHHost{Name: "contabo", Port: 2222, IdentityFile: "/keys/id"}
 	// Read the SAME construction the transport hands to ssh, in both modes. The
 	// first version of this test rebuilt the write's list itself — baseArgs plus
-	// controlArgs — while `run` built sshArgs plus controlArgs, and ssh honours
+	// controlArgs — while `run` built sshArgs plus controlArgs, and ssh honors
 	// the FIRST -o, so ControlMaster=no won and no master ever opened. A test
 	// that produces its own args cannot see the transport's. argsFor is the one
 	// function both now read.
@@ -198,7 +198,7 @@ func TestTheWritesPolicyDiffersFromTheWalksInOneLine(t *testing.T) {
 	// the master would never open — a silent no-op that the timing alone would
 	// catch. The write list must carry one and only one ControlMaster.
 	if containsPair(write, "ControlMaster=no") {
-		t.Errorf("the write policy stacked both ControlMaster values, and ssh honours the first: %v", write)
+		t.Errorf("the write policy stacked both ControlMaster values, and ssh honors the first: %v", write)
 	}
 }
 

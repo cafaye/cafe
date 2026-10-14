@@ -268,7 +268,7 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 		// measured on, and it answers as one — naming the chunk, the
 		// bytes acknowledged and the elapsed time — rather than as a
 		// transport that died. The bound being enabled is part of the
-		// condition: with no bound in force a cancelled caller is just a
+		// condition: with no bound in force a canceled caller is just a
 		// dead transport, which is the red control's whole point.
 		chunkStalled := t.chunkBound() > 0 && chunkCtx.Err() == context.DeadlineExceeded && totalCtx.Err() != context.DeadlineExceeded
 		totalStalled := t.totalBound() > 0 && totalCtx.Err() == context.DeadlineExceeded

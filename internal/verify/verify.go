@@ -490,7 +490,7 @@ func remedy(key, boxID string) Human {
 	action := "read the reason above; the next observe.report answers whether it still holds"
 	switch key {
 	case "certificate_expired", "certificate_expiring":
-		action = "re-enrol the box (`cafe box enroll --token <cap>`); issuance is bound to enrollment, so the fresh enrollment is what the Phase C certificate packet signs — the days-left number in this report is what says whether it worked"
+		action = "re-enroll the box (`cafe box enroll --token <cap>`); issuance is bound to enrollment, so the fresh enrollment is what the Phase C certificate packet signs — the days-left number in this report is what says whether it worked"
 	case "certificate_absent":
 		action = "nothing on this box is broken and there is nothing to fix on it: client-credential issuance lands with the Phase C packet named in boxd's package doc, and until then the daemon refuses loudly after three rounds, which is this report's degraded answer being the honest one"
 	case "disk_full":

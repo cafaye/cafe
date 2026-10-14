@@ -193,11 +193,11 @@ func (r controlPlaneResponse) clientCertificate(url string) (*ClientCertificate,
 
 // Redeem POSTs the capability and maps box's four answers onto the three
 // sentinels and success. The success answer also carries the client certificate
-// box issued, in a value that cannot be marshalled into a document.
+// box issued, in a value that cannot be marshaled into a document.
 //
 // The mapping is explicit rather than a switch on strings because box's
 // error vocabulary is not this package's, and a fifth code appearing in a
-// future release should surface as an unrecognised answer rather than being
+// future release should surface as an unrecognized answer rather than being
 // folded into the nearest familiar one. `get` is built by hand rather than
 // unmarshalled lazily so a body that is not JSON at all — a proxy's HTML error
 // page, a captive portal — is reported as what it is.
@@ -221,7 +221,7 @@ func (c HTTPControlPlane) Redeem(ctx context.Context, token string, publicKey ed
 	if err != nil {
 		return nil, nil, fmt.Errorf("redeem capability against %s: %w", url, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
 		return nil, nil, fmt.Errorf("read redemption response: %w", err)

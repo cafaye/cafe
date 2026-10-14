@@ -24,13 +24,13 @@
 //
 // # What the inventory is, and where it comes from
 //
-// The component catalogue is a transcription of the substrate installer's own
+// The component catalog is a transcription of the substrate installer's own
 // pins — kit/templates/substrate/install.sh and the manifests it applies —
 // and every entry carries the file and line it was read from. It is a copy,
 // and a copy can drift; the answer to that is not a fetch (cafaye/kit is a
 // different repository, and a cafe that reached across to it at run time would
 // be a cafe whose answer changed with someone else's checkout) but a
-// comparison: the catalogue is what a substrate box is EXPECTED to be
+// comparison: the catalog is what a substrate box is EXPECTED to be
 // running, the observation is what it IS running, and the inventory reports
 // the two side by side and names every divergence. A pinned version nobody
 // applied, and an applied version nobody pinned, are both reported rather

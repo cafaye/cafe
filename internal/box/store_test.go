@@ -749,7 +749,7 @@ func TestTheClientPrivateKeyReachesNoPrintableDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The Certificate value itself: a %v over it must be redacted, because that
-	// is how a value ends up in a log without anyone marshalling it on purpose.
+	// is how a value ends up in a log without anyone marshaling it on purpose.
 	documents = append(documents, fmt.Sprintf("%v", *cp.certificate), fmt.Sprintf("%+v", *cp.certificate), fmt.Sprintf("%#v", *cp.certificate))
 	for _, doc := range documents {
 		if strings.Contains(doc, key) {

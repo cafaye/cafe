@@ -239,7 +239,7 @@ func serveAuthed(t *testing.T, server *Server) (func(), string) {
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
-			t.Error("ServeHTTP did not return after its context was cancelled")
+			t.Error("ServeHTTP did not return after its context was canceled")
 		}
 	}, bound
 }

@@ -45,7 +45,7 @@ func (s Severity) rank() int {
 }
 
 // ParseSeverity reads a severity as the upstream feeds write it. It never
-// fails: an unrecognised value is SeverityUnknown rather than an error,
+// fails: an unrecognized value is SeverityUnknown rather than an error,
 // because an advisory whose severity nobody has scored is still an advisory
 // and a parser that refused it would drop it out of the report entirely.
 func ParseSeverity(text string) Severity {
@@ -84,7 +84,7 @@ type Advisory struct {
 	// ID is the advisory's own name: CVE-2025-1234 or GHSA-xxxx-yyyy-zzzz.
 	ID string
 	// Component is the component name this advisory is against, in the
-	// spelling the substrate catalogue uses.
+	// spelling the substrate catalog uses.
 	Component string
 	// Summary is one sentence, for the report.
 	Summary string
@@ -312,11 +312,11 @@ type osvVuln struct {
 
 // ecosystemOf maps a component kind onto the ecosystem name the feed uses.
 //
-// This is a guess about a feed, and it is labelled as one: the substrate's own
+// This is a guess about a feed, and it is labeled as one: the substrate's own
 // components are not all in OSV under a name anyone has verified, which is
 // why the matcher treats a zero-result query as a fact about the feed rather
 // than as proof of safety. What is NOT a guess is that an advisory returned
-// for a component is matched on the component NAME the catalogue uses, so a
+// for a component is matched on the component NAME the catalog uses, so a
 // feed that calls k3s something else produces no match and the report says
 // the feed was asked, not that the box was clean.
 func ecosystemOf(kind Kind) string {
@@ -403,7 +403,7 @@ func (s HTTPSource) query(ctx context.Context, slice []Component) ([]Advisory, e
 	if err != nil {
 		return nil, &SourceError{Source: s.URL, Detail: err.Error()}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, &SourceError{Source: s.URL, Detail: fmt.Sprintf("HTTP %d", resp.StatusCode)}
 	}

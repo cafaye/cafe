@@ -21,7 +21,7 @@ import (
 // was a hand-rolled socket that read five bytes and replied with a fixed
 // length-prefixed frame. It reported that a span had arrived — 1475 bytes, twice,
 // once per command — and that was a LIE, and the lie is exactly what hid the TLS
-// bug. The exporter was dialling with TLS against a plaintext collector, so what
+// bug. The exporter was dialing with TLS against a plaintext collector, so what
 // arrived on that socket was a ClientHello: 1475 bytes of handshake, counted as a
 // span. The bytes could not be decoded as protobuf at all.
 //
@@ -165,7 +165,7 @@ type collectorServer struct {
 //
 // It returns an error rather than an empty acknowledgement when the request
 // carried nothing, because acknowledging a request this server could not read is
-// what made the hand-rolled version useless — an exporter dialling with the wrong
+// what made the hand-rolled version useless — an exporter dialing with the wrong
 // transport gets told everything is fine and nobody notices for a year.
 func (s *collectorServer) Export(_ context.Context, req *coltracepb.ExportTraceServiceRequest) (*coltracepb.ExportTraceServiceResponse, error) {
 	if len(req.GetResourceSpans()) == 0 {
@@ -192,7 +192,7 @@ var errNothingReadable = errors.New("collector: the request carried no readable 
 // through it never touches a socket. Every transport decision — the endpoint, the
 // scheme, TLS or not, the batch processor's flush — sits below the injection
 // point and is unreachable from it. A test that used it here would have passed
-// with the exporter dialling with TLS at a plaintext collector.
+// with the exporter dialing with TLS at a plaintext collector.
 func wireInstall(c collector) (Session, error) {
 	return Install(context.Background(), Options{
 		Lookup: func(name string) string {

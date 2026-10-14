@@ -156,7 +156,7 @@ func TestTelemetryBeingConfiguredDoesNotChangeACommandsBehaviourOrDelayIt(t *tes
 // the reason `cafe --help` does not wait on a collector — so the exporter is
 // built successfully, the span is dropped at the flush, and stderr is empty.
 //
-// That is the correct behaviour and it is worth a test rather than a comment,
+// That is the correct behavior and it is worth a test rather than a comment,
 // because the tempting "improvement" is to make the failure loud, and loudness
 // here is a warning on every command on every machine that has not started the
 // local stack.
@@ -239,7 +239,7 @@ func TestAFailingCommandExitsTheSameWayWithTelemetryOn(t *testing.T) {
 	}
 }
 
-// A cancelled context is `cancelled` and not `internal_error`, and the exit code
+// A canceled context is `canceled` and not `internal_error`, and the exit code
 // is unchanged.
 //
 // This row exists because `cafe dev` is the command that reads `Env.Context` — it
@@ -267,14 +267,14 @@ func TestACancelledInvocationIsNotClassifiedAsAnInternalError(t *testing.T) {
 	// here at all: the wiring handed a dead context to a command that ignores it
 	// and the command behaved identically.
 	if code != exitSuccess {
-		t.Errorf("exit code = %d, want %d — an already-cancelled context must not change what a "+
+		t.Errorf("exit code = %d, want %d — an already-canceled context must not change what a "+
 			"command does", code, exitSuccess)
 	}
 
 	// The classification, on the shape it actually occurs in: `cafe dev` is the
 	// command that reads `Env.Context`, it returns a non-zero code when the
 	// context dies, and the error it returns wraps context.Canceled. That
-	// combination is what the span has to read as `cancelled`.
+	// combination is what the span has to read as `canceled`.
 	for _, row := range []struct {
 		name string
 		code int
@@ -298,7 +298,7 @@ func TestACancelledInvocationIsNotClassifiedAsAnInternalError(t *testing.T) {
 			// because it is what a script branches on and what an operator reads.
 			// So a success code is a success even if the error mentions a
 			// cancellation, and this row says so before somebody "fixes" the
-			// ordering and starts reporting cancelled runs that worked.
+			// ordering and starts reporting canceled runs that worked.
 			name: "a success code wins over a cancellation in the error",
 			code: exitSuccess,
 			err:  context.Canceled,
@@ -307,7 +307,7 @@ func TestACancelledInvocationIsNotClassifiedAsAnInternalError(t *testing.T) {
 		{
 			// And the converse: a non-zero code with a cancellation-shaped error
 			// is a cancellation, which is the whole reason this row exists.
-			name: "an ordinary failure is not cancelled",
+			name: "an ordinary failure is not canceled",
 			code: exitFailure,
 			err:  errors.New("compose file is not valid"),
 			want: emitter.OutcomeFailure,

@@ -1268,7 +1268,7 @@ func otherPlatform(t *testing.T) target {
 	return target{"darwin", "arm64"}
 }
 
-// elfBytes is a recognisable ELF64 header for a machine. It is not a program:
+// elfBytes is a recognizable ELF64 header for a machine. It is not a program:
 // it is the 64 bytes the preflight reads to learn which one it is, which is
 // all the decision needs and all the test needs to exercise the check that a
 // filename cannot be trusted.
@@ -1282,7 +1282,7 @@ func elfBytes(machine elf.Machine) []byte {
 	return h
 }
 
-// machoBytes is a recognisable 64-bit Mach-O header for a CPU.
+// machoBytes is a recognizable 64-bit Mach-O header for a CPU.
 func machoBytes(cpu macho.Cpu) []byte {
 	h := make([]byte, 32)
 	binary.LittleEndian.PutUint32(h[0:], 0xfeedfacf)
@@ -1291,7 +1291,7 @@ func machoBytes(cpu macho.Cpu) []byte {
 	return h
 }
 
-// bytesFor builds recognisable header bytes for a platform: ELF for linux,
+// bytesFor builds recognizable header bytes for a platform: ELF for linux,
 // Mach-O for darwin. The case the packet is about is a controller that is NOT
 // the host, so the bytes must be derived from the platform they claim to be
 // for rather than assumed: a sibling named for a darwin host carries Mach-O,

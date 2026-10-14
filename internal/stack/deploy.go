@@ -26,7 +26,7 @@ type Build struct {
 	Registry string `json:"registry"`
 	// Name is the repository, and the service's image name in it.
 	Name string `json:"name"`
-	// Tag is what a person recognises. It is decoration: the digest is the
+	// Tag is what a person recognizes. It is decoration: the digest is the
 	// identity, and a tag is never what the box pulls.
 	Tag string `json:"tag,omitempty"`
 	// Digest is `sha256:…`, and it is required. See imageOK.

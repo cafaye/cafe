@@ -20,7 +20,7 @@ import (
 //
 // Epoch is the fencing token. Every successful claim mints a new one, and
 // every write presents the epoch it was issued: a driver whose lease has been
-// taken over holds an epoch the store no longer honours, so it cannot mark a
+// taken over holds an epoch the store no longer honors, so it cannot mark a
 // step done on top of the driver that is running it now. Without it, "one
 // winner" would only be true at the instant of the claim.
 type Lease struct {
@@ -50,7 +50,7 @@ var (
 	// broken; the answer is to wait, or to leave that driver alone.
 	ErrHeld = errors.New("held by another driver")
 	// ErrStale is a write from a driver whose lease the store no longer
-	// honours — expired, released, or taken over by a later claim. The
+	// honors — expired, released, or taken over by a later claim. The
 	// remedy is to claim again, never to write again.
 	ErrStale = errors.New("stale lease")
 	// ErrNoSuchRun is a run id the store has never seen.

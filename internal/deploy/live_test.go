@@ -54,12 +54,12 @@ import (
 //
 //   - every port is outside 15000-15999, the block internal/ports owns, so this
 //     cannot collide with a cafe reservation or with another live test;
-//   - everything it creates is labelled cafe.live-deploy=1 and torn down by the
+//   - everything it creates is labeled cafe.live-deploy=1 and torn down by the
 //     same label, so a run that panics cannot leave a container behind for the
 //     next run to trip over;
 //   - `kamal-docker-registry` is a FIXED GLOBAL NAME that Kamal itself creates
 //     and owns. The test stops and removes it on the way in and on the way out,
-//     and says so here because that is the one thing here that is not labelled.
+//     and says so here because that is the one thing here that is not labeled.
 //
 // Read this before running it on a machine that is not yours.
 
@@ -469,7 +469,7 @@ func (r *rehearsal) linkDockerPlugins() {
 // evidence that it is.
 //
 // `wait_for_db` in the entrypoint is not cosmetic. The accessory is a container
-// on the same network as the app, booted moments earlier, and Postgres initialises
+// on the same network as the app, booted moments earlier, and Postgres initializes
 // a fresh volume before it accepts connections — so an app that probes on boot
 // races the database's own startup and reports "unreachable" for reasons that have
 // nothing to do with name-based reachability. Measured: the first run of this test
@@ -689,7 +689,7 @@ func (r *rehearsal) hostListeningOn(t *testing.T, port string) string {
 }
 
 // teardown removes everything this test created, by the label, plus the two
-// things that are not labelled: the registry container Kamal names globally, and
+// things that are not labeled: the registry container Kamal names globally, and
 // the volumes a label does not carry.
 // teardown is quiet on purpose. It runs after every case, including the ones
 // that passed, and docker's own complaints ("no such container", "requires at
@@ -916,7 +916,7 @@ release="${release:-unknown}"
 served="${served:-unknown}"
 
 # Wait for the EVENT — the database accepting connections — rather than for a
-# duration. Postgres initialises a fresh volume before it will answer, and the
+# duration. Postgres initializes a fresh volume before it will answer, and the
 # accessory was booted moments before this container, so probing once races it.
 attempt=0
 until pg_isready -h "$host" -p "$port" -t 3 >/dev/null 2>&1; do

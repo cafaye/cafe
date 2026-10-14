@@ -367,7 +367,7 @@ func writeDrillFile(path string, journal *DrillJournal) error {
 	return nil
 }
 
-// hold serialises this store's own mutations. It is the same primitive
+// hold serializes this store's own mutations. It is the same primitive
 // internal/run uses — an advisory lock on a file in the store — and it is
 // unexported here for the same reason: the arbiter is an implementation detail
 // and the surface is Append and Read.

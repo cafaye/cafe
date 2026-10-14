@@ -248,7 +248,7 @@ func (s *substrate) Ready(ctx context.Context, rel stack.Release) error {
 	if err != nil {
 		return fmt.Errorf("probe %s through the edge: %w", rel.Host, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s answered %d through the edge", rel.Host, resp.StatusCode)
 	}

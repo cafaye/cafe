@@ -60,7 +60,7 @@ type Options struct {
 	// own, and a test sets it so `cafe box setup --token -` can be driven
 	// without touching the test binary's standard input.
 	Stdin io.Reader
-	// Context is cancelled when the process is interrupted. A nil context is a
+	// Context is canceled when the process is interrupted. A nil context is a
 	// background one, so a caller that only wants an exit code passes nothing.
 	Context context.Context
 }
@@ -79,7 +79,7 @@ type Env struct {
 	// standard input. Nil means the process's stdin, which is what a real
 	// invocation wants.
 	Stdin io.Reader
-	// Context is cancelled when the process is interrupted. It is optional: a
+	// Context is canceled when the process is interrupted. It is optional: a
 	// caller that only wants an exit code passes nothing, and the router fills
 	// in a background context. `cafe dev` is the one command that reads it, and
 	// it is there rather than read from a package-level variable so a test can
@@ -160,7 +160,7 @@ func codeFor(env Env, err error) int {
 // emitter.OutcomeUsage for why filing it as an internal error would put a typo
 // in the same dashboard bucket as a cafe bug.
 //
-// A cancelled context is `cancelled` for the same reason `cafe dev`'s Ctrl-C is:
+// A canceled context is `canceled` for the same reason `cafe dev`'s Ctrl-C is:
 // an operator stopping a long command is not an error an alert should page on.
 func outcomeForCode(code int, err error) emitter.Outcome {
 	switch {

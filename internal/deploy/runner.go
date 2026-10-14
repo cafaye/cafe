@@ -12,7 +12,7 @@ import (
 // "Kamal and kit/templates/kamal retire at parity, not before."
 const (
 	// EngineKamal is the Kamal engine: kamal setup, the rolling rollout, the
-	// health gate. It is the default, and its behaviour is byte-identical to
+	// health gate. It is the default, and its behavior is byte-identical to
 	// what it was before the Argo engine existed.
 	EngineKamal = "kamal"
 	// EngineArgo is the Argo engine: a values commit, a push, and a wait for

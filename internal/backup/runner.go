@@ -11,7 +11,7 @@ import (
 // "Kamal and kit/templates/kamal retire at parity, not before."
 const (
 	// EngineKamal is the Kamal engine: kamal-backup, the restic repository, the
-	// accessory. It is the default, and its behaviour is byte-identical to what
+	// accessory. It is the default, and its behavior is byte-identical to what
 	// it was before the CNPG engine existed.
 	EngineKamal = "kamal"
 	// EngineCNPG is the CNPG engine: kubectl cnpg, the Backup object, the

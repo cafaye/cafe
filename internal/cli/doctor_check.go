@@ -432,7 +432,7 @@ func probePorts(d *doctor) Finding {
 	if len(outside) > 0 {
 		// A port outside the block is free and working, and it is also invisible
 		// to every sibling worker on this machine — which is exactly how the
-		// sprawl got here (15001, 16001, 21101, 55432). cafe honours an explicit
+		// sprawl got here (15001, 16001, 21101, 55432). cafe honors an explicit
 		// -port rather than overriding it, so this is a warning that names the
 		// consequence, not a refusal. `cafe dev` publishing a service on its own
 		// port is the default and is not wrong; it is just not arbitrated.
@@ -661,12 +661,12 @@ func (d *doctor) writeFindings(section, title string, findings []Finding) {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", f.Name, f.Severity, dash(f.Detail), dash(f.Fix))
 	}
 	tw.Flush()
-	fmt.Fprintf(w, "%s\n", summarise(section, findings))
+	fmt.Fprintf(w, "%s\n", summarize(section, findings))
 }
 
-// summarise is the trailing line: how many of each state. It counts all three
+// summarize is the trailing line: how many of each state. It counts all three
 // because a summary that counted only "ok" hides the two a reader has to act on.
-func summarise(_ string, findings []Finding) string {
+func summarize(_ string, findings []Finding) string {
 	counts := map[Severity]int{}
 	for _, f := range findings {
 		counts[f.Severity]++

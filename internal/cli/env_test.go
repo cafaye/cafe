@@ -26,7 +26,7 @@ import (
 
 // sh is the child a test runs. It is a real process, so the parent/child
 // relationship — started, waited for, exit code carried — is exercised rather
-// than modelled, which is the same argument internal/mcp's wire tests make.
+// than modeled, which is the same argument internal/mcp's wire tests make.
 const sh = "/bin/sh"
 
 func TestEnvUpIsTheParentOfTheCommandItRuns(t *testing.T) {
@@ -370,7 +370,7 @@ func TestEnvRefusesAnUnknownVerb(t *testing.T) {
 
 // testBlock is where the env cases reserve. It is far outside cafe's real block
 // because this machine has a sibling worker publishing inside it, and a unit test
-// that reserved there would be a unit test running against a live neighbour.
+// that reserved there would be a unit test running against a live neighbor.
 var testBlock = ports.Block{First: 42200, Last: 42299}
 
 // fakeEnvDeps is a wired `env up` over fakes: a runtime that counts, a registry

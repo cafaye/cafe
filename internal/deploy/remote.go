@@ -375,7 +375,7 @@ func noAccountRefusal() error {
 // ErrRefused is what the command asks, to exit as a refusal rather than as a
 // failed deploy; errors.Is ErrTenancyUndecided is what this package's own test
 // asks, so the refusal cannot be reworded into something that stops being
-// recognised. The prose is appended rather than referenced because an error is
+// recognized. The prose is appended rather than referenced because an error is
 // not guaranteed to reach a log — but the sentence a reader needs is.
 func remoteRefusal() error {
 	return fmt.Errorf("%w: %w\n\n%s", ErrRefused, ErrTenancyUndecided, tenancyUndecidedRefusal)

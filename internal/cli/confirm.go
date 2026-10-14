@@ -18,7 +18,7 @@ import (
 // `cafe deploy` in a CI job with no terminal and no --yes has to fail with a
 // sentence naming the missing flag and must not sit there holding a deploy lock,
 // and `cafe backup` has to fail the same way rather than half-booting an
-// accessory. Two copies of that behaviour is two places to get it wrong, and the
+// accessory. Two copies of that behavior is two places to get it wrong, and the
 // second one would be the one nobody reads.
 //
 // The command name is a parameter because the message has to read as the words

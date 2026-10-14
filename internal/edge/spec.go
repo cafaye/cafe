@@ -117,7 +117,7 @@ type Host struct {
 	Health Health `json:"health,omitempty"`
 
 	// Detail is the sentence behind an unhealthy answer — the status or the
-	// error — because a health nobody can act on is a colour.
+	// error — because a health nobody can act on is a color.
 	Detail string `json:"detail,omitempty"`
 }
 

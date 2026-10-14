@@ -1342,7 +1342,7 @@ func between(t *testing.T, document, after, before string) string {
 //
 // The fix is that the catalog entry names the variable. These four tests are the
 // whole argument for it, and they are deliberately paired: the first proves a
-// declaration is honoured and the second proves that honouring one is not the
+// declaration is honored and the second proves that honoring one is not the
 // same as renaming the default.
 // ---------------------------------------------------------------------------
 
@@ -1398,7 +1398,7 @@ func TestAServiceThatDeclaresItsDatabaseVariableIsHandedThatName(t *testing.T) {
 		t.Errorf("pantry was also handed DATABASE_URL = %q; cafe handed it two names for one address and the service reads neither of the wrong ones", env["DATABASE_URL"])
 	}
 	// Scoped to pantry's own block. A document-wide `DATABASE_URL` search would
-	// be red here for the right behaviour rather than the wrong one: `stack`
+	// be red here for the right behavior rather than the wrong one: `stack`
 	// declares nothing and so gets the conventional name, which is the whole
 	// point of the test below.
 	block := between(t, stack.Compose, "  pantry:\n", "\n  postgres:")
@@ -1526,7 +1526,7 @@ func TestTheProjectServiceHonoursItsOwnDeclaredName(t *testing.T) {
 	}
 }
 
-// A declaration is honoured whatever the variable is called, which is the whole
+// A declaration is honored whatever the variable is called, which is the whole
 // constraint against hardcoding one service's spelling. The rows are three
 // different prefixes and one that is not a prefix at all, because a mechanism
 // that only understands `<SERVICE>_DATABASE_URL` is a mechanism with the same
@@ -1551,7 +1551,7 @@ func TestAnyDeclaredVariableNameIsHonoured(t *testing.T) {
 	}
 }
 
-// A declaration for the cache is honoured on the same terms as one for the
+// A declaration for the cache is honored on the same terms as one for the
 // database, because the table has no special case in it. `REDIS_URL` is the
 // conventional name and nothing in the platform disagrees, so this row exists to
 // show the mechanism is the table's and not the database's: the day a service

@@ -75,7 +75,7 @@ import (
 // database. So:
 //
 //   - every port is outside 15000-15999, the block internal/ports owns;
-//   - everything it creates is labelled caf.live-backup=1 and torn down by that
+//   - everything it creates is labeled caf.live-backup=1 and torn down by that
 //     label, except the two accessory containers, which carry Kamal's own
 //     `service=` label and are removed by that name;
 //   - the scratch database is dropped by the cycle itself, and the test ASSERTS
@@ -298,7 +298,7 @@ func newRehearsal(t *testing.T) *rehearsal {
 	}
 	// HOME is scoped to the rehearsal's own directory for the whole test, not only
 	// for the commands the harness runs: cafe shells out to kamal, and kamal reads
-	// ~/.ssh/known_hosts (through Ruby's File.expand_path, which honours $HOME) to
+	// ~/.ssh/known_hosts (through Ruby's File.expand_path, which honors $HOME) to
 	// trust the host key of the container this test just created.
 	t.Setenv("HOME", rig.home)
 	t.Cleanup(rig.teardown)
@@ -599,7 +599,7 @@ func (r *rehearsal) startRepository() {
 // This is the step `cafe deploy` would already have done, and it is done here rather
 // than left to the cycle for a measured reason: the backup accessory's scheduler
 // runs its first cycle about a second after it boots, and a fresh Postgres
-// initialises its volume before it accepts connections. So a cycle that boots both
+// initializes its volume before it accepts connections. So a cycle that boots both
 // accessories at once races the database's own startup and the first snapshot fails
 // with "Connection refused" from pg_dump — a failure that has nothing to do with
 // backups and everything to do with the rehearsal. Production does not have this

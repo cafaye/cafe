@@ -18,7 +18,7 @@ import (
 // The spelling accepts both a Go duration ("6h", "90m") and the day form
 // kit's own backup configuration uses (`backup.schedule: 1d`,
 // internal/backup/config.go keeps it as written). Two spellings for one fact
-// is a small cost; a schedule a reader cannot recognise because they learned
+// is a small cost; a schedule a reader cannot recognize because they learned
 // the other one is a larger one.
 type Schedule struct {
 	Every time.Duration
@@ -199,7 +199,7 @@ func SaveState(path string, s State) error {
 	if err != nil {
 		return fmt.Errorf("write the cve state: %w", err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := tmp.Write(raw); err != nil {
 		tmp.Close()
 		return fmt.Errorf("write the cve state: %w", err)

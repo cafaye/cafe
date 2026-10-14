@@ -14,7 +14,7 @@ import (
 // by name — so two runs of the same manifest produce the same bytes and a diff
 // between them is a diff between two manifests. It carries no timestamp and
 // nothing else that changes between runs, for the same reason. And it is
-// written here, by hand, rather than marshalled: the standard library has no
+// written here, by hand, rather than marshaled: the standard library has no
 // YAML encoder, and a general encoder would put this document's keys in
 // whatever order its own map does, which is the one thing above that must not
 // happen.

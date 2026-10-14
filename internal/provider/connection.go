@@ -194,7 +194,7 @@ func (c HTTPControlPlane) Connect(ctx context.Context, conn Connection) (*Connec
 	if err != nil {
 		return nil, fmt.Errorf("connect against %s: %w", url, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("read the connect response: %w", err)
@@ -232,7 +232,7 @@ func (c HTTPControlPlane) Status(ctx context.Context, boxID string) ([]Connectio
 	if err != nil {
 		return nil, fmt.Errorf("status against %s: %w", url, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("read the status response: %w", err)

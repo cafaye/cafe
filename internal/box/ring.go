@@ -123,7 +123,7 @@ func (r FileRing) Set(service, account, value string) error {
 	if err != nil {
 		return fmt.Errorf("create keyring entry %s/%s: %w", service, account, err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := tmp.WriteString(value); err != nil {
 		tmp.Close()
 		return fmt.Errorf("write keyring entry %s/%s: %w", service, account, err)

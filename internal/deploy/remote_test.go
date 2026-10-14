@@ -14,8 +14,8 @@ import (
 //
 //  1. THE GATE. With remoteEnabled as the tree declares it, a remote deploy is
 //     refused, the refusal names TG-D1, and nothing asked the platform. That is
-//     the current behaviour and the test asserts it is still the current
-//     behaviour.
+//     the current behavior and the test asserts it is still the current
+//     behavior.
 //
 //  2. THE MECHANISM. With the flip recorded — the state after TG-D1 lands — the
 //     plan is the two steps, the request is built from the plan's own argv, the
@@ -61,7 +61,7 @@ func (f *fakeRemote) Deploy(_ context.Context, req RemoteRequest) (*RemoteDeploy
 // The refusal is asserted to be a REFUSAL (errors.Is ErrRefused, so the command
 // exits as a refusal and not as a failed deploy) and to be the tenancy one
 // (errors.Is ErrTenancyUndecided, so a later packet cannot reword it into
-// something that stops being recognised).
+// something that stops being recognized).
 func TestARemoteDeployIsRefusedUntilTheTenancyDecisionIsRecorded(t *testing.T) {
 	runner, err := RunnerFor(EngineRemote)
 	if err != nil {

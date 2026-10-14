@@ -428,7 +428,7 @@ func TestAPortOutsideTheBlockIsWarnedNotRefused(t *testing.T) {
 		t.Errorf("ports = %s, want warn: an explicit -port is a developer's decision, and the check's job is to say what it costs", finding.Severity)
 	}
 	if code != exitSuccess {
-		t.Errorf("exit code = %d, want 0: cafe honours an explicit port rather than overriding it", code)
+		t.Errorf("exit code = %d, want 0: cafe honors an explicit port rather than overriding it", code)
 	}
 	if !strings.Contains(finding.Detail, "15000-15999") {
 		t.Errorf("the detail does not name the block: %q", finding.Detail)
@@ -463,7 +463,7 @@ func TestAHeldPublishedPortSaysHowToGetOneFromTheBlock(t *testing.T) {
 }
 
 // A port outside the block is not cafe's business. The block exists so that a port
-// in it is recognisable as ours, and a check that scanned all 65535 would be a
+// in it is recognizable as ours, and a check that scanned all 65535 would be a
 // check reporting on every developer's machine.
 func TestTheBlockCheckOnlyLooksAtTheBlock(t *testing.T) {
 	dir := doctorProject(t, "go")

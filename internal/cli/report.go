@@ -283,7 +283,7 @@ func readReportInput(path string, stdin io.Reader) (report.Input, error) {
 		src, closer, name = f, f, path
 	}
 	if closer != nil {
-		defer closer.Close()
+		defer func() { _ = closer.Close() }()
 	}
 
 	var in report.Input

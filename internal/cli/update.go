@@ -243,7 +243,7 @@ func looksRemote(url string) bool {
 
 // effectiveKind is local for a relative path and hosted otherwise, unless the
 // file says. The default matters because Site's parlor-local entry is how a
-// same-machine clone is recognised as skippable rather than canonical.
+// same-machine clone is recognized as skippable rather than canonical.
 func effectiveKind(r updateRemote, relative bool) string {
 	if r.Kind != "" {
 		return r.Kind

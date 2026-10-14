@@ -192,7 +192,7 @@ func TestNextGenIsExclusiveUnderConcurrency(t *testing.T) {
 
 // flock is advisory, so the only thing that makes it a mutual-exclusion
 // primitive is that every writer takes it. Two Ledgers over one directory — the
-// two processes — must serialise.
+// two processes — must serialize.
 func TestTwoLedgersOverOneDirectoryDoNotInterleave(t *testing.T) {
 	dir := t.TempDir()
 	a, err := Open(dir)
@@ -210,7 +210,7 @@ func TestTwoLedgersOverOneDirectoryDoNotInterleave(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := b.holdNonBlocking(); err == nil {
-		t.Error("a second writer took the lock while it was held; nothing serialises")
+		t.Error("a second writer took the lock while it was held; nothing serializes")
 	}
 	if err := release(); err != nil {
 		t.Fatal(err)

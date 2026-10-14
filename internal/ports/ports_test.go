@@ -15,7 +15,7 @@ import (
 
 // The block is the whole point: 15000-15999 is where cafe publishes from, so two
 // parallel workers cannot land on the same port by accident and a port in the
-// block is recognisable as ours by looking at it.
+// block is recognizable as ours by looking at it.
 
 func TestBlockBoundaries(t *testing.T) {
 	tests := []struct {
@@ -59,7 +59,7 @@ func TestTheBlockIsOneThousandFifteenThousandPorts(t *testing.T) {
 
 // Every test below reserves real ports, and the machine this ran on has a
 // sibling worker publishing 15001 — inside the cafe block. A unit test that
-// reserves inside the block would be testing against a live neighbour's
+// reserves inside the block would be testing against a live neighbor's
 // database, so the registry's own cases use a scratch block far outside it and
 // only CAF itself is asserted to be 15000-15999.
 var scratch = Block{42000, 42099}
@@ -486,7 +486,7 @@ func TestReserveIsAllOrNothing(t *testing.T) {
 	}
 }
 
-// The context is honoured. A sweep or a reservation that outlives its caller
+// The context is honored. A sweep or a reservation that outlives its caller
 // has to stop, and the seam is the same one every other command in cafe uses.
 func TestReserveStopsWhenTheContextIsDone(t *testing.T) {
 	r := registryIn(t, scratch)

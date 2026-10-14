@@ -309,7 +309,7 @@ func (r backupRun) runCycle(runner backup.Runner, dryRun bool) error {
 
 // classify is the three classes, three exits, and the class is the sentinel
 // rather than the message — so a reworded refusal cannot quietly stop being
-// recognised as one.
+// recognized as one.
 //
 //	ErrUsage      cafe was invoked wrongly. Exit 2, the message on stderr.
 //	ErrRefused    a committed configuration is wrong. Exit 1, and the refusal
@@ -488,7 +488,7 @@ func (r backupRun) reportOut() io.Writer {
 // line whatever it holds: a report opens with a blank line by convention (every
 // report in internal/backup does), so a record's detail field built from that
 // would be empty on exactly the records that need it. Taking a string rather
-// than an error is the same difference — the thing being summarised here is a
+// than an error is the same difference — the thing being summarized here is a
 // paragraph cafe printed, not an error.
 func firstNonEmptyLine(text string) string {
 	for _, line := range strings.Split(text, "\n") {

@@ -77,7 +77,7 @@ func (s *Store) appendEvent(id, kind, holder, step, detail string) (Event, error
 	if err != nil {
 		return Event{}, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, err := f.Write(append(raw, '\n')); err != nil {
 		return Event{}, fmt.Errorf("run %s: append the %s event: %w", id, kind, err)
 	}

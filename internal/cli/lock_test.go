@@ -191,7 +191,7 @@ func TestVerifyGoesRedOnAHandEditedVendoredSchemaAndGreenOnARestore(t *testing.T
 // `internal/gen`'s drift gate, which regenerates and compares bytes; that is
 // `cafe gen`'s half of the same argument and it was here first.)
 //
-// So this row is not the first line of defence for generated files in THIS tree.
+// So this row is not the first line of defense for generated files in THIS tree.
 // What `cafe lock` uniquely adds here is the other two kinds — `cafaye.yml` and
 // `gate.yml`, neither of which anything hashed before this packet — and the fact
 // that all four are checked by one mechanism rather than by a pin in each of

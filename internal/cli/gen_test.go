@@ -249,7 +249,7 @@ func TestGenTelemetryOutChoosesTheDirectory(t *testing.T) {
 }
 
 // Bare `cafe gen` answers rather than exiting 2, and an unknown target names the
-// ones that exist. Both are the `cafe contract` behaviour, and both are here
+// ones that exist. Both are the `cafe contract` behavior, and both are here
 // because a verb group that guessed wrong about which it is would be a worse
 // inconsistency than either choice.
 func TestGenAsAVerbGroup(t *testing.T) {

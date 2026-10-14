@@ -22,7 +22,7 @@ type PortAllocator func(service string) (int, error)
 //
 // It hands out the reserved ports in order and refuses the (n+1)th request,
 // because a stack that publishes more ports than were reserved has a caller that
-// reserved too few, and quietly inventing one is exactly the behaviour this
+// reserved too few, and quietly inventing one is exactly the behavior this
 // exists to stop. The error says so in the terms the caller can act on.
 func AllocatorOver(reserved []int) PortAllocator {
 	next := 0

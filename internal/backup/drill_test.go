@@ -252,7 +252,7 @@ func TestADamagedJournalIsRefusedByName(t *testing.T) {
 	}
 }
 
-// Two drills over one directory serialise, and the loser is told rather than
+// Two drills over one directory serialize, and the loser is told rather than
 // dropped. cafe is one binary a schedule runs and an operator also runs, so two
 // appends can genuinely overlap — and the one that lost has to be able to say
 // so instead of quietly overwriting the other's history.
@@ -289,7 +289,7 @@ func TestEveryAppendLands(t *testing.T) {
 	}
 }
 
-// The lock is what serialises them, and a caller that finds it held is TOLD
+// The lock is what serializes them, and a caller that finds it held is TOLD
 // rather than left waiting: a drill takes minutes, so a second one that blocked
 // behind the first would be a command that looked broken for the length of it.
 func TestTheStoreLockReportsWhenAnotherCafHoldsIt(t *testing.T) {
@@ -347,7 +347,7 @@ func TestTheDrillDirectoryFollowsTheEnvironment(t *testing.T) {
 		t.Fatalf("DefaultDrillDir: %v", err)
 	}
 	if dir != want {
-		t.Errorf("CAF_DRILL_DIR was not honoured: got %s, want %s", dir, want)
+		t.Errorf("CAF_DRILL_DIR was not honored: got %s, want %s", dir, want)
 	}
 }
 

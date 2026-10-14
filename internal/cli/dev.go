@@ -210,7 +210,7 @@ func (r devRun) loadRegistry() (dev.Registry, error) {
 }
 
 // writeCompose writes the rendered document and says where. An absolute -out is
-// honoured as given, because a developer who names a path means it; a relative
+// honored as given, because a developer who names a path means it; a relative
 // one is taken inside the project, because the command must not write outside
 // the directory it was pointed at without being told to.
 func (r devRun) writeCompose(dir string, stack dev.Stack) (string, error) {
@@ -250,8 +250,8 @@ func (r devRun) reportPlan(project dev.Project, stack dev.Stack, file string) {
 // not.
 //
 // A Ctrl-C ends the wait and tears down what this command started. The teardown
-// runs on a context that is not already cancelled, because a teardown on a
-// cancelled context is a teardown that does not happen — and the difference is
+// runs on a context that is not already canceled, because a teardown on a
+// canceled context is a teardown that does not happen — and the difference is
 // four containers a developer has to clean up by hand.
 func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 	w := r.env.Stdout
@@ -319,7 +319,7 @@ func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 }
 
 // teardown takes the stack down, on a context the caller's cancellation cannot
-// reach — a teardown on a cancelled context is a teardown that does not happen,
+// reach — a teardown on a canceled context is a teardown that does not happen,
 // and the difference is four containers a developer has to clean up by hand.
 //
 // It also checks. An interrupt kills the `docker compose up` client, but the

@@ -357,7 +357,7 @@ func (w *recordingWorld) Identity() boxd.Identity { return w.identity }
 
 // Observe satisfies boxd.World after OPS-P15 added it to the interface. The
 // failure rules in check.go read the stack state, not the observation, so this
-// recorder answers with the same error the Stack path honours and otherwise a
+// recorder answers with the same error the Stack path honors and otherwise a
 // zero Observation: nothing here needs the report, and inventing one would make
 // the test assert on data the rules never read.
 func (w *recordingWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.Observation, error) {

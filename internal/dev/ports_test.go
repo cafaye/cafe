@@ -9,7 +9,7 @@ import (
 )
 
 // The allocator is the seam that lets a stack publish ports the caller reserved
-// and held. It is new behaviour on an existing pure function, so the cases below
+// and held. It is new behavior on an existing pure function, so the cases below
 // are about the two things that could go wrong: a port the caller did not
 // reserve, and a stack that asks for more ports than were reserved.
 

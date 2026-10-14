@@ -27,7 +27,7 @@ import (
 //
 //   - Every assertion is about wire bytes. A tool list is a JSON document on
 //     stdout, not a slice in memory.
-//   - Nothing is synchronised by sleeping. A frame arrives or it does not, and
+//   - Nothing is synchronized by sleeping. A frame arrives or it does not, and
 //     "the process died" and "the process is alive and said nothing" are
 //     different failures with different messages (see nextFrame).
 //   - No test needs Docker, a container runtime, or a running cafaye

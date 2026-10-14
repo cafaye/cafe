@@ -70,7 +70,7 @@ func TestARegistryEndpointValueOutranksCafsDefault(t *testing.T) {
 			"cafe's value is a default for a service nobody described, not an override of one that was", got)
 	}
 	// Scoped to alpha's own block: a document-wide search would be red for the
-	// right behaviour, because beta and the project service carry cafe's default
+	// right behavior, because beta and the project service carry cafe's default
 	// beside it.
 	if block := between(t, stack.Compose, "  alpha:\n", "\n  beta:"); strings.Contains(block, "otel-collector") {
 		t.Errorf("alpha's rendered block still carries cafe's default collector:\n%s", block)

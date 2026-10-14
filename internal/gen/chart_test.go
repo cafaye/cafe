@@ -536,7 +536,7 @@ func TestTheChartTargetIsDiscoveredNotListed(t *testing.T) {
 // the chart's own README exists for, applied to values.yaml. The two facts
 // the comment has to carry are the citation (DEPLOYMENT.md:28 — the edge is
 // Traefik and cert-manager because that document says so) and the division
-// of labour: the ClusterIssuer is cluster-scoped, created once per cluster
+// of labor: the ClusterIssuer is cluster-scoped, created once per cluster
 // by the substrate, and the chart only NAMES it.
 func TestTheIngressValuesBlockIsOffByDefault(t *testing.T) {
 	out := generateChart(t, chartManifest, nil)
@@ -564,7 +564,7 @@ func TestTheIngressValuesBlockIsOffByDefault(t *testing.T) {
 	} {
 		if !strings.Contains(values, want) {
 			t.Errorf("values.yaml's ingress comment does not carry %q — the citation and the\n"+
-				"division of labour are the two facts a reader needs:\n%s", want, values)
+				"division of labor are the two facts a reader needs:\n%s", want, values)
 		}
 	}
 }
@@ -623,7 +623,7 @@ func chartValues(t *testing.T, out Output) map[string]any {
 // text/template against one values set, the way `helm template` would.
 //
 // The one helm-specific function, `fail`, is registered here with the
-// behaviour helm gives it: it stops the render and its message becomes the
+// behavior helm gives it: it stops the render and its message becomes the
 // error `Execute` returns, which is what the no-host guard relies on. Every
 // other function the template uses (`if`, `not`, `and`) is Go's own.
 func renderIngressTemplate(t *testing.T, body string, values map[string]any) (string, error) {
@@ -650,7 +650,7 @@ func renderIngressTemplate(t *testing.T, body string, values map[string]any) (st
 // text/template and the values are YAML, so the RENDER executes here against
 // the chart's own values.yaml, and the result is unmarshalled and asserted
 // field by field. Helm's own output is in the packet's report; this is the
-// half that runs on every gate, and it is a behaviour test of the
+// half that runs on every gate, and it is a behavior test of the
 // generator's contract rather than a byte-grep:
 //
 //   - enabled renders the Ingress — the class, the host, the backend service

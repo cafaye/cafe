@@ -122,7 +122,7 @@ func (r *Registry) Reserve(session string, gen, n int) ([]*Reservation, error) {
 }
 
 // ReserveContext is Reserve with a context. The context is checked before each
-// port, because a reservation loop that runs away on a cancelled context is a
+// port, because a reservation loop that runs away on a canceled context is a
 // loop that holds a thousand locks.
 func (r *Registry) ReserveContext(ctx context.Context, session string, gen, n int) ([]*Reservation, error) {
 	if n < 1 {
@@ -178,7 +178,7 @@ func (r *Registry) TryReserve(port int) (*Reservation, error) {
 // take is one port: hold the lock, probe both families, record the row.
 //
 // The lock is taken *before* the probe and held afterwards, so two cafe sessions
-// racing for the same port are serialised by the kernel rather than by
+// racing for the same port are serialized by the kernel rather than by
 // whoever's probe happened to run last. A probe that answered first and locked
 // second would leave a window in which both had said yes.
 func (r *Registry) take(ctx context.Context, session string, gen, port int) (*Reservation, error) {

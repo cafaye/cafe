@@ -55,7 +55,7 @@ type Accessory struct {
 // # It refuses rather than under-reads, at three levels
 //
 //   - A document that is not Kamal's output. "kamal: command not found" is valid
-//     YAML — a one-entry mapping — so parsing it is not recognising it, and
+//     YAML — a one-entry mapping — so parsing it is not recognizing it, and
 //     "there are no accessories, therefore fine" is the one reading that must
 //     never be reached by accident.
 //   - An `:accessories:` block that is not a mapping of names. A shape cafe cannot

@@ -631,7 +631,7 @@ func TestAnApplyFlagTypoAfterThePhaseIsRefusedAsAFlag(t *testing.T) {
 		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitUsage, stderr)
 	}
 	if !strings.Contains(stderr, "jsonn") {
-		t.Errorf("the refusal does not name the flag it did not recognise: %s", stderr)
+		t.Errorf("the refusal does not name the flag it did not recognize: %s", stderr)
 	}
 	st, err := deps.store().Status()
 	if err != nil {

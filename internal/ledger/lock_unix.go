@@ -98,7 +98,7 @@ func (k *Lock) Release() error {
 	return closeErr
 }
 
-// hold serialises the ledger's own mutations.
+// hold serializes the ledger's own mutations.
 func (l *Ledger) hold() (func() error, error) {
 	lock, err := l.Lock(ledgerLockName)
 	if err != nil {

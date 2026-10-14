@@ -46,7 +46,7 @@
 //
 // # No globals, one lock
 //
-// The whole package serialises on one advisory `flock` in the ledger
+// The whole package serializes on one advisory `flock` in the ledger
 // directory. It is advisory, so it only works because every writer takes it, and
 // the kernel releases it when the holder dies — which is what makes a crashed
 // cafe's generation counter and port reservations recoverable without a janitor

@@ -101,7 +101,7 @@ type unreadyReaper struct {
 	refusals int64
 	attempts atomic.Int64
 
-	// served is signalled once per connection handled. It exists because a
+	// served is signaled once per connection handled. It exists because a
 	// connect returning says the client's socket was opened, not that the
 	// listener has looked at it yet, and a test that assumes the two are
 	// simultaneous has a race in it. waitServed is how this file waits.

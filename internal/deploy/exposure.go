@@ -98,7 +98,7 @@ func InspectResolved(resolved, configFile string) ([]AccessoryExposure, error) {
 		return nil, fmt.Errorf("read kamal's resolved configuration: %w", err)
 	}
 	if !looksLikeKamalConfig(doc) {
-		// Parsing is not recognising. A shell error message printed on stdout is
+		// Parsing is not recognizing. A shell error message printed on stdout is
 		// valid YAML — "kamal: command not found" is a one-entry mapping — and
 		// reading it as a config with no accessories is how a document nobody
 		// checked gets called clean.
@@ -158,10 +158,10 @@ func InspectResolved(resolved, configFile string) ([]AccessoryExposure, error) {
 // configuration rather than something else that happens to be YAML.
 //
 // It asks for one thing: at least one top-level key written the way a Ruby
-// symbol key is serialised, with a leading colon. `Kamal::Configuration#to_h`
+// symbol key is serialized, with a leading colon. `Kamal::Configuration#to_h`
 // is a hash of symbols and always has several — `:roles`, `:hosts`,
 // `:version`, `:builder` — so a document with none of them is not that hash.
-// This is deliberately a weak test: it recognises the format without
+// This is deliberately a weak test: it recognizes the format without
 // interpreting it, and the accessory walk below is what actually reads it.
 func looksLikeKamalConfig(doc map[string]any) bool {
 	for key := range doc {

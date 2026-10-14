@@ -49,7 +49,7 @@ type envDeps struct {
 // them until I say otherwise", and a test can say that with a slice.
 //
 // Take and Reserve are separate because they answer different questions and the
-// caller has to know which it asked: Reserve picks from the block, Take honours a
+// caller has to know which it asked: Reserve picks from the block, Take honors a
 // port the developer named. Collapsing them into one method with a zero meaning
 // "you choose" is how a port outside the block ends up being published.
 type portReserver interface {
@@ -363,7 +363,7 @@ func (r envUp) run(env *Env) error {
 
 	childErr := r.runChild(ctx, env)
 	// The teardown runs whatever the child did, including on an interrupt: a
-	// stack left up because the test was cancelled is the leak. And it runs
+	// stack left up because the test was canceled is the leak. And it runs
 	// *before* the child's status is reported, so the stack is always down by the
 	// time whoever reads the exit code is told what the exit code was.
 	downErr := r.down(ctx, stack.Project, env)
@@ -385,7 +385,7 @@ func (r envUp) up(ctx context.Context, stack dev.Stack, file string, env *Env) e
 
 func (r envUp) down(ctx context.Context, project string, env *Env) error {
 	fmt.Fprintf(r.out(env), "\nstopping %s\n", project)
-	// On a context that is not the caller's: a teardown on a cancelled context is
+	// On a context that is not the caller's: a teardown on a canceled context is
 	// a teardown that does not happen, and the difference is four containers a
 	// developer has to clean up by hand.
 	cleanup, cancel := context.WithTimeout(context.Background(), teardownTimeout)
@@ -427,7 +427,7 @@ func (r envUp) reclaim(env *Env, book *ledger.Ledger, entry ledger.Entry, cause 
 // terminal reaches the whole foreground group, so an interrupt reaches the child
 // and the parent together: the child stops talking to the database and the
 // parent tears the stack down, without either having to be told about the other.
-// A child in its own group would have to be found and signalled, and the window
+// A child in its own group would have to be found and signaled, and the window
 // where it is still running against a stack that is going away is exactly the
 // window in which a suite reports something that is not true.
 func (r envUp) runChild(ctx context.Context, env *Env) error {
@@ -466,7 +466,7 @@ func (c *childStatus) Unwrap() error { return c.err }
 // information the suite chose to give.
 func (c *childStatus) cafeExitCode() int {
 	if c.Code == 0 {
-		// A child that was signalled has no status of its own; `sh -c` reports
+		// A child that was signaled has no status of its own; `sh -c` reports
 		// 128+signal, but a process killed outright does not, and reporting 0 for
 		// "it died" would turn a crash into a pass.
 		return exitFailure
@@ -501,7 +501,7 @@ func (r envUp) plan(project dev.Project, reserved []int) (dev.Stack, error) {
 // round-tripped, so "is it in the block" and "is anybody holding it" are the same
 // two answers cafe gives for a port it chose itself. That matters: a port outside
 // the block is refused *by name*, because the whole point of the block is that a
-// port in it is recognisable as ours — and a refusal that does not name the range
+// port in it is recognizable as ours — and a refusal that does not name the range
 // sends somebody to `lsof`.
 func (r envUp) reserve(ctx context.Context, session string, gen, want int) ([]int, error) {
 	if r.opts.port > 0 {

@@ -305,7 +305,7 @@ func TestTheResolvedShapeIsTheOneKamalActuallyPrints(t *testing.T) {
 // fine".
 //
 // "kamal: command not found" is valid YAML — a one-entry mapping. Parsing it is not
-// recognising it, and "there are no accessories here, so there is nothing to
+// recognizing it, and "there are no accessories here, so there is nothing to
 // refuse" is the one reading that must never be reached by accident.
 func TestInspectResolvedRefusesOutputThatIsNotKamalConfig(t *testing.T) {
 	for name, out := range map[string]string{

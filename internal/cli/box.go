@@ -167,12 +167,12 @@ func boxVerbs(deps boxDeps) []boxVerb {
 // person reads it before typing a command that spends a single-use capability
 // on their behalf, and the split it explains — the box is a machine, `cafe
 // agent` is a principal — is the thing a newcomer gets wrong.
-const boxLongHelp = `The box is a MACHINE: it has a keypair, it enrols, it runs the substrate.
+const boxLongHelp = `The box is a MACHINE: it has a keypair, it enrolls, it runs the substrate.
 ` + "`cafe agent …`" + ` is a principal — an identity that becomes claimed. Two
 subjects, two verbs, and the split is the one moon/AGENTS-FIRST.md chose so
 that ` + "`cafe box register`" + ` never reads as "the agent is registering a box".
 
-ENROL is the one command that spends anything. It generates the box's keypair,
+ENROLL is the one command that spends anything. It generates the box's keypair,
 stores the private half in the keyring, and presents the capability to
 box. The capability is single-use, box-bound and lives minutes
 (box's Capability::TTL_MINUTES), so the token is spent exactly once and

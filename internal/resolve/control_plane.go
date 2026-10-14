@@ -196,7 +196,7 @@ func (c HTTPControlPlane) do(ctx context.Context, token, method, path string, bo
 	if err != nil {
 		return nil, nil, fmt.Errorf("call box: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
 		return res, nil, fmt.Errorf("read box's answer: %w", err)

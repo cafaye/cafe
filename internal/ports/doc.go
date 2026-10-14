@@ -39,7 +39,7 @@
 // # One block, one lock per port
 //
 // The block is 15000-15999, which is the range a parallel fleet of workers can
-// all look at and recognise as ours. Each port in it has its own advisory lock in
+// all look at and recognize as ours. Each port in it has its own advisory lock in
 // the ledger, so a hundred reservations are a hundred locks and not one queue —
 // and so a crashed cafe strands nothing, because flock is owned by the open file
 // description and the kernel drops it when the process dies.

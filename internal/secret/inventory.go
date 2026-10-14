@@ -409,7 +409,7 @@ func names() []string {
 }
 
 // String is the `namespace/secret/key` spelling of where the value lives, which
-// is the name a reader recognises from kubectl. It is the key an entry is
+// is the name a reader recognizes from kubectl. It is the key an entry is
 // matched on when Name is not unique.
 func (e Entry) String() string {
 	if e.Secret == "" {

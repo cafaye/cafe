@@ -504,7 +504,7 @@ func (t *remoteTools) runPropose(ctx context.Context, in ProposeArgs) (Proposal,
 
 // ApplyArgs names what to advance to. It takes a release name and nothing
 // else, because the alternative is a tool that could be pointed at an
-// arbitrary artefact and there is no story in which that is safe.
+// arbitrary artifact and there is no story in which that is safe.
 type ApplyArgs struct {
 	// Release is the release to apply. It must already be approved: this tool
 	// does not approve, and an agent that calls it for an unapproved release

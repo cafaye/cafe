@@ -120,7 +120,7 @@ func newGenTelemetryCommand() *Command {
 	opts := &genOptions{}
 	c := &Command{
 		Name:    "gen telemetry",
-		Summary: "write the OpenTelemetry setup a service needs to honour core's telemetry contract",
+		Summary: "write the OpenTelemetry setup a service needs to honor core's telemetry contract",
 		Usage:   "cafe gen telemetry [flags]",
 		LongHelp: "Reads this project's cafaye.yml — the current directory by default — and\n" +
 			"writes three files derived from it and from the cafaye core telemetry\n" +

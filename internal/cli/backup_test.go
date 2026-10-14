@@ -17,7 +17,7 @@ import (
 // `cafe backup` at the command layer: flags, the prompt, the exit codes, and the
 // fact that a refusal is a report on stdout rather than an error on stderr.
 //
-// The behaviour of the cycle itself is asserted in internal/backup through the
+// The behavior of the cycle itself is asserted in internal/backup through the
 // Runner seam. What is asserted here is everything the seam cannot see.
 
 // backupRunner is a backup.Runner. It is a separate type from deploy_test.go's

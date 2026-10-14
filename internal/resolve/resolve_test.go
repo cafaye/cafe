@@ -505,7 +505,7 @@ func TestRequiredFlagTravelsWithTheResolution(t *testing.T) {
 // THE AMBIGUITY RETRY. Pantry's bare-name route is documented to answer 404
 // naming the addresses the day `projects_name_key` is relaxed, and until then
 // the state is unreachable — which makes this test a test of a rule the client
-// holds in advance rather than of a server behaviour it can observe. The
+// holds in advance rather than of a server behavior it can observe. The
 // resolver's job is the retry: an owner is known, so ask the address.
 func TestAnAmbiguousBareNameRetriesByAddressWhenAnOwnerIsKnown(t *testing.T) {
 	pantry := &fakePantry{

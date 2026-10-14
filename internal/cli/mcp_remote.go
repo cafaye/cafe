@@ -206,7 +206,7 @@ func (w *mcpBoxWorld) Logs(ctx context.Context, in mcp.LogsArgs) ([]mcp.LogLine,
 	}
 	// The phase filter is applied here rather than in the tool, and the tool
 	// applies its own as well: narrowing the world's answer means a box with a
-	// large log is never fully materialised to answer one phase, and the two
+	// large log is never fully materialized to answer one phase, and the two
 	// filters are not duplicates so much as the world's and the question's.
 	if phase := in.Phase; phase != "" {
 		filtered := make([]mcp.LogLine, 0, len(lines))
