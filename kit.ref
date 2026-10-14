@@ -1,0 +1,11 @@
+# The kit ref this repository runs. One line: a 40-character commit
+# sha, or a v<semver> tag. NEVER a branch.
+# ON origin/master, NOT kit's local HEAD: a pin to a commit that
+# exists only on one laptop is a pin no other clone can fetch, and it
+# turns a fresh clone into a broken checkout.
+# Move it deliberately: read the stack diff between the two refs before
+# writing a new one. A lint policy that moves under a repo is the drift
+# this file exists to forbid — bin/prime resolves kit's lint config from
+# this ref in CI and from ../kit locally, and both must name the same
+# policy.
+9d1872c32cc1267c492ee32d7ce15c9332727f93

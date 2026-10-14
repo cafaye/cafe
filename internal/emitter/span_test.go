@@ -501,7 +501,7 @@ func TestAFailedInvocationCarriesAClassFromCoresVocabulary(t *testing.T) {
 			// An operator's own Ctrl-C is not an error an alert should page on.
 			name:     "a cancellation is canceled",
 			outcome:  OutcomeCancelled,
-			wantType: "cancelled",
+			wantType: telemetry.ErrorTypeCancelled,
 			wantErr:  true,
 		},
 	} {

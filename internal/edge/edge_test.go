@@ -140,7 +140,7 @@ func clientFor(addr, sni string) *http.Client {
 		Timeout: 5 * time.Second,
 		Transport: &http.Transport{
 			DialTLSContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
-				conn, err := (&net.Dialer{Timeout: 5*time.Second}).DialContext(ctx, network, addr)
+				conn, err := (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, network, addr)
 				if err != nil {
 					return nil, err
 				}

@@ -143,7 +143,7 @@ func errorType(outcome Outcome) string {
 	case OutcomeUsage:
 		return "invalid_request"
 	case OutcomeCancelled:
-		return "cancelled"
+		return telemetry.ErrorTypeCancelled
 	default:
 		return "internal_error"
 	}

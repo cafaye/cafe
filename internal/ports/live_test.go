@@ -177,7 +177,7 @@ func stillBound(port int) bool {
 }
 
 func connectSucceeds(port int) bool {
-	conn, err := (&net.Dialer{Timeout: 2*time.Second}).DialContext(context.Background(), "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	conn, err := (&net.Dialer{Timeout: 2 * time.Second}).DialContext(context.Background(), "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 	if err != nil {
 		return false
 	}

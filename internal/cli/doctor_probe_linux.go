@@ -2,11 +2,6 @@
 
 package cli
 
-import (
-	"strconv"
-	"strings"
-)
-
 // sysctlByName exists so doctor.go compiles everywhere; Linux has no sysctl for
 // this and the memory probe does not use it.
 func sysctlByName(string) (uint64, error) { return 0, nil }
