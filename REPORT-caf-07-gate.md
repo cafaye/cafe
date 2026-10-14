@@ -1,20 +1,20 @@
-# REPORT-caf-07-gate — caf declares its gate
+# REPORT-cafe-07-gate — cafe declares its gate
 
-`worker/caf-07-gate` · closes debt entry **D2** · branch `worker/caf-07-gate`
+`worker/cafe-07-gate` · closes debt entry **D2** · branch `worker/cafe-07-gate`
 on top of `de25e37`.
 
 ---
 
 ## 1. The gap
 
-`caf` is the Go service that reclaims Docker resources for the fleet. Its
-`caf-06` packet merged as `de25e37`: **12,480 insertions across 60 files**,
+`cafe` is the Go service that reclaims Docker resources for the fleet. Its
+`cafe-06` packet merged as `de25e37`: **12,480 insertions across 60 files**,
 including five new packages — `internal/ledger`, `internal/ports`,
 `internal/reclaim`, `internal/ryuk` and a CLI surface.
 
 Every other service in this fleet declares its gate in a `gate.yml` at the
 repository root, validated by core's checker against core's schema, with its own
-self-test proving the checker can fail. `caf` had none of this, and
+self-test proving the checker can fail. `cafe` had none of this, and
 `bin/prime` was `go mod download && go build ./... && go test ./...`.
 
 The concrete failure the packet named: if somebody replaced
@@ -49,7 +49,7 @@ is the one the artifact supports.
 `[bin/prime]`; `miseTask: prime` resolves to `entrypoint: bin/prime`; `ci.invokes`
 is `[bin/prime]`, which appears in a plain one-line `run:` in the workflow.
 
-**On requirement 6 — the CI workflow needed no change.** `caf`'s `ci.yml` already
+**On requirement 6 — the CI workflow needed no change.** `cafe`'s `ci.yml` already
 used the plain one-line spelling (`- name: the gate a developer runs` /
 `run: ./bin/prime`), which as of core `63fd319` is visible to the checker. There
 was no block scalar to remove, and nothing in this packet touches the workflow.
@@ -68,12 +68,12 @@ not exist.
 So `bin/prime` now runs `go test -v` and prints two lines:
 
 ```
-caf: 10 packages, 432 top-level passes, 537 subtest passes, 0 failures, 3 skips
-caf: live tier: 0 of 2 executed; not enabled, so the two live tests skipped rather than ran. …
+cafe: 10 packages, 432 top-level passes, 537 subtest passes, 0 failures, 3 skips
+cafe: live tier: 0 of 2 executed; not enabled, so the two live tests skipped rather than ran. …
 ```
 
 **Measured, not estimated.** `10` from `go list ./...` (10, not the 9 `ok` lines,
-because `cmd/caf` — the binary every sibling service's CI shells out to — has no
+because `cmd/cafe` — the binary every sibling service's CI shells out to — has no
 test file and reports `[no test files]`; counting it is the point). `432` and
 `537` as printed. 965 `--- PASS:` lines minus the 428 that were top-level, so
 537 subtests.
@@ -113,7 +113,7 @@ re-creating the debt this packet clears, and `kit-15-fleet` is deleting exactly
 such workarounds elsewhere in the fleet. `go test` does not colourise when its
 output is not a terminal.
 
-### The ratchet, and that caf needs it
+### The ratchet, and that cafe needs it
 
 `minimum` is a decrease-detector, and the rule that keeps it one is a test.
 `TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave` holds one identity, exactly,
@@ -138,7 +138,7 @@ number. The floor in `gate.yml` is 432 because the ratchet said so.
 
 **The first version of this ratchet was wrong, and that is worth recording.**
 It counted test functions *containing* a `t.Skip` as the number the floor may not
-reach. That came out at **15**, not 3, because most of caf's skips are
+reach. That came out at **15**, not 3, because most of cafe's skips are
 machine-capability ones — "this machine does not serve tcp6", "`SO_REUSEPORT`
 unavailable" — which do not fire here. `declared - canSkip` was 419, the floor of
 430 sat above it, and the assertion could not fire for the thing it exists to
@@ -192,10 +192,10 @@ runner in the fleet**, and I would be shipping a gate I had observed red on the
 only machine I can measure.
 
 **`TestAClosedLeaseReapsAndAnOpenOneDoesNot` is red right now**, on the machine
-caf-06's own report says it was verified on. Declaring a gate I have watched fail
+cafe-06's own report says it was verified on. Declaring a gate I have watched fail
 is the one thing the brief forbids outright.
 
-So: the live tier is out of the declared gate, and `caf`'s own AGENTS.md already
+So: the live tier is out of the declared gate, and `cafe`'s own AGENTS.md already
 ruled it that way ("`bin/prime` must run on a bare CI runner"). Nothing here
 reverses that.
 
@@ -209,7 +209,7 @@ instead, and each one is structural rather than a comment:
 1. **A floorless `live-tier` proof, which is what the schema sanctions for
    exactly this case.** The schema says omit `minimum` "for a proof that reports
    nothing countable (a step that must appear in the log, **a tier that must not
-   say it skipped**)". `bin/prime` prints `caf: live tier: 0 of 2 executed` on
+   say it skipped**)". `bin/prime` prints `cafe: live tier: 0 of 2 executed` on
    every run in every mode, and the proof matches it. Delete that line from
    `bin/prime` and the declaration is red with `gate.proof-missing`. **A skip
    that a declaration requires to be stated cannot be a silent pass.** A floor
@@ -255,7 +255,7 @@ who reads the entry will not. I judged the second failure mode worse.
 ## 4. The measured floor
 
 ```
-caf: 10 packages, 432 top-level passes, 537 subtest passes, 0 failures, 3 skips
+cafe: 10 packages, 432 top-level passes, 537 subtest passes, 0 failures, 3 skips
 ```
 
 | | value | how measured |
@@ -265,7 +265,7 @@ caf: 10 packages, 432 top-level passes, 537 subtest passes, 0 failures, 3 skips
 | `subtests` floor | 537 | 965 any-level `--- PASS:` − 428 top-level, before this packet added 4 tests |
 | `live-tier` | no floor, literal `2` | `bin/prime` |
 
-Not round numbers, not estimates. 432 is 428 as caf-06 left it plus the four
+Not round numbers, not estimates. 432 is 428 as cafe-06 left it plus the four
 tests this packet adds to `internal/ci`.
 
 **A property worth stating, because it was not designed and is worth keeping:**
@@ -379,7 +379,7 @@ So the monotonic-sweep safety property is **not implemented**, and the "two
 defences" are one. This is a live test with the Docker socket mounted, and the
 package's own stated worst case — an empty filter degrading to "remove
 everything" — is the subject of a careful refusal that is real, next to a
-second defence that is not there at all. **Recommend a caf-08 on
+second defence that is not there at all. **Recommend a cafe-08 on
 `internal/ryuk` before anything else in this repository.**
 
 ### 6.2 `internal/ryuk/live_test.go` is red on the machine it was verified on, and it is a race
@@ -415,7 +415,7 @@ only the target.
 The comment at 150-156 rightly rejected the *old* hard-coded sibling list, and
 the replacement fails for a different reason. A safety property that depends on
 what other people are doing is not a safety property. Scope the assertion to
-caf/testcontainers-labelled containers, or rely on the control container plus
+cafe/testcontainers-labelled containers, or rely on the control container plus
 "the reaper reported removing exactly what its filter named". Related: the
 container names `caf06-ryuk`, `-target`, `-survivor` are hard-coded, so
 concurrent runs fight; the random session id protects the *filter*, not the
@@ -423,7 +423,7 @@ concurrent runs fight; the random session id protects the *filter*, not the
 
 ### 6.4 Smaller, in this repository, noted not fixed
 
-- **`cmd/caf` has no test file.** It is the binary every sibling service's CI
+- **`cmd/cafe` has no test file.** It is the binary every sibling service's CI
   shells out to — pantry's gate ends in a block of `OK …` lines this binary
   prints — and it is the one package the `packages` floor can only see, not test.
   That is why the floor is 10 and not 9, and it is a real gap the declaration
@@ -439,7 +439,7 @@ concurrent runs fight; the random session id protects the *filter*, not the
   packet's business; named so the gate declaration is not read as covering it.
 - **`internal/ryuk`'s `ConfigFromEnv`** enables the lease only when `RYUK` is
   set, where testcontainers-go enables it unless
-  `TESTCONTAINERS_RYUK_DISABLED=true`. It fails safe, but a caf session in a shell
+  `TESTCONTAINERS_RYUK_DISABLED=true`. It fails safe, but a cafe session in a shell
   where a testcontainers session *would* take a lease silently takes none, and
   the divergence is undocumented.
 
@@ -463,8 +463,8 @@ output.
 
 ```
 $ bin/prime
-caf: 10 packages, 432 top-level passes, 537 subtest passes, 0 failures, 3 skips
-caf: live tier: 0 of 2 executed; not enabled, so the two live tests skipped rather than ran. …
+cafe: 10 packages, 432 top-level passes, 537 subtest passes, 0 failures, 3 skips
+cafe: live tier: 0 of 2 executed; not enabled, so the two live tests skipped rather than ran. …
 exit 0                                                     (twice: cold and cached, same numbers)
 
 $ go vet ./...          clean
@@ -499,5 +499,5 @@ are fixed; the second is why the format string is now pinned verbatim, and the
 comment says so, because a substring test over a shell script is a test over its
 prose as much as over its code.
 
-**Not pushed.** Committed on `worker/caf-07-gate`; the manager pushes after the
+**Not pushed.** Committed on `worker/cafe-07-gate`; the manager pushes after the
 gate is green.

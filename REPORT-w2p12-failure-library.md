@@ -22,7 +22,7 @@ not the path in the brief.
 | `observe.go` | `Observation` (the fact surface), the `Observer` seam, `BoxObserver` |
 | `check.go` | `Evaluate`, `Report`, `Verdict` (`holds` / `does-not-hold` / `unknown`), the rendering |
 
-`internal/cli/failure.go` — `caf failure check [<observation.json>]`, the verb
+`internal/cli/failure.go` — `cafe failure check [<observation.json>]`, the verb
 over it. Registered in `Commands()` (`internal/cli/command.go:78`), row in the
 README command table (`README.md:99`), Layout paragraph in
 `AGENTS.md:364-386`.
@@ -122,7 +122,7 @@ taken from it:
 - the MFA event pair — `schemas/events/identity/mfa/enabled|disabled`.
 
 No path, variable or event name is transcribed into this tree as a second copy.
-Four rows have an empty `Contract` because the failure mode is caf's own and
+Four rows have an empty `Contract` because the failure mode is cafe's own and
 core says nothing about it; an invented citation would be worse than an empty
 field.
 
@@ -136,7 +136,7 @@ Every command run from the worktree root, keyed to
 | `go build ./...` | **0** | — |
 | `go vet ./...` | **0** | — |
 | `gofmt -l .` | **0** | no output |
-| `go run ./cmd/caf lock --verify .` | **0** | `caf.lock matches 12 pinned file(s)` |
+| `go run ./cmd/cafe lock --verify .` | **0** | `caf.lock matches 12 pinned file(s)` |
 | `bin/prime` (16:31, pre-fix) | **1** | `24 packages, 1069 … 1 failures, 8 skips` — `TestRegistryContainsEveryCommand`, the registry table missing the new command |
 | `bin/prime` (final, `/tmp/gate-w2p12-final`) | **0** | `24 packages, 1069 top-level passes, 1159 subtest passes, 0 failures, 8 skips` |
 
@@ -181,9 +181,9 @@ same commit because `gate.yml` is its one `rule-bundle`.
 ## 9. What is left
 
 - **The observation producer.** `BoxObserver` supplies one of eight facts. The
-  substrate packet's `caf box observe` (or a `World` method) is what turns the
+  substrate packet's `cafe box observe` (or a `World` method) is what turns the
   ten `unknown`s into answers; the test in §5 names the seven fields.
 - **The schedule.** `CAFAYE-OPS.md:772` frames every ops item as a schedule;
   nothing here runs on one. OPS-P13's monthly report consumes the report.
-- **`caf failure list`** — the library as a table without an observation, which
+- **`cafe failure list`** — the library as a table without an observation, which
   is what a customer's runbook cites. Not built.

@@ -1,6 +1,6 @@
-# REPORT — repair-seams-caf: finding 1a (already landed) and finding 2c (drift, fixed)
+# REPORT — repair-seams-cafe: finding 1a (already landed) and finding 2c (drift, fixed)
 
-Worktree `/Users/kaka/Code/any/ops-wt/repair-seams-caf`, branch
+Worktree `/Users/kaka/Code/any/ops-wt/repair-seams-cafe`, branch
 `ops/repair-seams`, dispatched against `SEAM-AUDIT-OPS.md` findings 1a and 2c.
 Two findings, two outcomes: one needed no code, one did. Both are verified below
 against this tree, with the command and the line actually observed.
@@ -9,7 +9,7 @@ against this tree, with the command and the line actually observed.
 
 ## FIX 1 (finding 1a) — no change needed: the seam is already closed in this tree
 
-The audit measures caf @ `205f3cd`, against which `caf report` is unreachable.
+The audit measures cafe @ `205f3cd`, against which `cafe report` is unreachable.
 **This worktree is not that tree.** Its HEAD is `aa54700` (the OPS-P13 merge),
 which already carries all five rows of finding 1a. Measured, not assumed:
 
@@ -21,7 +21,7 @@ which already carries all five rows of finding 1a. Measured, not assumed:
 | verb wiring | `internal/cli/command.go:87` | called from a non-test file; nothing dangling |
 | CLI test | `internal/cli/report_test.go` | 7 top-level tests, 4 subtests, all passing |
 
-`git log -S` dates the registration to `dea86c3` (a `recover(w2-report-caf)`
+`git log -S` dates the registration to `dea86c3` (a `recover(w2-report-cafe)`
 commit), carried into this branch by `aa54700`. The audit's snapshot precedes it.
 So the honest finding here is **an audit-vs-worktree drift**, not a defect: the
 audit is right about `205f3cd` and the merge already repaired it.
@@ -30,8 +30,8 @@ Behaviour, run from this tree (not from the tests):
 
 ```
 $ echo '{"availability":{"uptime_pct":100}}' > /tmp/in.json
-$ go run ./cmd/caf report render --json /tmp/in.json
-caf report: 7 section(s) could not be filled; they are named in the page
+$ go run ./cmd/cafe report render --json /tmp/in.json
+cafe report: 7 section(s) could not be filled; they are named in the page
 { "box": "", "period": {...}, "gaps": [...] }          # one JSON document, exit 0
 ```
 
@@ -56,8 +56,8 @@ stopped detecting a decrease, which is its entire job.
 Measured on this tree, `./bin/prime` (background run, log captured, exit captured):
 
 ```
-caf: 27 packages, 1195 top-level passes, 1214 subtest passes, 0 failures, 8 skips
-caf: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
+cafe: 27 packages, 1195 top-level passes, 1214 subtest passes, 0 failures, 8 skips
+cafe: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
 ```
 
 Final state of `gate.yml`:
@@ -67,7 +67,7 @@ Final state of `gate.yml`:
 | packages | comment 24 / floor 26 | comment 27 / floor 27 | `go list ./...` at `aa54700`; one package per packet — internal/cve (OPS-P11) → 25, internal/failure (OPS-P12) → 26, internal/report (OPS-P13) → 27 |
 | suite | comment 1128 / floor 1195 | comment 1195 / floor 1195 | the wave's four moves, ending at OPS-P13's 8 tests in internal/report plus 7 in internal/cli/report_test.go; and that 1195 is exact — 1203 declared test functions minus the 8 the gate skips |
 | subtests | comment 1165 / floor 1208 | comment 1214 / floor 1214 | the floor the last bump left behind, and why a floor under what runs is not a floor |
-| header | "de25e37 + caf-07" | "aa54700 — the OPS-P13 monthly-report merge" | with the four measured numbers in the sentence |
+| header | "de25e37 + cafe-07" | "aa54700 — the OPS-P13 monthly-report merge" | with the four measured numbers in the sentence |
 
 Stale sentences deleted rather than edited: the header's three-merges-old
 provenance, the suite comment's false claim that "each added top-level tests and
@@ -83,8 +83,8 @@ of the 6 that are not `TestReportPeriodParsing`'s four — the comment does not
 claim an attribution, it claims the delta.
 
 `gate.yml` is the tree's one `rule-bundle`, so `caf.lock` is regenerated in the
-same commit. `go run ./cmd/caf lock .` wrote 12 pinned files and
-`caf lock --verify .` reports: "caf.lock matches 12 pinned file(s), and nothing
+same commit. `go run ./cmd/cafe lock .` wrote 12 pinned files and
+`cafe lock --verify .` reports: "caf.lock matches 12 pinned file(s), and nothing
 the tree declares is missing from it."
 
 ---
@@ -94,13 +94,13 @@ the tree declares is missing from it."
 ```
 $ go build ./...                       # clean
 $ go test ./internal/cli/ ./internal/ci/
-ok  github.com/cafaye/caf/internal/cli   65.261s
-ok  github.com/cafaye/caf/internal/ci     3.358s
+ok  github.com/cafaye/cafe/internal/cli   65.261s
+ok  github.com/cafaye/cafe/internal/ci     3.358s
 $ gofmt -l .                           # prints nothing
 $ go vet ./internal/cli/ ./internal/ci/ # clean
 $ timeout 400 ./bin/prime
-caf: 27 packages, 1195 top-level passes, 1214 subtest passes, 0 failures, 8 skips
-caf: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
+cafe: 27 packages, 1195 top-level passes, 1214 subtest passes, 0 failures, 8 skips
+cafe: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
 exit: 0
 ```
 
@@ -118,5 +118,5 @@ measurement, so `gate-check --prove` would report `gate.floor` for neither.
   the four that actually break a user-visible screen. They need their own
   workers in their own worktrees; nothing in this tree fixes them.
 - If a test is ever added here, the floor in `gate.yml` moves in the same commit
-  and `go run ./cmd/caf lock .` follows it. The half-landed bump that produced
+  and `go run ./cmd/cafe lock .` follows it. The half-landed bump that produced
   this finding is the reason.

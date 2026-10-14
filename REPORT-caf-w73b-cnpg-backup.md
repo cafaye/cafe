@@ -1,9 +1,9 @@
-# REPORT — caf-w73b: the CNPG backup engine
+# REPORT — cafe-w73b: the CNPG backup engine
 
-**Branch:** `worker/caf-w73-cnpg-backup`
+**Branch:** `worker/cafe-w73-cnpg-backup`
 **Base commit:** `17006c8` ("backup: the CNPG plan and runner — the engine's own argv, as a checkpoint")
 **Head:** `d889abf` ("gate: the floors the CNPG tests moved")
-**Gate:** `bin/prime` exit **0** — `caf: 16 packages, 817 top-level passes, 984 subtest passes, 0 failures, 8 skips`
+**Gate:** `bin/prime` exit **0** — `cafe: 16 packages, 817 top-level passes, 984 subtest passes, 0 failures, 8 skips`
 
 ## The refactor decision: finished, not reverted
 
@@ -79,9 +79,9 @@ fact about the Kubernetes namespace, not two rendered documents. `TestTheCNPGEng
 is the test that says it is gone and why: the cycle runs in a directory with no
 configuration files at all, and the plan has no `Resolve` step.
 
-**Never caf's, not carried:** the production-name refusal. It is kamal-backup's
+**Never cafe's, not carried:** the production-name refusal. It is kamal-backup's
 (`Config#production_like_target?`), and the CNPG engine does not use kamal-backup.
-caf keeps no copy of a rule about which database gets dropped.
+cafe keeps no copy of a rule about which database gets dropped.
 
 ## The proofs
 
@@ -102,11 +102,11 @@ caf keeps no copy of a rule about which database gets dropped.
 
 ## The dry-run transcript
 
-`caf backup --engine cnpg --table users --dry-run identity`, on this machine with no
+`cafe backup --engine cnpg --table users --dry-run identity`, on this machine with no
 cluster and no kubectl:
 
 ```text
-this is what caf backup would run:
+this is what cafe backup would run:
 
   kubectl cnpg version
       kubectl cnpg is the backup engine; this prints its version and fails if it is not installed
@@ -142,7 +142,7 @@ manifest above is the document the restore step would apply, printed
 rather than written.
 
 Back it up for real with:
-  caf backup --engine cnpg --yes identity
+  cafe backup --engine cnpg --yes identity
 ```
 
 Exit 0. No file written, no command executed.
@@ -157,7 +157,7 @@ boundary, which is the proof the seam did not move.
 
 ## The gate
 
-`bin/prime` exit **0**: `caf: 16 packages, 817 top-level passes, 984 subtest passes,
+`bin/prime` exit **0**: `cafe: 16 packages, 817 top-level passes, 984 subtest passes,
 0 failures, 8 skips`. The floors in `gate.yml` were raised to match — suite 794 →
 817, subtest 966 → 983 — and `caf.lock` was re-run. `go vet ./...` and `gofmt -l .`
 are clean. The 8 skips are the seven live tests and the re-exec'd child, as
@@ -173,7 +173,7 @@ cluster with the `kubectl cnpg` plugin installed, and the live tier
 ## The seam and m76
 
 The seam — the plan belongs to the runner, not the caller — is what makes m76
-(caf's Argo deploy) a new `deploy.Runner` implementation rather than a second copy
+(cafe's Argo deploy) a new `deploy.Runner` implementation rather than a second copy
 of the caller's orchestration. m76 fills the same seam this packet filled for
 backup: a pure plan, a runner that owns its argv, and the caller keeps the parts
-that are caf's.
+that are cafe's.

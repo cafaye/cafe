@@ -1,8 +1,8 @@
-# REPORT — caf publish goes non-interactive by default (R5)
+# REPORT — cafe publish goes non-interactive by default (R5)
 
-Packet: R5, `caf publish` non-interactive flip.
-Branch: `worker/caf-noninteractive` (base `7da4191`, the W11 publish merge).
-Base report: `REPORT-caf-publish-01.md` — this packet supersedes its
+Packet: R5, `cafe publish` non-interactive flip.
+Branch: `worker/cafe-noninteractive` (base `7da4191`, the W11 publish merge).
+Base report: `REPORT-cafe-publish-01.md` — this packet supersedes its
 agent-first contract paragraph, not its wire surface.
 
 ## The ruling, verbatim
@@ -16,7 +16,7 @@ is THE path. Option A's reviewability companion lands separately in pantry (a
 
 ## The agent-first contract, rewritten
 
-`caf publish` is OPS-D7's boundary — "the customer's own agent reads and
+`cafe publish` is OPS-D7's boundary — "the customer's own agent reads and
 proposes freely" — realized at the level of one command, minus the approval
 step the ruling removed: the tool proposes AND mints by default. An agent's
 run reads the manifest, validates it, derives the tag, prints the proposal —
@@ -30,9 +30,9 @@ proposing is gated, and the mint's confirmation is the ruling, not a prompt.
 ## The new default path
 
 ```
-caf publish <project>            # validates, prints the proposal, publishes
-caf publish --dry-run <project>  # prints the proposal, writes nothing
-caf publish --yes <project>      # identical to the default (accepted no-op)
+cafe publish <project>            # validates, prints the proposal, publishes
+cafe publish --dry-run <project>  # prints the proposal, writes nothing
+cafe publish --yes <project>      # identical to the default (accepted no-op)
 ```
 
 - **Default = publish.** The confirmation prompt is REMOVED from the default
@@ -53,7 +53,7 @@ caf publish --yes <project>      # identical to the default (accepted no-op)
 | default run, no flags | refuses without a TTY (exit 1) | **publishes the three writes in order** (exit 0) |
 | `--yes` | the escape hatch that authorizes the writes | accepted no-op; publishes exactly what the default publishes |
 | `--dry-run` / `--dry-run --json` | proposal, zero calls, exit 0 | stands, unchanged (stderr now says "Run it without --dry-run to publish") |
-| `--json` report, 409 tolerance, 401, invalid manifest, `--tag`, `--kind` | as in REPORT-caf-publish-01.md | stand, unchanged |
+| `--json` report, 409 tolerance, 401, invalid manifest, `--tag`, `--kind` | as in REPORT-cafe-publish-01.md | stand, unchanged |
 
 The two old tests (`TestNoYesAndADeclinedConfirmationWritesNothing`,
 `TestNoYesAndNoTerminalRefuses`) are deleted and replaced by

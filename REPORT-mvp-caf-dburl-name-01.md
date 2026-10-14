@@ -1,8 +1,8 @@
-# REPORT — mvp-caf-dburl-name-01
+# REPORT — mvp-cafe-dburl-name-01
 
-**Packet:** `caf dev` hands every service the wrong database variable name.
-**Repository:** `cafaye/caf`, branch `worker/caf-mvp-caf-dburl-name-01`,
-worktree `wt-m39-caf-dburl-name-01`, based on `master` at `42b53d8`.
+**Packet:** `cafe dev` hands every service the wrong database variable name.
+**Repository:** `cafaye/cafe`, branch `worker/cafe-mvp-cafe-dburl-name-01`,
+worktree `wt-m39-cafe-dburl-name-01`, based on `master` at `42b53d8`.
 **Not pushed, not merged.** One commit. §9 says a commit is worth a reviewer's
 attention; this one is.
 
@@ -30,7 +30,7 @@ var connectionURLs = map[string]func(project string) Env{
 table on trust, by grepping each service's own config loader for the variable it
 opens a database with:
 
-| service | reads | `caf dev` gave it | |
+| service | reads | `cafe dev` gave it | |
 | --- | --- | --- | --- |
 | identity | `DATABASE_URL` | `DATABASE_URL` | ok |
 | darkroom | `DATABASE_URL` | `DATABASE_URL` | ok |
@@ -40,7 +40,7 @@ opens a database with:
 The measurement, reproduced on this machine from a clean build of `master`:
 
 ```
-$ cd pantry && caf dev --dry-run
+$ cd pantry && cafe dev --dry-run
   pantry:
       DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantry
       REDIS_URL: redis://redis:6379/0
@@ -62,15 +62,15 @@ that disagreed with the convention got a container that exited on boot.
 
 Three measurements, in this order, all on `master` at `42b53d8`.
 
-**(a) The old CLI could not even express the fix.** caf refuses catalog keys it
+**(a) The old CLI could not even express the fix.** cafe refuses catalog keys it
 does not model — that is `checkCatalogKeys`, and it is the same guard that
 caught a misspelled `image`. So a catalog that tried to say which variable a
 service reads was not ignored; it was *rejected*:
 
 ```
-$ caf-before dev -registry caf.dev.json --dry-run
-caf: caf dev: unusable service catalog: 1 key no entry has: "connections" in the
-entry for pantry; caf would have dropped it without saying so. An entry takes
+$ cafe-before dev -registry caf.dev.json --dry-run
+cafe: cafe dev: unusable service catalog: 1 key no entry has: "connections" in the
+entry for pantry; cafe would have dropped it without saying so. An entry takes
 name, image, command, port, publish, environment, volumes, healthcheck,
 dependencies; …
 ```
@@ -79,7 +79,7 @@ This is worth stating because it is the shape of the hole: the declaration did
 not exist anywhere, and the guard that should have caught the omission pointed at
 a *hand-typed key list* instead.
 
-**(b) The defect itself**, same catalog with the key removed, so caf had nothing
+**(b) The defect itself**, same catalog with the key removed, so cafe had nothing
 to go on:
 
 ```
@@ -117,11 +117,11 @@ Four decisions, each with the alternative I rejected:
 schema ends in `additionalProperties: false`, and pantry's own
 `registry/index.yml` says so in as many words ("`kind` and `basePath` cannot be
 added to a manifest — and adding them would be inventing vocabulary core does not
-have"). caf also vendors that schema byte-for-byte with a pinned sha256
+have"). cafe also vendors that schema byte-for-byte with a pinned sha256
 (`internal/contract/schemas/README.md`), so a manifest field is a core release, a
 re-vendor, a sha bump and a spec-version bump before it validates. The catalog is
-caf's own type with no such chain. **Rejected alternative:** the manifest, because
-it is not caf's to change.
+cafe's own type with no such chain. **Rejected alternative:** the manifest, because
+it is not cafe's to change.
 
 **Why a map keyed by infrastructure, not a `database` string field.** A single
 `"database": "PANTRY_DATABASE_URL"` would have needed `if kind == "postgres"`
@@ -135,7 +135,7 @@ already covered, and a test says so.
 (`postgres://<project>:<project>@postgres:5432/<project>`). A catalog that spelled
 one out would go stale the moment a developer renamed their checkout, and the
 failure would be a container booting against a database that does not exist. The
-catalog names the *variable*; caf renders the *address*.
+catalog names the *variable*; cafe renders the *address*.
 
 **Why a bad declaration is refused rather than ignored.** `connections` is a map,
 and a map's keys are silent by construction — nothing in a decoder complains about
@@ -213,7 +213,7 @@ The rest of the thirteen, and what each is for:
 | `ReadCatalogRefusesAConnectionsKeyThatNamesNoInfrastructure` | scope derived from `infraNames()`, not a written list, so a third kind of infrastructure is covered on the day it lands |
 | `ReadCatalogRefusesAConnectionsValueThatIsNotAVariableName` | five rejected shapes including a pasted URL |
 | `TheConnectionsErrorNamesTheServiceAndEveryMistake` | every mistake at once, not the first |
-| `TheConnectionsErrorReadsAsASentenceAtEveryCount` | the `counted`/`pronoun` grammar rule at 1 and 2, which is the rule that once produced `caf would have dropped 1 it` |
+| `TheConnectionsErrorReadsAsASentenceAtEveryCount` | the `counted`/`pronoun` grammar rule at 1 and 2, which is the rule that once produced `cafe would have dropped 1 it` |
 | `ReadCatalogAcceptsAnEntryThatDeclaresNoConnections` | the undeclared shape stays free — it is three of the four services |
 
 I also added `connections` to `TestCatalogWireShape`, because a field nothing
@@ -226,20 +226,20 @@ the official catalog.
 Green, three consecutive runs, from a warm cache:
 
 ```
-caf: 15 packages, 727 top-level passes, 876 subtest passes, 0 failures, 8 skips
-caf: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
+cafe: 15 packages, 727 top-level passes, 876 subtest passes, 0 failures, 8 skips
+cafe: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
 ```
 
 - **suite floor** 714 → **727**. Arithmetic: 735 declared, 8 skips, 727 run.
   `expectedSkips` stays at 8 — none of the thirteen is env-gated, so no new test
-  arrived as a new tier, which is the same reason caf-30's seven and caf-33's two
+  arrived as a new tier, which is the same reason cafe-30's seven and cafe-33's two
   did not move it.
 - **subtests floor** stays at **875**. Measured 876, floor one lower by the
   standing one-lower rule. It did not move because **I added zero `t.Run` rows** —
   all thirteen are flat asserts. That is stated in `gate.yml` because a floor that
   moved for no reason is how the next reader stops believing these comments.
 - `caf.lock` re-pinned: `gate.yml` is a `rule-bundle` in the lock, so the tree
-  stopped matching its committed lock and said so. Fixed with `caf lock .`, not by
+  stopped matching its committed lock and said so. Fixed with `cafe lock .`, not by
   editing the assertion — 12 files (1 spec, 7 vendored-schema, 3 generated-client,
   1 rule-bundle).
 
@@ -275,7 +275,7 @@ ephemeral port is a shared resource. See §7.
 | darkroom | unaffected, and must stay so | same. |
 | **muse** | **still broken, deliberately not touched** | out of MVP scope per the packet. The same one-line declaration fixes it; nothing in this change makes muse worse. |
 
-**The one thing this does not fix, stated plainly: `cd pantry && caf dev
+**The one thing this does not fix, stated plainly: `cd pantry && cafe dev
 --dry-run` with no `-registry` still prints `DATABASE_URL`.** Measured, not
 assumed. The reason is structural and it is the honest limit of the
 catalog-entry mechanism:
@@ -288,18 +288,18 @@ repository's Dockerfile with a pull of an image that does not exist locally").
 Measured:
 
 ```
-$ cd pantry && caf dev --dry-run                                       # no -registry
+$ cd pantry && cafe dev --dry-run                                       # no -registry
       DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantry      # unchanged
-$ caf-after dev -registry pantry.dev.json --dry-run                    # catalog names pantry
+$ cafe-after dev -registry pantry.dev.json --dry-run                    # catalog names pantry
     image: ghcr.io/cafaye/pantry:0.4.1                                 # no build:
       PANTRY_DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantry
 ```
 
-So the project-itself case needs a *second* mechanism — a declaration caf reads
+So the project-itself case needs a *second* mechanism — a declaration cafe reads
 from the project directory, or a change to `addProject`'s build-over-image rule,
 or a core manifest field. All three are real designs and none of them is this
 packet's scope. I chose not to fold one in because each changes behaviour for
-every existing project (auto-discovery changes `caf dev` for `parlor`, which
+every existing project (auto-discovery changes `cafe dev` for `parlor`, which
 already ships a `caf.dev.json`), and a reviewer asked to approve a database
 variable name should not also be approving a catalog discovery rule.
 
@@ -320,9 +320,9 @@ gap is a stated boundary rather than an unknown.
    assumption and folding it in would widen this diff for no gain to the packet.
 
 2. **The project's own repository still cannot declare this**, for the structural
-   reason in §6. Worth its own packet; the shape is a caf-owned sidecar read by
+   reason in §6. Worth its own packet; the shape is a cafe-owned sidecar read by
    `dev.Load`, not a manifest field (core closes the manifest) and not auto-
-   discovery of `-registry` (that changes `caf dev` for every repo that already
+   discovery of `-registry` (that changes `cafe dev` for every repo that already
    ships a catalog).
 
 3. **pantry's catalog entry has to be published for any of this to reach a
@@ -343,16 +343,16 @@ gap is a stated boundary rather than an unknown.
    cheap way to make "a generated file was read as a source of truth" louder and
    said to move on if there was not one. **There is already one, and it was
    written by someone else:** the rendered document's own header, printed by
-   `caf dev` on every run:
+   `cafe dev` on every run:
 
    ```
-   # caf dev — the local stack for "pantry-dev", generated from cafaye.yml.
+   # cafe dev — the local stack for "pantry-dev", generated from cafaye.yml.
    # Do not edit: every run rewrites this file. The manifest is the
    # source of truth; this is what it turned into.
    ```
 
    The finding is that it is a *comment*, which no tool reads. A generation stamp
-   naming the caf build would be machine-checkable, but that is a change to
+   naming the cafe build would be machine-checkable, but that is a change to
    `render.go`, which the packet said not to touch. Recorded, not done.
 
 - **`muse`** — measured, noted, untouched. See §6.
@@ -362,7 +362,7 @@ gap is a stated boundary rather than an unknown.
 1. Publish a catalog entry for pantry with
    `"connections": {"postgres": "PANTRY_DATABASE_URL"}`. One file, unblocks the
    developer-facing half, and is the only thing standing between this commit and
-   `caf dev` working in pantry.
+   `cafe dev` working in pantry.
 2. Decide the project-side declaration (§7.2) as its own packet, with `parlor`'s
    existing `caf.dev.json` as the precedent to design against.
 3. Fix the `internal/ports` flake (§7.1) in its own packet, with the scratch block
@@ -371,7 +371,7 @@ gap is a stated boundary rather than an unknown.
 
 ## 10. Checklist
 
-- [x] Committed to `worker/caf-mvp-caf-dburl-name-01`. Not pushed, not merged, not
+- [x] Committed to `worker/cafe-mvp-cafe-dburl-name-01`. Not pushed, not merged, not
       tagged.
 - [x] One commit, worth a reviewer's slot.
 - [x] Every command bounded by `timeout` (600s on `go test`, 900s on `bin/prime`,
@@ -380,11 +380,11 @@ gap is a stated boundary rather than an unknown.
       1-in-5 measurement.
 - [x] Both "fixed" claims carry before/after: §2 for the defect, §4 for the two
       mutations, each with the mutation verified present in the file by text.
-- [x] `REPORT-mvp-caf-dburl-name-01.md` exists and is committed.
+- [x] `REPORT-mvp-cafe-dburl-name-01.md` exists and is committed.
 - [x] Findings outside the packet are named in §7.
 - [x] No container, image or volume left running. Nothing in this packet starts
-      one; `caf dev --dry-run` renders and exits, and the two demo projects live
+      one; `cafe dev --dry-run` renders and exits, and the two demo projects live
       in a temp directory.
 - [x] No other session's worktree, branch or container touched. The pantry repo was
-      read and `caf dev --dry-run` was run in it, which rewrites its gitignored
+      read and `cafe dev --dry-run` was run in it, which rewrites its gitignored
       generated compose file; `git status` in `pantry` is clean, verified after.

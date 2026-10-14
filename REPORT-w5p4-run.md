@@ -1,6 +1,6 @@
 # REPORT — W5-P4: the resumable install model (run + steps + events + lease)
 
-**Packet:** W5-P4, `caf`. Branch `agents-first/w5p4`, worktree `caf-w5p4`.
+**Packet:** W5-P4, `cafe`. Branch `agents-first/w5p4`, worktree `cafe-w5p4`.
 **State:** the packet is accomplished and the gate is green. 19 packages, 906
 top-level passes, 1087 subtest passes, 0 failures, 8 skips (the 8 are the live
 tier and the re-exec'd child, both named at `expectedSkips`).
@@ -63,7 +63,7 @@ which is the one thing the package must never do.
 | Guarantee | Proof |
 |---|---|
 | A step is recorded before it runs | The happy path asserts the log's ORDER — `step_begun` before `step_done` for every step, with the step's own timestamps agreeing — plus five refusal rows: completing or failing a step that was never begun, failing one that is done, and the two unknown-key shapes. A test that only checked final states would pass against a model that marked steps done without recording that they started. |
-| Resume works | Three crash rows, one per place a caf process can stop in: the instant it claimed, between two steps, and with a step left `running`. Each asserts the new driver's resume key AND that a done step is never begun again — a resume that replayed `substrate` would look identical in the final states and would be a second install of the substrate. |
+| Resume works | Three crash rows, one per place a cafe process can stop in: the instant it claimed, between two steps, and with a step left `running`. Each asserts the new driver's resume key AND that a done step is never begun again — a resume that replayed `substrate` would look identical in the final states and would be a second install of the substrate. |
 | One lease, one winner | Three claim rows (live refuses by name, same holder renews and keeps its epoch, expired is taken with a new epoch), four stale-write rows, and `TestDriversRacingForOneClaimProduceOneWinner`: eight drivers claiming one run at the same instant, asserted on the COUNT of winners. An outcome assertion would pass against a store that let two through and failed one later. |
 | Events are append-only | A byte comparison — the log after more work still begins with the bytes that were there before it — plus contiguous sequence numbers, so a missing line is a visible gap. There is no API in the package that rewrites a line. |
 
@@ -92,8 +92,8 @@ green under `-race` as well.
   the run, because there is no state in which every step is done and the run is
   not succeeded. A separate finish call would be a call a driver could die
   before making, and it would leave a run nothing can finish.
-- **CLI verbs.** `caf box run`/`resume` are not in this packet's Done means,
-  the consumer is `caf boxd` (W2-P7) and kit's headless installer (W2-P5), and
+- **CLI verbs.** `cafe box run`/`resume` are not in this packet's Done means,
+  the consumer is `cafe boxd` (W2-P7) and kit's headless installer (W2-P5), and
   a new verb brings the whole subcommand checklist with it. The model is the
   packet; the wiring is the next one.
 
@@ -140,16 +140,16 @@ green under `-race` as well.
 **Wire it into the box.** `internal/box.Phases` is already the step table — the
 install's seven phases, in order — so a driver is `Create(boxID, phaseNames)`
 once and then `Claim`/`BeginStep`/`CompleteStep`/`FailStep`/`Release` per
-phase. `caf boxd` (W2-P7) is the driver, and kit's headless installer (W2-P5)
+phase. `cafe boxd` (W2-P7) is the driver, and kit's headless installer (W2-P5)
 is the thing whose JSONL progress a `step_done` event should be able to feed.
 
 Two entry points are already shaped for it and have no caller yet:
 
 - `Store.HolderOf(id)` reads the lease a run is under, which is the fact
-  `caf box status` would report ("the install is being driven by X and its
+  `cafe box status` would report ("the install is being driven by X and its
   lease runs out at T").
 - `Store.Events(id)` is the run's log, oldest first, contiguous sequence
-  numbers — the shape `caf box logs` already prints for the box's own event
+  numbers — the shape `cafe box logs` already prints for the box's own event
   log in `internal/box/lifecycle.go`.
 
 One thing to watch: the phases in `internal/box` are a `var`, so a driver that
@@ -166,7 +166,7 @@ gofmt -l .                           no output
 ./bin/prime                          19 packages, 906 top-level passes,
                                      1087 subtest passes, 0 failures, 8 skips
 go test -count=1 ./internal/ci/      ok   (the new floors checked, not replayed)
-go run ./cmd/caf lock .              12 files, re-pinned for the new gate.yml
+go run ./cmd/cafe lock .              12 files, re-pinned for the new gate.yml
 ./tests/gate-declaration-self-test.sh 3 controls green, 21 breakages went red
                                      and each named its finding, 5 warnings
                                      stayed green at exit 0, 0 skipped

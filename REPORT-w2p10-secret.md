@@ -1,7 +1,7 @@
 # REPORT — OPS-P10, the secret inventory and the rotation path
 
 Branch: `ops/w2-secret-inventory`. Package: `internal/secret`, command:
-`caf secret inventory` / `caf secret rotate`.
+`cafe secret inventory` / `cafe secret rotate`.
 
 ## What the packet was for
 
@@ -26,7 +26,7 @@ and REFUSE the rest by name rather than skipping silently.
 | `internal/secret/inventory.go` | the table: every key the installer's SECRET RECORD declares, plus the three it does not carry (the Redis password, the Postgres role passwords, muse's vault key). Each entry has a class, a reason and a citation. Also `Find`, which matches on the name and on the `namespace/secret/key` spelling. |
 | `internal/secret/rotate.go` | `PlanRotation` (pure), the `Runner` seam, `Generate` in the installer's own spellings (base64 of 32/64 bytes, hex of 24), the redaction marker, and `Due`. |
 | `internal/secret/state.go` | the schedule: `last rotated` per entry in a JSON file that holds no credential, written atomically. |
-| `internal/secret/render.go` | the one JSON document `caf secret inventory` prints, and the refusal report. |
+| `internal/secret/render.go` | the one JSON document `cafe secret inventory` prints, and the refusal report. |
 | `internal/cli/secret.go` | the two verbs, the `--dry-run`/`--yes`/`--all`/`--timeout` surface, the `askOnStdin` prompt, the stdout/stderr split. |
 | tests | `internal/secret` (20 top-level, 29 subtests) and `internal/cli/secret_test.go` (10 top-level, 2 subtests). |
 
@@ -99,15 +99,15 @@ refusals every time, so the answer to "and the rest?" is never a silence.
 - `go test -count=1 ./internal/secret/` — **ok, 0.63s, exit 0** (20 top-level)
 - `go test -count=1 ./internal/cli/` — **ok, 62s, exit 0**
 - `bin/prime` (the full gate) — **exit 0**, final run:
-  `caf: 24 packages, 1083 top-level passes, 1190 subtest passes, 0 failures, 8 skips`
-  plus `caf: live tier: 0 of 7 executed`, which the declaration requires and
+  `cafe: 24 packages, 1083 top-level passes, 1190 subtest passes, 0 failures, 8 skips`
+  plus `cafe: live tier: 0 of 7 executed`, which the declaration requires and
   which `--live` is the mode that cannot silently not run.
 
 Two red runs happened first, and both are named because a green that was not
 earned is worth nothing:
 
 1. `1080 top-level passes, 2 failures` — the lock tests, because the floors had
-   been raised without `caf lock` being re-run over the moved `gate.yml` hash.
+   been raised without `cafe lock` being re-run over the moved `gate.yml` hash.
    Fixed by re-running the lock, which is AGENTS.md's step 6.
 2. `1082 top-level passes, 1 failure` — `TestTheGateFloorIsNotBelowTheSuite-
    CafClaimsToHave`: the tree declared 1091 top-level tests, not 1090, because
@@ -150,7 +150,7 @@ lands on the wrong sentence and concludes the reason is wrong.
 
 Nothing blocking. Remaining, in order of value:
 
-- `caf secret rotate --all` has no test that the prompt is skipped; the
+- `cafe secret rotate --all` has no test that the prompt is skipped; the
   `--timeout` flag is wired but not asserted against a hung runner.
 - The citations point at fleet paths (`cafaye/kit/templates/substrate/
   install.sh`, `cafaye/identity/README.md`, `cafaye/muse/README.md`,

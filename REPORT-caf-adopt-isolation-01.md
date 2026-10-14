@@ -1,26 +1,26 @@
-# REPORT — caf-adopt-isolation-01
+# REPORT — cafe-adopt-isolation-01
 
-**Branch** `worker/caf-adopt-isolation-01` · **Worktree** `wt-m39-caf-adopt-isolation-01`
-**Recipe** `reports/caf-adopt-isolation-01/mutations.sh`
-**Run** `reports/caf-adopt-isolation-01/RUN.txt` (exit 0)
-**Tripwire proof** `reports/caf-adopt-isolation-01/FALSIFY-RED.txt` (exit 1)
+**Branch** `worker/cafe-adopt-isolation-01` · **Worktree** `wt-m39-cafe-adopt-isolation-01`
+**Recipe** `reports/cafe-adopt-isolation-01/mutations.sh`
+**Run** `reports/cafe-adopt-isolation-01/RUN.txt` (exit 0)
+**Tripwire proof** `reports/cafe-adopt-isolation-01/FALSIFY-RED.txt` (exit 1)
 
 ---
 
 ## The finding, first
 
-**caf holds no rows. The cross-tenant harness is UNDEFINED against it — not
-unfinished.** There is no account-scoped query layer in caf to measure, so the
-packet's premise (`caf | Go | holds rows | yes`) is not supported by the tree.
+**cafe holds no rows. The cross-tenant harness is UNDEFINED against it — not
+unfinished.** There is no account-scoped query layer in cafe to measure, so the
+packet's premise (`cafe | Go | holds rows | yes`) is not supported by the tree.
 
 There are no six breakages, because there is no statement to remove a predicate
 from. That is reported as a result with a measurement behind it, which is the
 same discipline `kit/reports/tenant-adapter-ts-01/subject-audit.sh` used when it
 withdrew the TypeScript adapter rather than shipping a nominal one.
 
-**caf is not broken.** Nothing here is a caf defect and nothing was fixed in caf.
-The absence of a query layer is caf's architecture, stated correctly by caf's own
-manifest: *"caf is a binary, not a service: it exposes no HTTP surface and
+**cafe is not broken.** Nothing here is a cafe defect and nothing was fixed in caf.
+The absence of a query layer is cafe's architecture, stated correctly by cafe's own
+manifest: *"cafe is a binary, not a service: it exposes no HTTP surface and
 publishes no events."*
 
 ---
@@ -34,12 +34,12 @@ its own header rather than substituting plausible-looking text.**
 
 A guessed anchor is how a recipe reports "stayed green" for a breakage it never
 planted. A borrowed anchor — identity's `WHERE account_id = $1`, applied to a
-service with no table — would be the same defect wearing caf's name, and it would
+service with no table — would be the same defect wearing cafe's name, and it would
 have produced a green line resting on a file that does not exist in this
 repository.
 
 What exists instead is **a classification of all 14 `account_id` occurrences in
-caf**, every one printed with its path and line number, and a `PREDICATE` count
+cafe**, every one printed with its path and line number, and a `PREDICATE` count
 of **0**.
 
 ### The 14 occurrences, and what each one is
@@ -66,7 +66,7 @@ OpenTelemetry attribute*. Not one filters on an account.
 
 ### The packet's "2 test files" note was this, read the wrong way
 
-The brief records that caf "currently carries **2** test files that mention
+The brief records that cafe "currently carries **2** test files that mention
 `account_id` — a start, not the five-arm suite." Those two files are rows 1–3 and
 row 11 above: `internal/contract/telemetry_test.go` and
 `internal/telemetry/telemetry_test.go`. They are telemetry allowlist tests. They
@@ -82,7 +82,7 @@ recognises nothing looks identical to a probe that is right about a tree
 containing nothing. So `mutations.sh` runs three arms, and the third is the one
 that carries the finding.
 
-### ARM 1 — static, over caf's own tree
+### ARM 1 — static, over cafe's own tree
 
 ```
 IMPORTS a db driver (non-test) : 0
@@ -104,16 +104,16 @@ URI matcher. `grep -rn '"database/sql"' --include='*.go'` returns **0**.
 
 Across the whole fleet, only **`courier`** and **`identity`** carry a
 `tenancy.yml`, and both say `accountScoped: true`. Those are exactly the two
-services the harness has proven. caf declares nothing, because caf has nothing to
+services the harness has proven. cafe declares nothing, because cafe has nothing to
 declare.
 
 ### ARM 2 — the empirical receipt
 
-Not a prediction. kit's Go adapter, really invoked against caf:
+Not a prediction. kit's Go adapter, really invoked against cafe:
 
 ```
 harness: up — kit-tenant-iso-97198 on host port 15898 (postgres:17)
-harness: preparing a throwaway copy of wt-m39-caf-adopt-isolation-01
+harness: preparing a throwaway copy of wt-m39-cafe-adopt-isolation-01
   identity's own migrations failed; tail of the log:
   2026/10/03 18:40:52 goose run: migrations directory does not exist
 cross_tenant_harness: the service's own migrations did not apply to a real
@@ -122,14 +122,14 @@ nothing.
 harness exit status: 2
 ```
 
-`adapter_prepare` **succeeded** — caf has a `go.mod` and `go build ./...` passes
+`adapter_prepare` **succeeded** — cafe has a `go.mod` and `go build ./...` passes
 over the whole module. `adapter_migrate` then failed at `goose -dir migrations`.
 That is step two of five, and the first that needs something the subject holds.
 
-Both halves matter. caf **is** a Go service the adapter can build; what it lacks
+Both halves matter. cafe **is** a Go service the adapter can build; what it lacks
 is not a toolchain and not a language adapter. It is a database.
 
-Full log: `reports/caf-adopt-isolation-01/arm2-adapter-vs-caf.log`.
+Full log: `reports/cafe-adopt-isolation-01/arm2-adapter-vs-caf.log`.
 
 ### ARM 3 — the control, and it changed the recipe twice
 
@@ -155,7 +155,7 @@ property of the two trees and not of the probe.
 Reported because the recipe's value is that it could be wrong in a way I could
 see.
 
-**(a) The classifier reported caf with 2 predicates; the truth is 0.** Both were
+**(a) The classifier reported cafe with 2 predicates; the truth is 0.** Both were
 English prose in `metrics.schema.json` — one matched only because the word
 "update" appears in a sentence about telemetry cards. The control's original
 assertion was "identity has at least one predicate", which a classifier that
@@ -163,7 +163,7 @@ buckets *everything* as a predicate also satisfies. The assertion was too weak f
 the classifier it was policing. The rule is now **structural** — a predicate lives
 in a `.go`/`.ex`/`.rb`/`.py`/`.ts`/`.rs`/`.sql` file and carries a statement, so
 a `.json` schema description fails the first condition by construction — and the
-assertion is "caf's predicate count is exactly 0", which matches the rule rather
+assertion is "cafe's predicate count is exactly 0", which matches the rule rather
 than a proxy for it.
 
 **(b) `SOURCE_EXT` was tested against the whole `grep -rn` line**, which is
@@ -179,10 +179,10 @@ lines rather than by `tail`.
 
 **(c) The probe measured its own report.** Caught by the final reproducibility
 check, and the worst of the three because it was silent. Writing
-`REPORT-caf-adopt-isolation-01.md` at the repository root added ten mentions of
-`account_id` in a document *about this measurement*, and caf's tally moved from
+`REPORT-cafe-adopt-isolation-01.md` at the repository root added ten mentions of
+`account_id` in a document *about this measurement*, and cafe's tally moved from
 13 TELEMETRY / 1 OTHER to 14 / 11. Every number still looked plausible and nothing
-went red. The first draft excluded `reports/caf-adopt-isolation-01/` and forgot
+went red. The first draft excluded `reports/cafe-adopt-isolation-01/` and forgot
 the report sitting beside it.
 
 That is kit's own rule about the staleness reporter arriving from the other
@@ -207,7 +207,7 @@ Per the standing rule, these are separate numbers because "6 passed" could be si
 reds or six controls.
 
 **There are zero breakages and that is the result, not a gap in the run.** The
-packet asked for one breakage per way scoping can be dropped. caf has no scoping
+packet asked for one breakage per way scoping can be dropped. cafe has no scoping
 to drop. The control is the one that matters, and it is why the zero is a
 measurement rather than an absence of measurement.
 
@@ -230,19 +230,19 @@ account_id PREDICATE lines     : 14
 => HOLDS ROWS                  : yes
 ```
 
-Both directions are now measured: green on caf (the finding), red on a subject
+Both directions are now measured: green on cafe (the finding), red on a subject
 holding rows (the tripwire).
 
 **Reproducibility:** the committed recipe was run three times after the last edit.
 Two consecutive runs are byte-identical apart from the `goose` log timestamp, and
-the committed `RUN.txt` matches a fresh run. caf reads 0 PREDICATE / 13 TELEMETRY /
+the committed `RUN.txt` matches a fresh run. cafe reads 0 PREDICATE / 13 TELEMETRY /
 1 OTHER and identity reads 69 / 14 / 520 on every run, and a self-reference count
-of the report inside its own measurement is 0. caf's own gate is unaffected:
+of the report inside its own measurement is 0. cafe's own gate is unaffected:
 `gofmt -l .` empty, `go vet ./...` clean, `bin/prime` green at 714 top-level and
 876 subtest passes, 0 failures, 8 skips.
 
-**Not exercised:** ARM 2's red branch (`harness up` exiting 0 against caf). It
-needs a caf that holds rows, which does not exist. Its green branch — the
+**Not exercised:** ARM 2's red branch (`harness up` exiting 0 against cafe). It
+needs a cafe that holds rows, which does not exist. Its green branch — the
 "adapter ran to completion" reading — is the same two-line comparison.
 
 ---
@@ -274,9 +274,9 @@ I may read `kit` and may not merge into it, so these are for the manager.
 
 4. **`adapters/README.md`'s Go subject is not the only Go service that could be
    one.** It says Go is proven "against `identity`". Correct as written. Worth
-   noting for whoever updates the language list: caf is Go, is in MVP scope, and
+   noting for whoever updates the language list: cafe is Go, is in MVP scope, and
    was on a packet's table as holding rows. It does not. The tripwire in this
-   packet is the thing that keeps that table honest from caf's side.
+   packet is the thing that keeps that table honest from cafe's side.
 
 ---
 
@@ -286,22 +286,22 @@ After this packet, every account-scoped service in MVP scope that holds rows is
 proven by the harness, and the set of unproven languages is unchanged at four —
 Ruby (`cafaye-rb`), TypeScript (`cafaye-ts`, `guard`, `parlor`, `site`), Python
 (`cafaye-py`) and Rust (`darkroom`) — because nothing here moved a language. What
-this packet changed is the *fleet table* rather than the language list: caf was
+this packet changed is the *fleet table* rather than the language list: cafe was
 recorded as the last in-scope Go service holding rows and needing proof, and the
-measurement says caf holds none, so the "exactly one left" premise this packet was
+measurement says cafe holds none, so the "exactly one left" premise this packet was
 dispatched on was never true and the MVP's in-scope set of row-holding services
 is now **proven in full**, and by the two the fleet has already named: **courier**
 (Elixir, 19 cross-tenant negative tests) and **identity** (Go, six breakages in
 `kit/reports/tenant-adapter-go-01/mutations.sh`, plus seven in identity's own
 `internal/tenancy` audit). What remains unproven is
-unchanged and is not about caf: four languages with no adapter, of which
+unchanged and is not about cafe: four languages with no adapter, of which
 TypeScript is the strongest case, because no TypeScript service in the fleet holds
 a database at all, so the harness has nothing to measure there; Ruby, Python and
 Rust each hold rows in a language kit has no adapter for, and those are real gaps
 rather than undefined instruments. The honest one-line claim is therefore
 unchanged from `kit/reports/tenant-adapter-go-01` — *cross-tenant isolation is
 proven for Elixir and Go, on services that scope correctly; four languages remain
-unproven* — and this packet's contribution is that caf has been removed from the
+unproven* — and this packet's contribution is that cafe has been removed from the
 list of services someone might mistake for a fifth gap.
 
 ---
@@ -310,7 +310,7 @@ list of services someone might mistake for a fifth gap.
 
 **Decided: withdraw rather than manufacture a subject.** The adapter contract
 forbids hand-written schema in as many words, so a six-breakage recipe here would
-have needed a table caf does not have. Rejected.
+have needed a table cafe does not have. Rejected.
 
 **Decided: classification, not counting.** A count of `account_id` occurrences
 produced the packet's "a start" reading, and reproducing that reading is the
@@ -325,10 +325,10 @@ Both are recorded in §3 and in the recipe's comments, because a classifier that
 was wrong once and was quietly corrected is a classifier whose next reader cannot
 tell which number to trust.
 
-**Decided: no fix in caf.** Nothing in caf is broken, and a caf change would have
+**Decided: no fix in caf.** Nothing in cafe is broken, and a cafe change would have
 been scope this packet does not have.
 
-**Rejected: a forwarding-shaped probe for caf.** caf holds state keyed by
+**Rejected: a forwarding-shaped probe for caf.** cafe holds state keyed by
 account-adjacent things — port reservations, ledger entries, compose projects —
 and one could write a "can a caller reach an account it does not hold" probe. That
 is the instrument `adapters/README.md` names for the TypeScript layer, it needs a

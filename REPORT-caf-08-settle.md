@@ -1,4 +1,4 @@
-# REPORT-caf-08-settle — the settle window, and why it was deleted
+# REPORT-cafe-08-settle — the settle window, and why it was deleted
 
 > **The choice was deletion, and it was not a close call.** The brief offered two
 > honest end states. "Make it real" turned out to be impossible against
@@ -63,10 +63,10 @@ over `main.go`, `main_test.go` and `README.md` at `0.8.1` returns only
 pruning — unrelated machinery that happens to share a word.
 
 I checked `main`, `0.11.0` and `0.12.0` as well: no retry offset in any
-released version, including current main. **This is not an old version caf failed
+released version, including current main. **This is not an old version cafe failed
 to upgrade from. The feature does not exist.**
 
-`RYUK_RETRY_OFFSET` was caf reading a variable that nothing else reads.
+`RYUK_RETRY_OFFSET` was cafe reading a variable that nothing else reads.
 
 ### 2.2 There is no second pass
 
@@ -113,7 +113,7 @@ So the *syntax* would accept an arbitrary key. The **daemon** then refuses it:
   reaper never calls `ContainerPrune`: it calls `ContainerList` and then
   `ContainerRemove` per container (`main.go:274-288`).
 
-**The consequence of trying is the important part.** If caf sent an unknown
+**The consequence of trying is the important part.** If cafe sent an unknown
 filter key, `ContainerList` returns an error, the reaper logs it and moves on to
 the network, volume and image prunes — which validate the same `args` and also
 error. The sweep would complete normally, print a cheerful "Removed 0
@@ -158,13 +158,13 @@ all pass unchanged.
 
 The package doc previously said the sweep was monotonic. It now says:
 
-> caf's reaper is a **liveness guess**, not a monotonic sweep […] What actually
+> cafe's reaper is a **liveness guess**, not a monotonic sweep […] What actually
 > protects a running worker is the lease: the reaper counts its clients, and
 > while this package holds the socket open it prunes nothing. What is *not*
 > protected is a resource created after a prune pass has begun, by anything, in
 > a window a client cannot close.
 
-Precisely, the safety properties caf claims after this change:
+Precisely, the safety properties cafe claims after this change:
 
 1. **The connection is the lease.** Held open, nothing is pruned. Real, tested.
 2. **Filters are session-scoped.** A filter structurally cannot name another

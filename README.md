@@ -68,7 +68,7 @@ Two things about it that are worth knowing before you read the file.
 `internal/deploy/live_test.go`, which need a container runtime and are otherwise
 skipped — and it refuses to report success if they did not run. The deploy one
 also needs `kamal` on `PATH`, and it really deploys; see
-[`REPORT-caf-21-deploy.md`](REPORT-caf-21-deploy.md) and read that file's header
+[`REPORT-cafe-21-deploy.md`](REPORT-cafe-21-deploy.md) and read that file's header
 before running it on a machine that is not yours. And the declaration's
 `live-tier` proof exists so that a run in which they *were* skipped cannot read as
 a run in which they passed.
@@ -517,7 +517,7 @@ accessory's container (`<service>-<accessory>`, e.g. `identity-postgres`) rather
 than a host address, which is the one change this costs per service.
 
 Both halves of that are measured, not argued, and
-[`REPORT-caf-21-deploy.md`](REPORT-caf-21-deploy.md) §4 has the output: a boot
+[`REPORT-cafe-21-deploy.md`](REPORT-cafe-21-deploy.md) §4 has the output: a boot
 with `port: 5432` fails on `Bind for 0.0.0.0:5432`, a loopback publish is
 invisible to a container on the `kamal` network, and a deployed app reaches its
 database **by name** with the accessory publishing nothing at all.
@@ -573,7 +573,7 @@ A real deployment, to a real Docker daemon reached over real SSH, with a real
 `.kamal/secrets` arriving in the serving container. It is
 `internal/deploy/live_test.go`, it is in the **live** tier rather than the gate
 (it needs `kamal` and a container runtime), and
-[`REPORT-caf-21-deploy.md`](REPORT-caf-21-deploy.md) has the output — including
+[`REPORT-cafe-21-deploy.md`](REPORT-cafe-21-deploy.md) has the output — including
 the release that never goes healthy being refused while the previous one keeps
 serving. **Read that file's header before running it on a machine that is not
 yours**: it starts an SSH daemon, publishes a port, and uses the global container
@@ -689,16 +689,16 @@ only fails then is cheapest to catch while nothing has started. cafe reads Kamal
 
 | reason | what is wrong |
 |---|---|
-| `caf-backup/accessory-not-declared` | the backup configuration names an accessory the deploy configuration does not have |
-| `caf-backup/config-not-mounted` | the accessory does not mount that backup configuration read-only |
-| `caf-backup/secret-not-declared` | the backup configuration names a secret the accessory's `env.secret` does not declare |
-| `caf-backup/app-name-mismatch` | `app:` disagrees with the service, so every snapshot is unfindable |
+| `cafe-backup/accessory-not-declared` | the backup configuration names an accessory the deploy configuration does not have |
+| `cafe-backup/config-not-mounted` | the accessory does not mount that backup configuration read-only |
+| `cafe-backup/secret-not-declared` | the backup configuration names a secret the accessory's `env.secret` does not declare |
+| `cafe-backup/app-name-mismatch` | `app:` disagrees with the service, so every snapshot is unfindable |
 
 ```
 $ cafe backup --table users --yes identity
 cafe backup: refusing to back up
 
-caf-backup/secret-not-declared
+cafe-backup/secret-not-declared
   the backup configuration names the secret RESTIC_REPOSITORY, and the backup accessory does not declare it.
   kamal-backup builds that accessory's environment from that accessory's `env.secret` list and from nothing else, so this pair deploys and then fails validation with a message about RESTIC_REPOSITORY — measured on kamal-backup 0.5.2, and what the operator will actually be shown.
   The accessory declares: DATABASE_URL, DATABASE_PASSWORD, RESTIC_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
@@ -708,7 +708,7 @@ caf-backup/secret-not-declared
 ```
 
 Exit 1, nothing booted, and **stderr stays empty** — the refusal is the report. The
-reasons are `caf-backup/…` so a script can match one instead of grepping prose.
+reasons are `cafe-backup/…` so a script can match one instead of grepping prose.
 
 ### One refusal is deliberately NOT cafe's
 
@@ -757,7 +757,7 @@ real `ghcr.io/crmne/kamal-backup:0.5.2`, restored into a scratch database with s
 rows asserted — plus the two refusals, one of them the gem's. It is
 `internal/backup/live_test.go`, it is in the **live** tier rather than the gate (it
 needs `kamal` and a container runtime), and
-[`REPORT-caf-22-backup.md`](REPORT-caf-22-backup.md) has the output. **Read that
+[`REPORT-cafe-22-backup.md`](REPORT-cafe-22-backup.md) has the output. **Read that
 file's header before running it on a machine that is not yours**: it starts an SSH
 daemon, publishes a port, boots two containers against the host's Docker socket, and
 creates and drops a database.
@@ -824,7 +824,7 @@ $ cafe backup drill --table users --json identity    # the report goes to stderr
   "scratch": "identity_drill",
   "tables": ["users"],
   "outcome": "failed",
-  "reason": "caf-backup/drill-not-run",
+  "reason": "cafe-backup/drill-not-run",
   "detail": "cafe backup: kamal could not read the deployment, so there is nothing to back up: exit status 1",
   "started_at": "2026-10-10T09:00:00Z",
   "finished_at": "2026-10-10T09:00:02Z",
@@ -839,17 +839,17 @@ A refused drill is a third outcome and not a boolean, because "the restore worke
 "cafe would not touch the service" are different facts with different fixes — one is a log
 to read and one is a file to edit. A refusal's record names the **clause**, not only the
 class, so a script learns which line to change rather than only that the config is wrong.
-A fourth fact is kept apart from all of those: `caf-backup/drill-not-run` means the cycle
+A fourth fact is kept apart from all of those: `cafe-backup/drill-not-run` means the cycle
 never started — the engine is not installed, or the deployment cannot be read — and
 recording it as a failed *restore* would send a reader to fix the wrong thing.
 
 ### What a failed drill does
 
-Exit 1, a `caf-backup/drill-…` reason a script can match, and one line on stderr naming
+Exit 1, a `cafe-backup/drill-…` reason a script can match, and one line on stderr naming
 the service and where the record went:
 
 ```
-cafe backup drill: caf-backup/drill-failed: identity did not prove a restore (failed)
+cafe backup drill: cafe-backup/drill-failed: identity did not prove a restore (failed)
   kamal-backup drill production --database identity_drill failed: exit status 1
   recorded in ~/.local/state/cafe/drills
 ```

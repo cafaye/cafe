@@ -1,16 +1,16 @@
-# REPORT — caf-owner-addressing-01
+# REPORT — cafe-owner-addressing-01
 
-SEAM-AUDIT-01 finding F6, un-deferred by the user. Branch `worker/caf-owner`,
+SEAM-AUDIT-01 finding F6, un-deferred by the user. Branch `worker/cafe-owner`,
 two commits: the failing tests first (`e8b745e`), then the surface (`37180af`).
 This report records what landed, the ambiguity-retry semantics as implemented,
 and the one clause of the brief that has no consumer in this tree.
 
-## What pantry master serves, and what caf can now say
+## What pantry master serves, and what cafe can now say
 
 pantry's `openapi/v1.yaml` at document 1.7.0 (read directly from
-`cafaye/pantry`, not from a summary) adds three things caf could not speak:
+`cafaye/pantry`, not from a summary) adds three things cafe could not speak:
 
-| pantry 1.7.0 | caf before | caf now |
+| pantry 1.7.0 | cafe before | cafe now |
 | --- | --- | --- |
 | `Project.owner_slug` required on every row — the derived namespace of the address | absent from `internal/resolve`'s `Project`, so a client could not tell *whose* row a bare name resolved to | decoded, and it is load-bearing (below) |
 | `GET /v1/projects/{owner}/{name}` | absent — the only door was the bare-name route | `HTTPPantry.ProjectByAddress`, anonymous, both segments escaped |
@@ -54,7 +54,7 @@ project at that address". That detail is asserted in
 
 - `addressOf` splits an argument into `owner/name` when it has exactly one
   slash, both halves match pantry's own slug grammar, and there is no
-  `cafaye.yml` at the path. The grammar check is why `caf resolve
+  `cafaye.yml` at the path. The grammar check is why `cafe resolve
   ../some/path` is never mistaken for an address, and the manifest check is
   why a real project directory spelled `owner/name` is still a directory
   (`TestResolveTreatsADirectoryWithASlashAsADirectory`).
@@ -109,7 +109,7 @@ silently stops retrying the day the state becomes reachable.
 One honest consequence, documented in the long help and pinned by a test: an
 addressed PAID product cannot clear tier 3, because the address form carries no
 version constraint and conductor's check requires a range — so
-`caf resolve alice/identity` answers `version_required` at tier 3 with the
+`cafe resolve alice/identity` answers `version_required` at tier 3 with the
 coordinates tier 2 returned intact, and conductor is never asked a question it
 would answer 422.
 
@@ -119,13 +119,13 @@ The brief asks that "the collection client passes `?owner=` when asked". There
 is no collection client in this tree: `grep -rn "v1/projects" --include="*.go"`
 finds five call sites — three reads in `resolve/pantry.go` (now six), three
 writes in `publish/publish.go` — and nothing that lists the catalog. There is
-no `caf` command that enumerates projects, and `caf resolve`'s job is a
+no `cafe` command that enumerates projects, and `cafe resolve`'s job is a
 manifest's dependencies, not the registry as a whole.
 
 A client written for no caller would be a method nobody runs, which is the
 thing this repository's culture is most against, and it would carry its own
 `next_cursor` paging shape and its own tests against a route nothing calls.
-The clause is therefore answered here rather than implemented: when a caf
+The clause is therefore answered here rather than implemented: when a cafe
 command first needs to enumerate the catalog, `HTTPPantry` is where the
 collection read belongs, and the filter is pantry's `?owner=` against its
 slug grammar. The finding F6 itself is about addressability, and the address
@@ -158,7 +158,7 @@ merged the two reads into one wrapper could not pass.
 go test ./internal/resolve/... ./internal/cli/...   pass
 go vet ./...                                        clean
 gofmt -l .                                          prints nothing
-go run ./cmd/caf lock .                             caf.lock re-pinned (12 files)
+go run ./cmd/cafe lock .                             caf.lock re-pinned (12 files)
 ./bin/prime                                         28 packages, 1259 top-level passes,
                                                      1234 subtest passes, 0 failures, 8 skips
 ```

@@ -1,7 +1,7 @@
-# REPORT — OPS-P19: `caf deploy`'s operated remote
+# REPORT — OPS-P19: `cafe deploy`'s operated remote
 
-**Packet.** OPS-P19 (`CAFAYE-OPS.md`, Wave 3), repo `caf`, branch
-`ops/w3-remote`, worktree `w3-remote-caf`.
+**Packet.** OPS-P19 (`CAFAYE-OPS.md`, Wave 3), repo `cafe`, branch
+`ops/w3-remote`, worktree `w3-remote-cafe`.
 **Goal.** the operated remote behind *build once, deploy once, use everywhere*:
 the customer's app built once and deployed once, with every client they serve an
 account on the shared platform rather than a cafaye deployment of its own.
@@ -27,11 +27,11 @@ So the deliverable is **not** a working remote deploy. It is a real mechanism
 that a one-line change turns on, plus a refusal that is honest about why it is
 off. Everything below is answerable to that reading.
 
-The second thing the reading settled: **where the gate lives.** caf has no
+The second thing the reading settled: **where the gate lives.** cafe has no
 `tenancy.yml` and no access to `harness/tenancy_check.py` from a release
-tarball, so caf cannot assert conductor's isolation for it — and pretending
-otherwise would be inventing a check. What caf *can* assert is the decision's
-state, because the decision is recorded in the moon repository and caf knows
+tarball, so cafe cannot assert conductor's isolation for it — and pretending
+otherwise would be inventing a check. What cafe *can* assert is the decision's
+state, because the decision is recorded in the moon repository and cafe knows
 whether it has been recorded. That is what the gate is.
 
 ## 2. What was built
@@ -43,7 +43,7 @@ whether it has been recorded. That is what the gate is.
 | `EngineRemote = "remote"` | the third engine, in `RunnerFor` alongside kamal and argo |
 | `RemoteRunner` | `Plan` + `Run`, the same `Runner` seam both other engines satisfy |
 | `Remote` (interface) | two questions: `ReadAccount`, `Deploy` |
-| `StubRemote` | the default seam, which refuses — a nil `Remote` is a caf built without the wiring |
+| `StubRemote` | the default seam, which refuses — a nil `Remote` is a cafe built without the wiring |
 | `Boundary`, `RequestStep` | the two step names, constants like the other engines' |
 | `planForRemote` | the plan function the gate calls once the decision is recorded |
 | `remoteEnabled` | **the gate**, one constant, `false` |
@@ -98,7 +98,7 @@ in it is a deploy that asks something nobody was shown.
 
 1. **`planForRemote` wrote `--account <account>` unconditionally.** With no
    `--account` on the command line the argv was
-   `caf deploy --engine remote --account  --version 0.2.0 --yes identity`, and
+   `cafe deploy --engine remote --account  --version 0.2.0 --yes identity`, and
    `requestFromArgv` read the token *after* the flag as the value — so the
    platform would have been asked which deployment serves an account called
    `--yes`. The plan now writes the pair only when there is an account, which is
@@ -126,7 +126,7 @@ that might not work.
 
 `internal/cli/deploy.go` gained one refusal: `--account` with an engine that is
 not `remote` is a usage error naming the flag and both engines, because a
-destination an operator stated and caf silently discarded is the failure this
+destination an operator stated and cafe silently discarded is the failure this
 package's refusals exist to prevent. One CLI test names the flag, `remote`,
 `kamal` and `argo`, and asserts zero steps ran and stdout stayed empty.
 
@@ -138,11 +138,11 @@ that is two engines short is a claim about the tree that stopped being true.
 ### The third defect, found by running the command rather than the tests
 
 Every test passes `--yes` or a confirming `confirm`, so none of them saw what
-`caf deploy --engine remote identity` actually prints without it:
+`cafe deploy --engine remote identity` actually prints without it:
 
 ```
-$ caf deploy --engine remote identity
-caf deploy: deploy identity to the operated platform, account ? [y/N]
+$ cafe deploy --engine remote identity
+cafe deploy: deploy identity to the operated platform, account ? [y/N]
 ```
 
 The prompt runs before the engine, and with no `--account` it named the
@@ -187,7 +187,7 @@ left the refusal out would read as a deploy that works.
    inventing one cab-side while the tenancy decision is unrecorded would be
    designing a contract for a platform whose shape is undecided. The seam is
    exactly where that client goes; the stub is what answers without it.
-2. **No account lookup, no `caf agent` token.** That is conductor's job to
+2. **No account lookup, no `cafe agent` token.** That is conductor's job to
    define before it is worth a client.
 3. **No live test.** Nothing here establishes a connection, so nothing belongs
    in the live tier.
@@ -201,8 +201,8 @@ Neither is from this packet, and both were red at `4f4d953` before it touched
 anything:
 
 - `internal/cli/command_test.go`'s want-list and `stub_test.go`'s
-  `workingCommands` were both missing the two W2 commands. `caf cve` and
-  `caf secret` are in the registry and both work; neither test knew about them,
+  `workingCommands` were both missing the two W2 commands. `cafe cve` and
+  `cafe secret` are in the registry and both work; neither test knew about them,
   so `TestRegistryContainsEveryCommand` and
   `TestStubTableMatchesTheRegistry` were red. That is the W2 merge's debt. It is
   fixed by **naming them** — not by loosening either assertion, and there was no
@@ -252,7 +252,7 @@ depending on Waves A–C, and `CAFAYE-OPS.md`'s wave-1 preamble records that 5 o
 9 services declare their account boundary while `identity` and `courier`
 currently fail and `billing`/`parlor`/`pantry`/`conductor` declare nothing — so
 the decision is not recorded and this packet did not assume it either way. The
-`caf` side of the gate is the constant and the refusal above; the *platform* side
+`cafe` side of the gate is the constant and the refusal above; the *platform* side
 of the gate is TG-A..TG-C in the other repositories, and neither is weakened,
 skipped or approximated here. The packet's gate on `conductor` (its half of the
 row) is untouched by this worktree.

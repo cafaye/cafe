@@ -53,7 +53,7 @@ The duplicate's uncommitted work had been saved two minutes earlier as
 in a directory that no longer existed, for another forty minutes. Whatever it
 did after 16:05 was written into deleted inodes.
 
-The branch survived: `git -C moon/cafaye/caf log ops/w2-failure-library`
+The branch survived: `git -C moon/cafaye/cafe log ops/w2-failure-library`
 shows `26e5b50`, `5c38a7b`, `29589f2`. This worker recovered by
 `git worktree add`-ing the branch at a path of its own
 (`/tmp/w2-failure-library-finish`) and continuing from the branch tip.
@@ -124,10 +124,10 @@ In `/tmp/w2-failure-library-finish`, on `ops/w2-failure-library`:
 
 1. `gate.yml` — `suite` `minimum` raised to the ratchet's own number, and
    `packages` `minimum` 23 → 24.
-2. `caf.lock` — re-run with `go run ./cmd/caf lock .`, because `gate.yml` is a
+2. `caf.lock` — re-run with `go run ./cmd/cafe lock .`, because `gate.yml` is a
    pinned `rule-bundle` in it (`caf.lock:7`) and raising the floor moves its
-   sha256. Then `go run ./cmd/caf lock --verify .` for green.
-3. `README.md` — the command table row for `caf failure check
+   sha256. Then `go run ./cmd/cafe lock --verify .` for green.
+3. `README.md` — the command table row for `cafe failure check
    [<observation.json>]`.
 4. `AGENTS.md` — the Layout section gains `internal/failure`, and the
    dependency-count paragraph ("there are two packages with dependencies")
@@ -147,7 +147,7 @@ The exit codes this worker observed on the recovered tree, after the edits:
 | `go test -count=1 ./internal/failure/...` | **0** |
 | `go test -count=1 ./internal/ci/ -run TestTheGateFloor` | **0** (was 1) |
 | `go test -count=1 ./internal/lock/...` | **0** |
-| `go run ./cmd/caf lock --verify .` | **0** |
+| `go run ./cmd/cafe lock --verify .` | **0** |
 | `go test -count=1 ./internal/cli/...` | **FAIL** — see §7.1 |
 
 ## 7. What is left for the successor
@@ -203,7 +203,7 @@ outstanding:
 
 ## 8. Where the artifacts are
 
-- Branch `ops/w2-failure-library` in `/Users/kaka/Code/any/moon/cafaye/caf`:
+- Branch `ops/w2-failure-library` in `/Users/kaka/Code/any/moon/cafaye/cafe`:
   `26e5b50` (the duplicate's committed work: `internal/cli/failure.go`, its
   tests, the wiring, and the `internal/failure` fixes) plus `3d1e5c0`, this
   worker's floors-and-docs commit.
@@ -218,6 +218,6 @@ outstanding:
   nothing.
 - The recovered worktree this worker worked in:
   `/tmp/w2-failure-library-finish`. It still exists as a git worktree
-  registered to the caf repo; a manager collecting it should run
-  `git -C moon/cafaye/caf worktree remove --force` on it rather than deleting
+  registered to the cafe repo; a manager collecting it should run
+  `git -C moon/cafaye/cafe worktree remove --force` on it rather than deleting
   the directory, or the registration lingers.

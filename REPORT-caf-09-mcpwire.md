@@ -1,7 +1,7 @@
-# REPORT-caf-09-mcpwire — the 250ms assertion was asserting about the machine
+# REPORT-cafe-09-mcpwire — the 250ms assertion was asserting about the machine
 
-Branch `worker/caf-09-mcpwire`. **Not pushed.** `gate.yml` and `bin/prime` are
-untouched; caf-07 owns both and §6 below says what it has to change.
+Branch `worker/cafe-09-mcpwire`. **Not pushed.** `gate.yml` and `bin/prime` are
+untouched; cafe-07 owns both and §6 below says what it has to change.
 
 ---
 
@@ -39,8 +39,8 @@ Reproduced, before touching anything:
 
 ```
 $ /tmp/caf09-repeat.sh '…/a_server_that_has_exited_is_reported_as_exited' 12
-run  1: FAIL   mcp_wire_test.go:761: err = caf mcp is running and has said
-                    nothing for 250ms; stderr: , want caf mcp exited before answering
+run  1: FAIL   mcp_wire_test.go:761: err = cafe mcp is running and has said
+                    nothing for 250ms; stderr: , want cafe mcp exited before answering
 …
 12 of 12 runs failed
 ```
@@ -78,7 +78,7 @@ The remaining deadline is a **backstop only** — `wireTimeout`, the same one ev
 other read in the file uses — and it names the event rather than standing in for
 it:
 
-> `caf mcp did not exit within 30s of its stdin being closed, and a server is
+> `cafe mcp did not exit within 30s of its stdin being closed, and a server is
 > entitled to exit when its client hangs up`
 
 **On raising 250ms to 1000ms.** Not done, and not because 1000ms would have been
@@ -118,7 +118,7 @@ Same machine, same load generator, same test — the only difference is the diff
 $ uptime   # during the whole-tree runs
 22:48  load averages: 148.76 107.08 107.23     # the brief reports 141
 $ go test -count=1 ./...
-ok  github.com/cafaye/caf/internal/cli  13.865s     … 3/3 passes, 0 failures
+ok  github.com/cafaye/cafe/internal/cli  13.865s     … 3/3 passes, 0 failures
 ```
 
 Also: `-count=5` on the target test, and the ryuk tests at `-count=5 -race`.
@@ -127,8 +127,8 @@ Also: `-count=5` on the target test, and the ryuk tests at `-count=5 -race`.
 
 | control | break | result |
 |---|---|---|
-| **A** | `nextFrame`'s `<-s.exited` removed **and** `readFrames` no longer closes `s.frames` — a harness that cannot tell exit from silence | **RED**: `err = caf mcp is running and has said nothing for 30s; want caf mcp exited before answering` |
-| **B** | the exit event never signalled | **RED**: `caf mcp did not exit within … of its stdin being closed…` — loud, and naming the event |
+| **A** | `nextFrame`'s `<-s.exited` removed **and** `readFrames` no longer closes `s.frames` — a harness that cannot tell exit from silence | **RED**: `err = cafe mcp is running and has said nothing for 30s; want cafe mcp exited before answering` |
+| **B** | the exit event never signalled | **RED**: `cafe mcp did not exit within … of its stdin being closed…` — loud, and naming the event |
 | **C** | `takeLease` reduced to one `Dial`, no retry | **RED**: `takeLease: … read the reaper's answer from 127.0.0.1:64602: EOF` |
 
 So the test is a real assertion about detection, not a test that went green by
@@ -139,7 +139,7 @@ three-way `select` exists to prevent.
 
 ## 5. §6.2 — the same defect in `internal/ryuk`, and it was in scope
 
-I read §6 of `REPORT-caf-07-gate.md` as instructed. **§6.2 is the same wall-clock
+I read §6 of `REPORT-cafe-07-gate.md` as instructed. **§6.2 is the same wall-clock
 defect and is fixed here.** §6.1 (a dropped field) and §6.3 (an assertion over
 the whole machine) are not wall-clock defects and are left alone — §6.1 belongs
 to whatever packet takes `internal/ryuk` next, which the report already
@@ -179,7 +179,7 @@ unrelated to my change — so a red live run would have been a signal I could no
 trust. What it needs and what I cannot prove is the destructive half. The
 readiness gate, which is what was broken, is proven without Docker.
 
-## 6. For caf-07 — the numbers, measured
+## 6. For cafe-07 — the numbers, measured
 
 I could not edit `gate.yml`, so here is the exact change it needs. Measured on
 this branch with `go test -count=1 -v ./...`, counting `^--- PASS` and
@@ -187,13 +187,13 @@ this branch with `go test -count=1 -v ./...`, counting `^--- PASS` and
 
 | | top-level passes | subtest passes | skips |
 |---|---|---|---|
-| caf-06 baseline (this branch, change stashed) | **428** | **537** | 3 |
+| cafe-06 baseline (this branch, change stashed) | **428** | **537** | 3 |
 | with this packet | **430** | **537** | 3 |
 
-Both baseline figures match `gate.yml`'s own account of caf-06 (428 / 537) exactly,
+Both baseline figures match `gate.yml`'s own account of cafe-06 (428 / 537) exactly,
 so the methodology lines up and the delta is trustworthy.
 
-**caf-07's tree therefore needs:**
+**cafe-07's tree therefore needs:**
 
 - `minimum: 432` → **`minimum: 434`** (top-level)
 - subtest floor `minimum: 537` → **unchanged**
@@ -247,7 +247,7 @@ branches of `nextFrame` already end with `s.stderr.String()` (lines 258, 269,
 in principle: `internal/mcp` never reads a registry entry's `environment` at all
 (grep: no matches), so no value that `TestTheRegistryToolRedactsServiceEnvironment`
 guards against has a path to stderr. The failure strings observed during
-verification carried only protocol text (`caf mcp exited before answering`, a
+verification carried only protocol text (`cafe mcp exited before answering`, a
 JSON-RPC code, a method name) and the server's own slog line.
 
 ## 10. Verification, all on this tree
@@ -255,10 +255,10 @@ JSON-RPC code, a method name) and the server's own slog line.
 ```
 $ gofmt -l .            # nothing
 $ go vet ./...          # clean
-$ bin/prime             # exit 0, 9 packages ok + cmd/caf [no test files]
+$ bin/prime             # exit 0, 9 packages ok + cmd/cafe [no test files]
 $ go test -count=1 ./... # 3 consecutive green passes under load avg 148
 $ go test -count=5 -run TestTheHarnessTellsAnExitedServerFromASilentOne ./internal/cli/
-ok      github.com/cafaye/caf/internal/cli  4.573s
+ok      github.com/cafaye/cafe/internal/cli  4.573s
 $ go test -count=5 -race -run 'TestTheLeaseIs…|TestAFilterThat…' ./internal/ryuk/
-ok      github.com/cafaye/caf/internal/ryuk  3.578s
+ok      github.com/cafaye/cafe/internal/ryuk  3.578s
 ```
