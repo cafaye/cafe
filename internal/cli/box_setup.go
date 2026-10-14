@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cafaye/cafe/internal/setup"
 )
@@ -257,18 +258,46 @@ func setupHostFor(deps boxSetupDeps, host string, opts *boxSetupOptions, progres
 // were proven to be the bytes sent. Both go to stderr, for the reason
 // printSetupResult names — stdout is the document, and a machine parsing it
 // must not have to skip progress lines.
+//
+// Every line carries the elapsed time and the throughput, because those are
+// the two numbers that distinguish "slow" from "stuck": 300 KiB/s at growing
+// elapsed is a link to wait on, and 8.0 MiB unmoving at growing elapsed is the
+// 10 m 50 s stall this packet was measured on. The line is not noisier for
+// it — the existing sentence keeps its shape, and the numbers ride in a tail.
 func setupProgress(w io.Writer, host string) func(setup.WriteEvent, int, int) {
 	if w == nil {
 		return nil
 	}
+	start := time.Now()
+	elapsed := func() time.Duration { return time.Since(start).Round(time.Second) }
 	return func(event setup.WriteEvent, wrote, total int) {
 		switch event {
 		case setup.WriteChunk:
-			fmt.Fprintf(w, "cafe box setup: %s of %s written to %s\n", bytesHuman(wrote), bytesHuman(total), host)
+			fmt.Fprintf(w, "cafe box setup: %s of %s written to %s (%s elapsed, %s/s)\n",
+				bytesHuman(wrote), bytesHuman(total), host, elapsed(), rateHuman(wrote, time.Since(start)))
 		case setup.WriteVerified:
-			fmt.Fprintf(w, "cafe box setup: %s on %s written and verified — the host's sha256 matches the local binary\n",
-				bytesHuman(total), host)
+			fmt.Fprintf(w, "cafe box setup: %s on %s written and verified — the host's sha256 matches the local binary (%s elapsed, %s/s)\n",
+				bytesHuman(total), host, elapsed(), rateHuman(total, time.Since(start)))
 		}
+	}
+}
+
+// rateHuman renders a throughput for a progress line: bytes per second in the
+// same units bytesHuman spells. A zero or negative window answers "…" rather
+// than a division by zero, because the first chunk of a fast write lands
+// inside the clock's own granularity.
+func rateHuman(n int, over time.Duration) string {
+	if over <= 0 {
+		return "…"
+	}
+	perSec := float64(n) / over.Seconds()
+	switch {
+	case perSec < 1024:
+		return strconv.FormatFloat(perSec, 'f', 0, 64) + " B"
+	case perSec < 1024*1024:
+		return strconv.FormatFloat(perSec/1024, 'f', 1, 64) + " KiB"
+	default:
+		return strconv.FormatFloat(perSec/(1024*1024), 'f', 1, 64) + " MiB"
 	}
 }
 

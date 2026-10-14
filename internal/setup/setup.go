@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cafaye/cafe/internal/boxd"
 )
@@ -57,6 +58,23 @@ var ErrNoCapability = errors.New("cafe box setup: --token is required; it is the
 // ErrNoBinary is the answer when the cafe binary to install cannot be read.
 var ErrNoBinary = errors.New("cafe box setup: the cafe binary to install could not be read")
 
+// CapabilityTTL is how long a box.enroll capability lives once minted. It is
+// box's number, not cafe's (box's Capability::TTL_MINUTES = 15), restated
+// here because `cafe box setup` is the command that spends minutes of it: a
+// binary write that stalls for ten of those fifteen leaves a token that
+// expires one step later, and the refusal has to show that arithmetic rather
+// than send the operator back to the control plane with no explanation.
+const CapabilityTTL = 15 * time.Minute
+
+// capabilityTTLNote is the tail of an enrollment refusal caused by an expired
+// capability: how long the run had already been going, and how long a token
+// lives. The host's own enroll already says "mint a fresh token" — that line
+// is kept, not replaced — and this is the arithmetic beside it.
+func capabilityTTLNote(elapsed time.Duration) string {
+	return fmt.Sprintf("the capability lives about %s and this run had already been going %s when enrollment was refused, "+
+		"so the token's minutes are spent: mint a fresh token and re-run", CapabilityTTL, elapsed.Round(time.Second))
+}
+
 // Setup takes one host from bare to a running box daemon.
 //
 // It runs in three phases, and the split matters because it is the difference
@@ -86,6 +104,9 @@ func Setup(ctx context.Context, o Options) (Result, error) {
 	}
 
 	result := Result{Host: o.Name, DryRun: o.DryRun}
+	// started is when the run began, so a refusal after the capability's TTL
+	// can show the arithmetic: the token lives minutes, and a stall ate them.
+	started := time.Now()
 
 	// Phase 1. The superuser probe is kamal's superuser? asked before anything
 	// is installed, and it is read-only, which is why a dry run may run it.
@@ -214,7 +235,17 @@ func Setup(ctx context.Context, o Options) (Result, error) {
 				return result, err
 			}
 			if !applied.OK() {
-				result, err := refuse(result, step, "the apply failed:\n"+clip(applied.Stderr+applied.Stdout, 10))
+				detail := "the apply failed:\n" + clip(applied.Stderr+applied.Stdout, 10)
+				if step.Name == StepBoxEnrolled && strings.Contains(applied.Stderr+applied.Stdout, "capability has expired") {
+					// The hang's second half: the run stalled through the write,
+					// the token's fifteen minutes ran out, and enrollment was
+					// refused for a mint that was never used in time. The host's
+					// own words already say to mint a fresh token; the run's
+					// elapsed time beside the TTL is what makes that instruction
+					// readable rather than mysterious.
+					detail += "\n" + capabilityTTLNote(time.Since(started))
+				}
+				result, err := refuse(result, step, detail)
 				return result, err
 			}
 			if step.Name == StepBoxEnrolled {
