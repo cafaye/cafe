@@ -1291,6 +1291,33 @@ func machoBytes(cpu macho.Cpu) []byte {
 	return h
 }
 
+// bytesFor builds recognisable header bytes for a platform: ELF for linux,
+// Mach-O for darwin. The case the packet is about is a controller that is NOT
+// the host, so the bytes must be derived from the platform they claim to be
+// for rather than assumed: a sibling named for a darwin host carries Mach-O,
+// not the ELF the old spelling wrote unconditionally. A test that only passes
+// on the author's machine is the defect, and this helper is what keeps the
+// two arch tests green on darwin/arm64 and on linux/amd64 alike.
+func bytesFor(t *testing.T, plat target) []byte {
+	t.Helper()
+	if plat.GOOS == "darwin" {
+		if plat.GOARCH == "arm64" {
+			return machoBytes(macho.CpuArm64)
+		}
+		return machoBytes(macho.CpuAmd64)
+	}
+	switch plat.GOARCH {
+	case "arm64":
+		return elfBytes(elf.EM_AARCH64)
+	case "386":
+		return elfBytes(elf.EM_386)
+	case "arm":
+		return elfBytes(elf.EM_ARM)
+	default:
+		return elfBytes(elf.EM_X86_64)
+	}
+}
+
 // unameFor is what `uname -sm` answers on a host running that platform, in
 // the kernel's own spelling — Linux says aarch64 where Go says arm64.
 func unameFor(t2 target) string {
@@ -1324,11 +1351,9 @@ func TestASiblingBinaryForTheHostsArchIsShipped(t *testing.T) {
 	if err := os.WriteFile(local, []byte("#!/bin/sh\nthe running binary\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// The sibling is named for the host and IS for the host.
-	want := elfBytes(elf.EM_X86_64)
-	if other.GOARCH == "arm64" {
-		want = elfBytes(elf.EM_AARCH64)
-	}
+	// The sibling is named for the host and IS for the host: its bytes are
+	// derived from the host's own platform, ELF or Mach-O as the host is.
+	want := bytesFor(t, other)
 	sibling := filepath.Join(dir, siblingName(other))
 	if err := os.WriteFile(sibling, want, 0o755); err != nil {
 		t.Fatal(err)
@@ -1369,9 +1394,13 @@ func TestASiblingNamedForTheHostButBuiltForAnotherMachineIsNotShipped(t *testing
 	if err := os.WriteFile(local, []byte("the running binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// Named cafe-linux-amd64, but a darwin/arm64 Mach-O inside.
+	// Named for the host, but built for another machine: the bytes are the
+	// controller's own platform, which otherPlatform guarantees is not the
+	// host's. The old spelling wrote a darwin/arm64 Mach-O unconditionally,
+	// which IS the host on a linux/amd64 CI runner — the correct outcome
+	// (shipped) failing an assertion about a refusal.
 	sibling := filepath.Join(dir, siblingName(other))
-	if err := os.WriteFile(sibling, machoBytes(macho.CpuArm64), 0o755); err != nil {
+	if err := os.WriteFile(sibling, bytesFor(t, controllerTarget()), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
