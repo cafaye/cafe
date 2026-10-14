@@ -637,7 +637,9 @@ func TestTheSingleRedemptionCountCanFail(t *testing.T) {
 
 // The two lines an operator sees while a 29 MB binary crosses a slow link,
 // plus the byte counts spelled in units a person reads while waiting. "27.9
-// MiB" is a number they hold; "29250507" is a number they have to parse.
+// MiB" is a number they hold; "29250507" is a number they have to parse. The
+// elapsed time and the throughput ride in the tail, because those are what
+// distinguish a slow link from the stall that stopped at 8.0 MiB.
 func TestTheTransferProgressIsReadable(t *testing.T) {
 	var out strings.Builder
 	sink := setupProgress(&out, "box.test")
@@ -650,9 +652,15 @@ func TestTheTransferProgressIsReadable(t *testing.T) {
 	if !strings.Contains(lines[0], "1.0 MiB of 27.9 MiB written to box.test") {
 		t.Errorf("the chunk line reads %q", lines[0])
 	}
+	if !strings.Contains(lines[0], "elapsed") || !strings.Contains(lines[0], "/s") {
+		t.Errorf("the chunk line carries no elapsed time and throughput: %q", lines[0])
+	}
 	if !strings.Contains(lines[1], "27.9 MiB on box.test written and verified") ||
 		!strings.Contains(lines[1], "sha256 matches the local binary") {
 		t.Errorf("the verified line reads %q", lines[1])
+	}
+	if !strings.Contains(lines[1], "elapsed") || !strings.Contains(lines[1], "/s") {
+		t.Errorf("the verified line carries no elapsed time and throughput: %q", lines[1])
 	}
 }
 

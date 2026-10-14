@@ -102,6 +102,9 @@ type fakeHost struct {
 	reportErr string
 	// failDocker is a step the fake refuses to make converge, for the table.
 	failDocker bool
+	// enrollErr is what the host's own `cafe box enroll` answers with when the
+	// enrollment must fail — the expired-capability row. Empty means enroll.
+	enrollErr string
 	// superuser is what the superuser probe answers with. "" means the
 	// default, which is "sudo" for a non-root login user — the case every
 	// ordinary box is in.
@@ -306,6 +309,11 @@ func (h *fakeHost) Run(ctx context.Context, command string, stdin []byte) (Outpu
 		return Output{Code: 1}, nil
 	}
 	if strings.Contains(command, "box enroll --token -") {
+		if h.enrollErr != "" {
+			// The enrollment refused: box never heard a valid token, so no
+			// box.json, no keypair files, no redemptions counted.
+			return Output{Code: 1, Stderr: h.enrollErr}, nil
+		}
 		if _, ok := h.fs[h.boxJSON]; ok {
 			// Reaching the apply at all would mean the check above is not
 			// being run, which is the idempotence failure this table is for.
@@ -1084,6 +1092,48 @@ func TestAFailedDockerInstallIsARefusalThatNamesTheStep(t *testing.T) {
 	}
 	if host.redemptions != 0 {
 		t.Errorf("the capability was presented on a run that failed at Docker: %d", host.redemptions)
+	}
+}
+
+// An enrollment refused for an expired capability names the run's elapsed
+// time beside the TTL. This is the hang's second half: the write stalled,
+// the token's fifteen minutes ran out, and box refused the mint — the
+// refusal must show that arithmetic rather than read as a token that was bad
+// from the start.
+func TestAnExpiredCapabilityNamesTheElapsedTimeAndTheTTL(t *testing.T) {
+	host := newFakeHost()
+	host.binaryHash = mustBinaryHash(t)
+	host.enrollErr = "cafe box enroll: capability has expired\n" +
+		"cafe box enroll: the capability was NOT spent twice and nothing was written; mint a fresh token and re-run"
+	opts := setupOptions(t, host, writeFakeBinary(t))
+
+	res, err := Setup(context.Background(), opts)
+	if err == nil {
+		t.Fatal("an expired capability must be refused")
+	}
+	if res.FailedStep() != StepBoxEnrolled {
+		t.Errorf("failed step = %q, want %q", res.FailedStep(), StepBoxEnrolled)
+	}
+	detail := res.Steps[len(res.Steps)-1].Detail
+	for _, want := range []string{
+		"capability has expired",
+		"mint a fresh token",
+		"15m0s",
+		"already been going",
+	} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("the refusal does not carry %q:\n%s", want, detail)
+		}
+	}
+	// And the control half: a Docker failure carries no TTL arithmetic, which
+	// is what keeps this note from becoming noise on every refusal.
+	docker := newFakeHost()
+	docker.binaryHash = mustBinaryHash(t)
+	docker.failDocker = true
+	dres, _ := Setup(context.Background(), setupOptions(t, docker, writeFakeBinary(t)))
+	ddetail := dres.Steps[len(dres.Steps)-1].Detail
+	if strings.Contains(ddetail, "capability lives") {
+		t.Errorf("a non-enrollment refusal carries TTL arithmetic it should not:\n%s", ddetail)
 	}
 }
 

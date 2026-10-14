@@ -515,7 +515,9 @@ func TestAStalledChunkTimesOutInsteadOfHanging(t *testing.T) {
 	var events []progressEvent
 	tr := transfer{
 		name: "box.test", run: host.Run,
-		progress:     func(e WriteEvent, wrote, total int) { events = append(events, progressEvent{event: e, wrote: wrote, total: total}) },
+		progress: func(e WriteEvent, wrote, total int) {
+			events = append(events, progressEvent{event: e, wrote: wrote, total: total})
+		},
 		chunkTimeout: 150 * time.Millisecond,
 		totalTimeout: 10 * time.Second,
 	}
