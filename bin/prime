@@ -199,7 +199,10 @@ status=0
 # its verbose output verbatim, so the counted floors read the same either way).
 # roll-c5-race-parity is why the flag is here: three data races in
 # internal/boxd's test doubles lived on master while this gate stayed green
-# without it, and CI went red with it.
+# without it, and CI went red with it. The command is echoed so the gate's own
+# output proves which detector ran: a gate whose output cannot show the flag
+# is a gate that cannot prove it.
+echo "test command: go test -race -v ./..."
 go test -race -v ./... >"$LOG" 2>&1 || status=$?
 
 cat "$LOG"
