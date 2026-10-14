@@ -72,8 +72,6 @@ type identityAuthority struct {
 	// started — a session rotated out from under a long-lived server is still
 	// refused.
 	config agent.Config
-	// baseURL is identity's origin.
-	baseURL string
 	// username names the session to resolve. Empty is the active one.
 	username string
 	// now is the clock. A field so a test can drive an expiry without waiting.
@@ -82,26 +80,10 @@ type identityAuthority struct {
 
 var _ mcp.Authority = (*identityAuthority)(nil)
 
-// newIdentityAuthority builds the Authority for one config directory: the
-// config, the session inside it, the origin it talks to, and the directory the
-// keyring lives beside. A machine with no saved agent session is not an error
-// here — it is a nil authority, and see attachAuth for what that means.
-func newIdentityAuthority(dir string) *identityAuthority {
-	config, err := agent.LoadConfig(dir)
-	if err != nil {
-		return nil
-	}
-	session, err := config.Session()
-	if err != nil {
-		return nil
-	}
-	return &identityAuthority{dir: dir, config: config, username: session.Name, baseURL: session.BaseURL}
-}
-
 func (a *identityAuthority) Authenticate(ctx context.Context, token string) (*mcp.Principal, error) {
 	session, err := a.config.Session()
 	if err != nil {
-		return nil, fmt.Errorf("no agent session is saved on this machine (%v); run `cafe agent register`", err)
+		return nil, fmt.Errorf("no agent session is saved on this machine (%w); run `cafe agent register`", err)
 	}
 	// The bearer goes to identity as its OWN credential. A server that verified
 	// the keyring's token instead would be a server that accepted its
@@ -206,7 +188,7 @@ func (w *mcpBoxWorld) Logs(ctx context.Context, in mcp.LogsArgs) ([]mcp.LogLine,
 	}
 	// The phase filter is applied here rather than in the tool, and the tool
 	// applies its own as well: narrowing the world's answer means a box with a
-	// large log is never fully materialised to answer one phase, and the two
+	// large log is never fully materialized to answer one phase, and the two
 	// filters are not duplicates so much as the world's and the question's.
 	if phase := in.Phase; phase != "" {
 		filtered := make([]mcp.LogLine, 0, len(lines))
@@ -384,7 +366,7 @@ func standingPrincipal(env *Env, authority *identityAuthority) *mcp.Principal {
 	principal, err := authority.Authenticate(ctx, token)
 	if err != nil {
 		// A diagnostic on stderr and never stdout: on stdio stdout is the wire.
-		fmt.Fprintf(env.Stderr, "cafe mcp: the saved agent session was not accepted by identity: %v\n", err)
+		_, _ = fmt.Fprintf(env.Stderr, "cafe mcp: the saved agent session was not accepted by identity: %v\n", err)
 		return nil
 	}
 	return principal

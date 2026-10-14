@@ -111,7 +111,7 @@ func walk(t reflect.Type, path string, seen map[reflect.Type]bool) string {
 		return walk(t.Elem(), path+"[]", seen)
 	case reflect.Struct:
 		// A named struct is walked field by field, and every reachable field
-		// is walked because the route answer is marshalled for the wire in the
+		// is walked because the route answer is marshaled for the wire in the
 		// same shape. The field's NAME is checked as well as its type: an
 		// answer field called "Password" is a secret-read path whatever type
 		// it was declared with.
@@ -138,6 +138,9 @@ func walk(t reflect.Type, path string, seen map[reflect.Type]bool) string {
 		}
 	case reflect.Func:
 		return path + " (a function is not an answer)"
+	default:
+		// Any other kind carries no structure the walk descends into.
+		return ""
 	}
 	return ""
 }

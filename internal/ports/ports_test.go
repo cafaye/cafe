@@ -15,7 +15,7 @@ import (
 
 // The block is the whole point: 15000-15999 is where cafe publishes from, so two
 // parallel workers cannot land on the same port by accident and a port in the
-// block is recognisable as ours by looking at it.
+// block is recognizable as ours by looking at it.
 
 func TestBlockBoundaries(t *testing.T) {
 	tests := []struct {
@@ -59,7 +59,7 @@ func TestTheBlockIsOneThousandFifteenThousandPorts(t *testing.T) {
 
 // Every test below reserves real ports, and the machine this ran on has a
 // sibling worker publishing 15001 — inside the cafe block. A unit test that
-// reserves inside the block would be testing against a live neighbour's
+// reserves inside the block would be testing against a live neighbor's
 // database, so the registry's own cases use a scratch block far outside it and
 // only CAF itself is asserted to be 15000-15999.
 var scratch = Block{42000, 42099}
@@ -172,7 +172,7 @@ func TestAHolderThatDiesDoesNotStrandItsPort(t *testing.T) {
 		"CAF_PORT_HOLD_TEST_LEDGER="+r.ledger.Dir(),
 		"CAF_PORT_HOLD_TEST_BLOCK="+block.String(),
 	)
-	cmd := exec.Command(os.Args[0], "-test.run=TestHolderChildReservesAndExits")
+	cmd := exec.CommandContext(context.Background(), os.Args[0], "-test.run=TestHolderChildReservesAndExits")
 	cmd.Env = env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("the child that was supposed to hold the port failed: %v\n%s", err, out)
@@ -233,7 +233,7 @@ func TestTheProberSeesAListenerOnEitherFamily(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			listener, err := net.Listen(tt.network, net.JoinHostPort(tt.address, "0"))
+			listener, err := new(net.ListenConfig).Listen(context.Background(), tt.network, net.JoinHostPort(tt.address, "0"))
 			if err != nil {
 				t.Skipf("this machine does not serve %s: %v", tt.network, err)
 			}
@@ -257,7 +257,7 @@ func TestTheProberSeesAListenerOnEitherFamily(t *testing.T) {
 // fail at all on OrbStack, a prober with a blind spot is a prober that reports a
 // green-looking stack.
 func TestAnIPv4OnlyProberMissesAnIPv6Listener(t *testing.T) {
-	listener, err := net.Listen("tcp6", "[::1]:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp6", "[::1]:0")
 	if err != nil {
 		t.Skipf("this machine does not serve tcp6: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestAnIPv4OnlyProberMissesAnIPv6Listener(t *testing.T) {
 }
 
 func TestAnIPv6OnlyProberMissesAnIPv4Listener(t *testing.T) {
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Skipf("this machine does not serve tcp4: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestTheProberNeverSetsSoReusePort(t *testing.T) {
 // A port nothing holds is free, or the registry would refuse to publish anything
 // on a quiet machine.
 func TestTheProberCallsAnUnheldPortFree(t *testing.T) {
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Skipf("this machine does not serve tcp4: %v", err)
 	}
@@ -386,7 +386,7 @@ func TestTryReserveChecksAChosenPort(t *testing.T) {
 	r := registryIn(t, block)
 
 	// A listener on a port inside the block, which is the case the check is for.
-	listener, err := net.Listen("tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(block.First)))
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(block.First)))
 	if err != nil {
 		t.Skipf("port %d is not bindable on this machine, which means something is already on it: %v", block.First, err)
 	}
@@ -486,7 +486,7 @@ func TestReserveIsAllOrNothing(t *testing.T) {
 	}
 }
 
-// The context is honoured. A sweep or a reservation that outlives its caller
+// The context is honored. A sweep or a reservation that outlives its caller
 // has to stop, and the seam is the same one every other command in cafe uses.
 func TestReserveStopsWhenTheContextIsDone(t *testing.T) {
 	r := registryIn(t, scratch)

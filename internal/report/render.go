@@ -23,8 +23,8 @@ import (
 func Render(w io.Writer, r Report) error {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "# %s — %s\n\n", dashIf(r.Box), r.Period)
-	fmt.Fprintf(&b, "%s\n\n", r.Summary())
+	_, _ = fmt.Fprintf(&b, "# %s — %s\n\n", dashIf(r.Box), r.Period)
+	_, _ = fmt.Fprintf(&b, "%s\n\n", r.Summary())
 
 	renderAvailability(&b, r)
 	renderPatches(&b, r)
@@ -48,13 +48,13 @@ func renderAvailability(b *strings.Builder, r Report) {
 		return
 	}
 	if r.Availability.FleetPerMille > 0 {
-		fmt.Fprintf(b, "Fleet uptime **%.2f%%** across %d service(s).\n\n",
+		_, _ = fmt.Fprintf(b, "Fleet uptime **%.2f%%** across %d service(s).\n\n",
 			float64(r.Availability.FleetPerMille)/100, len(r.Availability.Services))
 	}
 	b.WriteString("| service | uptime | downtime | longest outage |\n")
 	b.WriteString("| --- | --- | --- | --- |\n")
 	for _, u := range r.Availability.Services {
-		fmt.Fprintf(b, "| %s | %.2f%% | %s | %s |\n",
+		_, _ = fmt.Fprintf(b, "| %s | %.2f%% | %s | %s |\n",
 			u.Service, float64(u.UptimePerMille)/100,
 			humanDuration(u.Downtime), humanDuration(u.LongestOutage))
 	}
@@ -68,7 +68,7 @@ func renderPatches(b *strings.Builder, r Report) {
 		return
 	}
 	for _, p := range r.PatchesApplied {
-		fmt.Fprintf(b, "- **%s**: %s\n", p.Component, arrowIf(p.From, p.To))
+		_, _ = fmt.Fprintf(b, "- **%s**: %s\n", p.Component, arrowIf(p.From, p.To))
 		rest := []string{p.AppliedAt.Local().Format("2006-01-02")}
 		if p.Kind != "" {
 			rest = append(rest, p.Kind)
@@ -76,9 +76,9 @@ func renderPatches(b *strings.Builder, r Report) {
 		if p.Reason != "" {
 			rest = append(rest, p.Reason)
 		}
-		fmt.Fprintf(b, "  - %s\n", strings.Join(rest, " · "))
+		_, _ = fmt.Fprintf(b, "  - %s\n", strings.Join(rest, " · "))
 		if len(p.Restarted) > 0 {
-			fmt.Fprintf(b, "  - restarts: %s\n", strings.Join(p.Restarted, ", "))
+			_, _ = fmt.Fprintf(b, "  - restarts: %s\n", strings.Join(p.Restarted, ", "))
 		}
 	}
 	b.WriteString("\n")
@@ -100,20 +100,20 @@ func renderBackups(b *strings.Builder, r Report) {
 	if len(bk.InWindow) == 0 {
 		b.WriteString("**No drill ran in this window.** The most recent one is below.\n\n")
 	} else if bk.Failed+bk.Refused == 0 {
-		fmt.Fprintf(b, "**%d drill(s) ran and every one passed.**\n\n", len(bk.InWindow))
+		_, _ = fmt.Fprintf(b, "**%d drill(s) ran and every one passed.**\n\n", len(bk.InWindow))
 	} else {
-		fmt.Fprintf(b, "**%d of %d drill(s) passed — %d failed, %d refused.**\n\n",
+		_, _ = fmt.Fprintf(b, "**%d of %d drill(s) passed — %d failed, %d refused.**\n\n",
 			bk.Passed, len(bk.InWindow), bk.Failed, bk.Refused)
 	}
 	for _, d := range bk.Latest {
-		fmt.Fprintf(b, "- **%s** (%s): %s %s ago — %s\n",
+		_, _ = fmt.Fprintf(b, "- **%s** (%s): %s %s ago — %s\n",
 			d.Service, d.Engine, d.Outcome, humanDuration(r.GeneratedAt.Sub(d.FinishedAt)),
 			dashIf(string(d.Reason)))
 		if d.Detail != "" {
-			fmt.Fprintf(b, "  - %s\n", d.Detail)
+			_, _ = fmt.Fprintf(b, "  - %s\n", d.Detail)
 		}
 		if d.DurationMS > 0 {
-			fmt.Fprintf(b, "  - took %s\n", humanDuration(time.Duration(d.DurationMS)*time.Millisecond))
+			_, _ = fmt.Fprintf(b, "  - took %s\n", humanDuration(time.Duration(d.DurationMS)*time.Millisecond))
 		}
 	}
 	renderNeverDrilled(b, bk)
@@ -128,7 +128,7 @@ func renderNeverDrilled(b *strings.Builder, bk BackupSection) {
 	if len(bk.NeverDrilled) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "\nServices reporting availability with no drill record at all: %s\n",
+	_, _ = fmt.Fprintf(b, "\nServices reporting availability with no drill record at all: %s\n",
 		strings.Join(bk.NeverDrilled, ", "))
 }
 
@@ -147,10 +147,10 @@ func renderIncidents(b *strings.Builder, r Report) {
 		if inc.Severity != "" {
 			head = inc.Severity + " — " + head
 		}
-		fmt.Fprintf(b, "- %s (%s)\n", head, state)
-		fmt.Fprintf(b, "  - %s\n", inc.StartedAt.Local().Format("2006-01-02 15:04"))
+		_, _ = fmt.Fprintf(b, "- %s (%s)\n", head, state)
+		_, _ = fmt.Fprintf(b, "  - %s\n", inc.StartedAt.Local().Format("2006-01-02 15:04"))
 		if inc.Resolution != "" {
-			fmt.Fprintf(b, "  - closed by: %s\n", inc.Resolution)
+			_, _ = fmt.Fprintf(b, "  - closed by: %s\n", inc.Resolution)
 		}
 	}
 	b.WriteString("\n")
@@ -163,12 +163,12 @@ func renderCapacity(b *strings.Builder, r Report) {
 		return
 	}
 	c := r.Capacity
-	fmt.Fprintf(b, "%s: %s from %.1f%s to %.1f%s (%s%.1f%s) between %s and %s.\n\n",
+	_, _ = fmt.Fprintf(b, "%s: %s from %.1f%s to %.1f%s (%s%.1f%s) between %s and %s.\n\n",
 		c.Resource, c.Direction, c.First, c.Unit, c.Last, c.Unit,
 		sign(c.Change), abs(c.Change), c.Unit,
 		c.FirstAt.Local().Format("2006-01-02"), c.LastAt.Local().Format("2006-01-02"))
 	if c.Detail != "" {
-		fmt.Fprintf(b, "%s\n\n", c.Detail)
+		_, _ = fmt.Fprintf(b, "%s\n\n", c.Detail)
 	}
 }
 
@@ -182,13 +182,13 @@ func renderUpstream(b *strings.Builder, r Report) {
 	for _, rel := range r.Upstream {
 		if rel.Decision == DecisionHeld {
 			held++
-			fmt.Fprintf(b, "- **held** %s %s — %s\n", rel.Name, rel.Version, rel.HeldReason)
+			_, _ = fmt.Fprintf(b, "- **held** %s %s — %s\n", rel.Name, rel.Version, rel.HeldReason)
 			continue
 		}
 		applied++
-		fmt.Fprintf(b, "- **applied** %s %s\n", rel.Name, rel.Version)
+		_, _ = fmt.Fprintf(b, "- **applied** %s %s\n", rel.Name, rel.Version)
 	}
-	fmt.Fprintf(b, "\n%d applied, %d held. A held release is a decision staying the customer's: it is recorded with its reason rather than applied and written up afterwards.\n\n", applied, held)
+	_, _ = fmt.Fprintf(b, "\n%d applied, %d held. A held release is a decision staying the customer's: it is recorded with its reason rather than applied and written up afterwards.\n\n", applied, held)
 }
 
 // renderSecurity forwards cve's own summary sentence rather than writing a
@@ -201,27 +201,27 @@ func renderSecurity(b *strings.Builder, r Report) {
 		b.WriteString("No scan in this report.\n\n")
 		return
 	}
-	fmt.Fprintf(b, "%s\n\n", scan.Summary())
+	_, _ = fmt.Fprintf(b, "%s\n\n", scan.Summary())
 	if scan.Schedule != "" {
-		fmt.Fprintf(b, "- schedule: %s (%s)\n", scan.Schedule, scan.Staleness)
+		_, _ = fmt.Fprintf(b, "- schedule: %s (%s)\n", scan.Schedule, scan.Staleness)
 	}
 	if len(scan.Divergences) > 0 {
-		fmt.Fprintf(b, "- %d component(s) running a version the substrate does not declare\n", len(scan.Divergences))
+		_, _ = fmt.Fprintf(b, "- %d component(s) running a version the substrate does not declare\n", len(scan.Divergences))
 	}
 	if len(scan.Unmatched) > 0 {
-		fmt.Fprintf(b, "- the advisory feed was asked about and did not answer for: %s\n", strings.Join(scan.Unmatched, ", "))
+		_, _ = fmt.Fprintf(b, "- the advisory feed was asked about and did not answer for: %s\n", strings.Join(scan.Unmatched, ", "))
 	}
 	if len(scan.Findings) > 0 {
 		b.WriteString("\n")
 		for _, f := range scan.Findings {
-			fmt.Fprintf(b, "- %s %s — %s %s\n", f.Severity, f.AdvisoryID, f.Component, dashIf(f.Version))
+			_, _ = fmt.Fprintf(b, "- %s %s — %s %s\n", f.Severity, f.AdvisoryID, f.Component, dashIf(f.Version))
 			if f.Summary != "" {
-				fmt.Fprintf(b, "  - %s\n", f.Summary)
+				_, _ = fmt.Fprintf(b, "  - %s\n", f.Summary)
 			}
 			if f.Class == cve.ClassAffected {
-				fmt.Fprintf(b, "  - fix: release %s\n", f.ReleaseTo)
+				_, _ = fmt.Fprintf(b, "  - fix: release %s\n", f.ReleaseTo)
 			}
-			fmt.Fprintf(b, "  - %s\n", f.Why)
+			_, _ = fmt.Fprintf(b, "  - %s\n", f.Why)
 		}
 	}
 	b.WriteString("\n")
@@ -240,17 +240,17 @@ func renderSecrets(b *strings.Builder, r Report) {
 			parts = append(parts, fmt.Sprintf("%d %s", n, class))
 		}
 	}
-	fmt.Fprintf(b, "%d secret(s) on this box: %s.\n\n", total(s.Counts), strings.Join(parts, ", "))
+	_, _ = fmt.Fprintf(b, "%d secret(s) on this box: %s.\n\n", total(s.Counts), strings.Join(parts, ", "))
 	if len(s.RotatedInWindow) > 0 {
-		fmt.Fprintf(b, "Rotated this window: %s.\n\n", strings.Join(s.RotatedInWindow, ", "))
+		_, _ = fmt.Fprintf(b, "Rotated this window: %s.\n\n", strings.Join(s.RotatedInWindow, ", "))
 	}
 	if len(s.Due) > 0 {
-		fmt.Fprintf(b, "Due for rotation: %s.\n\n", strings.Join(s.Due, ", "))
+		_, _ = fmt.Fprintf(b, "Due for rotation: %s.\n\n", strings.Join(s.Due, ", "))
 	}
 	if len(s.Refused) > 0 {
 		b.WriteString("Not rotatable on this box, and why — a rotation forks or cuts over:\n\n")
 		for _, refused := range s.Refused {
-			fmt.Fprintf(b, "- %s\n", refused)
+			_, _ = fmt.Fprintf(b, "- %s\n", refused)
 		}
 		b.WriteString("\n")
 	}
@@ -266,20 +266,20 @@ func renderModes(b *strings.Builder, r Report) {
 		b.WriteString("The failure-mode library was never evaluated against this report.\n\n")
 		return
 	}
-	fmt.Fprintf(b, "%d rule(s) evaluated: %d identified, %d ruled out, %d could not be answered.\n\n",
+	_, _ = fmt.Fprintf(b, "%d rule(s) evaluated: %d identified, %d ruled out, %d could not be answered.\n\n",
 		m.Rules, len(m.Holds), m.DoesNotHold, len(m.Unknown))
 	if len(m.Holds) > 0 {
 		b.WriteString("Conditions identified on this box:\n\n")
 		for _, f := range m.Holds {
-			fmt.Fprintf(b, "- **%s** — %s\n", f.ID, f.Failure)
+			_, _ = fmt.Fprintf(b, "- **%s** — %s\n", f.ID, f.Failure)
 			if f.Remedy != "" {
-				fmt.Fprintf(b, "  - remedy: %s\n", f.Remedy)
+				_, _ = fmt.Fprintf(b, "  - remedy: %s\n", f.Remedy)
 			}
 			if f.Contract != "" {
-				fmt.Fprintf(b, "  - contract: %s\n", f.Contract)
+				_, _ = fmt.Fprintf(b, "  - contract: %s\n", f.Contract)
 			}
 			for _, matched := range f.Matched {
-				fmt.Fprintf(b, "  - observed: %s\n", matched)
+				_, _ = fmt.Fprintf(b, "  - observed: %s\n", matched)
 			}
 		}
 		b.WriteString("\n")
@@ -287,7 +287,7 @@ func renderModes(b *strings.Builder, r Report) {
 	if len(m.Unknown) > 0 {
 		b.WriteString("The observation could not answer these, and they are not passes:\n\n")
 		for _, f := range m.Unknown {
-			fmt.Fprintf(b, "- %s — needs %s\n", f.ID, f.Missing)
+			_, _ = fmt.Fprintf(b, "- %s — needs %s\n", f.ID, f.Missing)
 		}
 		b.WriteString("\n")
 	}
@@ -304,7 +304,7 @@ func renderGaps(b *strings.Builder, r Report) {
 		return
 	}
 	for _, g := range r.Gaps {
-		fmt.Fprintf(b, "- %s\n", g)
+		_, _ = fmt.Fprintf(b, "- %s\n", g)
 	}
 	b.WriteString("\n")
 }

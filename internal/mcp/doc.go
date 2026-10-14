@@ -17,7 +17,7 @@
 //	                              no JSON-RPC is written by hand. Chosen.
 //	mark3labs/mcp-go              MIT. v1.1.1, released 2026-09-23. 9149 stars,
 //	                              and the most widely used community SDK — the
-//	                              licence file in the module carries Anthropic's
+//	                              license file in the module carries Anthropic's
 //	                              copyright, which is the protocol's own vendor
 //	                              and is worth knowing before adopting.
 //	                              Rejected: its input schema is built by hand
@@ -45,8 +45,8 @@
 // Everything above the protocol is still here, and everything above *this*
 // package knows nothing about MCP: the router, the subcommands and the tools
 // are ordinary Go values with ordinary Go signatures. That is what lets the
-// behaviour of a tool be tested without a JSON-RPC frame in sight, while the
-// behaviour of the *server* — that it lists what it serves, that a failing
+// behavior of a tool be tested without a JSON-RPC frame in sight, while the
+// behavior of the *server* — that it lists what it serves, that a failing
 // tool is a tool error rather than a dead process, that an unknown method is
 // answered rather than swallowed — is tested by driving a real process over
 // stdin and stdout in internal/cli/mcp_wire_test.go.

@@ -189,7 +189,7 @@ func reportRenderCommand(deps reportDeps) *Command {
 		// internal/agent holds: machine JSON on stdout, human prose on stderr,
 		// and no flag that chooses which stream gets the words.
 		if len(rep.Gaps) > 0 {
-			fmt.Fprintf(env.Stderr, "cafe report: %d section(s) could not be filled; they are named in the page\n", len(rep.Gaps))
+			_, _ = fmt.Fprintf(env.Stderr, "cafe report: %d section(s) could not be filled; they are named in the page\n", len(rep.Gaps))
 		}
 		if machine {
 			// One indented document, the contract internal/agent holds — so a
@@ -283,7 +283,7 @@ func readReportInput(path string, stdin io.Reader) (report.Input, error) {
 		src, closer, name = f, f, path
 	}
 	if closer != nil {
-		defer closer.Close()
+		defer func() { _ = closer.Close() }()
 	}
 
 	var in report.Input

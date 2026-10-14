@@ -105,27 +105,6 @@ func planPublishingOn(base func(dev.Project) (dev.Stack, error), hostPort int) f
 	}
 }
 
-// planFor wraps a planner so the project is published on an explicit port, which
-// is the only way a port outside the cafe block reaches a plan: cafe honours an
-// explicit -port rather than overriding it, which is what makes the check's job
-// to say so rather than to move it.
-func planWithHostPort(base func(dev.Project) (dev.Stack, error), hostPort int) func(dev.Project) (dev.Stack, error) {
-	return func(project dev.Project) (dev.Stack, error) {
-		stack, err := base(project)
-		if err != nil {
-			return stack, err
-		}
-		for i, svc := range stack.Services {
-			if svc.Name != stack.Root || svc.Published == 0 {
-				continue
-			}
-			svc.Published = hostPort
-			stack.Services[i] = svc
-		}
-		return stack, nil
-	}
-}
-
 // reportFromWithPlan is reportFrom with an explicit planner, for the case that
 // needs a catalog on disk. The planner is a field rather than a parameter so the
 // machine stays the single thing a case arranges.
@@ -163,7 +142,7 @@ func freeMachine(t *testing.T) *triMachine {
 // CPUs, so a case that arranges one fact is not also quietly failing the
 // "the machine is too small" one.
 // readyMachine is a machine sized for a stack, with a port inside cafe's block so
-// that "nothing is wrong" means something a caf-managed stack would recognise.
+// that "nothing is wrong" means something a caf-managed stack would recognize.
 func readyMachine(t *testing.T) *triMachine {
 	t.Helper()
 	m := readyTriMachine(t)
@@ -590,61 +569,61 @@ func projectFor(state string) string {
 // It is a switch over the state strings rather than a parallel table, and that
 // is a deliberate risk: if a row's `state` is edited and its arrange branch is
 // not, the meta-test fails with "state X produced ok, want warn" — which is the
-// behaviour a meta-test is supposed to have. A second table would agree with the
+// behavior a meta-test is supposed to have. A second table would agree with the
 // first by construction and prove nothing.
 func arrange(t *testing.T, m *triMachine, state string) {
 	t.Helper()
-	switch {
-	case state == "every binary on PATH":
+	switch state {
+	case "every binary on PATH":
 		// Nothing: the free machine has them all.
-	case state == "tilt absent, every other binary present":
+	case "tilt absent, every other binary present":
 		delete(m.installed, "tilt")
-	case state == "go absent, every other binary present":
+	case "go absent, every other binary present":
 		delete(m.installed, "go")
 
-	case state == "docker installed and answering":
+	case "docker installed and answering":
 		// Nothing: the free machine's runtime answers.
-	case state == "docker answering with an empty server version":
+	case "docker answering with an empty server version":
 		m.runtimeVersionText = ""
-	case state == "docker absent, or installed and not answering":
+	case "docker absent, or installed and not answering":
 		delete(m.installed, "docker")
 
-	case state == "32 GiB and 16 CPUs":
+	case "32 GiB and 16 CPUs":
 		m.mem, m.cores = 32<<30, 16
-	case state == "the machine reported no memory and no CPUs":
+	case "the machine reported no memory and no CPUs":
 		m.mem, m.cores = 0, 0
-	case state == "512 MiB and one CPU":
+	case "512 MiB and one CPU":
 		m.mem, m.cores = 512<<20, 1
 
-	case state == "every published port is free and inside the block":
+	case "every published port is free and inside the block":
 		m.publishOn = ports.CAF.First + 1
-	case state == "a port the plan publishes is outside the block":
+	case "a port the plan publishes is outside the block":
 		m.publishOn = 21101
-	case state == "a port the plan publishes is held":
+	case "a port the plan publishes is held":
 		m.held[8080] = true
 
-	case state == "a valid manifest and a plan with services":
+	case "a valid manifest and a plan with services":
 		// Nothing: doctorProject("go") is that.
-	case state == "a document-only repository, or one with nothing to run":
+	case "a document-only repository, or one with nothing to run":
 		// A spec repository plans to an empty stack, which is the warn.
-	case state == "a manifest that breaks the contract":
+	case "a manifest that breaks the contract":
 		// The directory itself is written by projectFor, before the machine is
 		// arranged: the manifest is a property of the project on disk, not of the
 		// machine, and a fake that "broke" it would be testing the fake.
 		m.breakProject = true
 
-	case state == "an empty ledger":
+	case "an empty ledger":
 		// Nothing: the free machine's ledger is empty.
-	case state == "an entry nothing has reclaimed":
+	case "an entry nothing has reclaimed":
 		m.book = oneUnreclaimedStack(t)
-	case state == "a ledger whose entries cannot be read":
+	case "a ledger whose entries cannot be read":
 		m.bookBroken = true
 
-	case state == "nothing is holding a port in 15000-15999":
+	case "nothing is holding a port in 15000-15999":
 		// Nothing: the free machine holds nothing in the block.
-	case state == "a stranger holds one port in the block":
+	case "a stranger holds one port in the block":
 		m.held[ports.CAF.First+1] = true
-	case state == "every port in the block is held":
+	case "every port in the block is held":
 		// The whole thousand, which is the case where a reservation cannot
 		// succeed and the check has to say so rather than warn.
 		for port := ports.CAF.First; port <= ports.CAF.Last; port++ {
@@ -800,7 +779,7 @@ func TestDoctorNamesAForeignOccupantOfTheBlock(t *testing.T) {
 
 // A port outside the block is not cafe's business at all. The check scans the
 // block and says nothing about 21101, because the whole point of the block is
-// that a port in it is recognisable as ours.
+// that a port in it is recognizable as ours.
 func TestTheBlockCheckSaysNothingAboutPortsOutsideIt(t *testing.T) {
 	dir := doctorProject(t, "go")
 	m := freeMachine(t)
@@ -835,7 +814,7 @@ func TestAnExhaustedBlockIsAFailure(t *testing.T) {
 
 // The block check probes both loopback families, because a port that is
 // genuinely held on ::1 and free on 127.0.0.1 is a collision the report has to
-// see. The prober's own dual-family behaviour is tested hermetically in
+// see. The prober's own dual-family behavior is tested hermetically in
 // internal/ports; what is asserted here is that the report reads the prober's
 // answer rather than forming its own opinion.
 // The block check and the ports check ask the same question — is this port held
@@ -843,7 +822,7 @@ func TestAnExhaustedBlockIsAFailure(t *testing.T) {
 // report that can contradict itself, and a report that contradicts itself is one
 // nobody trusts about the port it is warning about.
 //
-// The prober's own dual-family behaviour, against real sockets on both families,
+// The prober's own dual-family behavior, against real sockets on both families,
 // is tested hermetically in `internal/ports` (`TestAnIPv4OnlyProberMissesAnIPv6Listener`
 // and its mirror). What is asserted here is that the report reads the prober
 // rather than forming its own opinion about the block.
@@ -908,7 +887,7 @@ func TestTheSummaryCountsAllThreeStates(t *testing.T) {
 	}
 }
 
-// `doctor` used to always exit 0. The change is a real behaviour change to a
+// `doctor` used to always exit 0. The change is a real behavior change to a
 // shipped command, so it is asserted rather than assumed.
 func TestDoctorIsNowAGateForFailures(t *testing.T) {
 	dir := doctorProject(t, "go")

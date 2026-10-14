@@ -82,7 +82,7 @@ func wipeStepTag(command string) string {
 
 func (s *wipeSim) Write(context.Context, string, []byte, os.FileMode) error { return nil }
 
-// isWipeApply recognises a destructive command by the verbs the plan uses. It is
+// isWipeApply recognizes a destructive command by the verbs the plan uses. It is
 // the CLI test's own predicate rather than the plan's, so a plan that stopped
 // removing anything would show up as an applies count that went to zero.
 func isWipeApply(command string) bool {
@@ -304,7 +304,7 @@ func TestAWipeFlagTypoAfterTheHostIsRefusedAsAFlag(t *testing.T) {
 		t.Fatalf("err = %v, want errUsage", err)
 	}
 	if !strings.Contains(err.Error(), "dryrun") {
-		t.Errorf("the refusal does not name the flag it did not recognise: %v", err)
+		t.Errorf("the refusal does not name the flag it did not recognize: %v", err)
 	}
 	if len(sim.commands) != 0 {
 		t.Errorf("the host was contacted %d times by a refused invocation", len(sim.commands))

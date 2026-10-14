@@ -154,22 +154,22 @@ func (r reclaimRun) write(env *Env, book *ledger.Ledger, report ledger.Report) {
 	// under a heading is a report whose absence of rows has to be interpreted,
 	// and this is the sentence that needs no interpretation.
 	if len(report.Actions) == 0 && report.Ports == 0 && report.PortsHeld == 0 {
-		fmt.Fprintf(w, "%s\n", report.Summary())
+		_, _ = fmt.Fprintf(w, "%s\n", report.Summary())
 		return
 	}
-	fmt.Fprintf(w, "ledger %s: %d entr(ies)\n", book.Dir(), report.EntryCount)
+	_, _ = fmt.Fprintf(w, "ledger %s: %d entr(ies)\n", book.Dir(), report.EntryCount)
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprint(tw, "resource\tkind\toutcome\tdetail\tcommand\n")
+	_, _ = fmt.Fprint(tw, "resource\tkind\toutcome\tdetail\tcommand\n")
 	for _, action := range report.Actions {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 			action.ID, action.Kind, action.Outcome, dash(action.Detail), action.Fix)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 
-	fmt.Fprintf(w, "\n%s\n", report.Summary())
+	_, _ = fmt.Fprintf(w, "\n%s\n", report.Summary())
 	if !report.DryRun {
 		return
 	}
-	fmt.Fprintf(w, "\nnothing was removed. Re-run with -yes to do it.\n")
+	_, _ = fmt.Fprintf(w, "\nnothing was removed. Re-run with -yes to do it.\n")
 }

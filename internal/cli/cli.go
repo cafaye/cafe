@@ -60,7 +60,7 @@ type Options struct {
 	// own, and a test sets it so `cafe box setup --token -` can be driven
 	// without touching the test binary's standard input.
 	Stdin io.Reader
-	// Context is cancelled when the process is interrupted. A nil context is a
+	// Context is canceled when the process is interrupted. A nil context is a
 	// background one, so a caller that only wants an exit code passes nothing.
 	Context context.Context
 }
@@ -79,7 +79,7 @@ type Env struct {
 	// standard input. Nil means the process's stdin, which is what a real
 	// invocation wants.
 	Stdin io.Reader
-	// Context is cancelled when the process is interrupted. It is optional: a
+	// Context is canceled when the process is interrupted. It is optional: a
 	// caller that only wants an exit code passes nothing, and the router fills
 	// in a background context. `cafe dev` is the one command that reads it, and
 	// it is there rather than read from a package-level variable so a test can
@@ -104,7 +104,7 @@ func Run(opts Options) int {
 	session := installTelemetry(env)
 	ctx, endInvocation := session.StartInvocation(env.Context, opts.Args)
 
-	err := newRoot(env).execute(withContext(env, ctx), opts.Args)
+	err := newRoot(env).execute(withContext(ctx, env), opts.Args)
 	code := codeFor(env, err)
 	if spanErr := endInvocation(outcomeForCode(code, err)); spanErr != nil {
 		// Nothing here can act on this: a span that will not end is telemetry
@@ -113,7 +113,7 @@ func Run(opts Options) int {
 		// swallowing it silently would make a broken exporter indistinguishable
 		// from a disabled one, which is the confusion core's
 		// otel-endpoint.schema.json exists to prevent.
-		fmt.Fprintf(env.Stderr, "cafe: could not end the invocation span: %v\n", spanErr)
+		_, _ = fmt.Fprintf(env.Stderr, "cafe: could not end the invocation span: %v\n", spanErr)
 	}
 	// A flush error is not printed. `emitter.Shutdown` already returns nil for
 	// the one failure a developer hits constantly — a collector that is not
@@ -121,7 +121,7 @@ func Run(opts Options) int {
 	// which core's noOp.warnings rule cannot mean for a CLI whose every command
 	// would then carry it.
 	if err := session.Shutdown(ctx); err != nil {
-		fmt.Fprintf(env.Stderr, "cafe: could not flush telemetry: %v\n", err)
+		_, _ = fmt.Fprintf(env.Stderr, "cafe: could not flush telemetry: %v\n", err)
 	}
 	return code
 }
@@ -146,7 +146,7 @@ func codeFor(env Env, err error) int {
 		return exitFailure
 	}
 
-	fmt.Fprintf(env.Stderr, "cafe: %v\n", err)
+	_, _ = fmt.Fprintf(env.Stderr, "cafe: %v\n", err)
 	if errors.Is(err, errUsage) {
 		return exitUsage
 	}
@@ -160,7 +160,7 @@ func codeFor(env Env, err error) int {
 // emitter.OutcomeUsage for why filing it as an internal error would put a typo
 // in the same dashboard bucket as a cafe bug.
 //
-// A cancelled context is `cancelled` for the same reason `cafe dev`'s Ctrl-C is:
+// A canceled context is `canceled` for the same reason `cafe dev`'s Ctrl-C is:
 // an operator stopping a long command is not an error an alert should page on.
 func outcomeForCode(code int, err error) emitter.Outcome {
 	switch {
@@ -190,7 +190,7 @@ func installTelemetry(env Env) emitter.Session {
 		TenantID:    os.Getenv("TENANT_ID"),
 	})
 	if err != nil {
-		fmt.Fprintf(env.Stderr, "cafe: telemetry is unavailable (%v); running without it.\n", err)
+		_, _ = fmt.Fprintf(env.Stderr, "cafe: telemetry is unavailable (%v); running without it.\n", err)
 	}
 	return session
 }
@@ -198,7 +198,7 @@ func installTelemetry(env Env) emitter.Session {
 // withContext returns an Env whose context is the one the invocation span lives
 // in, so a command that reads `env.Context` — `dev` is the one that does — sees
 // the span and not the bare background context.
-func withContext(env Env, ctx context.Context) Env {
+func withContext(ctx context.Context, env Env) Env {
 	env.Context = ctx
 	return env
 }
@@ -306,30 +306,30 @@ func unknownCommand(name string) error {
 // printRootHelp writes the top-level usage: what cafe is, the command table and
 // the two global flags.
 func printRootHelp(commands []*Command, w io.Writer) {
-	fmt.Fprint(w, "cafe - the cafaye platform CLI\n\n")
-	fmt.Fprint(w, "Usage:\n  cafe <command> [flags] [arguments]\n  cafe help <command>\n\n")
-	fmt.Fprint(w, "Commands:\n")
+	_, _ = fmt.Fprint(w, "cafe - the cafaye platform CLI\n\n")
+	_, _ = fmt.Fprint(w, "Usage:\n  cafe <command> [flags] [arguments]\n  cafe help <command>\n\n")
+	_, _ = fmt.Fprint(w, "Commands:\n")
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	for _, c := range commands {
-		fmt.Fprintf(tw, "  %s\t%s\n", c.Name, c.Summary)
+		_, _ = fmt.Fprintf(tw, "  %s\t%s\n", c.Name, c.Summary)
 	}
-	fmt.Fprintf(tw, "  %s\t%s\n", "help", "show help for a command")
-	tw.Flush()
+	_, _ = fmt.Fprintf(tw, "  %s\t%s\n", "help", "show help for a command")
+	_ = tw.Flush()
 
-	fmt.Fprint(w, "\nFlags:\n")
-	fmt.Fprint(w, "  -h, --help      show this help\n")
-	fmt.Fprint(w, "  -v, --version   print the version\n\n")
-	fmt.Fprint(w, "Every subcommand has its own help: cafe help <command>\n")
+	_, _ = fmt.Fprint(w, "\nFlags:\n")
+	_, _ = fmt.Fprint(w, "  -h, --help      show this help\n")
+	_, _ = fmt.Fprint(w, "  -v, --version   print the version\n\n")
+	_, _ = fmt.Fprint(w, "Every subcommand has its own help: cafe help <command>\n")
 }
 
 // printHelp writes one command's help: its summary, its usage line, any prose
 // the command adds, and every flag it declares, with defaults.
 func printHelp(w io.Writer, c *Command) {
-	fmt.Fprintf(w, "cafe %s - %s\n\n", c.Name, c.Summary)
-	fmt.Fprintf(w, "Usage:\n  %s\n", c.Usage)
+	_, _ = fmt.Fprintf(w, "cafe %s - %s\n\n", c.Name, c.Summary)
+	_, _ = fmt.Fprintf(w, "Usage:\n  %s\n", c.Usage)
 	if c.LongHelp != "" {
-		fmt.Fprintf(w, "\n%s", c.LongHelp)
+		_, _ = fmt.Fprintf(w, "\n%s", c.LongHelp)
 	}
 
 	fs := c.FlagSet()
@@ -337,7 +337,7 @@ func printHelp(w io.Writer, c *Command) {
 		return
 	}
 	fs.SetOutput(w)
-	fmt.Fprint(w, "\nFlags:\n")
+	_, _ = fmt.Fprint(w, "\nFlags:\n")
 	fs.PrintDefaults()
 }
 

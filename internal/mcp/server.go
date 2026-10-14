@@ -246,7 +246,7 @@ func boolPtr(b bool) *bool { return &b }
 // It returns when the client closes the connection or the context is done, and
 // both of those are successes. A clean end of input is not a failure: an agent
 // host that has finished with a server closes its end, and the correct response
-// is to exit quietly. A cancelled context is how this server is stopped — a
+// is to exit quietly. A canceled context is how this server is stopped — a
 // signal to the process, or a cancellation from a test — and a server that
 // printed an error and exited 1 because somebody asked it to stop would make
 // every host's shutdown path look like a crash.
@@ -284,11 +284,11 @@ func (s *Server) ServeHTTP(ctx context.Context, addr string, ready func(addr str
 		return fmt.Errorf("cafe mcp: %s is not a loopback address; this server runs containers, so it only listens on 127.0.0.1 or ::1 unless an authority authenticates remote callers", addr)
 	}
 
-	listener, err := net.Listen("tcp", addr)
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("cafe mcp: listen on %s: %w", addr, err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	handler := authenticate(s.authority,
 		sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return s.impl }, nil), s.skew)

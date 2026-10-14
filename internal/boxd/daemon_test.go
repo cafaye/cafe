@@ -39,7 +39,7 @@ func (f *fakeControlPlane) Next(context.Context) (Capability, error) {
 	if len(f.queue) == 0 {
 		// An empty channel blocks in reality. A fake that returned here would
 		// give the daemon a zero Capability and a wrong ack; a fake that
-		// blocks until cancelled is the same shape as the connection it stands
+		// blocks until canceled is the same shape as the connection it stands
 		// in for, so it does exactly that.
 		<-make(chan struct{})
 		return Capability{}, context.Canceled
@@ -315,7 +315,7 @@ func TestTheDaemonLoadsTheIdentityPerConnection(t *testing.T) {
 // enrollment's own error, and the daemon surfaces it rather than dialing
 // unenrolled — a box with no identity has nothing to authenticate as. Run's
 // contract is to retry forever, so the assertion is on the daemon's own log
-// line and on what it did NOT do (connect), and the run is cancelled once the
+// line and on what it did NOT do (connect), and the run is canceled once the
 // line has appeared.
 func TestTheDaemonReportsAMissingEnrollment(t *testing.T) {
 	dialer := &fakeDialer{ch: &fakeControlPlane{}}

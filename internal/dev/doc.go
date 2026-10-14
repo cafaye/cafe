@@ -8,7 +8,7 @@
 // Plan is the whole decision, and it is pure: a manifest, a registry and a
 // handful of options in, a rendered compose document and a start order out. It
 // touches no filesystem, opens no socket and runs no command, which is why
-// every interesting behaviour of `cafe dev` — what the document says, that a
+// every interesting behavior of `cafe dev` — what the document says, that a
 // dependency cycle is refused with the cycle in the message, that two services
 // cannot share a published port, that the same manifest renders byte-identical
 // bytes twice running — is covered by tests that start nothing at all.

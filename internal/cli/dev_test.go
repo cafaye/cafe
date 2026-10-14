@@ -19,7 +19,7 @@ import (
 // A recording runtime is what lets the whole command be driven without a
 // container runtime. It is stateful rather than scripted: it holds the set of
 // services that are "running" and `Down` clears it, because that is the one
-// behaviour the teardown's check depends on. A fake that answered the same
+// behavior the teardown's check depends on. A fake that answered the same
 // snapshot forever would spin the teardown until its deadline on every
 // interrupt — which is a slow test rather than a wrong one, and slow tests are
 // how a suite stops being run.
@@ -67,7 +67,7 @@ func (r *recordingRuntime) Down(context.Context, string) error {
 	// killed, and what it had already been told to create arrives a moment
 	// later. So when the bring-up was interrupted, the first `down` removes the
 	// network and misses the containers, and only the second one finds them.
-	// This is the real behaviour, measured against a real runtime; the fake
+	// This is the real behavior, measured against a real runtime; the fake
 	// models it so the teardown's check is tested rather than assumed.
 	if r.interrupted && r.downCall == 1 {
 		return nil
@@ -679,7 +679,7 @@ func TestDevSaysWhereItWrote(t *testing.T) {
 
 // Everything `cafe dev` writes is inside the project directory unless the
 // developer named somewhere else. A command that reaches outside it mutates
-// something nobody pointed it at, and the only defence is that it says so —
+// something nobody pointed it at, and the only defense is that it says so —
 // which is why the report names the file, and why a relative `-out` is taken
 // inside the project rather than against the process's working directory.
 func TestDevWriteLocation(t *testing.T) {
@@ -728,7 +728,7 @@ func TestDevWriteLocation(t *testing.T) {
 	}
 }
 
-// An absolute `-out` is the developer saying where. It is honoured, and the
+// An absolute `-out` is the developer saying where. It is honored, and the
 // report names it, so a file that appears somewhere unexpected is a file the
 // output already accounted for.
 func TestDevHonoursAnAbsoluteOut(t *testing.T) {
@@ -799,7 +799,7 @@ func TestDevInterruptedBeforeStartingRunsNothing(t *testing.T) {
 		t.Errorf("err = %v, want it to wrap context.Canceled", err)
 	}
 	if runtime.upCalls != nil {
-		t.Errorf("started the stack after the context was already cancelled: %+v", runtime.upCalls)
+		t.Errorf("started the stack after the context was already canceled: %+v", runtime.upCalls)
 	}
 	if runtime.downCall != 0 {
 		t.Errorf("tore down %d times, want 0: nothing was started", runtime.downCall)
@@ -869,7 +869,7 @@ func TestDevReportsARuntimeFailure(t *testing.T) {
 func TestDevReportsASubprocessFailureTheRouterWouldSwallow(t *testing.T) {
 	// Really fail a command, so what is under test is a genuine
 	// *exec.ExitError rather than a type declared in this package.
-	_, runErr := exec.Command("sh", "-c", "exit 127").CombinedOutput()
+	_, runErr := exec.CommandContext(context.Background(), "sh", "-c", "exit 127").CombinedOutput()
 	if runErr == nil {
 		t.Fatal("sh exited 0; this test needs a command that fails")
 	}

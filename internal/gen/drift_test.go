@@ -33,7 +33,7 @@ import (
 //   - `go test ./...` RUNS the generated suite — twelve top-level tests and their
 //     rows, written by the generator from the same contract tables as the setup
 //     they test. That suite is the standing check that the emitted setup still
-//     honours what core says, and it keeps working after nobody has run
+//     honors what core says, and it keeps working after nobody has run
 //     `cafe gen` for a year.
 //
 // The first version of this gate kept the golden in `testdata/`, which is the

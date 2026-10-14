@@ -502,7 +502,7 @@ func (s *Store) token(sess Session) (string, error) {
 		// store and a refused keychain all mean the same thing to the caller,
 		// and the reason is printed so an operator can tell them apart without
 		// this package growing three sentinels.
-		return "", fmt.Errorf("%w (%v)", ErrNoToken, err)
+		return "", fmt.Errorf("%w (%w)", ErrNoToken, err)
 	}
 	if strings.TrimSpace(stored) == "" {
 		return "", ErrNoToken

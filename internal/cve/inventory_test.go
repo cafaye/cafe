@@ -6,7 +6,7 @@ import (
 )
 
 // TestEverySubstrateComponentCarriesWhereItsVersionCameFrom is the control
-// over the catalogue's honesty.
+// over the catalog's honesty.
 //
 // Every row of Substrate is a transcription of a pin in another repository,
 // and a transcription nobody can check is a transcription nobody has checked.
@@ -72,7 +72,7 @@ func TestTheCatalogueNamesOnlyWhatTheSubstrateInstalls(t *testing.T) {
 		got[c.Name] = c.Version
 	}
 	if len(got) != len(want) {
-		t.Errorf("the catalogue has %d components, want %d — an added row is a decision, and this is where it is made", len(got), len(want))
+		t.Errorf("the catalog has %d components, want %d — an added row is a decision, and this is where it is made", len(got), len(want))
 	}
 	for name, version := range want {
 		if got[name] != version {
@@ -232,12 +232,12 @@ func TestAnUnreadableVersionIsAReportRowNotASilence(t *testing.T) {
 		t.Errorf("release_to = %q, want empty — cafe cannot tell an operator to move to a version it cannot compare", findings[0].ReleaseTo)
 	}
 	if findings[0].ImpactUnknown != true {
-		t.Error("a component with no characterised blast radius must say so rather than printing an empty impact block")
+		t.Error("a component with no characterized blast radius must say so rather than printing an empty impact block")
 	}
 }
 
 // TestInventoryCompareNamesBothDirectionsOfDrift is the control over the
-// catalogue/observation split.
+// catalog/observation split.
 //
 // A declared pin nobody applied and an applied version nobody pinned are the
 // two facts this split exists to keep apart, and folding them into one list
@@ -289,7 +289,7 @@ func TestAnEmptyObservationIsNotASixteenComponentDrift(t *testing.T) {
 	if got := inv.Compare(); len(got) != 0 {
 		t.Errorf("got %d divergences with nothing observed, want 0", len(got))
 	}
-	// And the observation that does happen still reports the catalogue in
+	// And the observation that does happen still reports the catalog in
 	// full, so an empty observer is a missing run rather than an empty box.
 	if got := len(inv.Components()); got != len(Substrate) {
 		t.Errorf("components = %d, want %d — the declared half is the inventory's floor", got, len(Substrate))

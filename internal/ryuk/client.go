@@ -27,11 +27,11 @@ import (
 // "hold this socket open for as long as the resources are wanted", and there is
 // no token, no renewal and no heartbeat to get wrong.
 //
-// # One structural defence, and one claim that was not true
+// # One structural defense, and one claim that was not true
 //
 // Session-scoped labels: a filter can only name a label, so a sweeper
 // structurally cannot name another worker's resource — there is no shape of the
-// filter that says "remove everything a human ever started". That defence is
+// filter that says "remove everything a human ever started". That defense is
 // real, and it is the load-bearing one.
 //
 // cafe's reaper is a **liveness guess**, not a monotonic sweep, and this package
@@ -56,7 +56,7 @@ import (
 // clients, and while this package holds the socket open it prunes nothing. What
 // is *not* protected is a resource created after a prune pass has begun, by
 // anything, in a window a client cannot close. That gap is real, it is narrow,
-// and it is the honest answer rather than a fictional defence.
+// and it is the honest answer rather than a fictional defense.
 //
 // # The empty filter is the whole risk
 //

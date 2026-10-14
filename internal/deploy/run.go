@@ -104,11 +104,11 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "%s: deploying %s from %s with kamal %s\n",
+	_, _ = fmt.Fprintf(stdout, "%s: deploying %s from %s with kamal %s\n",
 		dep.Service, relativeTo(dep.Dir, dep.Config), shortPath(dep.Dir), version)
 	printSecrets(stdout, dep)
 	if dep.Env != "" {
-		fmt.Fprintf(stdout, "  environment %s, so %s is merged over %s\n",
+		_, _ = fmt.Fprintf(stdout, "  environment %s, so %s is merged over %s\n",
 			dep.Env, relativeTo(dep.Dir, dep.Overlay), relativeTo(dep.Dir, dep.Config))
 	}
 
@@ -192,7 +192,7 @@ func resolve(ctx context.Context, r Runner, plan Plan, stderr io.Writer) (string
 // operator to check a file kamal never opens.
 func printSecrets(stdout io.Writer, dep Deployment) {
 	if len(dep.Secrets) == 0 {
-		fmt.Fprintf(stdout, "  no credentials file: kamal would read %s, and neither is there\n",
+		_, _ = fmt.Fprintf(stdout, "  no credentials file: kamal would read %s, and neither is there\n",
 			strings.Join(relativise(dep.Dir, WantedSecretFiles(dep.Env)), " and "))
 		return
 	}
@@ -200,7 +200,7 @@ func printSecrets(stdout io.Writer, dep Deployment) {
 	for _, path := range dep.Secrets {
 		found = append(found, relativeTo(dep.Dir, path))
 	}
-	fmt.Fprintf(stdout, "  credentials come from %s, by name only\n", strings.Join(found, " and "))
+	_, _ = fmt.Fprintf(stdout, "  credentials come from %s, by name only\n", strings.Join(found, " and "))
 }
 
 // relativise is relativeTo over a list, for the "neither is there" sentence.
@@ -225,7 +225,7 @@ func refuseExposures(stdout io.Writer, resolved, configFile string) error {
 	if len(exposures) == 0 {
 		return nil
 	}
-	fmt.Fprintf(stdout, "\n%s\n\n%s\n", ErrRefused, Refusals(exposures))
+	_, _ = fmt.Fprintf(stdout, "\n%s\n\n%s\n", ErrRefused, Refusals(exposures))
 	return fmt.Errorf("%w: %d accessory port(s) published on the host's interfaces", ErrRefused, len(exposures))
 }
 
@@ -235,20 +235,20 @@ func deploy(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer) 
 	if step.Argv == nil {
 		return fmt.Errorf("cafe deploy: the plan has no %q step, so nothing was deployed", Deploy)
 	}
-	fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
+	_, _ = fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 
 	if err := r.Run(ctx, plan.Dir, step, stdout, stderr); err != nil {
 		return failureReport(ctx, r, plan, stdout, stderr, err)
 	}
 
-	fmt.Fprintf(stdout, "\n%s is deployed\n", plan.Service)
+	_, _ = fmt.Fprintf(stdout, "\n%s is deployed\n", plan.Service)
 	if plan.Env != "" {
-		fmt.Fprintf(stdout, "  environment %s, from %s over %s\n", plan.Env, relativeTo(plan.Dir, plan.Overlay), relativeTo(plan.Dir, plan.Config))
+		_, _ = fmt.Fprintf(stdout, "  environment %s, from %s over %s\n", plan.Env, relativeTo(plan.Dir, plan.Overlay), relativeTo(plan.Dir, plan.Config))
 	}
 	if plan.Version == "" {
-		fmt.Fprintf(stdout, "  release: kamal's own default, the short commit hash of the repository in %s\n", plan.Dir)
+		_, _ = fmt.Fprintf(stdout, "  release: kamal's own default, the short commit hash of the repository in %s\n", plan.Dir)
 	} else {
-		fmt.Fprintf(stdout, "  release %s, which is the name to roll back to\n", plan.Version)
+		_, _ = fmt.Fprintf(stdout, "  release %s, which is the name to roll back to\n", plan.Version)
 	}
 	printWhereToLook(stdout, plan)
 	return nil
@@ -262,26 +262,26 @@ func deploy(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer) 
 // is not touched by an application deploy, so a failed deploy is a failed
 // release and not a lost database.
 func failureReport(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer, cause error) error {
-	fmt.Fprintf(stdout, "\n%s failed: %v\n", plan.Step(Deploy).Command(), cause)
+	_, _ = fmt.Fprintf(stdout, "\n%s failed: %v\n", plan.Step(Deploy).Command(), cause)
 
 	if state := plan.Step(State); state.Argv != nil {
-		fmt.Fprintf(stdout, "\nwhat is running now (%s):\n", state.Command())
+		_, _ = fmt.Fprintf(stdout, "\nwhat is running now (%s):\n", state.Command())
 		if err := r.Run(ctx, plan.Dir, state, stdout, stderr); err != nil {
-			fmt.Fprintf(stdout, "could not read it: %v\n", err)
-			fmt.Fprintf(stdout, "read it yourself with: %s\n", state.Command())
+			_, _ = fmt.Fprintf(stdout, "could not read it: %v\n", err)
+			_, _ = fmt.Fprintf(stdout, "read it yourself with: %s\n", state.Command())
 		}
 	}
 
-	fmt.Fprint(stdout, "\nwhat to do:\n")
-	fmt.Fprint(stdout, "  the database was not touched. kamal boots accessories separately from the app, so\n")
-	fmt.Fprint(stdout, "  this deploy moved application containers only and the database is still up.\n")
-	fmt.Fprint(stdout, "  a previous release is usually still serving: kamal leaves it up until a new one is healthy.\n")
+	_, _ = fmt.Fprint(stdout, "\nwhat to do:\n")
+	_, _ = fmt.Fprint(stdout, "  the database was not touched. kamal boots accessories separately from the app, so\n")
+	_, _ = fmt.Fprint(stdout, "  this deploy moved application containers only and the database is still up.\n")
+	_, _ = fmt.Fprint(stdout, "  a previous release is usually still serving: kamal leaves it up until a new one is healthy.\n")
 	if plan.Version != "" {
-		fmt.Fprintf(stdout, "  roll back to the named release with: kamal rollback %s\n", plan.Version)
+		_, _ = fmt.Fprintf(stdout, "  roll back to the named release with: kamal rollback %s\n", plan.Version)
 	} else {
-		fmt.Fprintf(stdout, "  read the previous release's name from the list above, then: kamal rollback <version>\n")
+		_, _ = fmt.Fprintf(stdout, "  read the previous release's name from the list above, then: kamal rollback <version>\n")
 	}
-	fmt.Fprint(stdout, "  the reason kamal gave is above.\n")
+	_, _ = fmt.Fprint(stdout, "  the reason kamal gave is above.\n")
 	// ErrDeployFailed is a sentinel so the caller can tell "the report is above"
 	// from "cafe failed before it could report anything" — the first is errReported
 	// (exit 1, stderr empty), the second is an error that belongs there.
@@ -293,28 +293,28 @@ func failureReport(ctx context.Context, r Runner, plan Plan, stdout, stderr io.W
 // then says nothing about how to check it has left the operator to guess, and
 // "it printed no error" is not the same claim as "it is answering requests".
 func printWhereToLook(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "  it is serving behind kamal-proxy on ports 80 and 443, routed by the `proxy.host`\n")
-	fmt.Fprintf(stdout, "  in %s. Check it with:\n", relativeTo(plan.Dir, plan.Config))
-	fmt.Fprintf(stdout, "    curl -H 'Host: <that host>' http://<the server>/\n")
-	fmt.Fprintf(stdout, "  its logs: kamal app logs -f\n")
+	_, _ = fmt.Fprintf(stdout, "  it is serving behind kamal-proxy on ports 80 and 443, routed by the `proxy.host`\n")
+	_, _ = fmt.Fprintf(stdout, "  in %s. Check it with:\n", relativeTo(plan.Dir, plan.Config))
+	_, _ = fmt.Fprintf(stdout, "    curl -H 'Host: <that host>' http://<the server>/\n")
+	_, _ = fmt.Fprintf(stdout, "  its logs: kamal app logs -f\n")
 }
 
 // printDryRun is the honest dry run: every command that would run, whether it
 // would run now or only after a failure, and the fact that none of the changing
 // ones were executed.
 func printDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what cafe deploy would run:\n\n")
+	_, _ = fmt.Fprintf(stdout, "\nthis is what cafe deploy would run:\n\n")
 	for _, step := range plan.Steps {
-		fmt.Fprintf(stdout, "  %s\n", step.Command())
-		fmt.Fprintf(stdout, "      %s\n", step.Why)
+		_, _ = fmt.Fprintf(stdout, "  %s\n", step.Command())
+		_, _ = fmt.Fprintf(stdout, "      %s\n", step.Why)
 	}
-	fmt.Fprintf(stdout, "\n  the last one runs only if the deploy above fails.\n")
-	fmt.Fprintf(stdout, "\nDry run. The two read-only steps really did run: %s and %s read the\n",
+	_, _ = fmt.Fprintf(stdout, "\n  the last one runs only if the deploy above fails.\n")
+	_, _ = fmt.Fprintf(stdout, "\nDry run. The two read-only steps really did run: %s and %s read the\n",
 		plan.Step(Preflight).Command(), plan.Step(Resolve).Command())
-	fmt.Fprintf(stdout, "configuration and change nothing. %s, which is the only step that changes a\n", plan.Step(Deploy).Command())
-	fmt.Fprintf(stdout, "server, was NOT run. No container was started, no image was built or pushed,\n")
-	fmt.Fprintf(stdout, "no file in %s was written, and no secret was read.\n", plan.Dir)
-	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  cafe deploy%s %s\n", yesFlag(plan), plan.Service)
+	_, _ = fmt.Fprintf(stdout, "configuration and change nothing. %s, which is the only step that changes a\n", plan.Step(Deploy).Command())
+	_, _ = fmt.Fprintf(stdout, "server, was NOT run. No container was started, no image was built or pushed,\n")
+	_, _ = fmt.Fprintf(stdout, "no file in %s was written, and no secret was read.\n", plan.Dir)
+	_, _ = fmt.Fprintf(stdout, "\nDeploy it for real with:\n  cafe deploy%s %s\n", yesFlag(plan), plan.Service)
 }
 
 // yesFlag is the flag the operator adds to the command above. It is derived from

@@ -2,6 +2,7 @@ package resolve
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -70,8 +71,8 @@ func TestHTTPControlPlaneEntitlementRequiredIsNamed(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a 403 resolved without an error")
 	}
-	ce, ok := err.(*ControlPlaneError)
-	if !ok {
+	var ce *ControlPlaneError
+	if !errors.As(err, &ce) {
 		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "entitlement_required" {
@@ -92,8 +93,8 @@ func TestHTTPControlPlaneVersionNotGrantedIsNamed(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a 403 resolved without an error")
 	}
-	ce, ok := err.(*ControlPlaneError)
-	if !ok {
+	var ce *ControlPlaneError
+	if !errors.As(err, &ce) {
 		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "version_not_granted" {
@@ -116,8 +117,8 @@ func TestHTTPControlPlaneNotFoundIsNamed(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
-	ce, ok := err.(*ControlPlaneError)
-	if !ok {
+	var ce *ControlPlaneError
+	if !errors.As(err, &ce) {
 		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "not_found" {
@@ -143,8 +144,8 @@ func TestHTTPControlPlaneMintNotFoundCarriesTheRemedy(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
-	ce, ok := err.(*ControlPlaneError)
-	if !ok {
+	var ce *ControlPlaneError
+	if !errors.As(err, &ce) {
 		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "not_found" {
@@ -179,8 +180,8 @@ func TestHTTPControlPlaneNamesWhichTier3CallWasRefused(t *testing.T) {
 	if err == nil {
 		t.Fatalf("the mint was refused without an error")
 	}
-	ce, ok := err.(*ControlPlaneError)
-	if !ok {
+	var ce *ControlPlaneError
+	if !errors.As(err, &ce) {
 		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if !strings.Contains(ce.Message, "the entitlement check") {
@@ -211,8 +212,8 @@ func TestHTTPControlPlaneRedeemConflictIsNamed(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a redeemed capability resolved without an error")
 	}
-	ce, ok := err.(*ControlPlaneError)
-	if !ok {
+	var ce *ControlPlaneError
+	if !errors.As(err, &ce) {
 		t.Fatalf("error = %T, want *ControlPlaneError", err)
 	}
 	if ce.Code != "capability_redeemed" {
@@ -229,7 +230,9 @@ func TestHTTPControlPlaneWithoutBaseURLRefuses(t *testing.T) {
 	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
 	if err == nil {
 		t.Fatalf("a client with no endpoint resolved without an error")
-	} else if _, ok := err.(*ControlPlaneError); !ok {
+	}
+	var ce *ControlPlaneError
+	if !errors.As(err, &ce) {
 		t.Errorf("error = %T, want *ControlPlaneError", err)
 	}
 }

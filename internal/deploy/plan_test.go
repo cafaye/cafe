@@ -246,7 +246,7 @@ func TestAStepPrintsItsCommand(t *testing.T) {
 
 // The plan carries the facts the report echoes, because a transcript that says
 // which project and which environment it was about is the difference between a
-// deploy record and a deploy rumour.
+// deploy record and a deploy rumor.
 func TestThePlanCarriesWhatTheReportEchoes(t *testing.T) {
 	plan := fixturePlan("staging")
 

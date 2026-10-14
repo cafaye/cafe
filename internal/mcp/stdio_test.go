@@ -83,7 +83,7 @@ func TestServeStdioReturnsWhenTheClientClosesTheConnection(t *testing.T) {
 	}
 }
 
-// A cancelled context stops the server, and stopping is not failing. This is
+// A canceled context stops the server, and stopping is not failing. This is
 // the difference that matters to a host: a server that exits 1 and prints
 // `cafe: context canceled` because somebody sent it a signal turns every clean
 // shutdown into something that looks like a crash in the host's logs.
@@ -106,7 +106,7 @@ func TestServeStdioTreatsCancellationAsAStopRatherThanAFailure(t *testing.T) {
 			t.Errorf("ServeStdio returned %v after a cancellation, want nil: being stopped is not a failure", err)
 		}
 	case <-time.After(10 * time.Second):
-		t.Fatal("ServeStdio did not return after its context was cancelled")
+		t.Fatal("ServeStdio did not return after its context was canceled")
 	}
 }
 
@@ -217,7 +217,7 @@ func stdioExchange(t *testing.T, pair pipePair, frame string) ([]byte, error) {
 //
 // The streams here are deliberately NOT closers — a `strings.Reader` and a
 // buffer — because an io.Pipe end is a ReadCloser, and the adapter passes one
-// through untouched. That pass-through is the other half of the behaviour and
+// through untouched. That pass-through is the other half of the behavior and
 // has its own assertion below.
 func TestAnAdaptedStreamClosesNothingItDidNotOpen(t *testing.T) {
 	reader := readCloser(strings.NewReader("still readable\n"))

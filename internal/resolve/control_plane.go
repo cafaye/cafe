@@ -110,17 +110,17 @@ func (c HTTPControlPlane) mint(ctx context.Context, accountID, artifact, version
 		return "", fmt.Errorf("encode the entitlement check: %w", err)
 	}
 	path := "/v1/accounts/" + accountID + "/artifact_fetches"
-	res, raw, err := c.do(ctx, token, http.MethodPost, path, body)
+	status, raw, err := c.do(ctx, token, http.MethodPost, path, body)
 	if err != nil {
 		return "", err
 	}
-	if res.StatusCode != http.StatusCreated {
+	if status != http.StatusCreated {
 		// "the entitlement check" is the `where`: a 404 here is about a caller
 		// who is not a member of the account, not about a capability.
-		if res.StatusCode == http.StatusNotFound {
-			return "", &ControlPlaneError{Status: res.StatusCode, Code: "not_found", Message: notFoundHint()}
+		if status == http.StatusNotFound {
+			return "", &ControlPlaneError{Status: status, Code: "not_found", Message: notFoundHint()}
 		}
-		return "", errorFrom(res.StatusCode, raw, "the entitlement check")
+		return "", errorFrom(status, raw, "the entitlement check")
 	}
 	var payload struct {
 		Capability struct {
@@ -147,14 +147,14 @@ func (c HTTPControlPlane) redeem(ctx context.Context, capToken, accountID string
 	if err != nil {
 		return nil, fmt.Errorf("encode the redemption: %w", err)
 	}
-	res, raw, err := c.do(ctx, capToken, http.MethodPost, "/v1/capabilities/redeem", body)
+	status, raw, err := c.do(ctx, capToken, http.MethodPost, "/v1/capabilities/redeem", body)
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode != http.StatusOK {
+	if status != http.StatusOK {
 		// "the redemption" is the `where`: a 404 here is about a capability
 		// that is gone, not about a caller who is not a member.
-		return nil, errorFrom(res.StatusCode, raw, "the redemption")
+		return nil, errorFrom(status, raw, "the redemption")
 	}
 	var payload struct {
 		Capability struct {
@@ -181,27 +181,32 @@ func (c HTTPControlPlane) redeem(ctx context.Context, capToken, accountID string
 // transport error. The token is presented as the bearer; an empty token is
 // refused here rather than sent as an empty bearer, which a server answers 401
 // for a token that never existed.
-func (c HTTPControlPlane) do(ctx context.Context, token, method, path string, body []byte) (*http.Response, []byte, error) {
+//
+// It returns the STATUS rather than the response: the body is read to its end
+// and closed here, so there is no body left to leak — a caller that received
+// the response would hold a body nobody closes, which is the leak bodyclose
+// exists to refuse.
+func (c HTTPControlPlane) do(ctx context.Context, token, method, path string, body []byte) (int, []byte, error) {
 	if strings.TrimSpace(token) == "" {
-		return nil, nil, &ControlPlaneError{Code: "unauthenticated", Message: "this call needs a cafe token and none was presented"}
+		return 0, nil, &ControlPlaneError{Code: "unauthenticated", Message: "this call needs a cafe token and none was presented"}
 	}
 	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(c.BaseURL, "/")+path, bytes.NewReader(body))
 	if err != nil {
-		return nil, nil, fmt.Errorf("build the box request: %w", err)
+		return 0, nil, fmt.Errorf("build the box request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 	res, err := c.client().Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("call box: %w", err)
+		return 0, nil, fmt.Errorf("call box: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
-		return res, nil, fmt.Errorf("read box's answer: %w", err)
+		return res.StatusCode, nil, fmt.Errorf("read box's answer: %w", err)
 	}
-	return res, raw, nil
+	return res.StatusCode, raw, nil
 }
 
 // errorFrom turns box's {error:{code,message}} body into a ControlPlaneError.

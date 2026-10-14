@@ -20,7 +20,7 @@ import (
 // The layout is the chart's own — Chart.yaml at the root, values.yaml beside
 // it, templates/ under that — because that is the shape `helm template`
 // expects. A generated artifact whose layout the tool that consumes it does
-// not recognise is a generator bug no test would catch.
+// not recognize is a generator bug no test would catch.
 const (
 	chartYAMLPath       = "chart/Chart.yaml"
 	chartValuesPath     = "chart/values.yaml"

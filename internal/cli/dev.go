@@ -210,7 +210,7 @@ func (r devRun) loadRegistry() (dev.Registry, error) {
 }
 
 // writeCompose writes the rendered document and says where. An absolute -out is
-// honoured as given, because a developer who names a path means it; a relative
+// honored as given, because a developer who names a path means it; a relative
 // one is taken inside the project, because the command must not write outside
 // the directory it was pointed at without being told to.
 func (r devRun) writeCompose(dir string, stack dev.Stack) (string, error) {
@@ -233,25 +233,25 @@ func (r devRun) writeCompose(dir string, stack dev.Stack) (string, error) {
 // opening a file, and the file is there for diffing.
 func (r devRun) reportPlan(project dev.Project, stack dev.Stack, file string) {
 	w := r.env.Stdout
-	fmt.Fprintf(w, "project %s: %s (%s)\n", stack.Project, project.Manifest.ServiceName(), project.Manifest.Language())
+	_, _ = fmt.Fprintf(w, "project %s: %s (%s)\n", stack.Project, project.Manifest.ServiceName(), project.Manifest.Language())
 	for _, skip := range stack.Skipped {
-		fmt.Fprintf(w, "skipped %s: %s\n", skip.Service, skip.Reason)
+		_, _ = fmt.Fprintf(w, "skipped %s: %s\n", skip.Service, skip.Reason)
 	}
-	fmt.Fprintf(w, "wrote %s\n", file)
+	_, _ = fmt.Fprintf(w, "wrote %s\n", file)
 	if len(stack.Services) == 0 {
-		fmt.Fprintf(w, "%s is a %s repository: it declares no services, so there is no local stack to run\n",
+		_, _ = fmt.Fprintf(w, "%s is a %s repository: it declares no services, so there is no local stack to run\n",
 			project.Manifest.ServiceName(), project.Manifest.Language())
 		return
 	}
-	fmt.Fprint(w, "\n", stack.Compose)
+	_, _ = fmt.Fprint(w, "\n", stack.Compose)
 }
 
 // up brings the stack up, waits for it, and prints what came up and what did
 // not.
 //
 // A Ctrl-C ends the wait and tears down what this command started. The teardown
-// runs on a context that is not already cancelled, because a teardown on a
-// cancelled context is a teardown that does not happen — and the difference is
+// runs on a context that is not already canceled, because a teardown on a
+// canceled context is a teardown that does not happen — and the difference is
 // four containers a developer has to clean up by hand.
 func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 	w := r.env.Stdout
@@ -289,7 +289,7 @@ func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 		}
 	}()
 
-	fmt.Fprintf(w, "starting %d services in %s\n", len(stack.Services), stack.Project)
+	_, _ = fmt.Fprintf(w, "starting %d services in %s\n", len(stack.Services), stack.Project)
 	if err := r.deps.runtime.Up(ctx, stack.Project, absolute); err != nil {
 		return fmt.Errorf("cafe dev: %w", err)
 	}
@@ -319,7 +319,7 @@ func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 }
 
 // teardown takes the stack down, on a context the caller's cancellation cannot
-// reach — a teardown on a cancelled context is a teardown that does not happen,
+// reach — a teardown on a canceled context is a teardown that does not happen,
 // and the difference is four containers a developer has to clean up by hand.
 //
 // It also checks. An interrupt kills the `docker compose up` client, but the
@@ -330,13 +330,13 @@ func (r devRun) up(ctx context.Context, stack dev.Stack, file string) error {
 // teardownTimeout allows. The volumes stay: they are the developer's data, and a
 // stack that stopped or failed to start is not a reason to throw it away.
 func (r devRun) teardown(project string) {
-	fmt.Fprintf(r.env.Stdout, "\nstopping %s\n", project)
+	_, _ = fmt.Fprintf(r.env.Stdout, "\nstopping %s\n", project)
 	ctx, cancel := context.WithTimeout(context.Background(), r.deps.teardownBudget)
 	defer cancel()
 
 	for {
 		if err := r.deps.runtime.Down(ctx, project); err != nil {
-			fmt.Fprintf(r.env.Stdout, "%s could not be stopped: %v\n", project, err)
+			_, _ = fmt.Fprintf(r.env.Stdout, "%s could not be stopped: %v\n", project, err)
 			return
 		}
 		left, err := r.deps.runtime.Snapshot(ctx, project)
@@ -344,16 +344,16 @@ func (r devRun) teardown(project string) {
 			break
 		}
 		if ctx.Err() != nil {
-			fmt.Fprintf(r.env.Stdout, "%s is still running %d service(s); run cafe dev and interrupt again, or stop them by hand\n",
+			_, _ = fmt.Fprintf(r.env.Stdout, "%s is still running %d service(s); run cafe dev and interrupt again, or stop them by hand\n",
 				project, len(left))
 			return
 		}
 		if err := r.deps.sleep(ctx, teardownRetry); err != nil {
-			fmt.Fprintf(r.env.Stdout, "%s is still running %d service(s); stop it by hand\n", project, len(left))
+			_, _ = fmt.Fprintf(r.env.Stdout, "%s is still running %d service(s); stop it by hand\n", project, len(left))
 			return
 		}
 	}
-	fmt.Fprintf(r.env.Stdout, "%s stopped\n", project)
+	_, _ = fmt.Fprintf(r.env.Stdout, "%s stopped\n", project)
 }
 
 // teardownTimeout and teardownRetry bound the check loop. The bound is short
@@ -396,7 +396,7 @@ func failingServices(snapshot dev.Snapshot, names []string) []string {
 // first, so it is last and it says the verdict.
 func (r devRun) reportStatus(stack dev.Stack, snapshot dev.Snapshot, waitErr error) {
 	w := r.env.Stdout
-	fmt.Fprint(w, "\n")
+	_, _ = fmt.Fprint(w, "\n")
 
 	position := make(map[string]int, len(stack.Start))
 	for i, name := range stack.Start {
@@ -410,25 +410,25 @@ func (r devRun) reportStatus(stack dev.Stack, snapshot dev.Snapshot, waitErr err
 	sortStates(rows, position)
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprint(tw, "service\tstatus\torigin\tnotes\n")
+	_, _ = fmt.Fprint(tw, "service\tstatus\torigin\tnotes\n")
 	for _, state := range rows {
 		origin := ""
 		if svc, found := stack.Service(state.Service); found {
 			origin = string(svc.Origin)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", state.Service, state.Status, origin, notes(state))
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", state.Service, state.Status, origin, notes(state))
 	}
-	tw.Flush()
+	_ = tw.Flush()
 
 	if failing := failingServices(snapshot, stack.Names()); len(failing) > 0 {
-		fmt.Fprintf(w, "\n%s did not come up: %s\n", stack.Root, strings.Join(failing, ", "))
+		_, _ = fmt.Fprintf(w, "\n%s did not come up: %s\n", stack.Root, strings.Join(failing, ", "))
 		return
 	}
 	if len(stack.Services) == 0 {
 		return
 	}
 	root, _ := stack.Service(stack.Root)
-	fmt.Fprintf(w, "\n%s is up on %s\n", stack.Root, publishedURL(root))
+	_, _ = fmt.Fprintf(w, "\n%s is up on %s\n", stack.Root, publishedURL(root))
 }
 
 // publishedURL is where the project service can be reached from the host, or a

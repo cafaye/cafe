@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,7 +28,7 @@ import (
 //
 //   - Every assertion is about wire bytes. A tool list is a JSON document on
 //     stdout, not a slice in memory.
-//   - Nothing is synchronised by sleeping. A frame arrives or it does not, and
+//   - Nothing is synchronized by sleeping. A frame arrives or it does not, and
 //     "the process died" and "the process is alive and said nothing" are
 //     different failures with different messages (see nextFrame).
 //   - No test needs Docker, a container runtime, or a running cafaye
@@ -46,7 +47,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	cafeBinary = filepath.Join(dir, "cafe")
-	build := exec.Command("go", "build", "-o", cafeBinary, "./cmd/cafe")
+	build := exec.CommandContext(context.Background(), "go", "build", "-o", cafeBinary, "./cmd/cafe")
 	build.Dir = repoRootForTest()
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "cafe wire tests: build cafe: %v\n%s\n", err, out)
@@ -190,7 +191,7 @@ func (b *lockedBuffer) String() string {
 func startServer(t *testing.T, dir string, args ...string) *wireSession {
 	t.Helper()
 
-	cmd := exec.Command(cafeBinary, append([]string{"mcp"}, args...)...)
+	cmd := exec.CommandContext(context.Background(), cafeBinary, append([]string{"mcp"}, args...)...)
 	cmd.Dir = dir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -260,14 +261,14 @@ func (s *wireSession) nextFrame() (wireFrame, error) {
 		}
 		var frame wireFrame
 		if err := json.Unmarshal([]byte(line), &frame); err != nil {
-			return wireFrame{}, fmt.Errorf("%w: %q: %v", errNotAFrame, line, err)
+			return wireFrame{}, fmt.Errorf("%w: %q: %w", errNotAFrame, line, err)
 		}
 		if frame.JSONRPC != "2.0" {
 			return wireFrame{}, fmt.Errorf("%w: %q says jsonrpc %q", errNotAFrame, line, frame.JSONRPC)
 		}
 		return frame, nil
 	case <-s.exited:
-		return wireFrame{}, fmt.Errorf("%w (%v); stderr: %s", errServerExited, s.waitErr, s.stderr.String())
+		return wireFrame{}, fmt.Errorf("%w (%w); stderr: %s", errServerExited, s.waitErr, s.stderr.String())
 	case <-time.After(s.timeout):
 		return wireFrame{}, fmt.Errorf("%w for %s; stderr: %s", errServerSilent, s.timeout, s.stderr.String())
 	}

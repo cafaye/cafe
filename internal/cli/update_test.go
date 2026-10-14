@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -34,7 +35,7 @@ func updateGitEnv(t *testing.T) {
 // command's own failures instead.
 func runUpdateGit(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(context.Background(), "git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -435,7 +436,7 @@ func TestUpdateReportsAConflictWithoutMovingThePin(t *testing.T) {
 	}
 	// The recovery path is real: the merge is in progress.
 	if _, err := func() (string, error) {
-		cmd := exec.Command("git", "rev-parse", "--verify", "MERGE_HEAD")
+		cmd := exec.CommandContext(context.Background(), "git", "rev-parse", "--verify", "MERGE_HEAD")
 		cmd.Dir = f.downstream
 		out, err := cmd.CombinedOutput()
 		return strings.TrimSpace(string(out)), err

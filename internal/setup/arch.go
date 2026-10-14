@@ -74,7 +74,7 @@ func controllerTarget() target { return target{runtime.GOOS, runtime.GOARCH} }
 // conditional chain in the middle of the flow, because a missing row must be a
 // REFUSAL rather than a guess: a controller that invented "arm64" for an
 // "armv5tel" host would ship a binary the kernel cannot run, which is the
-// defect again in a quieter colour.
+// defect again in a quieter color.
 var unameToGOARCH = map[string]string{
 	"x86_64":      "amd64",
 	"i386":        "386",
@@ -380,8 +380,10 @@ func elfTarget(raw []byte) (target, bool) {
 		return target{"linux", "riscv64"}, true
 	case elf.EM_LOONGARCH:
 		return target{"linux", "loong64"}, true
+	default:
+		// Any other machine is not a platform cafe ships.
+		return target{}, false
 	}
-	return target{}, false
 }
 
 // machoTarget reads a Mach-O header's CPU field. Mach-O is darwin's, on this
@@ -398,12 +400,14 @@ func machoTarget(raw []byte) (target, bool) {
 		return target{"darwin", "arm64"}, true
 	case macho.CpuArm:
 		return target{"darwin", "arm"}, true
+	default:
+		// Any other CPU is not a platform cafe ships.
+		return target{}, false
 	}
-	return target{}, false
 }
 
 // peTarget reads a PE header's machine word. Windows has no box, but its
-// header is recognised so that a `cafe-windows-amd64` on a build host is not
+// header is recognized so that a `cafe-windows-amd64` on a build host is not
 // mistaken for something shippable.
 func peTarget(raw []byte) (target, bool) {
 	f, err := pe.NewFile(bytes.NewReader(raw))

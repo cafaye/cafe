@@ -30,7 +30,7 @@ type deployTestBox struct {
 	// argv is what the container runtime was asked to do, which is the only
 	// part of a deploy that can be asserted without a container runtime.
 	argv [][]string
-	// edge is the loopback address the health gate is dialled through.
+	// edge is the loopback address the health gate is dialed through.
 	edge string
 	// failOn is the digest prefix whose release fails its health gate: the
 	// broken deploy the gate's `release history` item names.
@@ -59,7 +59,7 @@ func newDeployEnv(t *testing.T) (deps boxDeps, box *deployTestBox) {
 	t.Helper()
 	root := t.TempDir()
 	box = &deployTestBox{root: root}
-	// A real HTTP server the gate is dialled through, with the Host header the
+	// A real HTTP server the gate is dialed through, with the Host header the
 	// public name would carry. It serves whatever the release's edge state
 	// says, so a deploy that switched the pointer serves the new release.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -152,7 +152,7 @@ func TestBoxDeployShipsAPantryBuildEndToEnd(t *testing.T) {
 	if !strings.Contains(pulled, "@sha256:"+strings.Repeat("a", 64)) {
 		t.Fatalf("the box pulled %q, and the pull is not pinned by digest", pulled)
 	}
-	// The secret set travelled as a FILE reference, never in argv.
+	// The secret set traveled as a FILE reference, never in argv.
 	for _, argv := range box.argv {
 		joined := strings.Join(argv, " ")
 		if strings.Contains(joined, "api/production") && !strings.Contains(joined, "--env-file") {
@@ -337,7 +337,7 @@ func TestARollbackFlagTypoAfterTheReleaseIDIsRefusedAsAFlag(t *testing.T) {
 		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitUsage, stderr)
 	}
 	if !strings.Contains(stderr, "servicee") {
-		t.Errorf("the refusal does not name the flag it did not recognise: %s", stderr)
+		t.Errorf("the refusal does not name the flag it did not recognize: %s", stderr)
 	}
 }
 

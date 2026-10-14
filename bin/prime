@@ -41,6 +41,9 @@
 # What is NOT in this gate, and why, is in AGENTS.md and in
 # REPORT-caf-07-gate.md: `go vet` and `gofmt -l .` are required before a commit
 # and are not here, and the live tier is a demonstration rather than a check.
+# `golangci-lint run` IS here, since roll-c5-cafe-ci: it runs kit's
+# `lint/golangci.yml` at mise.toml's pinned version, because a gate that does
+# not run the lint CI runs is a gate that stays green while CI goes red.
 
 set -eu
 
@@ -130,6 +133,60 @@ fi
 
 go mod download
 go build ./...
+
+# ---------------------------------------------------------------------------
+# the lint CI runs
+# ---------------------------------------------------------------------------
+# kit's shared `go` job runs golangci-lint against kit's `lint/golangci.yml`
+# at v2.14.0. This step runs the SAME lint, at the SAME version, over the SAME
+# config, and a finding fails the gate. The version is pinned in two places —
+# this repository's `mise.toml` (`golangci-lint = "2.14.0"`) and kit's workflow
+# — so a bump touches both in the same commit. An unpinned local install or a
+# CI run on `latest` is how `bin/prime` stayed green while CI went red.
+#
+# THE CONFIG IS NOT COPIED. kit's `lint/golangci.yml` header says "Not copied
+# into a service repo" because a copy is a second policy to drift. The config
+# is read from kit's checkout, and the location is resolved rather than
+# assumed: in CI it is at `.kit/lint/golangci.yml` (sparse checkout), locally
+# it is at `../kit/lint/golangci.yml` (moon workspace), and either may be
+# absent.
+#
+# THE TOOL MUST BE PRESENT. A step that quietly skips when the linter is absent
+# is the whole defect: a green that verified nothing. `mise install` provides
+# the pinned version; a bare `go` toolchain without it fails here rather than
+# passing.
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "bin/prime: golangci-lint is not on PATH — run 'mise install' in this worktree" >&2
+  echo "  (mise.toml pins golangci-lint = \"2.14.0\", the same version CI runs)" >&2
+  exit 127
+fi
+pinned_lint="$(sed -n 's/^"golangci-lint" *= *"\(.*\)"/\1/p' mise.toml)"
+if [ -n "$pinned_lint" ]; then
+  actual_lint="$(golangci-lint --version 2>&1 | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n1 | sed 's/^v//')"
+  if [ -n "$actual_lint" ] && [ "$actual_lint" != "$pinned_lint" ]; then
+    echo "bin/prime: golangci-lint is $actual_lint, and mise.toml pins $pinned_lint." >&2
+    echo "  Run 'mise install' in this worktree. Continuing would report lint" >&2
+    echo "  findings from a different version than CI, which is how the gate" >&2
+    echo "  stayed green while CI went red." >&2
+    exit 1
+  fi
+fi
+kit_config=""
+for candidate in ".kit/lint/golangci.yml" "../kit/lint/golangci.yml" "lint/golangci.yml"; do
+  if [ -f "$candidate" ]; then
+    kit_config="$candidate"
+    break
+  fi
+done
+if [ -z "$kit_config" ]; then
+  echo "bin/prime: kit's lint config not found — tried .kit/lint/golangci.yml," >&2
+  echo "  ../kit/lint/golangci.yml, and lint/golangci.yml. In CI the kit checkout" >&2
+  echo "  provides .kit; locally the moon workspace provides ../kit." >&2
+  exit 1
+fi
+echo "lint config: $kit_config"
+echo "lint version: $(golangci-lint --version 2>&1 | head -n1)"
+golangci-lint run --config "$kit_config" ./...
 
 # A file, not a pipe. See property 1 in the header.
 LOG="$(mktemp "${TMPDIR:-/tmp}/caf-prime.XXXXXX")"

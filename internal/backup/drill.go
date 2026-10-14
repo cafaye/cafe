@@ -352,7 +352,7 @@ func writeDrillFile(path string, journal *DrillJournal) error {
 	}
 	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := tmp.Write(raw); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return fmt.Errorf("drill store: write %s: %w", path, err)
 	}
 	if err := tmp.Close(); err != nil {
@@ -367,7 +367,7 @@ func writeDrillFile(path string, journal *DrillJournal) error {
 	return nil
 }
 
-// hold serialises this store's own mutations. It is the same primitive
+// hold serializes this store's own mutations. It is the same primitive
 // internal/run uses — an advisory lock on a file in the store — and it is
 // unexported here for the same reason: the arbiter is an implementation detail
 // and the surface is Append and Read.

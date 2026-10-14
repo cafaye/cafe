@@ -108,7 +108,7 @@ func (e Entry) Less(other Entry) bool {
 }
 
 // Ledger is the record, held in a directory. Two Ledgers over one directory are
-// two cafe processes, and they serialise on the directory's lock file rather than
+// two cafe processes, and they serialize on the directory's lock file rather than
 // on anything in memory.
 type Ledger struct {
 	dir string

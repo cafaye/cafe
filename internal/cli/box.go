@@ -167,12 +167,12 @@ func boxVerbs(deps boxDeps) []boxVerb {
 // person reads it before typing a command that spends a single-use capability
 // on their behalf, and the split it explains — the box is a machine, `cafe
 // agent` is a principal — is the thing a newcomer gets wrong.
-const boxLongHelp = `The box is a MACHINE: it has a keypair, it enrols, it runs the substrate.
+const boxLongHelp = `The box is a MACHINE: it has a keypair, it enrolls, it runs the substrate.
 ` + "`cafe agent …`" + ` is a principal — an identity that becomes claimed. Two
 subjects, two verbs, and the split is the one moon/AGENTS-FIRST.md chose so
 that ` + "`cafe box register`" + ` never reads as "the agent is registering a box".
 
-ENROL is the one command that spends anything. It generates the box's keypair,
+ENROLL is the one command that spends anything. It generates the box's keypair,
 stores the private half in the keyring, and presents the capability to
 box. The capability is single-use, box-bound and lives minutes
 (box's Capability::TTL_MINUTES), so the token is spent exactly once and
@@ -355,8 +355,8 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 			// The refusal is the honest half of the design: a capability that
 			// is gone is gone, and saying so is better than a client that
 			// reported success on a box that did not enroll.
-			fmt.Fprintf(env.Stderr, "cafe box enroll: %v\n", err)
-			fmt.Fprintf(env.Stderr, "cafe box enroll: the capability was NOT spent twice and nothing was written; mint a fresh token and re-run\n")
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box enroll: %v\n", err)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box enroll: the capability was NOT spent twice and nothing was written; mint a fresh token and re-run\n")
 			return errReported
 		}
 		say(env.Stderr, res.Message)
@@ -376,7 +376,7 @@ func boxStoreFor(_ *Command, _ *Env, deps boxDeps) *box.Store {
 
 // say is the stderr half of the split: one sentence, for a person.
 func say(w io.Writer, format string, args ...any) {
-	fmt.Fprintf(w, "cafe box: "+format+"\n", args...)
+	_, _ = fmt.Fprintf(w, "cafe box: "+format+"\n", args...)
 }
 
 // writeJSONDoc is the stdout half: the document, one per line of JSON, so a
@@ -551,13 +551,13 @@ func newBoxApplyCommand(deps boxDeps) *Command {
 			// A phase that is not in the table is a usage mistake, not a failure:
 			// the box was never asked to do anything it could misread.
 			if errors.Is(err, box.ErrNoSuchPhase) {
-				return fmt.Errorf("%w: %v", errUsage, err)
+				return fmt.Errorf("%w: %w", errUsage, err)
 			}
 			return err
 		}
 		say(env.Stderr, res.Message)
 		if res.Handoff != "" && res.Changed {
-			fmt.Fprintf(env.Stderr, "cafe box: this records the phase; %s is what performs it\n", res.Handoff)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box: this records the phase; %s is what performs it\n", res.Handoff)
 		}
 		return writeDoc(env.Stdout, res, f.json)
 	}
@@ -642,13 +642,13 @@ func writeReleaseLog(env *Env, deps boxDeps, opts *logsOptions) error {
 		// An unknown release id is a USAGE mistake: nothing was asked of the
 		// box that it could misread, and the answer is the list of what is on
 		// it rather than a failure.
-		return fmt.Errorf("%w: cafe box logs --release %s: %v (usage: %s)", errUsage, opts.release, err, "cafe box logs --release <id>")
+		return fmt.Errorf("%w: cafe box logs --release %s: %w (usage: %s)", errUsage, opts.release, err, "cafe box logs --release <id>")
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read release %s's log at %s: %w", opts.release, path, err)
 	}
-	fmt.Fprintf(env.Stdout, "%s", raw)
+	_, _ = fmt.Fprintf(env.Stdout, "%s", raw)
 	return nil
 }
 

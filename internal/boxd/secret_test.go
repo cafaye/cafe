@@ -157,6 +157,8 @@ func fillStrings(v reflect.Value) {
 		}
 	case reflect.Pointer:
 		fillStrings(v.Elem())
+	default:
+		// Other kinds carry no strings to fill.
 	}
 }
 
@@ -364,7 +366,7 @@ func TestRedeemRefusesParametersTheRouteDidNotDeclare(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// no arbitrary exec, asserted over the source rather than the behaviour
+// no arbitrary exec, asserted over the source rather than the behavior
 // ---------------------------------------------------------------------------
 
 // TestTheDaemonCannotExec walks this package's own source and fails if it

@@ -63,7 +63,7 @@ type fakeClock struct {
 	now    time.Time
 	delays []time.Duration
 	// err is returned instead of waiting, so a test can end the loop the way a
-	// Ctrl-C does without a cancelled context.
+	// Ctrl-C does without a canceled context.
 	err error
 }
 
@@ -209,7 +209,7 @@ func TestWaitSettlesOnFailure(t *testing.T) {
 	}
 }
 
-// A cancelled context ends the wait at once, and says so. A Ctrl-C that leaves
+// A canceled context ends the wait at once, and says so. A Ctrl-C that leaves
 // the command polling for another minute is a Ctrl-C that feels like a hang.
 func TestWaitStopsOnACancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -224,7 +224,7 @@ func TestWaitStopsOnACancelledContext(t *testing.T) {
 		t.Fatalf("err = %v, want it to wrap context.Canceled", err)
 	}
 	if runtime.polls != 0 {
-		t.Errorf("polls = %d, want 0: a cancelled context polls nothing", runtime.polls)
+		t.Errorf("polls = %d, want 0: a canceled context polls nothing", runtime.polls)
 	}
 }
 
@@ -453,7 +453,7 @@ func TestComposeCommandLine(t *testing.T) {
 
 // The runtime is reached by a binary on PATH, and a stack is brought up by
 // running it. Nothing in this file starts a container: the runtime's own
-// behaviour belongs to `docker compose`, and what cafe owes it is the command
+// behavior belongs to `docker compose`, and what cafe owes it is the command
 // line above and the state mapping, both pinned here.
 func TestComposeRuntimeUsesTheResolvedBinary(t *testing.T) {
 	ran := &recordedRunner{}

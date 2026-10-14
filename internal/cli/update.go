@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -194,7 +195,7 @@ func advancePin(raw []byte, tip string) ([]byte, error) {
 // combined output, because git's reason is usually the whole diagnosis and a
 // bare "exit status 1" sends nobody anywhere.
 func updateGit(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(context.Background(), "git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -207,7 +208,7 @@ func updateGit(dir string, args ...string) (string, error) {
 // answers "no" with exit 1, which is an answer and not a failure, so its
 // callers need this rather than updateGit.
 func gitOK(dir string, args ...string) bool {
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(context.Background(), "git", args...)
 	cmd.Dir = dir
 	return cmd.Run() == nil
 }
@@ -243,7 +244,7 @@ func looksRemote(url string) bool {
 
 // effectiveKind is local for a relative path and hosted otherwise, unless the
 // file says. The default matters because Site's parlor-local entry is how a
-// same-machine clone is recognised as skippable rather than canonical.
+// same-machine clone is recognized as skippable rather than canonical.
 func effectiveKind(r updateRemote, relative bool) string {
 	if r.Kind != "" {
 		return r.Kind
@@ -317,12 +318,12 @@ func runUpdate(opts *updateOptions, dir string, env *Env) error {
 		return err
 	}
 	for _, note := range skipped {
-		fmt.Fprintf(env.Stdout, "%s\n", note)
+		_, _ = fmt.Fprintf(env.Stdout, "%s\n", note)
 	}
 	// The selected tip is an ancestor of HEAD already: there is nothing to
 	// take, and in particular nothing to move the pin to.
 	if gitOK(workRoot, "merge-base", "--is-ancestor", selected.tip, "HEAD") {
-		fmt.Fprintf(env.Stdout, "already up to date: %s from %s is an ancestor of HEAD; the pin stays %s\n", selected.tip, selected.remote.Name, pin)
+		_, _ = fmt.Fprintf(env.Stdout, "already up to date: %s from %s is an ancestor of HEAD; the pin stays %s\n", selected.tip, selected.remote.Name, pin)
 		return nil
 	}
 
@@ -414,7 +415,7 @@ func selectUpdateSource(workRoot string, file updateFile) (selected updateSource
 		}
 	}
 	if agree {
-		return updateSource{remote: best.remote, source: best.source, tip: best.tip}, skipped, nil
+		return updateSource(best), skipped, nil
 	}
 	// One tip containing every other is not a disagreement: it is the newer
 	// state of the same template, the case parlor-local exists for.
@@ -427,7 +428,7 @@ func selectUpdateSource(workRoot string, file updateFile) (selected updateSource
 			}
 		}
 		if contains {
-			return updateSource{remote: f.remote, source: f.source, tip: f.tip}, skipped, nil
+			return updateSource(f), skipped, nil
 		}
 	}
 	var parts []string
@@ -446,17 +447,17 @@ func previewUpdate(workRoot string, file updateFile, branch string, selected upd
 	if err != nil {
 		return fmt.Errorf("cafe update: %w", err)
 	}
-	fmt.Fprintf(env.Stdout, "template pin %s (tracking %s#%s)\n", t.Commit, t.Repository, t.Branch)
-	fmt.Fprintf(env.Stdout, "branch %s in %s\n", branch, workRoot)
-	fmt.Fprintf(env.Stdout, "selected source %s (%s): %s\n", selected.remote.Name, selected.remote.URL, selected.tip)
-	fmt.Fprintf(env.Stdout, "%s is %s commit(s) ahead of HEAD\n", shortSHA(selected.tip), count)
+	_, _ = fmt.Fprintf(env.Stdout, "template pin %s (tracking %s#%s)\n", t.Commit, t.Repository, t.Branch)
+	_, _ = fmt.Fprintf(env.Stdout, "branch %s in %s\n", branch, workRoot)
+	_, _ = fmt.Fprintf(env.Stdout, "selected source %s (%s): %s\n", selected.remote.Name, selected.remote.URL, selected.tip)
+	_, _ = fmt.Fprintf(env.Stdout, "%s is %s commit(s) ahead of HEAD\n", shortSHA(selected.tip), count)
 	if log, err := updateGit(workRoot, "log", "--oneline", "-30", "HEAD.."+selected.tip); err == nil && log != "" {
-		fmt.Fprintf(env.Stdout, "what it carries:\n%s\n", log)
+		_, _ = fmt.Fprintf(env.Stdout, "what it carries:\n%s\n", log)
 	}
 	if stat, err := updateGit(workRoot, "diff", "--shortstat", t.Commit+".."+selected.tip); err == nil && stat != "" {
-		fmt.Fprintf(env.Stdout, "since the pin: %s\n", stat)
+		_, _ = fmt.Fprintf(env.Stdout, "since the pin: %s\n", stat)
 	}
-	fmt.Fprintf(env.Stdout, "the added/diverged/removed lists in template.yml are hints; git decides the merge. re-run without --check to merge.\n")
+	_, _ = fmt.Fprintf(env.Stdout, "the added/diverged/removed lists in template.yml are hints; git decides the merge. re-run without --check to merge.\n")
 	return nil
 }
 
@@ -468,7 +469,7 @@ func mergeUpdate(workRoot, manifest string, file updateFile, raw []byte, branch 
 	if !gitOK(workRoot, "merge-base", "--is-ancestor", t.Commit, selected.tip) {
 		return fmt.Errorf("cafe update: selected %s from %s does not descend from the recorded pin %s: the pin names work this checkout has not taken, or the source is not this template. refusing", shortSHA(selected.tip), selected.remote.Name, t.Commit)
 	}
-	fmt.Fprintf(env.Stdout, "merging %s from %s (%s) into %s\n", selected.tip, selected.remote.Name, selected.remote.URL, branch)
+	_, _ = fmt.Fprintf(env.Stdout, "merging %s from %s (%s) into %s\n", selected.tip, selected.remote.Name, selected.remote.URL, branch)
 	if _, err := updateGit(workRoot, "merge", "--no-ff", "--no-edit", selected.tip); err != nil {
 		return reportConflict(workRoot, manifest, selected, err)
 	}
@@ -492,7 +493,7 @@ func mergeUpdate(workRoot, manifest string, file updateFile, raw []byte, branch 
 		return fmt.Errorf("cafe update: %w. the merge is committed with a stale pin; move the commit: line to %s, stage it and `git commit --amend --no-edit` by hand", err, selected.tip)
 	}
 	head, _ := updateGit(workRoot, "rev-parse", "HEAD")
-	fmt.Fprintf(env.Stdout, "merged %s; the pin moved %s -> %s in the merge commit %s\n", selected.tip, t.Commit, selected.tip, shortSHA(head))
+	_, _ = fmt.Fprintf(env.Stdout, "merged %s; the pin moved %s -> %s in the merge commit %s\n", selected.tip, t.Commit, selected.tip, shortSHA(head))
 	return nil
 }
 
@@ -509,10 +510,10 @@ func reportConflict(workRoot, manifest string, selected updateSource, mergeErr e
 	files := strings.Fields(unmerged)
 	head, _ := updateGit(workRoot, "rev-parse", "--short", "HEAD")
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "cafe update: the merge of %s from %s stopped on %d conflicted file(s)", shortSHA(selected.tip), selected.remote.Name, len(files))
+	_, _ = fmt.Fprintf(&sb, "cafe update: the merge of %s from %s stopped on %d conflicted file(s)", shortSHA(selected.tip), selected.remote.Name, len(files))
 	if len(files) > 0 {
-		fmt.Fprintf(&sb, ": %s", strings.Join(files, ", "))
+		_, _ = fmt.Fprintf(&sb, ": %s", strings.Join(files, ", "))
 	}
-	fmt.Fprintf(&sb, "\nthe merge is still in progress and the pin is unchanged: resolve the conflicts, `git commit` the merge, then move the commit: line in %s to %s in a follow-up commit — or `git merge --abort` to return to %s with nothing changed", manifest, selected.tip, head)
+	_, _ = fmt.Fprintf(&sb, "\nthe merge is still in progress and the pin is unchanged: resolve the conflicts, `git commit` the merge, then move the commit: line in %s to %s in a follow-up commit — or `git merge --abort` to return to %s with nothing changed", manifest, selected.tip, head)
 	return errors.New(sb.String())
 }

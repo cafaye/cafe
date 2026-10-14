@@ -87,7 +87,7 @@ func oneRun(t *testing.T, session Session, args []string, outcome Outcome) trace
 
 // The no-op is asserted through an injected factory that COUNTS its calls. That
 // is the whole point: the property is about what did not happen, so a test that
-// merely checked `Enabled() == false` would pass on an installation that dialled
+// merely checked `Enabled() == false` would pass on an installation that dialed
 // and then threw the result away.
 func TestTheNoOpPathNeverBuildsAnExporter(t *testing.T) {
 	for _, row := range []struct {
@@ -427,11 +427,11 @@ func TestIdentityIsOnTheResourceAndNotOnTheSpan(t *testing.T) {
 // gives deployment.environment a four-value enum, so a guess is a value in the
 // backend somebody later has to filter out.
 func TestAnUnknownVersionOrEnvironmentIsAbsentRatherThanGuessed(t *testing.T) {
-	session, exp, err := recordingInstall(t, map[string]string{})
+	_, exp, err := recordingInstall(t, map[string]string{})
 	if err != nil {
 		t.Fatalf("Install: %v", err)
 	}
-	session, err = Install(context.Background(), Options{
+	session, err := Install(context.Background(), Options{
 		Lookup:      func(string) string { return "" },
 		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) { return exp, nil },
 	})
@@ -499,9 +499,9 @@ func TestAFailedInvocationCarriesAClassFromCoresVocabulary(t *testing.T) {
 		},
 		{
 			// An operator's own Ctrl-C is not an error an alert should page on.
-			name:     "a cancellation is cancelled",
+			name:     "a cancellation is canceled",
 			outcome:  OutcomeCancelled,
-			wantType: "cancelled",
+			wantType: telemetry.ErrorTypeCancelled,
 			wantErr:  true,
 		},
 	} {
@@ -1013,7 +1013,7 @@ func (s Session) spans() tracetest.SpanStubs {
 //     `WithBatcher`, which kit's pins.md requires ("Batch processors, never
 //     simple ones, in any production path"), so reading the exporter BEFORE the
 //     flush finds nothing. The flush is what makes a CLI's single span leave the
-//     process at all, so this is not a test artefact — it is the behaviour.
+//     process at all, so this is not a test artifact — it is the behavior.
 //
 //   - `InMemoryExporter.Shutdown` calls `Reset`, so reading it AFTER the flush
 //     finds nothing either. A provider's Shutdown shuts its exporter down, and
@@ -1186,7 +1186,7 @@ func TestTheSpanReachesARealOTLPReceiverOverTheWire(t *testing.T) {
 	if span.span.GetKind() != tracepb.Span_SPAN_KIND_INTERNAL {
 		t.Errorf("span kind on the wire = %v, want INTERNAL", span.span.GetKind())
 	}
-	if got := span.span.GetParentSpanId(); got != nil && len(got) != 0 {
+	if got := span.span.GetParentSpanId(); len(got) != 0 {
 		t.Errorf("the span on the wire has parent %x, want a root span", got)
 	}
 
@@ -1207,7 +1207,7 @@ func TestTheSpanReachesARealOTLPReceiverOverTheWire(t *testing.T) {
 
 // A failure on the wire, carrying the class — because the class is the whole
 // reason the traces schema makes status and error.type a biconditional, and a
-// class that does not survive serialisation is a class no dashboard can group on.
+// class that does not survive serialization is a class no dashboard can group on.
 func TestAFailureReachesTheWireWithItsClass(t *testing.T) {
 	if testing.Short() {
 		t.Skip("short mode: this test binds a loopback port and speaks gRPC")

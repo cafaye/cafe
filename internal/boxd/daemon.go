@@ -109,7 +109,7 @@ func Open(opts Options) (*Daemon, error) {
 	return &Daemon{opts: opts, log: log, backoff: minBackoff}, nil
 }
 
-// Run serves until ctx is cancelled or, with Once set, one capability has been
+// Run serves until ctx is canceled or, with Once set, one capability has been
 // redeemed. It returns ctx.Err() on cancellation and an error on a round it
 // could not complete, and it reconnects on its own: a daemon that exited
 // because box restarted would be a daemon the box's supervisor has to
@@ -129,7 +129,7 @@ func Open(opts Options) (*Daemon, error) {
 //
 // With Once, a round that completed without the context ending is the
 // daemon's whole life: `cafe boxd -once` returns after one capability, so an
-// operator can watch one round trip happen rather than signalling a daemon
+// operator can watch one round trip happen rather than signaling a daemon
 // they cannot see. A round that FAILED is also the daemon's whole life in
 // once mode: it returns the round's error rather than becoming a daemon the
 // operator asked not to run.
@@ -202,9 +202,9 @@ func (d *Daemon) round(ctx context.Context) error {
 		return fmt.Errorf("boxd: connect to %s: %w", id.ControlPlane, err)
 	}
 	// The connection is closed whatever the round does, and the key it was
-	// dialled with is dropped with it — the box key is held for the life of a
+	// dialed with is dropped with it — the box key is held for the life of a
 	// connection and no longer (doc.go, rule three).
-	defer ch.Close()
+	defer func() { _ = ch.Close() }()
 
 	d.logf("boxd: enrolled as %s, outbound to %s", id.BoxID, id.ControlPlane)
 	world := d.opts.WorldFor(id)
@@ -252,5 +252,5 @@ func (d *Daemon) redeem(ctx context.Context, ch ControlPlane, world World, cap C
 }
 
 func (d *Daemon) logf(format string, args ...any) {
-	fmt.Fprintf(d.log, format+"\n", args...)
+	_, _ = fmt.Fprintf(d.log, format+"\n", args...)
 }

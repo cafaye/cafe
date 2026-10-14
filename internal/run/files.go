@@ -44,9 +44,9 @@ func writeAtomic(path string, v any) error {
 	if err != nil {
 		return fmt.Errorf("run store: write %s: %w", path, err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := tmp.Write(raw); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return fmt.Errorf("run store: write %s: %w", path, err)
 	}
 	if err := tmp.Close(); err != nil {

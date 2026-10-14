@@ -159,7 +159,7 @@ func TestAClosedLeaseReapsAndAnOpenOneDoesNot(t *testing.T) {
 	//
 	// So: everything that existed before the reaper started must still exist,
 	// except the one container the lease was supposed to reap. That holds
-	// whatever the neighbours are doing, and it holds for the two workers that
+	// whatever the neighbors are doing, and it holds for the two workers that
 	// publish inside cafe's port block as much as for anything else.
 	for _, id := range before {
 		if id == target {
@@ -185,7 +185,7 @@ func containsID(all []string, want string) bool {
 }
 
 // shortID is the twelve-character form the daemon shows, which is what a person
-// reading a failure would recognise.
+// reading a failure would recognize.
 func shortID(id string) string {
 	if len(id) <= 12 {
 		return id
@@ -248,7 +248,7 @@ func (d *liveRuntime) ids(ctx context.Context, filters ...string) []string {
 	if err != nil {
 		return nil
 	}
-	return strings.Fields(string(out))
+	return strings.Fields(out)
 }
 
 func (d *liveRuntime) remove(ctx context.Context, name string) {

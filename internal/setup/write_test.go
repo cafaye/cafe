@@ -19,7 +19,7 @@ import (
 // shellHost is a host whose Run PERFORMS the commands a transfer sends. It is
 // not a mirror of the command strings — it is an interpreter: a file map plus
 // mkdir, rm, cat with a redirect, chmod, sha256sum, wc and mv. That matters,
-// because a fake that answered by recognising whole strings would go green the
+// because a fake that answered by recognizing whole strings would go green the
 // day the emitter's spelling changed and the interpreter's did not, which is
 // the exact failure this packet is about: two sides that agreed about
 // everything except the bytes.
@@ -146,7 +146,8 @@ func (h *shellHost) execOne(op string, stdin []byte) (int, string, string) {
 	case "wc":
 		// wc -c < 'path'
 		i := 0
-		for ; i < len(f) && f[i] != "<"; i++ {
+		for i < len(f) && f[i] != "<" {
+			i++
 		}
 		if i+1 >= len(f) {
 			return 1, "", "wc: missing stdin redirect"
@@ -197,7 +198,7 @@ func splitOps(s string) []string {
 }
 
 // lexFields splits one operation into tokens, unquoting single-quoted runs and
-// honouring the `'\”` escape shellQuote produces.
+// honoring the `'\”` escape shellQuote produces.
 func lexFields(op string) []string {
 	var fields []string
 	var cur strings.Builder
@@ -336,7 +337,7 @@ func TestAChunkBoundaryAtExactlyOneMebibyteIsOneChunk(t *testing.T) {
 
 func TestAMultiChunkWriteLandsWholeAndTheHostKeepsNoSibling(t *testing.T) {
 	host := newShellHost(t)
-	tr, _ := transferOver(host)
+	_, _ = transferOver(host)
 
 	payload := make([]byte, 2*WriteChunkSize+513)
 	copy(payload, "#!/bin/sh\nexec cafe-real \"$@\"\n")

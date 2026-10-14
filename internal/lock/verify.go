@@ -204,36 +204,36 @@ func (r Report) String() string {
 	lockPath := filepath.ToSlash(filepath.Join(r.Root, FileName))
 
 	if r.OK() {
-		fmt.Fprintf(&out, "cafe lock: %s matches %d pinned file(s), and nothing the tree declares is "+
+		_, _ = fmt.Fprintf(&out, "cafe lock: %s matches %d pinned file(s), and nothing the tree declares is "+
 			"missing from it.\n", lockPath, r.Checked)
 		return out.String()
 	}
 
-	fmt.Fprintf(&out, "cafe lock: %d problem(s) in %s (%d of %d pinned file(s) hashed).\n",
+	_, _ = fmt.Fprintf(&out, "cafe lock: %d problem(s) in %s (%d of %d pinned file(s) hashed).\n",
 		len(r.Problems), lockPath, r.Checked, r.Pinned)
 
 	for _, finding := range r.Problems {
-		fmt.Fprintf(&out, "\n  %s\n", finding.Path)
-		fmt.Fprintf(&out, "    kind:    %s\n", finding.Kind)
-		fmt.Fprintf(&out, "    problem: %s\n", finding.Problem)
+		_, _ = fmt.Fprintf(&out, "\n  %s\n", finding.Path)
+		_, _ = fmt.Fprintf(&out, "    kind:    %s\n", finding.Kind)
+		_, _ = fmt.Fprintf(&out, "    problem: %s\n", finding.Problem)
 		switch {
 		case finding.Want == "":
-			fmt.Fprintf(&out, "    pinned:  <not in the lock>\n    on disk: %s\n", finding.Got)
+			_, _ = fmt.Fprintf(&out, "    pinned:  <not in the lock>\n    on disk: %s\n", finding.Got)
 		case finding.Got == "":
-			fmt.Fprintf(&out, "    pinned:  %s\n    on disk: <absent>\n", finding.Want)
+			_, _ = fmt.Fprintf(&out, "    pinned:  %s\n    on disk: <absent>\n", finding.Want)
 		default:
-			fmt.Fprintf(&out, "    pinned:  %s\n    on disk: %s\n", finding.Want, finding.Got)
+			_, _ = fmt.Fprintf(&out, "    pinned:  %s\n    on disk: %s\n", finding.Want, finding.Got)
 		}
 	}
 
-	fmt.Fprintf(&out, "\n%d problem(s). What to do about each kind:\n", len(r.Problems))
+	_, _ = fmt.Fprintf(&out, "\n%d problem(s). What to do about each kind:\n", len(r.Problems))
 	seen := make(map[Problem]bool, len(r.Problems))
 	for _, finding := range r.Problems {
 		if seen[finding.Problem] {
 			continue
 		}
 		seen[finding.Problem] = true
-		fmt.Fprintf(&out, "\n  %s\n%s\n", finding.Problem, indent(finding.remedy()))
+		_, _ = fmt.Fprintf(&out, "\n  %s\n%s\n", finding.Problem, indent(finding.remedy()))
 	}
 	return out.String()
 }

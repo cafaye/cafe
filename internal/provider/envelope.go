@@ -54,12 +54,6 @@ type Envelope struct {
 // reporting a decode failure that names no cause.
 var ErrUnknownEnvelope = fmt.Errorf("envelope is not a cafe X25519+A256GCM envelope")
 
-// field order, so a sealed envelope's bytes are stable across runs of one
-// input. Box's SealedEnvelope has the same property and for the same
-// reason: a column that can hold two spellings of the same envelope is a
-// column a diff cannot read.
-var envelopeFields = []string{"v", "alg", "key", "iv", "tag", "data"}
-
 // ed25519P is the field prime, 2^255 - 19. It is named rather than inlined
 // because the conversion below is two modular operations over it and a reader
 // who has to check them should not have to check whether the constant is
@@ -201,7 +195,7 @@ func Seal(credential string, boxPublic ed25519.PublicKey) (string, error) {
 func Open(envelopeJSON string, boxPrivate ed25519.PrivateKey) (string, error) {
 	var env Envelope
 	if err := json.Unmarshal([]byte(envelopeJSON), &env); err != nil {
-		return "", fmt.Errorf("%w: it is not JSON: %v", ErrUnknownEnvelope, err)
+		return "", fmt.Errorf("%w: it is not JSON: %w", ErrUnknownEnvelope, err)
 	}
 	if env.V != EnvelopeVersion {
 		return "", fmt.Errorf("%w: version %d, want %d", ErrUnknownEnvelope, env.V, EnvelopeVersion)

@@ -10,7 +10,7 @@ import (
 )
 
 // Every file this package writes is rendered by a hand-written function here
-// rather than by marshalling a Go struct or running a template.
+// rather than by marshaling a Go struct or running a template.
 //
 // Two reasons, and they are different from each other.
 //
@@ -212,7 +212,7 @@ const (
 	w.text(`
 
 	// DefaultEndpoint is the collector that ships with the local stack. It is a
-	// default value and not a constant of behaviour: changing it changes where a
+	// default value and not a constant of behavior: changing it changes where a
 	// developer with no configuration sends their telemetry, which is the point.
 	DefaultEndpoint = `)
 	w.at("%q", endpoint.Default)
@@ -333,7 +333,7 @@ const (
 // `)
 	w.at("%s", variable)
 	w.text(` wins over the standard ` + "`OTEL_EXPORTER_OTLP_ENDPOINT`" + `, which
-// is honoured as a fallback so the service also works with generic OTel tooling.
+// is honored as a fallback so the service also works with generic OTel tooling.
 // That precedence is written down rather than left to be discovered, because a
 // contract with an undocumented precedence order is a bug report.
 //
@@ -883,6 +883,33 @@ func SpanName(operation string, targetAndQualifier ...string) (string, error) {
 `)
 }
 
+// errorTypeConstName is one vocabulary value as an exported constant name:
+// ErrorType plus the value in camel case, underscores marking the breaks. It
+// is ASCII arithmetic rather than a case library because the vocabulary is
+// ASCII by construction — every error.type is snake_case — and a general
+// solution would be a dependency for thirteen words.
+func errorTypeConstName(value string) string {
+	var b strings.Builder
+	b.WriteString("ErrorType")
+	upper := true
+	for _, r := range value {
+		if r == '_' {
+			upper = true
+			continue
+		}
+		if upper {
+			if r >= 'a' && r <= 'z' {
+				r -= 'a' - 'A'
+			}
+			upper = false
+		} else if r >= 'A' && r <= 'Z' {
+			r += 'a' - 'A'
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 // renderErrorTypes writes core's closed error vocabulary.
 func renderErrorTypes(w *writer, spec contract.TelemetrySpec) {
 	w.text(`
@@ -915,6 +942,26 @@ var errorTypes = []string{
 	renderStringList(w, spec.Traces.ErrorTypes, 1)
 
 	w.text(`}
+
+// errorTypeConsts names every value in the closed vocabulary above, so a
+// caller names a class without transcribing a wire value: a transcription is
+// a second copy of core's bytes, and the drift between the two is silent
+// until a collector rejects the span.
+const (
+`)
+	width := 0
+	names := make([]string, 0, len(spec.Traces.ErrorTypes))
+	for _, value := range spec.Traces.ErrorTypes {
+		name := errorTypeConstName(value)
+		names = append(names, name)
+		if len(name) > width {
+			width = len(name)
+		}
+	}
+	for i, value := range spec.Traces.ErrorTypes {
+		w.text(fmt.Sprintf("\t%-*s = %q\n", width, names[i], value))
+	}
+	w.text(`)
 
 // ErrorTypes returns core's closed error vocabulary, in core's order.
 func ErrorTypes() []string {
@@ -954,7 +1001,7 @@ func renderChecks(w *writer, spec contract.TelemetrySpec) {
 // This is the fleet-level form of the canary a service runs end to end, and it
 // is here because the realistic leak is not an attacker: it is a well-meaning
 // ` + "`muse.prompt`" + ` added six months from now by somebody debugging a routing
-// decision. A collector that drops unrecognised attributes is the chokepoint; a
+// decision. A collector that drops unrecognized attributes is the chokepoint; a
 // name that can never be added is the barrier behind it, and two independent
 // barriers to the same leak is the whole argument — because the realistic
 // failure is one of them being removed by a well-meaning change and nobody
@@ -1311,7 +1358,7 @@ func TestMetricsAreCoarserThanTracesOnPurpose(t *testing.T) {
 // renderSwitchTable writes the no-op test: the four switches, driven through the
 // environment.
 //
-// This is the one assertion in the generated suite about behaviour rather than
+// This is the one assertion in the generated suite about behavior rather than
 // about a table, and it is the test that would have caught a service whose
 // "disabled" exporter still buffered or still retried against a dead endpoint.
 func renderSwitchTable(w *writer) {

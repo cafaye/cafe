@@ -71,7 +71,7 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 	// Insecure"), so naming credentials makes the choice survive whatever the
 	// environment said. `credentials.NewTLS(nil)` is the host's root CA pool,
 	// which is exactly what the secure default branch builds — so this changes
-	// which input decides, and not what is dialled.
+	// which input decides, and not what is dialed.
 	//
 	// The scheme is the last thing on the endpoint string and therefore the only
 	// thing a reader has to look at twice, so it is worth stating that it is

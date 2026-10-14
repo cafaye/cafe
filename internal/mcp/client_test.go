@@ -32,7 +32,6 @@ func (c *client) Close() { _ = c.connection.Close() }
 // client is a connected SDK session plus the handshake, so a test reads as
 // "connect, then call".
 type client struct {
-	t          *testing.T
 	connection *sdk.ClientSession
 }
 

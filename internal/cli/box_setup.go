@@ -93,7 +93,7 @@ ever reached), the cafe binary, the box's own enrollment, the daemon's identity
 and unit, and the heartbeat that proves all of it landed.
 
 WHAT RUNS WHERE. The keypair is generated ON THE HOST, by the host's own
-` + "`cafe box enrol`" + `. This machine never holds a private key: what crosses the
+` + "`cafe box enroll`" + `. This machine never holds a private key: what crosses the
 SSH connection is the capability on its way in and the box's three non-secret
 identifiers on the way out. That is the whole shape of the trust boundary, and
 it is why a controller can be a laptop.
@@ -110,7 +110,7 @@ document reports ` + "`redemptions: 0`" + ` and the exit is 0.
 
 THE CAPABILITY IS PRESENTED ONCE. box enforces single-use in its own database,
 so a second presentation is always refused server-side and a client that
-redeemed twice would have proved nothing. ` + "`cafe box enrol`" + ` on the host
+redeemed twice would have proved nothing. ` + "`cafe box enroll`" + ` on the host
 journals the redemption before it writes anything, so a run that died between
 them finishes on the next attempt without spending the token again.
 
@@ -137,7 +137,7 @@ enrollment command's stdin over the SSH connection and exists nowhere else.`,
 			fs.StringVar(&opts.identity, "key", "", "a private key to authenticate with; empty means the agent and the default locations")
 			fs.BoolVar(&opts.password, "password", false, "authenticate with a password read from $"+setupPasswordEnv+" on stdin, never from argv")
 			fs.StringVar(&opts.rangeText, "range", "", "the version constraint this box tracks, written into the unit as CAF_BOX_RANGE")
-			fs.StringVar(&opts.controlURL, "control-plane", "", "the origin the box enrols against; empty means $"+boxURLEnv)
+			fs.StringVar(&opts.controlURL, "control-plane", "", "the origin the box enrolls against; empty means $"+boxURLEnv)
 			fs.BoolVar(&opts.dryRun, "dry-run", false, "print the plan and run nothing on the host")
 			fs.BoolVar(&opts.json, "json", false, "print the machine document on stdout instead of the human one")
 		},
@@ -180,7 +180,7 @@ enrollment command's stdin over the SSH connection and exists nowhere else.`,
 			// The document is printed FIRST and the error returned second: the
 			// steps that ran are the useful part, and a caller that only sees
 			// the exit code has lost them.
-			fmt.Fprintf(env.Stderr, "cafe box setup: %v\n", setupErr)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box setup: %v\n", setupErr)
 			return errReported
 		}
 		return nil
@@ -273,10 +273,10 @@ func setupProgress(w io.Writer, host string) func(setup.WriteEvent, int, int) {
 	return func(event setup.WriteEvent, wrote, total int) {
 		switch event {
 		case setup.WriteChunk:
-			fmt.Fprintf(w, "cafe box setup: %s of %s written to %s (%s elapsed, %s/s)\n",
+			_, _ = fmt.Fprintf(w, "cafe box setup: %s of %s written to %s (%s elapsed, %s/s)\n",
 				bytesHuman(wrote), bytesHuman(total), host, elapsed(), rateHuman(wrote, time.Since(start)))
 		case setup.WriteVerified:
-			fmt.Fprintf(w, "cafe box setup: %s on %s written and verified — the host's sha256 matches the local binary (%s elapsed, %s/s)\n",
+			_, _ = fmt.Fprintf(w, "cafe box setup: %s on %s written and verified — the host's sha256 matches the local binary (%s elapsed, %s/s)\n",
 				bytesHuman(total), host, elapsed(), rateHuman(total, time.Since(start)))
 		}
 	}
@@ -349,13 +349,13 @@ func setupSelfBinary(deps boxSetupDeps) (string, error) {
 // flag that guaranteed one of the two was wrong in some script.
 func printSetupResult(env *Env, res setup.Result, asJSON bool) {
 	for _, line := range res.Log {
-		fmt.Fprintln(env.Stderr, line)
+		_, _ = fmt.Fprintln(env.Stderr, line)
 	}
 	if res.Enrolled != nil {
 		say(env.Stderr, "host %s holds box %s; %d capability presented on this setup",
 			res.Host, res.Enrolled.BoxID, res.Redemptions)
 	}
 	if err := writeDoc(env.Stdout, res, asJSON); err != nil {
-		fmt.Fprintf(env.Stderr, "cafe box setup: write the document: %v\n", err)
+		_, _ = fmt.Fprintf(env.Stderr, "cafe box setup: write the document: %v\n", err)
 	}
 }

@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -480,7 +481,7 @@ func TestEveryLockImplementationIsReachableOnSomePlatform(t *testing.T) {
 
 func filesFor(t *testing.T, goos string) []string {
 	t.Helper()
-	cmd := exec.Command("go", "list", "-f", "{{range .GoFiles}}{{.}} {{end}}{{range .IgnoredGoFiles}}{{.}} {{end}}", ".")
+	cmd := exec.CommandContext(context.Background(), "go", "list", "-f", "{{range .GoFiles}}{{.}} {{end}}{{range .IgnoredGoFiles}}{{.}} {{end}}", ".")
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH=amd64", "CGO_ENABLED=0")
 	out, err := cmd.Output()
 	if err != nil {

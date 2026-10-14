@@ -86,7 +86,7 @@ func keywordOf(e *jsonschema.ValidationError) string {
 
 // messageOf renders the validator's typed error as a sentence. The library
 // formats these through a golang.org/x/text message printer, which would make
-// a CLI's output depend on a translation catalogue; every kind a manifest can
+// a CLI's output depend on a translation catalog; every kind a manifest can
 // fail is formatted here instead, in words cafe chose.
 func messageOf(e *jsonschema.ValidationError) string {
 	switch k := e.ErrorKind.(type) {

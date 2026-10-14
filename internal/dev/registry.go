@@ -216,7 +216,7 @@ func (c Catalog) Names() []string {
 // extensionPrefix opens a key that a catalog may carry and cafe does not model.
 // It is kamal's spelling, borrowed whole, because the reasoning is the same in
 // both places: refusing unknown keys is only safe if there is a way to say
-// something that is not modelled yet, and a prefix is that way. Without it,
+// something that is not modeled yet, and a prefix is that way. Without it,
 // "refuse what you do not know" and "let the document grow" are the same
 // decision, and the first one wins by accident.
 const extensionPrefix = "x-"
@@ -234,7 +234,7 @@ func ReadCatalog(r io.Reader) (Catalog, error) {
 	}
 
 	// A catalog is the one cafe input that is HAND-WRITTEN, COMMITTED, and read
-	// by a decoder that quietly discards what it does not recognise. Every other
+	// by a decoder that quietly discards what it does not recognize. Every other
 	// input cafe parses is produced by a program that shares cafe's types. So a
 	// misspelled key here is a typo a human made, and the default decoder turns
 	// that typo into silence: the key is dropped, the field keeps its zero
@@ -291,7 +291,7 @@ func ReadCatalog(r io.Reader) (Catalog, error) {
 // BOTH ARE REFUSED RATHER THAN IGNORED, and the reason is the same one that
 // `checkCatalogKeys` exists for. `connections` is a MAP, so a misspelled key is
 // silent by construction: nothing in the decoder complains about a map key it
-// does not recognise, so `{"postgresql": "PANTRY_DATABASE_URL"}` would decode
+// does not recognize, so `{"postgresql": "PANTRY_DATABASE_URL"}` would decode
 // into a perfectly good entry and cafe would then hand the service the default
 // `DATABASE_URL` — the exact defect this declaration was added to remove, back
 // again, with an entry in the catalog that reads like it was fixed. A key that
@@ -513,7 +513,7 @@ func stripExtensionKeys(services map[string]map[string]json.RawMessage) []byte {
 	}
 	document, err := json.Marshal(services)
 	if err != nil {
-		// Marshalling a map of raw messages back out cannot fail on anything
+		// Marshaling a map of raw messages back out cannot fail on anything
 		// json.Unmarshal just accepted, so this is unreachable rather than
 		// impossible. Returning the original document is the safe answer: the
 		// strict decode then refuses the extension key, which is a worse error
@@ -565,7 +565,7 @@ func ReadCatalogFile(path string) (Catalog, error) {
 	if err != nil {
 		return nil, fmt.Errorf("service catalog %s: %w", path, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	return ReadCatalog(file)
 }
 

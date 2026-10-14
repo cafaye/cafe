@@ -66,7 +66,7 @@ func pendingAgainstRange(rangeText, deployed string, candidates []boxd.Candidate
 			continue
 		}
 		if constraint.Satisfies(v) && v.Compare(deployedVersion) > 0 {
-			pending = append(pending, boxd.PendingRelease{Name: c.Name, Version: c.Version})
+			pending = append(pending, boxd.PendingRelease(c))
 		}
 	}
 	return pending

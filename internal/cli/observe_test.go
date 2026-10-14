@@ -24,7 +24,7 @@ import (
 // assembles a real Observation through the box-world's own readers — a real
 // self-signed certificate on disk, a real backup drill journal, and the two
 // env seams. The point of the integration is that the WHOLE machine-readable
-// document is produced by the real path, marshalled, and read back, because the
+// document is produced by the real path, marshaled, and read back, because the
 // consumers (the policy engine OPS-P16, the monthly report OPS-P13) consume
 // JSON and a report that does not marshal is a report nobody reads.
 
@@ -182,7 +182,7 @@ func TestCertStatusClassifiesRemainingLife(t *testing.T) {
 // TestTheBoxWorldObservesItself is the integration: the real box-world assembles
 // a machine-readable Observation from a real certificate on disk, a real backup
 // drill journal, the two env seams, and box's candidate releases. It is
-// marshalled and read back, because that is what the policy engine and the
+// marshaled and read back, because that is what the policy engine and the
 // monthly report will do.
 func TestTheBoxWorldObservesItself(t *testing.T) {
 	now := time.Now()
@@ -438,7 +438,7 @@ func TestTheBoxWorldObservesEveryServiceItHasDrilled(t *testing.T) {
 
 // TestTheObserveStopsWhenTheConnectionIsGone: the assembly is bounded by the
 // caller's context, because a report assembled for a connection that has
-// already gone away is a report nobody will ack. A cancelled context is
+// already gone away is a report nobody will ack. A canceled context is
 // refused rather than answered with a stale document.
 func TestTheObserveStopsWhenTheConnectionIsGone(t *testing.T) {
 	t.Setenv("CAF_BOX_RANGE", "")
@@ -449,7 +449,7 @@ func TestTheObserveStopsWhenTheConnectionIsGone(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := world.Observe(ctx, boxd.ObserveParams{}); err == nil {
-		t.Error("a cancelled context still produced an observation")
+		t.Error("a canceled context still produced an observation")
 	}
 }
 

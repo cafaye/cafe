@@ -268,7 +268,7 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 		// measured on, and it answers as one — naming the chunk, the
 		// bytes acknowledged and the elapsed time — rather than as a
 		// transport that died. The bound being enabled is part of the
-		// condition: with no bound in force a cancelled caller is just a
+		// condition: with no bound in force a canceled caller is just a
 		// dead transport, which is the red control's whole point.
 		chunkStalled := t.chunkBound() > 0 && chunkCtx.Err() == context.DeadlineExceeded && totalCtx.Err() != context.DeadlineExceeded
 		totalStalled := t.totalBound() > 0 && totalCtx.Err() == context.DeadlineExceeded
@@ -331,10 +331,10 @@ func (t transfer) write(ctx context.Context, path string, data []byte, mode os.F
 
 	if out, err := t.run(totalCtx, "mv "+shellQuote(tmp)+" "+shellQuote(path), nil); err != nil {
 		return fmt.Errorf("cafe box setup: write %s on %s: the bytes are on the host and match, but the move into place died: %v. "+
-			"The verified file is at %s; move it by hand and the host is whole.", path, t.name, err, tmp)
+			"The verified file is at %s; move it by hand and the host is whole", path, t.name, err, tmp)
 	} else if !out.OK() {
 		return fmt.Errorf("cafe box setup: write %s on %s: the bytes are on the host and match, but the move into place failed: %s. "+
-			"The verified file is at %s; move it by hand and the host is whole.",
+			"The verified file is at %s; move it by hand and the host is whole",
 			path, t.name, firstLine(out.Stderr+out.Stdout), tmp)
 	}
 	return nil

@@ -103,7 +103,7 @@ func Load(dir string) (Project, error) {
 // builds `./cmd/${SERVICE_NAME}` and its default is a directory no repository in
 // this platform has.
 func resolveBuild(dir, name string) *Build {
-	dockerfile := ""
+	var dockerfile string
 	switch {
 	case isFile(filepath.Join(dir, filepath.FromSlash(dockerfileLocation))):
 		dockerfile = dockerfileLocation

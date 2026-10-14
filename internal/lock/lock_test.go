@@ -229,10 +229,10 @@ func TestTwoBuildsOfOneTreeProduceTheSameBytes(t *testing.T) {
 		Files []Entry `json:"files"`
 	}
 	if err := json.Unmarshal(a, &probe); err != nil {
-		t.Fatalf("the marshalled lock is not valid JSON: %v", err)
+		t.Fatalf("the marshaled lock is not valid JSON: %v", err)
 	}
 	if len(probe.Files) != len(first.Files) {
-		t.Errorf("the marshalled lock has %d files and the lock has %d", len(probe.Files), len(first.Files))
+		t.Errorf("the marshaled lock has %d files and the lock has %d", len(probe.Files), len(first.Files))
 	}
 }
 

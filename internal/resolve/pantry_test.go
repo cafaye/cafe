@@ -2,6 +2,7 @@ package resolve
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -55,8 +56,8 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
-	pe, ok := err.(*PantryError)
-	if !ok {
+	var pe *PantryError
+	if !errors.As(err, &pe) {
 		t.Fatalf("error = %T, want *PantryError", err)
 	}
 	if pe.Code != "not_found" {
@@ -127,8 +128,8 @@ func TestHTTPPantryTier2UnauthorizedIsNamed(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a 401 resolved without an error")
 	}
-	pe, ok := err.(*PantryError)
-	if !ok {
+	var pe *PantryError
+	if !errors.As(err, &pe) {
 		t.Fatalf("error = %T, want *PantryError", err)
 	}
 	if pe.Code != "unauthorized" {
@@ -160,8 +161,8 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a 503 resolved without an error")
 	}
-	pe, ok := err.(*PantryError)
-	if !ok {
+	var pe *PantryError
+	if !errors.As(err, &pe) {
 		t.Fatalf("error = %T, want *PantryError", err)
 	}
 	if pe.Code != "unavailable" {
@@ -220,8 +221,8 @@ func TestHTTPPantryProjectByAddressNotFoundNamesTheAddress(t *testing.T) {
 
 	p := HTTPPantry{BaseURL: srv.URL}
 	_, err := p.ProjectByAddress(context.Background(), "alice", "widget")
-	pe, ok := err.(*PantryError)
-	if !ok {
+	var pe *PantryError
+	if !errors.As(err, &pe) {
 		t.Fatalf("error = %T, want *PantryError", err)
 	}
 	if pe.Code != "not_found" || pe.Status != http.StatusNotFound {
@@ -237,7 +238,10 @@ func TestHTTPPantryWithoutBaseURLRefuses(t *testing.T) {
 	p := HTTPPantry{}
 	if _, err := p.Project(context.Background(), "identity"); err == nil {
 		t.Fatalf("a client with no endpoint resolved without an error")
-	} else if _, ok := err.(*PantryError); !ok {
-		t.Errorf("error = %T, want *PantryError", err)
+	} else {
+		var pe *PantryError
+		if !errors.As(err, &pe) {
+			t.Errorf("error = %T, want *PantryError", err)
+		}
 	}
 }

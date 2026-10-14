@@ -308,7 +308,7 @@ func TestABusyPortNamesTheCommandThatFindsTheHolder(t *testing.T) {
 	}
 }
 
-// Two sessions racing for the same port are serialised by the lock rather than
+// Two sessions racing for the same port are serialized by the lock rather than
 // by whichever probe ran last. That is the whole reason the lock is taken before
 // the probe.
 func TestTwoSessionsDoNotBothGetTheSamePort(t *testing.T) {
@@ -333,7 +333,7 @@ func TestTwoSessionsDoNotBothGetTheSamePort(t *testing.T) {
 }
 
 // The context is checked before the port is taken, not after. A reservation loop
-// that runs away on a cancelled context is a loop that holds a thousand locks.
+// that runs away on a canceled context is a loop that holds a thousand locks.
 func TestACancelledContextTakesNoLocks(t *testing.T) {
 	r := registryIn(t, Block{42100, 42109})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -345,7 +345,7 @@ func TestACancelledContextTakesNoLocks(t *testing.T) {
 	// Nothing was taken, so the block is untouched.
 	held, err := r.Reserve("s", 1, 1)
 	if err != nil {
-		t.Fatalf("the block is exhausted after a cancelled reserve: %v", err)
+		t.Fatalf("the block is exhausted after a canceled reserve: %v", err)
 	}
 	_ = held[0].Release()
 }
@@ -381,5 +381,5 @@ func errText(err error) string {
 // netListen opens a real loopback listener on a port, for the case that needs
 // "something is genuinely listening" rather than a stub saying so.
 func netListen(port int) (net.Listener, error) {
-	return net.Listen("tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	return new(net.ListenConfig).Listen(context.Background(), "tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 }

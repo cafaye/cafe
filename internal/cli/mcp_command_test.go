@@ -90,7 +90,7 @@ func TestTheHTTPTransportServesAndAnnouncesItsAddressOnStderr(t *testing.T) {
 
 	cancel()
 	if err := <-done; err != nil {
-		t.Errorf("runMCP returned %v after its context was cancelled", err)
+		t.Errorf("runMCP returned %v after its context was canceled", err)
 	}
 }
 

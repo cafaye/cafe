@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -9,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/cafaye/cafe/internal/dev"
 	"github.com/cafaye/cafe/internal/ports"
@@ -428,7 +426,7 @@ func TestAPortOutsideTheBlockIsWarnedNotRefused(t *testing.T) {
 		t.Errorf("ports = %s, want warn: an explicit -port is a developer's decision, and the check's job is to say what it costs", finding.Severity)
 	}
 	if code != exitSuccess {
-		t.Errorf("exit code = %d, want 0: cafe honours an explicit port rather than overriding it", code)
+		t.Errorf("exit code = %d, want 0: cafe honors an explicit port rather than overriding it", code)
 	}
 	if !strings.Contains(finding.Detail, "15000-15999") {
 		t.Errorf("the detail does not name the block: %q", finding.Detail)
@@ -463,7 +461,7 @@ func TestAHeldPublishedPortSaysHowToGetOneFromTheBlock(t *testing.T) {
 }
 
 // A port outside the block is not cafe's business. The block exists so that a port
-// in it is recognisable as ours, and a check that scanned all 65535 would be a
+// in it is recognizable as ours, and a check that scanned all 65535 would be a
 // check reporting on every developer's machine.
 func TestTheBlockCheckOnlyLooksAtTheBlock(t *testing.T) {
 	dir := doctorProject(t, "go")
@@ -483,54 +481,6 @@ func TestTheBlockCheckOnlyLooksAtTheBlock(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-
-// runDoctorIn drives the doctor with a machine and a real project on disk, so a
-// test can put the machine in a state it cannot otherwise arrange — a runtime
-// that is installed but not answering, half a gigabyte of memory, a port another
-// process already holds — and read the report it produces.
-//
-// It is the one place the router's exit-code mapping is applied, so a test that
-// says "exits 1" means what a script would see.
-func runDoctorIn(t *testing.T, dir string, m *triMachine, args ...string) (int, string, string) {
-	t.Helper()
-	opts := doctorOptions{project: dir}
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-tools-only":
-			opts.toolsOnly = true
-		case "-project":
-			i++
-			opts.project = args[i]
-		case "-registry":
-			i++
-			opts.registry = args[i]
-		case "-ledger":
-			i++
-			opts.ledger = args[i]
-		default:
-			t.Fatalf("unhandled doctor flag %q in this test", args[i])
-		}
-	}
-
-	var out, errOut strings.Builder
-	env := &Env{Version: testVersion, Stdout: &out, Stderr: &errOut, Context: context.Background()}
-	d := newDoctor(env, opts.registry, opts.ledger)
-	d.lookPath = m.lookPath
-	d.probes = m
-	d.clock = func() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC) }
-
-	err := d.report(opts.project, opts)
-	code := exitSuccess
-	switch {
-	case err == nil:
-	case errors.Is(err, errReported):
-		code = exitFailure
-	default:
-		errOut.WriteString("cafe: " + err.Error() + "\n")
-		code = exitFailure
-	}
-	return code, out.String(), errOut.String()
-}
 
 // doctorProject writes a project directory with a manifest and a Dockerfile, so
 // a plan is possible and the port check has something to check.

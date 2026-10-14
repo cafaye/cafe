@@ -263,7 +263,7 @@ func ChallengeHandler(dir string) http.Handler {
 		if r.Method == http.MethodHead {
 			return
 		}
-		w.Write(body)
+		_, _ = w.Write(body)
 	})
 }
 

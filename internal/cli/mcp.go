@@ -142,7 +142,7 @@ func runMCP(transport mcp.Transport, opts *mcpOptions, env *Env) error {
 		return server.ServeStdio(env.Context, os.Stdin, os.Stdout)
 	case mcp.HTTP:
 		return server.ServeHTTP(env.Context, opts.addr, func(addr string) {
-			fmt.Fprintf(env.Stderr, "cafe mcp: serving streamable HTTP on http://%s\n", addr)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe mcp: serving streamable HTTP on http://%s\n", addr)
 		})
 	default:
 		// Unreachable: ParseTransport has already named every transport there

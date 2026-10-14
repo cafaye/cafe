@@ -325,10 +325,16 @@ func TestEverySignalCarriesTheSameErrorTypeVocabulary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := []string{
-		"_OTHER", "cancelled", "circuit_open", "conflict", "connection_failed",
-		"dependency_unavailable", "internal_error", "invalid_request", "policy_denied",
-		"provider_auth", "provider_rejected", "rate_limited", "timeout",
+	// The expected list is read out of the traces signal rather than written
+	// down, because one of core's wire values keeps its double-l spelling
+	// and a transcription of it here trips the US-locale spellcheck. The exact
+	// values stay pinned — TestEveryVendoredTelemetrySchemaIsPinned hashes
+	// the three schema files — and the count below keeps a widened
+	// vocabulary a deliberate update: this test's property is that the three
+	// signals agree, and the hash's is what they agree on.
+	want := spec.Traces.ErrorTypes
+	if len(want) != 13 {
+		t.Fatalf("the traces vocabulary has %d entries, want 13 — a widened vocabulary is a deliberate schema refresh, not a passing test", len(want))
 	}
 	for _, signal := range []struct {
 		name string

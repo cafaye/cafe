@@ -48,9 +48,10 @@ const (
 )
 
 type step struct {
-	Name string `yaml:"name"`
-	Run  string `yaml:"run"`
-	Uses string `yaml:"uses"`
+	Name string         `yaml:"name"`
+	Run  string         `yaml:"run"`
+	Uses string         `yaml:"uses"`
+	With map[string]any `yaml:"with"`
 }
 
 type job struct {
@@ -297,4 +298,131 @@ func TestTheGateJobRunsTheGateAndTheLockfileGuard(t *testing.T) {
 			t.Errorf("the lockfile guard in job %q does not name %s", name, file)
 		}
 	}
+}
+
+// TestTheGateRunsTheSameLintCIRuns is the check roll-c5-cafe-ci exists for.
+// kit's shared `go` job lints with golangci-lint at a pinned version over
+// kit's `lint/golangci.yml`, and for seventeen hours that lint failed on
+// master while `bin/prime` stayed green — because the gate never ran the
+// linter at all. So the gate runs it now, and this test keeps the two from
+// parting company again:
+//
+//   - `bin/prime` runs `golangci-lint run` with an explicit `--config`
+//     (never GOLANGCI_LINT_CONFIG, which v2.6.2 reads as nothing) resolved
+//     from kit's checkout, and refuses rather than skips when the tool or
+//     the config is absent.
+//   - `mise.toml` pins the linter version, and the pin is the one version
+//     in this tree: `bin/prime` reads it rather than repeating it.
+//   - the CI job that runs the gate provides both halves: a step installing
+//     the linter at mise.toml's pin, and kit's `lint/` checked out where
+//     `bin/prime` looks for it.
+//
+// On the tree as it stands on master this test fails at the first assertion:
+// `bin/prime` there never mentions the linter, and the lint step is what
+// discriminates. That is the RED control, and it is load-bearing: revert the
+// lint section of `bin/prime` and a finding injected into a temp file passes
+// silently.
+func TestTheGateRunsTheSameLintCIRuns(t *testing.T) {
+	root := repoRoot(t)
+
+	prime, err := os.ReadFile(filepath.Join(root, "bin", "prime"))
+	if err != nil {
+		t.Fatalf("read bin/prime: %v", err)
+	}
+	gate := string(prime)
+	if !strings.Contains(gate, "golangci-lint run") {
+		t.Fatalf("bin/prime never runs golangci-lint, so the local gate cannot catch what CI's lint step catches")
+	}
+	if !strings.Contains(gate, "--config") {
+		t.Errorf("bin/prime runs the linter without --config, and without it golangci-lint v2 falls back to its built-in default set and exits 0 on a file kit's config rejects")
+	}
+	if !strings.Contains(gate, ".kit/lint/golangci.yml") || !strings.Contains(gate, "../kit/lint/golangci.yml") {
+		t.Errorf("bin/prime does not resolve kit's lint config from .kit (CI) or ../kit (workspace); a config found neither place is a lint that never runs")
+	}
+	if strings.Contains(gate, "GOLANGCI_LINT_CONFIG") {
+		t.Errorf("bin/prime sets GOLANGCI_LINT_CONFIG, which measured v2.6.2 reads as nothing — the run proceeds on the default set either way")
+	}
+
+	pin := lintPin(t, root)
+	if !strings.Contains(gate, "mise.toml") {
+		t.Errorf("bin/prime never reads mise.toml, so its linter version is a second copy of the pin that can drift")
+	}
+
+	wf := loadWorkflow(t)
+	name, j, ok := jobRunning(wf, gateCommand)
+	if !ok {
+		t.Fatalf("no job runs %s, so there is no CI side to compare the gate against", gateCommand)
+	}
+	installer, found := stepRunning(j, "mise.toml")
+	if !found || !strings.Contains(installer, "golangci-lint") {
+		t.Errorf("job %q runs the gate but no step installs golangci-lint at mise.toml's pin — bin/prime exits 127 there, and the gate was right", name)
+	}
+	checkout := false
+	for _, s := range j.Steps {
+		if !strings.HasPrefix(s.Uses, "actions/checkout") {
+			continue
+		}
+		path, _ := s.With["path"].(string)
+		sparse, _ := s.With["sparse-checkout"].(string)
+		if path == ".kit" && sparse == "lint" {
+			checkout = true
+		}
+	}
+	if !checkout {
+		t.Errorf("job %q runs the gate but never checks out kit's lint/ to .kit, so bin/prime finds no config and fails — or, worse, a future edit makes it pass on the default set", name)
+	}
+
+	if kitVersion, found := kitLintVersion(t, root); found && kitVersion != pin {
+		t.Errorf("mise.toml pins golangci-lint %s but kit's reusable workflow runs %s — one bump, two files, same commit", pin, kitVersion)
+	}
+}
+
+// lintPin reads the golangci-lint pin out of mise.toml. One pin, read where it
+// lives: a literal here would be the second copy this test exists to forbid.
+func lintPin(t *testing.T, root string) string {
+	t.Helper()
+
+	raw, err := os.ReadFile(filepath.Join(root, "mise.toml"))
+	if err != nil {
+		t.Fatalf("read mise.toml: %v", err)
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, `"golangci-lint"`) {
+			pin := strings.Trim(strings.TrimPrefix(line, `"golangci-lint"`), " =\"")
+			if pin == "" {
+				t.Fatalf("mise.toml pins no golangci-lint version, and bin/prime refuses to run without the binary")
+			}
+			return pin
+		}
+	}
+	t.Fatalf("mise.toml holds no golangci-lint pin, and bin/prime refuses to run without the binary")
+	return ""
+}
+
+// kitLintVersion reads the linter version out of kit's reusable workflow, from
+// the checkout the gate itself resolves: `.kit` in CI, `../kit` in a workspace
+// checkout. No checkout beside the tree means no comparison rather than a
+// failure — but CI always has `.kit`, so the comparison is real exactly where
+// a drift would ship.
+func kitLintVersion(t *testing.T, root string) (string, bool) {
+	t.Helper()
+
+	for _, dir := range []string{".kit", "../kit"} {
+		raw, err := os.ReadFile(filepath.Join(root, dir, ".github", "workflows", "ci.reusable.yml"))
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(raw), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "version:") {
+				version := strings.Trim(strings.TrimPrefix(line, "version:"), " v\"'")
+				if version != "" && version[0] >= '0' && version[0] <= '9' {
+					return version, true
+				}
+			}
+		}
+	}
+	t.Logf("no kit checkout beside the tree, so the pin comparison is skipped here; CI always checks out .kit, so it runs there")
+	return "", false
 }

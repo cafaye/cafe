@@ -255,8 +255,8 @@ func newProviderConnectCommand(deps providerDeps) *Command {
 			BoxPublic:  public,
 		})
 		if err != nil {
-			fmt.Fprintf(env.Stderr, "cafe provider connect: %v\n", err)
-			fmt.Fprintf(env.Stderr, "cafe provider connect: the credential was NOT posted in plaintext and nothing was stored\n")
+			_, _ = fmt.Fprintf(env.Stderr, "cafe provider connect: %v\n", err)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe provider connect: the credential was NOT posted in plaintext and nothing was stored\n")
 			return errReported
 		}
 
@@ -390,7 +390,7 @@ func newProviderStatusCommand(deps providerDeps) *Command {
 
 		conns, err := provider.Status(env.Context, deps.controlPlane, id.BoxID)
 		if err != nil {
-			fmt.Fprintf(env.Stderr, "cafe provider status: %v\n", err)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe provider status: %v\n", err)
 			return errReported
 		}
 
@@ -441,9 +441,9 @@ func writeProviderDoc(w io.Writer, v *StatusResult, asJSON bool) error {
 		return writeHuman(w, "box "+v.BoxID+" has no provider connections")
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "box %s is connected to:\n", v.BoxID)
+	_, _ = fmt.Fprintf(&b, "box %s is connected to:\n", v.BoxID)
 	for _, c := range v.Connections {
-		fmt.Fprintf(&b, "  %s\t%s\n", c.Provider, c.Account)
+		_, _ = fmt.Fprintf(&b, "  %s\t%s\n", c.Provider, c.Account)
 	}
 	return writeHuman(w, b.String())
 }

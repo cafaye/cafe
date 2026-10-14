@@ -26,7 +26,7 @@ type Build struct {
 	Registry string `json:"registry"`
 	// Name is the repository, and the service's image name in it.
 	Name string `json:"name"`
-	// Tag is what a person recognises. It is decoration: the digest is the
+	// Tag is what a person recognizes. It is decoration: the digest is the
 	// identity, and a tag is never what the box pulls.
 	Tag string `json:"tag,omitempty"`
 	// Digest is `sha256:…`, and it is required. See imageOK.
@@ -228,11 +228,11 @@ func Deploy(ctx context.Context, s *Store, box Box, req Request) (Report, error)
 			rep.Previous = &p
 		}
 	}
-	if staged, err := s.Stage(rel); err != nil {
+	staged, err := s.Stage(rel)
+	if err != nil {
 		return rep, fmt.Errorf("%s: %w", StepStage, err)
-	} else {
-		rel = staged
 	}
+	rel = staged
 
 	if err := box.Serve(ctx, rel); err != nil {
 		// A release that could not even be started never went in front of
@@ -259,7 +259,7 @@ func Deploy(ctx context.Context, s *Store, box Box, req Request) (Report, error)
 			rep.RolledBack = true
 			rep.Detail = fmt.Sprintf("release %s could not be started and %s is still serving", rel.ID, cur.ID)
 		}
-		return rep, fmt.Errorf("%s: %w: %v", StepServe, ErrGateFailed, err)
+		return rep, fmt.Errorf("%s: %w: %w", StepServe, ErrGateFailed, err)
 	}
 
 	if _, err := s.Switch(rel.ID); err != nil {
@@ -315,7 +315,7 @@ func (s *Store) flipBack(failed Release, previous string, why error) (Report, er
 		}
 		rep.Outcome = OutcomeNoCurrent
 		rep.Detail = fmt.Sprintf("release %s failed its health gate and there was no previous release to go back to: %s is not serving anything", failed.ID, failed.Service)
-		return rep, fmt.Errorf("%s: %w: %v (no previous release on this box to roll back to)", StepGate, ErrGateFailed, why)
+		return rep, fmt.Errorf("%s: %w: %w (no previous release on this box to roll back to)", StepGate, ErrGateFailed, why)
 	}
 	back, err := s.Switch(previous)
 	if err != nil {
@@ -324,7 +324,7 @@ func (s *Store) flipBack(failed Release, previous string, why error) (Report, er
 	rep.Release = back
 	rep.Outcome = OutcomeRolled
 	rep.Detail = fmt.Sprintf("release %s failed its health gate and %s was put back: %v", failed.ID, previous, why)
-	return rep, fmt.Errorf("%s: %w: release %s failed (%v) and the box is serving %s again", StepGate, ErrGateFailed, failed.ID, why, previous)
+	return rep, fmt.Errorf("%s: %w: release %s failed (%w) and the box is serving %s again", StepGate, ErrGateFailed, failed.ID, why, previous)
 }
 
 // previousGood is the release rollback goes back to when no target is named:

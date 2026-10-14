@@ -45,7 +45,7 @@ func TestEveryRuleLandsInTheTiersBufPutsItIn(t *testing.T) {
 		// cafaye says SOURCE+JSON and this is a deliberate divergence rather than
 		// an oversight: buf's reservation covers field NUMBERS as well as names,
 		// and the number is the half that protects a binary encoding. The cafaye
-		// extension has no analogue of a number — OpenAPI properties have names
+		// extension has no analog of a number — OpenAPI properties have names
 		// and no ordinal — so it reserves the half that is a label and there is
 		// no wire half left to reserve. buf's WIRE here is protecting something
 		// the format does not have.
@@ -75,7 +75,7 @@ func TestEveryRuleLandsInTheTiersBufPutsItIn(t *testing.T) {
 		// buf: RPC_SAME_REQUEST_TYPE is in all four.
 		{"operation-same-request", TierSource | TierJSON | TierWire},
 
-		// cafaye has no buf analogue for "an operation stopped answering with
+		// cafaye has no buf analog for "an operation stopped answering with
 		// this status", so the tier is argued rather than copied: a status is a
 		// label on an answer, and identity's own document removed a 409 from
 		// POST /v1/email-verifications in 1.6.0 without any encoding moving. The

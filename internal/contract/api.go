@@ -411,7 +411,7 @@ func versionedPrefixes(operations []Operation) []string {
 }
 
 // Tree is the document as it was decoded, for a rule that needs something this
-// package has not modelled. The numeric lints use it; a second caller is the
+// package has not modeled. The numeric lints use it; a second caller is the
 // signal that a typed field above is missing.
 func (d *APIDocument) Tree() any { return d.tree }
 

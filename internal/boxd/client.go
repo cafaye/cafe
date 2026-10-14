@@ -67,7 +67,7 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) 
 		return nil, err
 	}
 	dialer := &net.Dialer{Timeout: dialTimeout}
-	conn, err := tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{
+	conn, err := (&tls.Dialer{NetDialer: dialer, Config: &tls.Config{
 		// The box's client certificate: this is what makes the channel
 		// MUTUAL. Box verifies it, and this is the only credential the
 		// box presents.
@@ -75,12 +75,17 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) 
 		ServerName:   host,
 		RootCAs:      d.RootCAs,
 		MinVersion:   tls.VersionTLS13,
-	})
+	}}).DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("mTLS to %s: %w", addr, err)
 	}
-	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	return &tlsControlPlane{conn: conn, rw: rw, dec: json.NewDecoder(rw)}, nil
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok {
+		_ = conn.Close()
+		return nil, fmt.Errorf("mTLS to %s: the dialer did not return a TLS connection", addr)
+	}
+	rw := bufio.NewReadWriter(bufio.NewReader(tlsConn), bufio.NewWriter(tlsConn))
+	return &tlsControlPlane{conn: tlsConn, rw: rw, dec: json.NewDecoder(rw)}, nil
 }
 
 // dialTarget turns the identity's control-plane fact into what the network

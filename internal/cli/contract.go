@@ -80,9 +80,9 @@ func contractVerbTable(verbs []contractVerb) string {
 	table.WriteString("Commands:\n")
 	tw := tabwriter.NewWriter(&table, 0, 0, 2, ' ', 0)
 	for _, verb := range verbs {
-		fmt.Fprintf(tw, "  %s\t%s\n", verb.cmd.Name, verb.cmd.Summary)
+		_, _ = fmt.Fprintf(tw, "  %s\t%s\n", verb.cmd.Name, verb.cmd.Summary)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 	return table.String()
 }
 
@@ -192,12 +192,12 @@ func runContractBreaking(previousPath, currentPath string, tiers contract.Tier, 
 		// Silence would read as "the command did nothing". One line saying the
 		// comparison happened and what it was against is what a CI log needs to
 		// distinguish "no breaks" from "never ran".
-		fmt.Fprintf(out, "no breaking changes in %s (%s)\n", tiers, currentPath)
+		_, _ = fmt.Fprintf(out, "no breaking changes in %s (%s)\n", tiers, currentPath)
 		return nil
 	}
-	fmt.Fprintln(out, reported)
+	_, _ = fmt.Fprintln(out, reported)
 	if selected, total := len(reported), len(contract.Classify(previous, current)); selected != total {
-		fmt.Fprintf(out, "%d of %d breaking changes; %s reported the rest\n", selected, total, tiers)
+		_, _ = fmt.Fprintf(out, "%d of %d breaking changes; %s reported the rest\n", selected, total, tiers)
 	}
 	// The report on stdout is the message, so a failing comparison says nothing
 	// more on stderr — the same rule `contract lint` follows.
@@ -253,10 +253,10 @@ func runContractLint(root string, out io.Writer) error {
 		first, bad := finding.First()
 		if bad {
 			invalid++
-			fmt.Fprintf(out, "INVALID %s: %s\n", finding.Path, first)
+			_, _ = fmt.Fprintf(out, "INVALID %s: %s\n", finding.Path, first)
 			continue
 		}
-		fmt.Fprintf(out, "OK %s\n", finding.Path)
+		_, _ = fmt.Fprintf(out, "OK %s\n", finding.Path)
 	}
 	if invalid > 0 {
 		return errReported
@@ -290,7 +290,7 @@ func newContractResolveCommand() *Command {
 			// service being broken: usage, exit 2.
 			return fmt.Errorf("%w: cafe %s: %w", errUsage, c.Name, err)
 		}
-		fmt.Fprintf(env.Stdout, "%-3s  %s allows %s: %s\n",
+		_, _ = fmt.Fprintf(env.Stdout, "%-3s  %s allows %s: %s\n",
 			verdict(resolution.Satisfied), resolution.Constraint, resolution.Version, resolution.Rationale)
 		if !resolution.Satisfied {
 			return errReported

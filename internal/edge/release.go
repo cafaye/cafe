@@ -203,7 +203,7 @@ func Switch(root, id string) error {
 		return fmt.Errorf("point the switch at %s: %w", id, err)
 	}
 	if err := os.Rename(tmp, CurrentPath(root)); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return fmt.Errorf("flip the %s link: %w", CurrentLinkName, err)
 	}
 	return nil

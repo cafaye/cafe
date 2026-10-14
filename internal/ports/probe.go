@@ -1,6 +1,7 @@
 package ports
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -86,7 +87,7 @@ func (p loopbackProber) Free(port int) (bool, error) {
 		network = "tcp"
 	}
 	for _, name := range p.names {
-		listener, err := net.Listen(network, net.JoinHostPort(name, strconv.Itoa(port)))
+		listener, err := new(net.ListenConfig).Listen(context.Background(), network, net.JoinHostPort(name, strconv.Itoa(port)))
 		if err != nil {
 			// EADDRINUSE is the answer, not a failure of the probe.
 			if isInUse(err) {

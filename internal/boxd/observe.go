@@ -43,7 +43,7 @@ const ObservationSchemaVersion = 1
 // Observation is one box's report on itself: the deployed facts, the facts in
 // degraded status where v0 cannot yet measure them, and the releases that are
 // pending for this box's version range. It is the answer observe.report gives
-// box, marshalled for the wire, and it is a non-secret by construction
+// box, marshaled for the wire, and it is a non-secret by construction
 // — the load-bearing test in secret_test.go walks this type graph and fails if
 // anything reachable from it is Secret-shaped.
 type Observation struct {
@@ -264,7 +264,7 @@ type CandidateRelease struct {
 
 // observeReport is the read-only route that answers the observation stream. It
 // takes the release universe and hands the world everything it needs to
-// assemble the report; the answer is the whole Observation, marshalled into
+// assemble the report; the answer is the whole Observation, marshaled into
 // the Ack beside its Outcome so a capability that asked to observe is answered
 // rather than merely acknowledged.
 //

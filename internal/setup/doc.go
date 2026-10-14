@@ -4,7 +4,7 @@
 //
 // # What the command is
 //
-// `cafe box enroll` enrols a box that ALREADY has cafe on it. `cafe box setup`
+// `cafe box enroll` enrolls a box that ALREADY has cafe on it. `cafe box setup`
 // is the command before that: it SSHs into a host nobody has touched,
 // bootstraps Docker the kamal way, installs the cafe binary, runs the
 // enrollment ON THE HOST, writes the daemon's identity and unit, starts the

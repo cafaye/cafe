@@ -103,7 +103,7 @@ func boxRollbackCommand(deps boxDeps) *Command {
 			// no earlier one is recorded. A rollback that guessed at the
 			// second-newest directory would sometimes serve a release nobody
 			// deployed last, which is worse than a command that says no.
-			fmt.Fprintf(env.Stderr, "cafe box rollback: %v\n", err)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box rollback: %v\n", err)
 			return errReported
 		}
 		// The record is moved to match the link, so the two do not disagree
@@ -157,7 +157,7 @@ func boxPublishCommand(deps boxDeps) *Command {
 		}
 		rel, err := edge.Publish(dir, id, files)
 		if err != nil {
-			fmt.Fprintf(env.Stderr, "cafe box publish: %v\n", err)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box publish: %v\n", err)
 			return errReported
 		}
 		spec, err := edge.Load(dir)
@@ -247,26 +247,6 @@ func (o *boxEdgeOptions) declare(fs *flag.FlagSet) {
 
 // boxIDFor resolves which box the edge belongs to. The flag wins; otherwise it
 // is the enrolled identity, because a spec carrying the wrong box is the one
-// thing edge.Spec refuses and a verb that guessed would be a verb that wrote a
-// record nobody could use.
-//
-// A box that cannot be read is a REFUSAL and not a fallback to a default name:
-// a spec written with nobody's box id is a spec edge.Validate rejects on the
-// next read, which turns a missing capability into a routing outage.
-func boxIDFor(deps boxDeps, opts *boxEdgeOptions) (string, error) {
-	if strings.TrimSpace(opts.box) != "" {
-		return strings.TrimSpace(opts.box), nil
-	}
-	st, err := deps.store().Status()
-	if err != nil {
-		return "", err
-	}
-	if !st.Enrolled {
-		return "", fmt.Errorf("this box is not enrolled; pass --box <id> to name it")
-	}
-	return st.Identity.BoxID, nil
-}
-
 // readTree reads a directory into the release's file set. Symlinks and
 // anything that is not a regular file are skipped rather than followed: a
 // release directory is a set of bytes, and following a link out of it would put

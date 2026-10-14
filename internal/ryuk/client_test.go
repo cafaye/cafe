@@ -31,7 +31,7 @@ type fakeReaper struct {
 
 func newFakeReaper(t *testing.T) *fakeReaper {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestDialWaitsForTheAcknowledgement(t *testing.T) {
 // A reaper that answers nothing must not hang a test run. The deadline is the
 // difference between "the lease failed" and "the run stopped".
 func TestDialDoesNotWaitForeverForASilentReaper(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestClosingTheClientEndsTheLease(t *testing.T) {
 	reaper := newFakeReaper(t)
 	gone := make(chan struct{})
 	go func() {
-		conn, err := net.Dial("tcp", reaper.address())
+		conn, err := (&net.Dialer{}).DialContext(context.Background(), "tcp", reaper.address())
 		if err != nil {
 			close(gone)
 			return
@@ -428,7 +428,7 @@ func TestAGarbageDurationFallsBackToTheDefault(t *testing.T) {
 	if got.ConnectionTimeout != defaultConnectionTimeout {
 		t.Errorf("ConnectionTimeout = %s, want the default %s", got.ConnectionTimeout, defaultConnectionTimeout)
 	}
-	// The neighbouring field is asserted too, so that fixing one cannot come at
+	// The neighboring field is asserted too, so that fixing one cannot come at
 	// the cost of the other and a test still goes green.
 	if got.ReconnectionTimeout != 30*time.Second {
 		t.Errorf("ReconnectionTimeout = %s, want 30s", got.ReconnectionTimeout)

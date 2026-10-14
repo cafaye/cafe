@@ -14,7 +14,7 @@ import (
 // The registry is the seam `cafe dev` and `cafe deploy` share and the one place a
 // service catalog can arrive from outside this binary. pantry-01 owns the real
 // answer; cafe owns the question. These tests pin the question — the shape of
-// the document and the behaviour of the catalog — so that when pantry serves it
+// the document and the behavior of the catalog — so that when pantry serves it
 // the only thing left is a transport.
 func TestCatalogResolvesTheServicesItHolds(t *testing.T) {
 	registry := alphaRegistry()
@@ -239,7 +239,7 @@ func writeFile(t *testing.T, path, contents string) {
 // The defect this whole block exists for, reproduced rather than described.
 //
 // A catalog is the one cafe input a person writes by hand, and encoding/json
-// drops a key it does not recognise without a sound. So `imag` — a typo, one
+// drops a key it does not recognize without a sound. So `imag` — a typo, one
 // character from the real key — left the entry with no image, and the catalog
 // was accepted. The developer was not shown that. They were shown, three layers
 // later and from a different command, that "the local registry names no image
@@ -419,7 +419,7 @@ func TestTheKeyListNamesEveryFieldTheStructActuallyHas(t *testing.T) {
 // A declaration cafe cannot act on is REFUSED, not ignored.
 //
 // It is a map, so a misspelled key is silent by construction: nothing in the
-// decoder complains about a map key it does not recognise. `{"postgresql": …}`
+// decoder complains about a map key it does not recognize. `{"postgresql": …}`
 // decodes into a perfectly good entry and cafe then hands the service the
 // conventional `DATABASE_URL` — the exact defect the declaration was added to
 // remove, back again, in a catalog that reads as though it were fixed. A key

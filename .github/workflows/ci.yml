@@ -47,18 +47,15 @@ jobs:
   # kit's one workflow, called rather than copied, so a fix in kit lands here
   # without a per-repository pull request.
   #
-  # KNOWN RED ON ARRIVAL: the `lint` step of this job does not pass on master
-  # today. golangci-lint's default linter set finds 13 unchecked errors, all
-  # errcheck: six `fmt.Fprint`/`Fprintf` into a command's own output, three
-  # `tabwriter.Flush`, one `defer file.Close`, and three in test code. Reproduce
-  # with `golangci-lint run ./...` in a clone — this repository ships no
-  # `.golangci.yml`, so that is the default set, not kit's stricter one, which
-  # finds 24. `go vet ./...` and `bin/prime` are both clean. The two companion
-  # jobs below are green, and this job's build, `go test -race` and coverage gate
-  # are green, so the failure is named rather than inferred — but read the `ci`
-  # check as "builds, tests and covers", and treat its lint step as known-red.
-  # Fixing the 13 changes error handling in internal/cli and internal/dev, so it
-  # is its own packet and not a rider here.
+  # KNOWN RED ON ARRIVAL — retired by roll-c5-cafe-ci, kept as the reason the
+  # lint lives in two places. The `lint` step of this job used to fail on
+  # master: golangci-lint's findings were real and `bin/prime` did not run the
+  # linter at all, so every finding arrived the way these did — found by CI
+  # rather than by the gate. The `gate` job below now runs `bin/prime`, and
+  # `bin/prime` runs the same lint at the same pinned version over the same
+  # config, so the local gate would have caught everything CI catches. If this
+  # job's lint step is red and the gate job is green, the two have parted
+  # company again: read `bin/prime`'s lint section and `kit.ref` first.
   ci:
     name: 'ci (kit: go)'
     uses: cafaye/kit/.github/workflows/ci.reusable.yml@master
@@ -129,6 +126,74 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
+      - name: read kit.ref
+        # GitHub Actions cannot read a file's contents into an expression, so
+        # the pin goes through $GITHUB_ENV once and the checkout below reads it
+        # from the environment. `grep -v` on the comment marker rather than
+        # `sed -n 2p`, because a file whose comment block grows must not silently
+        # hand the checkout the wrong line.
+        run: |
+          ref="$(grep -v '^\s*#' kit.ref | grep -v '^\s*$' | head -1)"
+          if [ -z "$ref" ]; then
+            echo "::error::kit.ref holds no ref (only comments/blanks) — the gate cannot find kit's lint config" >&2
+            exit 1
+          fi
+          echo "KIT_REF=$ref" >> "$GITHUB_ENV"
+      - name: kit (lint config)
+        # kit's `lint/golangci.yml`, sparse-checked out beside the repository so
+        # `bin/prime` finds it at `.kit/lint/golangci.yml`. The config is NOT
+        # copied into this repo — kit's own header says why ("Not copied into a
+        # service repo") and a copy is a second policy to drift. Without this
+        # step the gate runs the linter with no config at all and, per golangci
+        # v2's measured behaviour, exits 0 on a file this config rejects.
+        #
+        # The ref is `kit.ref`, the pin this repository runs, read out of the
+        # file because a branch would move and a lint policy that moves under a
+        # repo is the drift the file's own header forbids.
+        uses: actions/checkout@v7
+        with:
+          repository: cafaye/kit
+          ref: ${{ env.KIT_REF }}
+          path: .kit
+          sparse-checkout: lint
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: golangci-lint, the version mise.toml pins
+        # THE TOOL `bin/prime` NOW REFUSES WITHOUT, INSTALLED AT THE PIN.
+        #
+        # roll-c5-cafe-ci added `golangci-lint run` to `bin/prime`, which exits
+        # 127 when the binary is not on PATH — the refusal working, not a
+        # defect. This job installed Go and ran `bin/prime`, but it never ran
+        # mise, so the binary the local gate gets for free was absent and the
+        # gate would exit 127. The gate is right; the job has to provide what
+        # the gate requires.
+        #
+        # The VERSION IS READ FROM `mise.toml`, not typed here: a literal here
+        # would be a third copy of the number beside mise.toml's pin and kit's
+        # `golangci-lint-action` `version:`, and `bin/prime` already compares
+        # the running binary against mise.toml.
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^"golangci-lint" *= *"\(.*\)"/\1/p' mise.toml)"
+          if [ -z "$version" ]; then
+            echo "::error::mise.toml pins no golangci-lint, and bin/prime refuses"
+            echo "::error::to run without the binary. Restore the pin rather than"
+            echo "::error::installing whatever GitHub calls current."
+            exit 1
+          fi
+          arch="$(uname -m)"
+          case "$arch" in
+            x86_64) arch=amd64 ;;
+            aarch64 | arm64) arch=arm64 ;;
+          esac
+          base="https://github.com/golangci/golangci-lint/releases/download/v${version}"
+          archive="golangci-lint-${version}-linux-${arch}.tar.gz"
+          curl -sSfL "$base/$archive" | tar -xz -C "$RUNNER_TEMP"
+          mkdir -p "$HOME/.local/bin"
+          install -m 0755 "$RUNNER_TEMP/golangci-lint-${version}-linux-${arch}/golangci-lint" "$HOME/.local/bin/golangci-lint"
+          echo "$HOME/.local/bin" >>"$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          golangci-lint --version
       - name: the gate a developer runs
         run: ./bin/prime
       # go.sum is the lockfile and bin/prime's first step moves it. On a tree

@@ -135,7 +135,7 @@ func (m *machineProbes) memory() uint64 { return totalMemory() }
 func (m *machineProbes) cpus() int { return runtime.NumCPU() }
 
 func (m *machineProbes) portFree(port int) bool {
-	listener, err := net.Listen("tcp", net.JoinHostPort("", strconv.Itoa(port)))
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", net.JoinHostPort("", strconv.Itoa(port)))
 	if err != nil {
 		return false
 	}

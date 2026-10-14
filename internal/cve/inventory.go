@@ -66,15 +66,15 @@ type Component struct {
 	// nobody chose it, which is exactly the case a CVE report has to name
 	// rather than pretend is a pin.
 	Pinned bool
-	// Declared is whether this entry came from the substrate catalogue
+	// Declared is whether this entry came from the substrate catalog
 	// (true) or from observing the box (false). An observed component that
-	// is not in the catalogue is not refused — it is a thing on the box with
+	// is not in the catalog is not refused — it is a thing on the box with
 	// a version, and it can carry an advisory like anything else — but it is
 	// marked, because "we do not know what installed this" is the first
 	// thing the reader of a security report needs to be told.
 	Declared bool
 	// Blast is what a fix to this component touches. Empty for an observed
-	// component nobody has characterised; the report says so rather than
+	// component nobody has characterized; the report says so rather than
 	// inventing a radius.
 	Blast Blast
 }
@@ -100,9 +100,9 @@ type Blast struct {
 //
 // cafaye/kit is a different repository. cafe cannot open
 // templates/substrate/install.sh at run time, and a cafe that could would be a
-// cafe whose answer depended on a checkout being beside it. So the catalogue
+// cafe whose answer depended on a checkout being beside it. So the catalog
 // is transcribed here and every row carries the file:line it was read from,
-// which is the only defence a copy has: a reader can check it, and a drift
+// which is the only defense a copy has: a reader can check it, and a drift
 // between the two is findable by opening one file.
 //
 // The set is exactly what the installer's own header lists in its eleven
@@ -349,7 +349,7 @@ type Observer interface {
 	Observe(ctx context.Context, e Emitter) ([]Component, error)
 }
 
-// Inventory is the answer to "what is on this box": the declared catalogue,
+// Inventory is the answer to "what is on this box": the declared catalog,
 // what observation produced, and the two divergences that matter.
 //
 // The two lists are kept apart on purpose. Folding them into one list of
@@ -361,7 +361,7 @@ type Observer interface {
 type Inventory struct {
 	// Box is the enrolled identity of the box this is about.
 	Box string
-	// Declared is the substrate catalogue, verbatim.
+	// Declared is the substrate catalog, verbatim.
 	Declared []Component
 	// Observed is what the observer read. Empty when nothing has been
 	// observed, which is a fact about the run rather than an empty box.
@@ -376,24 +376,24 @@ type Inventory struct {
 type Divergence struct {
 	// Component is the name both sides are talking about.
 	Component string
-	// Declared is the catalogue's version. Empty when the box is running
-	// something the catalogue does not name at all.
+	// Declared is the catalog's version. Empty when the box is running
+	// something the catalog does not name at all.
 	Declared string
 	// Observed is the version the box reported. Empty when the observer read
 	// no version, which is reported rather than silently matched against the
-	// catalogue's pin.
+	// catalog's pin.
 	Observed string
 	// Why is the sentence a reader acts on.
 	Why string
 }
 
-// Compare fills in the divergences between the catalogue and what was
+// Compare fills in the divergences between the catalog and what was
 // observed.
 //
 // It matches by name, not by version, and it says why each mismatch matters
 // rather than only that there is one:
 //
-//   - A catalogue entry nobody observed is a component the substrate installs
+//   - A catalog entry nobody observed is a component the substrate installs
 //     that this box is not running. That is either a box mid-install or a box
 //     somebody took apart, and the report does not guess which.
 //   - An observed component nobody declared is reported as a divergence with
@@ -404,7 +404,7 @@ type Divergence struct {
 //     string comparison would call that a divergence that isn't.
 //
 // An empty observation returns no divergences rather than a divergence per
-// catalogue entry: "nobody looked" is not "everything is missing", and a
+// catalog entry: "nobody looked" is not "everything is missing", and a
 // report that said the box had lost sixteen components when the observer
 // never ran would be the loudest wrong answer in the package.
 func (inv *Inventory) Compare() []Divergence {
@@ -445,7 +445,7 @@ func (inv *Inventory) Compare() []Divergence {
 			inv.Divergences = append(inv.Divergences, Divergence{
 				Component: got.Name,
 				Observed:  got.Version,
-				Why:       "running on the box and not in the substrate catalogue — nobody has said what installed it",
+				Why:       "running on the box and not in the substrate catalog — nobody has said what installed it",
 			})
 		}
 	}
@@ -453,14 +453,14 @@ func (inv *Inventory) Compare() []Divergence {
 }
 
 // Components is the inventory as one flat list: everything declared, with
-// anything observed that the catalogue does not name appended.
+// anything observed that the catalog does not name appended.
 //
 // This is the list the matcher runs over, and it is deliberately the union: an
 // advisory against a component nobody declared is still an advisory against a
-// thing running on the box, and the catalogue's job is to characterise the
+// thing running on the box, and the catalog's job is to characterize the
 // substrate, not to set the scope of what can be vulnerable.
 //
-// The declared half comes first and in catalogue order, and the observed
+// The declared half comes first and in catalog order, and the observed
 // extras are appended sorted by name, so two runs over one box produce the
 // same list.
 func (inv *Inventory) Components() []Component {

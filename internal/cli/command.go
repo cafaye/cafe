@@ -71,7 +71,7 @@ func (c *Command) Execute(env *Env, args []string) error {
 
 // parseArgs parses the flags out of args and returns the positionals.
 //
-// When interspersed is false it is the flag package's own behaviour: parsing
+// When interspersed is false it is the flag package's own behavior: parsing
 // stops at the first non-flag argument, and everything from there on — flags
 // included — comes back as positional. That is the rule a command that forwards
 // its tail to a child process needs, and it is why it stays the default.
@@ -163,10 +163,4 @@ func pluralArgs(n int) string {
 		return "1 argument"
 	}
 	return fmt.Sprintf("%d arguments", n)
-}
-
-// notImplemented is what every stub returns. The command name goes in so the
-// message is useful on a terminal: "cafe deploy: not implemented in v0".
-func notImplemented(c *Command) error {
-	return fmt.Errorf("cafe %s: %w", c.Name, errNotImplemented)
 }

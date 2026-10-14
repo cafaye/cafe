@@ -196,7 +196,7 @@ type Redaction struct {
 	Version string
 	// EnforcedAt is where the boundary lives. Core's default is "collector"; a
 	// service that sets it to "service" has declared that its own allowlist is
-	// the only line, which core's D13 says is defence in depth with nothing
+	// the only line, which core's D13 says is defense in depth with nothing
 	// behind it.
 	EnforcedAt string
 	// DefaultDeny is always "deny". Carried rather than assumed because it is a
@@ -926,10 +926,10 @@ func skipValue(decoder *json.Decoder) error {
 			return err
 		}
 		if nested, ok := token.(json.Delim); ok {
-			switch {
-			case nested == '{' || nested == '[':
+			switch nested {
+			case '{', '[':
 				depth++
-			case nested == '}' || nested == ']':
+			case '}', ']':
 				depth--
 			}
 		}

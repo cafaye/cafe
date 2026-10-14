@@ -80,7 +80,7 @@ type Release struct {
 	// question rather than an answer.
 	Service string `json:"service"`
 	// Version is the tag the build carried. Cosmetic: the digest is the
-	// identity, and this is what a person recognises.
+	// identity, and this is what a person recognizes.
 	Version string `json:"version,omitempty"`
 	// Image is the pinned OCI reference, name@digest. Never a tag alone —
 	// see Build.Validate.
@@ -94,7 +94,7 @@ type Release struct {
 	StartedAt time.Time `json:"started_at"`
 	// EndedAt is when it stopped being current. Nil while it is live, and a
 	// POINTER rather than a zero time because omitempty does not work on a
-	// time.Time struct — the zero value would be serialised into every
+	// time.Time struct — the zero value would be serialized into every
 	// release record as 0001-01-01T00:00:00Z, which is a date nobody can read
 	// and a fact nobody asked for.
 	EndedAt *time.Time `json:"ended_at,omitempty"`
@@ -129,19 +129,6 @@ func (h History) find(id string) (Release, bool) {
 		}
 	}
 	return Release{}, false
-}
-
-// count reports how many releases of one service the history holds, for the
-// prune: the keep count is per service, not per box, or one busy service
-// would evict every release another one ever had.
-func (h History) count(service string) int {
-	n := 0
-	for _, r := range h.Releases {
-		if r.Service == service {
-			n++
-		}
-	}
-	return n
 }
 
 // Store is the stack rooted at one directory. It is a value, not a
@@ -291,7 +278,7 @@ func (s *Store) Stage(rel Release) (Release, error) {
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(rel); err != nil {
-		f.Close()
+		_ = f.Close()
 		return Release{}, fmt.Errorf("write %s: %w", path, err)
 	}
 	if err := f.Close(); err != nil {
@@ -390,11 +377,11 @@ func (s *Store) save(h History) error {
 	if err != nil {
 		return fmt.Errorf("write the release history: %w", err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	enc := json.NewEncoder(tmp)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(h); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return fmt.Errorf("write the release history: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
@@ -527,9 +514,9 @@ func writePointer(link, id string) error {
 		return fmt.Errorf("switch the current pointer: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }()
 	if _, err := tmp.WriteString(id + "\n"); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return fmt.Errorf("switch the current pointer: %w", err)
 	}
 	if err := tmp.Close(); err != nil {

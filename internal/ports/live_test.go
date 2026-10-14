@@ -80,7 +80,7 @@ func TestTheSilentCollisionIsReal(t *testing.T) {
 	defer cancel()
 
 	// 1. a host process takes the port first.
-	listener, err := net.Listen("tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(liveDemoPort)))
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(liveDemoPort)))
 	if err != nil {
 		t.Skipf("port %d is not bindable on this machine, which means something already has it: %v", liveDemoPort, err)
 	}
@@ -123,7 +123,7 @@ func TestTheSilentCollisionIsReal(t *testing.T) {
 		// in place would test the wrong thing.
 		_ = listener.Close()
 		defer func() {
-			again, err := net.Listen("tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(liveDemoPort)))
+			again, err := new(net.ListenConfig).Listen(context.Background(), "tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(liveDemoPort)))
 			if err == nil {
 				go answerHost(again)
 				t.Cleanup(func() { _ = again.Close() })
@@ -172,12 +172,12 @@ func answerHost(listener net.Listener) {
 }
 
 func stillBound(port int) bool {
-	out, err := exec.Command("lsof", "-nP", "-iTCP:"+strconv.Itoa(port), "-sTCP:LISTEN").CombinedOutput()
+	out, err := exec.CommandContext(context.Background(), "lsof", "-nP", "-iTCP:"+strconv.Itoa(port), "-sTCP:LISTEN").CombinedOutput()
 	return err == nil && len(strings.TrimSpace(string(out))) > 0
 }
 
 func connectSucceeds(port int) bool {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), 2*time.Second)
+	conn, err := (&net.Dialer{Timeout: 2 * time.Second}).DialContext(context.Background(), "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 	if err != nil {
 		return false
 	}
@@ -227,9 +227,9 @@ func TestMain(m *testing.M) {
 		// Best effort: a failure here is worth seeing in the log, and there is
 		// nothing to fail the run over because the run already reported itself.
 		if bin, err := exec.LookPath("docker"); err == nil {
-			out, _ := exec.Command(bin, "ps", "-aq", "--filter", "label="+liveDemoLabel).CombinedOutput()
+			out, _ := exec.CommandContext(context.Background(), bin, "ps", "-aq", "--filter", "label="+liveDemoLabel).CombinedOutput()
 			for _, id := range strings.Fields(string(out)) {
-				_, _ = exec.Command(bin, "rm", "-f", id).CombinedOutput()
+				_, _ = exec.CommandContext(context.Background(), bin, "rm", "-f", id).CombinedOutput()
 			}
 		}
 	}

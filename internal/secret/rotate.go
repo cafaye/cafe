@@ -381,9 +381,9 @@ func Rotate(ctx context.Context, name string, runner Runner, progress io.Writer)
 		}
 		if step.Stdin == "" {
 			// Nothing sensitive: print the command as the operator would type it.
-			fmt.Fprintf(progress, "  %s\n", strings.Join(step.Argv, " "))
+			_, _ = fmt.Fprintf(progress, "  %s\n", strings.Join(step.Argv, " "))
 		} else {
-			fmt.Fprintf(progress, "  kubectl apply -f - (document on stdin, value never printed)\n")
+			_, _ = fmt.Fprintf(progress, "  kubectl apply -f - (document on stdin, value never printed)\n")
 		}
 		if _, err := runner.Run(ctx, step); err != nil {
 			return plan, err

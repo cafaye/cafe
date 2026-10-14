@@ -248,7 +248,7 @@ func (s *substrate) Ready(ctx context.Context, rel stack.Release) error {
 	if err != nil {
 		return fmt.Errorf("probe %s through the edge: %w", rel.Host, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s answered %d through the edge", rel.Host, resp.StatusCode)
 	}
@@ -355,9 +355,9 @@ func newBoxDeployCommand(deps boxDeps) *Command {
 			return err
 		}
 		if err != nil {
-			fmt.Fprintf(env.Stderr, "cafe box deploy: %v\n", err)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box deploy: %v\n", err)
 			if rep.RolledBack {
-				fmt.Fprintf(env.Stderr, "cafe box deploy: %s is serving %s again — the deploy failed and the box is intact\n", rep.Release.Service, rep.Release.ID)
+				_, _ = fmt.Fprintf(env.Stderr, "cafe box deploy: %s is serving %s again — the deploy failed and the box is intact\n", rep.Release.Service, rep.Release.ID)
 			}
 			return errReported
 		}
@@ -561,7 +561,7 @@ func newBoxRollbackCommand(deps boxDeps) *Command {
 			// directory it lives in.
 			found, err := findService(sd.withDefaults().root, target)
 			if err != nil {
-				return fmt.Errorf("%w: cafe box rollback <release-id>: %v", errUsage, err)
+				return fmt.Errorf("%w: cafe box rollback <release-id>: %w", errUsage, err)
 			}
 			opts.service = found
 		}
@@ -574,7 +574,7 @@ func newBoxRollbackCommand(deps boxDeps) *Command {
 			return err
 		}
 		if err != nil {
-			fmt.Fprintf(env.Stderr, "cafe box rollback: %v\n", err)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box rollback: %v\n", err)
 			return errReported
 		}
 		say(env.Stderr, "%s", rep.Detail)

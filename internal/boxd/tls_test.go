@@ -138,7 +138,7 @@ type fakeServer struct {
 
 func newFakeServer(t *testing.T, pki testPKI, cap Capability) *fakeServer {
 	t.Helper()
-	raw, err := net.Listen("tcp", "127.0.0.1:0")
+	raw, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestTheKeyIsLoadedPerDial(t *testing.T) {
 	// The dial is expected to fail — nothing is listening on that address —
 	// but the key is loaded BEFORE the dial attempt, which is the ordering
 	// the rule cares about: the key exists exactly as long as the connection
-	// it is dialled for.
+	// it is dialed for.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, _ = dialer.Dial(ctx, id)
@@ -299,7 +299,7 @@ func TestAConnectionWithoutTheBoxKeyIsRefused(t *testing.T) {
 	ch, err := dialer.Dial(ctx, Identity{BoxID: "box-test", ControlPlane: server.addr()})
 	if err != nil {
 		// The dial itself failed. That is one acceptable refusal, and the
-		// stronger case — a connection that dialled and was refused at the
+		// stronger case — a connection that dialed and was refused at the
 		// handshake — is below.
 		return
 	}

@@ -214,7 +214,7 @@ func TestRenderNamesTheFourFactsTheBriefAsksFor(t *testing.T) {
 			t.Errorf("the report does not contain %q\n---\n%s", want, out)
 		}
 	}
-	// A component with no characterised blast radius says so rather than
+	// A component with no characterized blast radius says so rather than
 	// printing an empty impact block that reads as "touches nothing".
 	if !strings.Contains(out, "unknown") {
 		t.Error("the no-fix gateway row says nothing about an unknown blast radius — an empty impact block reads as \"touches nothing\"")
@@ -256,7 +256,7 @@ func TestRenderNamesWhatTheBoxRunsThatTheSubstrateDoesNot(t *testing.T) {
 		Counts: Counts{Components: 17},
 		Divergences: []Divergence{{
 			Component: "caddy", Observed: "2.8.4",
-			Why: "running on the box and not in the substrate catalogue",
+			Why: "running on the box and not in the substrate catalog",
 		}},
 	}
 	var b bytes.Buffer
@@ -267,7 +267,7 @@ func TestRenderNamesWhatTheBoxRunsThatTheSubstrateDoesNot(t *testing.T) {
 	if !strings.Contains(out, "caddy") || !strings.Contains(out, "2.8.4") {
 		t.Errorf("the divergence block does not name the component and its version:\n%s", out)
 	}
-	if !strings.Contains(out, "not in the substrate catalogue") {
+	if !strings.Contains(out, "not in the substrate catalog") {
 		t.Errorf("the divergence block does not say why it matters:\n%s", out)
 	}
 	if strings.Contains(out, "nothing to act on") {

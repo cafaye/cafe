@@ -216,7 +216,7 @@ func (r deployRun) run() error {
 		return err
 	}
 	if !ok {
-		fmt.Fprintf(r.out(), "cafe deploy: nothing was deployed. Run it with --yes when you mean it.\n")
+		_, _ = fmt.Fprintf(r.out(), "cafe deploy: nothing was deployed. Run it with --yes when you mean it.\n")
 		return errReported
 	}
 
@@ -240,7 +240,7 @@ func (r deployRun) run() error {
 }
 
 // isDeployRefusal asks the sentinel rather than the message, so a reworded
-// refusal cannot quietly stop being recognised as one.
+// refusal cannot quietly stop being recognized as one.
 func isDeployRefusal(err error) bool {
 	return errors.Is(err, deploy.ErrRefused)
 }

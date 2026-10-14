@@ -48,7 +48,7 @@ const (
 	liveTestsAssignment = "LIVE_TESTS='"
 	liveTierAssignment  = "LIVE_TIER="
 	// The prefix that makes a test a live test. It is a prefix and not a list
-	// of two names because a third demonstration must be recognised by the
+	// of two names because a third demonstration must be recognized by the
 	// thing that makes it one, not by somebody remembering to add it here.
 	liveGatePrefix = "CAF_LIVE_"
 )

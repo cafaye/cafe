@@ -91,7 +91,7 @@ func fixture() Input {
 				{Component: "redis", Version: "7.2.4", Kind: cve.KindAddon, Severity: cve.SeverityHigh, AdvisoryID: "GHSA-1",
 					Class: cve.ClassAffected, ReleaseTo: "7.2.5", Impact: cve.Blast{Apply: "kubectl patch the addon", Restarts: []string{"redis", "gateway"}}, Why: "restart both"},
 			},
-			Divergences: []cve.Divergence{{Component: "muse", Why: "the catalogue does not declare 1.9"}},
+			Divergences: []cve.Divergence{{Component: "muse", Why: "the catalog does not declare 1.9"}},
 			Unmatched:   []string{"caddy"},
 		},
 		Modes: failure.Evaluate(failure.Library(), failure.Observation{}),

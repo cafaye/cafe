@@ -42,25 +42,12 @@ const (
 	OutcomeFailure
 	// OutcomeCancelled is a command stopped by SIGINT or SIGTERM. Exit 1.
 	//
-	// Classified `cancelled`, which core's vocabulary has a value for exactly
-	// so this does not have to be invented. A Ctrl-C during `cafe dev` is not an
+	// Classified as the cancellation class, which core's vocabulary has a value
+	// for exactly so this does not have to be invented. A Ctrl-C during `cafe dev` is not an
 	// error in the sense an alert should page on, and a class that says so is
 	// what stops an operator's own impatience showing up in an error rate.
 	OutcomeCancelled
 )
-
-// exitCode is the process exit code for an outcome, and it is the mapping cafe
-// has already committed to in internal/cli.
-func (o Outcome) exitCode() int {
-	switch o {
-	case OutcomeSuccess:
-		return 0
-	case OutcomeUsage:
-		return 2
-	default:
-		return 1
-	}
-}
 
 // Classified lets a command name its own error class.
 //
@@ -71,7 +58,7 @@ func (o Outcome) exitCode() int {
 // knows — the command — can say so, and it must be a member of core's closed
 // vocabulary or Install's caller refuses it.
 //
-// Returning an error from this is deliberate: an unrecognised class is refused
+// Returning an error from this is deliberate: an unrecognized class is refused
 // at the call site rather than exported and dropped by the collector's
 // redaction, because a class silently dropped is a failure that looks like a
 // success.
@@ -156,7 +143,7 @@ func errorType(outcome Outcome) string {
 	case OutcomeUsage:
 		return "invalid_request"
 	case OutcomeCancelled:
-		return "cancelled"
+		return telemetry.ErrorTypeCancelled
 	default:
 		return "internal_error"
 	}

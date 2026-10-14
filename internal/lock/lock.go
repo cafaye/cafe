@@ -176,10 +176,10 @@ func Marshal(l Lock) ([]byte, error) {
 	// anybody would find out is on a machine that cannot regenerate.
 	var round Lock
 	if err := json.Unmarshal(out, &round); err != nil {
-		return nil, fmt.Errorf("the lock just marshalled does not parse back: %w", err)
+		return nil, fmt.Errorf("the lock just marshaled does not parse back: %w", err)
 	}
 	if len(round.Files) != len(l.Files) {
-		return nil, fmt.Errorf("the lock just marshalled has %d file(s) and the lock has %d", len(round.Files), len(l.Files))
+		return nil, fmt.Errorf("the lock just marshaled has %d file(s) and the lock has %d", len(round.Files), len(l.Files))
 	}
 	return out, nil
 }

@@ -221,7 +221,7 @@ func TestASweepCannotTouchAnotherGeneration(t *testing.T) {
 	}
 }
 
-// The fence above depends on the runtime honouring a project filter. A runtime
+// The fence above depends on the runtime honoring a project filter. A runtime
 // that answers with a wider set — or a bug in the filter — must not be able to
 // turn that into a live worker's database, so the check is repeated here, on the
 // names themselves, and a name that fails it is reported rather than removed.
@@ -357,7 +357,7 @@ type fakeDocker struct {
 	// removable. A fake that answered the same way twice would hide the re-list,
 	// and the re-list is the half of the ordering that carries the mechanism.
 	afterContainers []Resource
-	// rawContainers answers the container query unscoped, modelling a runtime
+	// rawContainers answers the container query unscoped, modeling a runtime
 	// that returned a wider set than it was asked for. The sweep must not depend
 	// on the daemon's filters being right.
 	rawContainers []Resource

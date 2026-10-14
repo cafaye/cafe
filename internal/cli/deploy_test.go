@@ -16,7 +16,7 @@ import (
 )
 
 // `cafe deploy` is a working command now, so it has left stubCommands. Its
-// behaviour is pinned here instead, and the table in stub_test.go is the single
+// behavior is pinned here instead, and the table in stub_test.go is the single
 // source of truth for which commands are still stubs.
 //
 // The seam is the same one the rest of this repository uses: a fake that records
@@ -92,9 +92,6 @@ type recordingRunner struct {
 	errs map[string]error
 	// commandsSeen is every call as the operator would type it.
 	commandsSeen []string
-	// confirms records the prompts, so a case can assert the prompt names the
-	// service and the environment.
-	confirmed []bool
 }
 
 func newRecordingRunner() *recordingRunner {

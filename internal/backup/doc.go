@@ -120,7 +120,7 @@
 //     status has to be read out of the output.
 //   - and the gem then masks it: it reads any nonzero as "repository not ready",
 //     runs `restic init` to recover, and *that* fails with `config file already
-//     exists`, because the accessory's own cycle had already initialised the
+//     exists`, because the accessory's own cycle had already initialized the
 //     repository. The error line an operator reads says MISSING; the log line above
 //     it says LOCKED, and only the second one is the cause.
 //

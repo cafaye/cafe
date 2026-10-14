@@ -1,5 +1,5 @@
 // Package report assembles the one-page monthly report — the artifact that
-// makes a subscription feel like a product rather than a favour.
+// makes a subscription feel like a product rather than a favor.
 //
 // # What this is, and what it is not
 //
@@ -15,7 +15,7 @@
 //
 // One value, two renderers, and the same argument cve/report.go:11-19 already
 // made for itself: a report written straight to a terminal could not be
-// summarised without re-deriving it, and a second derivation is a second thing
+// summarized without re-deriving it, and a second derivation is a second thing
 // that can disagree. Markdown for the customer's inbox and the website's
 // screen; JSON for the box agent and anything else that consumes it.
 //

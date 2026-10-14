@@ -203,7 +203,7 @@ func breakingRules() []BreakingRule {
 			Purpose: "an operation's request body keeps its type",
 		},
 		{
-			// cafaye has no buf analogue for "an operation stopped answering with
+			// cafaye has no buf analog for "an operation stopped answering with
 			// this status", so this row is argued rather than copied. A status is a
 			// label on an answer: identity's own document dropped a 409 from POST
 			// /v1/email-verifications in 1.6.0 without any encoding moving. The

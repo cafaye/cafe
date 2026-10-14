@@ -284,10 +284,11 @@ func TestTheDerivedVersionBumpsThePatchComponent(t *testing.T) {
 // ArgoRunner satisfies the Runner seam, the way KamalRunner does: the caller
 // asks for a plan and executes the answer, and never builds argv itself.
 func TestArgoRunnerSatisfiesTheRunnerSeam(t *testing.T) {
-	var r Runner = NewArgoRunner()
+	r := NewArgoRunner()
 	if r == nil {
 		t.Fatal("NewArgoRunner returned nil")
 	}
+	var _ Runner = r
 }
 
 // ResolveKubectl finds the binary on PATH, and answers the bare name when it is
@@ -822,7 +823,7 @@ func TestRunnerForSelectsTheEngineAndRefusesAnUnknownOne(t *testing.T) {
 // test harness's git — the same questions the engine asks, asked by the proof.
 func git(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(context.Background(), "git", args...)
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

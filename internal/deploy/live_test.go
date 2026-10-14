@@ -54,12 +54,12 @@ import (
 //
 //   - every port is outside 15000-15999, the block internal/ports owns, so this
 //     cannot collide with a cafe reservation or with another live test;
-//   - everything it creates is labelled cafe.live-deploy=1 and torn down by the
+//   - everything it creates is labeled cafe.live-deploy=1 and torn down by the
 //     same label, so a run that panics cannot leave a container behind for the
 //     next run to trip over;
 //   - `kamal-docker-registry` is a FIXED GLOBAL NAME that Kamal itself creates
 //     and owns. The test stops and removes it on the way in and on the way out,
-//     and says so here because that is the one thing here that is not labelled.
+//     and says so here because that is the one thing here that is not labeled.
 //
 // Read this before running it on a machine that is not yours.
 
@@ -300,7 +300,7 @@ func (r *rehearsal) startSSHHost() {
 	// leaves it taken and every run after that fails on a conflict. Taking the
 	// name back first makes the case idempotent, which is the property a test
 	// owning a global name needs and does not have otherwise.
-	quiet(exec.Command("docker", "rm", "--force", "--volumes", "caf-live-sshhost"))
+	quiet(exec.CommandContext(context.Background(), "docker", "rm", "--force", "--volumes", "caf-live-sshhost"))
 
 	socket, err := hostDockerSocket()
 	if err != nil {
@@ -338,7 +338,7 @@ func (r *rehearsal) writeKnownHosts() {
 	var lastErr error
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		out, err := exec.Command(keyscan, "-p", fmt.Sprint(r.sshPort), "-t", "ed25519", "127.0.0.1").Output()
+		out, err := exec.CommandContext(context.Background(), keyscan, "-p", fmt.Sprint(r.sshPort), "-t", "ed25519", "127.0.0.1").Output()
 		if err != nil {
 			lastErr = err
 		}
@@ -449,7 +449,7 @@ func (r *rehearsal) linkDockerPlugins() {
 	// harness runs. `docker buildx version` is the command Kamal itself runs
 	// (Kamal::Commands::Base#ensure_docker_installed), so this is not a
 	// substitute for it — it is that command, one step earlier.
-	cmd := exec.Command("docker", "buildx", "version")
+	cmd := exec.CommandContext(context.Background(), "docker", "buildx", "version")
 	cmd.Env = append(os.Environ(), "HOME="+r.home)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		r.t.Fatalf("the rehearsal's scratch HOME cannot run `docker buildx version`, so `kamal setup` "+
@@ -469,7 +469,7 @@ func (r *rehearsal) linkDockerPlugins() {
 // evidence that it is.
 //
 // `wait_for_db` in the entrypoint is not cosmetic. The accessory is a container
-// on the same network as the app, booted moments earlier, and Postgres initialises
+// on the same network as the app, booted moments earlier, and Postgres initializes
 // a fresh volume before it accepts connections — so an app that probes on boot
 // races the database's own startup and reports "unreachable" for reasons that have
 // nothing to do with name-based reachability. Measured: the first run of this test
@@ -532,19 +532,6 @@ func (r *rehearsal) publicKey() string {
 	return string(key)
 }
 
-// version is the release this rehearsal deployed, which is Kamal's own default:
-// the short commit hash of the scratch repository. It is read back rather than
-// recomputed, because the name of a running container is a fact about the machine
-// and a hash re-derived in the test is a fact about the test.
-func (r *rehearsal) version(t *testing.T) string {
-	t.Helper()
-	out, err := exec.Command("git", "-C", r.project, "rev-parse", "--short", "HEAD").Output()
-	if err != nil {
-		r.t.Fatalf("read the rehearsal's release name from its repository: %v", err)
-	}
-	return strings.TrimSpace(string(out))
-}
-
 // execIn runs a command inside one of the rehearsal's own containers, through the
 // Docker socket the rig gives the ssh host, and returns its output.
 //
@@ -557,7 +544,7 @@ func (r *rehearsal) execIn(t *testing.T, container, command string) string {
 	if err != nil {
 		t.Skipf("no host Docker socket to reach the rehearsal's containers: %v", err)
 	}
-	cmd := exec.Command("docker", "--host", "unix://"+socket, "exec", container, "sh", "-c", command)
+	cmd := exec.CommandContext(context.Background(), "docker", "--host", "unix://"+socket, "exec", container, "sh", "-c", command)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Logf("docker exec %s %q: %v\n%s", container, command, err, out)
@@ -574,7 +561,7 @@ func (r *rehearsal) containerNamed(t *testing.T, label string) string {
 	if err != nil {
 		t.Skipf("no host Docker socket to look for %s: %v", label, err)
 	}
-	out, err := exec.Command("docker", "--host", "unix://"+socket, "ps",
+	out, err := exec.CommandContext(context.Background(), "docker", "--host", "unix://"+socket, "ps",
 		"--quiet", "--no-trunc", "--filter", "label="+label).Output()
 	if err != nil {
 		t.Skipf("could not ask the host daemon for %s: %v", label, err)
@@ -655,7 +642,7 @@ func (r *rehearsal) breakEntrypoint(t *testing.T) {
 // test of the deploy and not of a container.
 func (r *rehearsal) curlProxy(t *testing.T, path string) string {
 	t.Helper()
-	out, err := exec.Command("curl", "--silent", "--show-error", "--max-time", "20",
+	out, err := exec.CommandContext(context.Background(), "curl", "--silent", "--show-error", "--max-time", "20",
 		"--header", "Host: caf-rehearsal.test", "http://127.0.0.1"+path).Output()
 	if err != nil {
 		t.Fatalf("kamal-proxy did not answer %s: %v", path, err)
@@ -665,31 +652,15 @@ func (r *rehearsal) curlProxy(t *testing.T, path string) string {
 
 func (r *rehearsal) publishedPorts(t *testing.T, name string) string {
 	t.Helper()
-	out, err := exec.Command("docker", "port", name).Output()
+	out, err := exec.CommandContext(context.Background(), "docker", "port", name).Output()
 	if err != nil {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
 }
 
-// hostListeningOn reports who is listening on a host port, and is used only to
-// explain a measurement the rehearsal could not take.
-func (r *rehearsal) hostListeningOn(t *testing.T, port string) string {
-	t.Helper()
-	out, err := exec.Command("docker", "ps", "--format", "{{.Names}}").Output()
-	if err != nil {
-		return ""
-	}
-	for _, name := range strings.Fields(string(out)) {
-		if strings.Contains(r.publishedPorts(t, name), ":"+port) {
-			return name
-		}
-	}
-	return ""
-}
-
 // teardown removes everything this test created, by the label, plus the two
-// things that are not labelled: the registry container Kamal names globally, and
+// things that are not labeled: the registry container Kamal names globally, and
 // the volumes a label does not carry.
 // teardown is quiet on purpose. It runs after every case, including the ones
 // that passed, and docker's own complaints ("no such container", "requires at
@@ -708,22 +679,22 @@ func (r *rehearsal) teardown() {
 		{"ps", "--all", "--quiet", "--filter", "label=service=" + liveService},
 		{"ps", "--all", "--quiet", "--filter", "label=service=" + liveService + "-postgres"},
 	} {
-		quiet(exec.Command("docker", args...))
+		quiet(exec.CommandContext(context.Background(), "docker", args...))
 	}
 	var doomed []string
 	for _, label := range []string{"label=" + liveLabel, "label=service=" + liveService, "label=service=" + liveService + "-postgres"} {
-		out, err := exec.Command("docker", "ps", "--all", "--quiet", "--filter", label).Output()
+		out, err := exec.CommandContext(context.Background(), "docker", "ps", "--all", "--quiet", "--filter", label).Output()
 		if err == nil {
 			doomed = append(doomed, strings.Fields(string(out))...)
 		}
 	}
 	if len(doomed) > 0 {
-		cmd := exec.Command("docker", "rm", "--force", "--volumes")
+		cmd := exec.CommandContext(context.Background(), "docker", "rm", "--force", "--volumes")
 		cmd.Args = append(cmd.Args, doomed...)
 		quiet(cmd)
 	}
 	for _, volume := range []string{liveService + "_postgres", "kamal-proxy-config"} {
-		quiet(exec.Command("docker", "volume", "rm", "--force", volume))
+		quiet(exec.CommandContext(context.Background(), "docker", "volume", "rm", "--force", volume))
 	}
 }
 
@@ -732,14 +703,6 @@ func quiet(cmd *exec.Cmd) {
 	if cmd != nil {
 		_ = cmd.Run()
 	}
-}
-
-func (r *rehearsal) labeledContainers() []string {
-	out, err := exec.Command("docker", "ps", "--all", "--quiet", "--filter", "label="+liveLabel).Output()
-	if err != nil {
-		return nil
-	}
-	return strings.Fields(string(out))
 }
 
 // run and runIn execute a command with the rehearsal's HOME, so kamal reads the
@@ -751,7 +714,7 @@ func (r *rehearsal) run(name string, args ...string) {
 
 func (r *rehearsal) runIn(dir, name string, args ...string) {
 	r.t.Helper()
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "HOME="+r.home)
 	out, err := cmd.CombinedOutput()
@@ -810,7 +773,7 @@ func requireTools(t *testing.T, names ...string) {
 // portInUse asks the kernel, not a probe over a network: the question is whether
 // something holds this port on this machine right now.
 func portInUse(port int) bool {
-	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return true
 	}
@@ -826,7 +789,7 @@ func waitForPort(t *testing.T, port int, budget time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(budget)
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
+		conn, err := (&net.Dialer{Timeout: time.Second}).DialContext(context.Background(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 		if err == nil {
 			_ = conn.Close()
 			return
@@ -848,7 +811,7 @@ func hostDockerSocket() (string, error) {
 }
 
 func hostArch() string {
-	out, err := exec.Command("docker", "version", "--format", "{{.Server.Arch}}").Output()
+	out, err := exec.CommandContext(context.Background(), "docker", "version", "--format", "{{.Server.Arch}}").Output()
 	if err != nil {
 		return "arm64"
 	}
@@ -916,7 +879,7 @@ release="${release:-unknown}"
 served="${served:-unknown}"
 
 # Wait for the EVENT — the database accepting connections — rather than for a
-# duration. Postgres initialises a fresh volume before it will answer, and the
+# duration. Postgres initializes a fresh volume before it will answer, and the
 # accessory was booted moments before this container, so probing once races it.
 attempt=0
 until pg_isready -h "$host" -p "$port" -t 3 >/dev/null 2>&1; do
