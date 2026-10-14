@@ -180,7 +180,7 @@ enrollment command's stdin over the SSH connection and exists nowhere else.`,
 			// The document is printed FIRST and the error returned second: the
 			// steps that ran are the useful part, and a caller that only sees
 			// the exit code has lost them.
-			fmt.Fprintf(env.Stderr, "cafe box setup: %v\n", setupErr)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box setup: %v\n", setupErr)
 			return errReported
 		}
 		return nil
@@ -273,10 +273,10 @@ func setupProgress(w io.Writer, host string) func(setup.WriteEvent, int, int) {
 	return func(event setup.WriteEvent, wrote, total int) {
 		switch event {
 		case setup.WriteChunk:
-			fmt.Fprintf(w, "cafe box setup: %s of %s written to %s (%s elapsed, %s/s)\n",
+			_, _ = fmt.Fprintf(w, "cafe box setup: %s of %s written to %s (%s elapsed, %s/s)\n",
 				bytesHuman(wrote), bytesHuman(total), host, elapsed(), rateHuman(wrote, time.Since(start)))
 		case setup.WriteVerified:
-			fmt.Fprintf(w, "cafe box setup: %s on %s written and verified — the host's sha256 matches the local binary (%s elapsed, %s/s)\n",
+			_, _ = fmt.Fprintf(w, "cafe box setup: %s on %s written and verified — the host's sha256 matches the local binary (%s elapsed, %s/s)\n",
 				bytesHuman(total), host, elapsed(), rateHuman(total, time.Since(start)))
 		}
 	}
@@ -349,13 +349,13 @@ func setupSelfBinary(deps boxSetupDeps) (string, error) {
 // flag that guaranteed one of the two was wrong in some script.
 func printSetupResult(env *Env, res setup.Result, asJSON bool) {
 	for _, line := range res.Log {
-		fmt.Fprintln(env.Stderr, line)
+		_, _ = fmt.Fprintln(env.Stderr, line)
 	}
 	if res.Enrolled != nil {
 		say(env.Stderr, "host %s holds box %s; %d capability presented on this setup",
 			res.Host, res.Enrolled.BoxID, res.Redemptions)
 	}
 	if err := writeDoc(env.Stdout, res, asJSON); err != nil {
-		fmt.Fprintf(env.Stderr, "cafe box setup: write the document: %v\n", err)
+		_, _ = fmt.Fprintf(env.Stderr, "cafe box setup: write the document: %v\n", err)
 	}
 }

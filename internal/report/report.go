@@ -426,30 +426,30 @@ func gaps(rep Report, in Input) []string {
 // customer is buying in the order they feel them.
 func (r Report) Summary() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s: %s — %d service(s)", dashIf(r.Box), r.Period.String(), len(r.Availability.Services))
+	_, _ = fmt.Fprintf(&b, "%s: %s — %d service(s)", dashIf(r.Box), r.Period.String(), len(r.Availability.Services))
 	if r.Availability.FleetPerMille > 0 {
-		fmt.Fprintf(&b, ", %.2f%% uptime", float64(r.Availability.FleetPerMille)/100)
+		_, _ = fmt.Fprintf(&b, ", %.2f%% uptime", float64(r.Availability.FleetPerMille)/100)
 	}
 	if len(r.Incidents) > 0 {
-		fmt.Fprintf(&b, ", %d incident(s)", len(r.Incidents))
+		_, _ = fmt.Fprintf(&b, ", %d incident(s)", len(r.Incidents))
 	} else {
 		b.WriteString(", no incidents")
 	}
 	if n := len(r.PatchesApplied); n > 0 {
-		fmt.Fprintf(&b, ", %d patch(es) applied", n)
+		_, _ = fmt.Fprintf(&b, ", %d patch(es) applied", n)
 	}
 	if held := r.heldReleases(); held > 0 {
-		fmt.Fprintf(&b, ", %d upstream release(s) held", held)
+		_, _ = fmt.Fprintf(&b, ", %d upstream release(s) held", held)
 	}
 	if b2 := r.Backups; len(b2.InWindow) == 0 {
 		b.WriteString(", no backup drill this period")
 	} else if b2.Failed+b2.Refused > 0 {
-		fmt.Fprintf(&b, ", backup drill %d/%d passed", b2.Passed, len(b2.InWindow))
+		_, _ = fmt.Fprintf(&b, ", backup drill %d/%d passed", b2.Passed, len(b2.InWindow))
 	} else {
 		b.WriteString(", backup drill passed")
 	}
 	if held := len(r.FailureModes.Holds); held > 0 {
-		fmt.Fprintf(&b, ", %d failure mode(s) identified", held)
+		_, _ = fmt.Fprintf(&b, ", %d failure mode(s) identified", held)
 	}
 	return b.String()
 }

@@ -239,9 +239,7 @@ func (f *fakeRunner) steps() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var out []string
-	for _, name := range f.names {
-		out = append(out, name)
-	}
+	out = append(out, f.names...)
 	return out
 }
 

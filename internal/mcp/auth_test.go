@@ -248,7 +248,7 @@ func serveAuthed(t *testing.T, server *Server) (func(), string) {
 // remote caller does, and returns nothing if it fails.
 func httpCaller(t *testing.T, addr, token string) bool {
 	t.Helper()
-	request, err := http.NewRequest(http.MethodPost, "http://"+addr+"/", strings.NewReader(
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+addr+"/", strings.NewReader(
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",`+
 			`"capabilities":{},"clientInfo":{"name":"caf-auth-test","version":"1.2.3"}}}`))
 	if err != nil {
@@ -269,10 +269,6 @@ func httpCaller(t *testing.T, addr, token string) bool {
 		t.Fatal(err)
 	}
 	return true
-}
-
-func (a *staticAuthority) saw(subject string) bool {
-	return slices.ContainsFunc(a.seen, func(token string) bool { return token == subject })
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +304,7 @@ func TestAnUnauthenticatedRemoteCallerIsRefusedWithAUsableAnswer(t *testing.T) {
 			if tc.token != "" {
 				header = "Bearer " + tc.token
 			}
-			request, err := http.NewRequest(http.MethodPost, "http://"+addr+"/", strings.NewReader(
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+addr+"/", strings.NewReader(
 				`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",`+
 					`"capabilities":{},"clientInfo":{"name":"caf-auth-test","version":"1.2.3"}}}`))
 			if err != nil {
@@ -452,7 +448,7 @@ func authedInitialize(t *testing.T, addr, token string) string {
 // that leaked a connection, and the next test's server would hold it.
 func closeSession(t *testing.T, addr, session string) {
 	t.Helper()
-	request, err := http.NewRequest(http.MethodDelete, "http://"+addr+"/", nil)
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, "http://"+addr+"/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -467,7 +463,7 @@ func closeSession(t *testing.T, addr, session string) {
 
 func postToken(t *testing.T, addr, sessionID, token, body string) *http.Response {
 	t.Helper()
-	request, err := http.NewRequest(http.MethodPost, "http://"+addr+"/", strings.NewReader(body))
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+addr+"/", strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -553,7 +549,7 @@ func TestATokenWithNoExpirationIsRefused(t *testing.T) {
 	stop, addr := serveAuthed(t, server)
 	defer stop()
 
-	request, err := http.NewRequest(http.MethodPost, "http://"+addr+"/", strings.NewReader(
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+addr+"/", strings.NewReader(
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",`+
 			`"capabilities":{},"clientInfo":{"name":"caf-auth-test","version":"1.2.3"}}}`))
 	if err != nil {
@@ -650,7 +646,7 @@ func TestARefusalNeverCarriesTheTokenItWasHanded(t *testing.T) {
 	stop, addr := serveAuthed(t, server)
 	defer stop()
 
-	request, err := http.NewRequest(http.MethodPost, "http://"+addr+"/", strings.NewReader(
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+addr+"/", strings.NewReader(
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",`+
 			`"capabilities":{},"clientInfo":{"name":"caf-auth-test","version":"1.2.3"}}}`))
 	if err != nil {

@@ -97,7 +97,7 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 		// A backup configuration that says nothing usable is a refusal and not a
 		// crash: every way ReadConfig fails is a file an operator has to edit, and
 		// none of them is cafe's fault to report on stderr.
-		fmt.Fprintf(stdout, "\n%s\n\n%s\n", ErrRefused, err)
+		_, _ = fmt.Fprintf(stdout, "\n%s\n\n%s\n", ErrRefused, err)
 		return fmt.Errorf("%w: %s", ErrRefused, relativeTo(cover.Dir, filepath.Join(cover.Dir, "config", backupConfigName)))
 	}
 
@@ -118,18 +118,18 @@ func Run(ctx context.Context, r Runner, req Request, stdout, stderr io.Writer) e
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "%s: backing up from %s in %s with kamal %s\n",
+	_, _ = fmt.Fprintf(stdout, "%s: backing up from %s in %s with kamal %s\n",
 		cover.Service, relativeTo(cover.Dir, plan.Backup), shortPath(cover.Dir), version)
-	fmt.Fprintf(stdout, "  the deployment it belongs to is %s\n", relativeTo(cover.Dir, cover.Config))
+	_, _ = fmt.Fprintf(stdout, "  the deployment it belongs to is %s\n", relativeTo(cover.Dir, cover.Config))
 	printSecrets(stdout, cover)
 	if cover.Env != "" {
-		fmt.Fprintf(stdout, "  environment %s, so %s is merged over %s\n",
+		_, _ = fmt.Fprintf(stdout, "  environment %s, so %s is merged over %s\n",
 			cover.Env, relativeTo(cover.Dir, cover.Overlay), relativeTo(cover.Dir, cover.Config))
 	}
-	fmt.Fprintf(stdout, "  the %s accessory runs it, and the restore is drilled into %s\n",
+	_, _ = fmt.Fprintf(stdout, "  the %s accessory runs it, and the restore is drilled into %s\n",
 		plan.Accessory, plan.Scratch)
 	if backupDoc.Schedule != "" {
-		fmt.Fprintf(stdout, "  its schedule is %s, which is a scheduled dump and not point-in-time recovery\n",
+		_, _ = fmt.Fprintf(stdout, "  its schedule is %s, which is a scheduled dump and not point-in-time recovery\n",
 			backupDoc.Schedule)
 	}
 
@@ -213,14 +213,14 @@ func refuseContract(stdout io.Writer, backupDoc Config, resolved, configFile, se
 		// An unreadable resolved configuration is not a pass. It is a document cafe
 		// could not check, and treating it as checked is how a broken pair gets
 		// through.
-		fmt.Fprintf(stdout, "\n%s\n\n%v\n", ErrRefused, err)
+		_, _ = fmt.Fprintf(stdout, "\n%s\n\n%v\n", ErrRefused, err)
 		return fmt.Errorf("%w: cafe could not check %s against %s: %w", ErrRefused, backupDoc.File, configFile, err)
 	}
 	violations := Check(backupDoc, accessories, configFile, service)
 	if len(violations) == 0 {
 		return nil
 	}
-	fmt.Fprintf(stdout, "\n%s\n\n%s\n", ErrRefused, Violations(violations))
+	_, _ = fmt.Fprintf(stdout, "\n%s\n\n%s\n", ErrRefused, Violations(violations))
 	return fmt.Errorf("%w: %d broken clause(s) between %s and %s",
 		ErrRefused, len(violations), relativeTo(backupDoc.File, backupDoc.File), relativeTo(backupDoc.File, configFile))
 }
@@ -252,7 +252,7 @@ func runAll(ctx context.Context, r Runner, plan Plan, names []string, stdout, st
 		if step.Argv == nil {
 			return fmt.Errorf("cafe backup: the plan has no %q step, so the cycle stopped there rather than pretending", name)
 		}
-		fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
+		_, _ = fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 		switch {
 		case step.Retryable && name == Settle:
 			if err := waitForFreeRepository(ctx, r, plan, step, stdout, stderr); err != nil {
@@ -284,12 +284,12 @@ func drop(ctx context.Context, r Runner, plan Plan, stdout, stderr io.Writer) {
 	if step.Argv == nil {
 		return
 	}
-	fmt.Fprintf(stdout, "\ncleaning up\n")
+	_, _ = fmt.Fprintf(stdout, "\ncleaning up\n")
 	if err := run(ctx, r, plan, step, stdout, stderr); err != nil {
-		fmt.Fprintf(stdout, "  %s may still exist: %v\n", plan.Scratch, err)
+		_, _ = fmt.Fprintf(stdout, "  %s may still exist: %v\n", plan.Scratch, err)
 		return
 	}
-	fmt.Fprintf(stdout, "  %s is gone, whether the drill passed or not\n", plan.Scratch)
+	_, _ = fmt.Fprintf(stdout, "  %s is gone, whether the drill passed or not\n", plan.Scratch)
 }
 
 // run is every command in this package, so the budget is in one place.
@@ -356,7 +356,7 @@ func waitForFreeRepository(ctx context.Context, r Runner, plan Plan, step Step, 
 			return fmt.Errorf("%s failed, and the failure is not a held lock: %w", step.Command(), err)
 		default:
 			if asked > 0 {
-				fmt.Fprintf(stdout, "  the repository is free, after %d check(s)\n", asked+1)
+				_, _ = fmt.Fprintf(stdout, "  the repository is free, after %d check(s)\n", asked+1)
 			}
 			return nil
 		}
@@ -365,7 +365,7 @@ func waitForFreeRepository(ctx context.Context, r Runner, plan Plan, step Step, 
 				"  Booting a backup accessory starts its scheduler, and the scheduler's first cycle holds\n"+
 				"  the lock while it runs — on a large database that first dump is minutes, not seconds. Its\n"+
 				"  own log says which cycle it is on:\n    kamal accessory logs %s\n"+
-				"  Either wait for that cycle and run cafe backup again, or raise the budget with -timeout.",
+				"  Either wait for that cycle and run cafe backup again, or raise the budget with -timeout",
 				step.Command(), plan.Timeout, plan.Accessory)
 		}
 		asked++
@@ -415,7 +415,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 		err := r.Run(ctx, plan.Dir, step, io.MultiWriter(&out, stdout), io.MultiWriter(&errOut, stderr))
 		if err == nil {
 			if attempt > 1 {
-				fmt.Fprintf(stdout, "  taken on attempt %d, once the accessory's own cycle had released the repository\n", attempt)
+				_, _ = fmt.Fprintf(stdout, "  taken on attempt %d, once the accessory's own cycle had released the repository\n", attempt)
 			}
 			return nil
 		}
@@ -423,13 +423,13 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 			return fmt.Errorf("%s failed: %w\n"+
 				"  and cafe retried it %d time(s) because the restic repository was locked each time, which is the\n"+
 				"  cycle this command's own boot started. Its log says where it is:\n    kamal accessory logs %s\n"+
-				"  Raise the budget with -timeout if that cycle is genuinely slower than %s.",
+				"  Raise the budget with -timeout if that cycle is genuinely slower than %s",
 				step.Command(), err, attempt-1, plan.Accessory, plan.Timeout)
 		}
 		if lostTheLockRace(out.String() + errOut.String()) {
 			// The command's own transcript is the evidence, and it needs no second
 			// reading of a repository that may have changed since.
-			fmt.Fprintf(stdout, "\n  that was the accessory's own cycle holding the repository: restic refused\n"+
+			_, _ = fmt.Fprintf(stdout, "\n  that was the accessory's own cycle holding the repository: restic refused\n"+
 				"  the lock (exit %d). Waiting for the cycle to finish.\n", ResticLockExit)
 		} else {
 			locked, lockErr := repositoryLocked(ctx, r, plan, settle, stdout, stderr)
@@ -440,7 +440,7 @@ func runRetryable(ctx context.Context, r Runner, plan Plan, step, settle Step, s
 			if !locked {
 				return fmt.Errorf("%s failed: %w", step.Command(), err)
 			}
-			fmt.Fprintf(stdout, "\n  that was the accessory's own cycle holding the repository. Waiting for it.\n")
+			_, _ = fmt.Fprintf(stdout, "\n  that was the accessory's own cycle holding the repository. Waiting for it.\n")
 		}
 		if err := waitForFreeRepository(ctx, r, plan, settle, stdout, stderr); err != nil {
 			return err
@@ -475,16 +475,16 @@ func repositoryLocked(ctx context.Context, r Runner, plan Plan, settle Step, std
 // above. It also says what the cycle did NOT prove, because a drill is evidence
 // about one snapshot and not about the schedule that will take the next one.
 func successReport(plan Plan, stdout io.Writer) error {
-	fmt.Fprintf(stdout, "\n%s: the snapshot restored\n", plan.Service)
-	fmt.Fprintf(stdout, "  the %s accessory is booted and the repository holds a snapshot taken during this run\n", plan.Accessory)
-	fmt.Fprintf(stdout, "  kamal-backup restored the latest snapshot into %s and ran the assertion; its exit\n", plan.Scratch)
-	fmt.Fprintf(stdout, "  status is the verdict, and the row counts it printed are above. %s\n", tablesSentence(plan.Tables))
-	fmt.Fprintf(stdout, "  %s has been dropped, so nothing is left to restore into by accident\n", plan.Scratch)
-	fmt.Fprintf(stdout, "  what this does NOT prove: that the schedule will take the next one. %s sets\n", plan.BackupRelative())
-	fmt.Fprintf(stdout, "  `backup.schedule`, and a scheduled dump is not point-in-time recovery — there is no WAL\n")
-	fmt.Fprintf(stdout, "  shipping and no base backup, so a destroyed primary loses up to that interval of\n")
-	fmt.Fprintf(stdout, "  committed transactions. The window is read from the file, not assumed here.\n")
-	fmt.Fprintf(stdout, "  its logs: kamal accessory logs %s\n", plan.Accessory)
+	_, _ = fmt.Fprintf(stdout, "\n%s: the snapshot restored\n", plan.Service)
+	_, _ = fmt.Fprintf(stdout, "  the %s accessory is booted and the repository holds a snapshot taken during this run\n", plan.Accessory)
+	_, _ = fmt.Fprintf(stdout, "  kamal-backup restored the latest snapshot into %s and ran the assertion; its exit\n", plan.Scratch)
+	_, _ = fmt.Fprintf(stdout, "  status is the verdict, and the row counts it printed are above. %s\n", tablesSentence(plan.Tables))
+	_, _ = fmt.Fprintf(stdout, "  %s has been dropped, so nothing is left to restore into by accident\n", plan.Scratch)
+	_, _ = fmt.Fprintf(stdout, "  what this does NOT prove: that the schedule will take the next one. %s sets\n", plan.BackupRelative())
+	_, _ = fmt.Fprintf(stdout, "  `backup.schedule`, and a scheduled dump is not point-in-time recovery — there is no WAL\n")
+	_, _ = fmt.Fprintf(stdout, "  shipping and no base backup, so a destroyed primary loses up to that interval of\n")
+	_, _ = fmt.Fprintf(stdout, "  committed transactions. The window is read from the file, not assumed here.\n")
+	_, _ = fmt.Fprintf(stdout, "  its logs: kamal accessory logs %s\n", plan.Accessory)
 	return nil
 }
 
@@ -495,14 +495,14 @@ func successReport(plan Plan, stdout io.Writer) error {
 // database is dropped and the accessory is still running, so nothing about the
 // live database was touched.
 func failureReport(plan Plan, stdout io.Writer, cause error) error {
-	fmt.Fprintf(stdout, "\n%s\n", cause)
-	fmt.Fprint(stdout, "\nwhat to do:\n")
-	fmt.Fprint(stdout, "  the scratch database is dropped on the way out, including on this failure, so nothing about\n")
-	fmt.Fprint(stdout, "  the live database was touched and nothing is left to restore into by accident.\n")
-	fmt.Fprint(stdout, "  the backup accessory is still running, and its own schedule is unaffected: a failed drill does\n")
-	fmt.Fprint(stdout, "  not stop the next scheduled backup, and it does not update the state that decides when that\n")
-	fmt.Fprint(stdout, "  one is due. If the snapshot step is the one that failed, the repository has nothing new in it.\n")
-	fmt.Fprint(stdout, "  the reason is the command's own, above.\n")
+	_, _ = fmt.Fprintf(stdout, "\n%s\n", cause)
+	_, _ = fmt.Fprint(stdout, "\nwhat to do:\n")
+	_, _ = fmt.Fprint(stdout, "  the scratch database is dropped on the way out, including on this failure, so nothing about\n")
+	_, _ = fmt.Fprint(stdout, "  the live database was touched and nothing is left to restore into by accident.\n")
+	_, _ = fmt.Fprint(stdout, "  the backup accessory is still running, and its own schedule is unaffected: a failed drill does\n")
+	_, _ = fmt.Fprint(stdout, "  not stop the next scheduled backup, and it does not update the state that decides when that\n")
+	_, _ = fmt.Fprint(stdout, "  one is due. If the snapshot step is the one that failed, the repository has nothing new in it.\n")
+	_, _ = fmt.Fprint(stdout, "  the reason is the command's own, above.\n")
 	// ErrCycleFailed is a sentinel so the caller can tell "the report is above"
 	// from "cafe failed before it could report anything" — the first is errReported
 	// (exit 1, stderr empty), the second is an error that belongs there.
@@ -517,21 +517,21 @@ func failureReport(plan Plan, stdout io.Writer, cause error) error {
 // Kamal resolved. Printing a plan cafe had to guess at would be a template with
 // extra steps, and a dry run that does not refuse is worse than no dry run.
 func printDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what cafe backup would run:\n\n")
+	_, _ = fmt.Fprintf(stdout, "\nthis is what cafe backup would run:\n\n")
 	for _, step := range plan.Steps {
-		fmt.Fprintf(stdout, "  %s\n", step.Command())
-		fmt.Fprintf(stdout, "      %s\n", step.Why)
+		_, _ = fmt.Fprintf(stdout, "  %s\n", step.Command())
+		_, _ = fmt.Fprintf(stdout, "      %s\n", step.Why)
 	}
-	fmt.Fprintf(stdout, "\nDry run. The two read-only steps really did run: %s and %s read the\n",
+	_, _ = fmt.Fprintf(stdout, "\nDry run. The two read-only steps really did run: %s and %s read the\n",
 		plan.Step(Preflight).Command(), plan.Step(Resolve).Command())
-	fmt.Fprintf(stdout, "configuration and change nothing, and the contract between %s and the\n", plan.BackupRelative())
-	fmt.Fprintf(stdout, "deployment was checked against what kamal resolved. The steps that change something —\n")
-	fmt.Fprintf(stdout, "%s, %s, %s,\n", plan.Step(Boot).Command(), plan.Step(Settle).Command(), plan.Step(Snapshot).Command())
-	fmt.Fprintf(stdout, "%s, %s and\n%s — were NOT run. No container was started, no dump\n",
+	_, _ = fmt.Fprintf(stdout, "configuration and change nothing, and the contract between %s and the\n", plan.BackupRelative())
+	_, _ = fmt.Fprintf(stdout, "deployment was checked against what kamal resolved. The steps that change something —\n")
+	_, _ = fmt.Fprintf(stdout, "%s, %s, %s,\n", plan.Step(Boot).Command(), plan.Step(Settle).Command(), plan.Step(Snapshot).Command())
+	_, _ = fmt.Fprintf(stdout, "%s, %s and\n%s — were NOT run. No container was started, no dump\n",
 		plan.Step(Create).Command(), plan.Step(Drill).Command(), plan.Step(Drop).Command())
-	fmt.Fprintf(stdout, "was taken, no scratch database was created or dropped, no file in %s was written,\n", plan.Dir)
-	fmt.Fprintf(stdout, "and no secret was read.\n")
-	fmt.Fprintf(stdout, "\nBack it up for real with:\n  cafe backup%s %s\n", yesFlag(plan), plan.Service)
+	_, _ = fmt.Fprintf(stdout, "was taken, no scratch database was created or dropped, no file in %s was written,\n", plan.Dir)
+	_, _ = fmt.Fprintf(stdout, "and no secret was read.\n")
+	_, _ = fmt.Fprintf(stdout, "\nBack it up for real with:\n  cafe backup%s %s\n", yesFlag(plan), plan.Service)
 }
 
 func yesFlag(plan Plan) string {
@@ -567,7 +567,7 @@ func (p Plan) BackupRelative() string { return relativeTo(p.Dir, p.Backup) }
 // operator to check a file kamal never opens.
 func printSecrets(stdout io.Writer, cover Cover) {
 	if len(cover.Secrets) == 0 {
-		fmt.Fprintf(stdout, "  no credentials file: kamal would read %s, and neither is there\n",
+		_, _ = fmt.Fprintf(stdout, "  no credentials file: kamal would read %s, and neither is there\n",
 			strings.Join(relativeList(cover.Dir, WantedSecretFiles(cover.Env)), " and "))
 		return
 	}
@@ -575,7 +575,7 @@ func printSecrets(stdout io.Writer, cover Cover) {
 	for _, path := range cover.Secrets {
 		found = append(found, relativeTo(cover.Dir, path))
 	}
-	fmt.Fprintf(stdout, "  credentials come from %s, by name only\n", strings.Join(found, " and "))
+	_, _ = fmt.Fprintf(stdout, "  credentials come from %s, by name only\n", strings.Join(found, " and "))
 }
 
 // relativeList is relativeTo over a list, for the "neither is there" sentence.

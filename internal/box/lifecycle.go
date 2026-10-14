@@ -368,7 +368,7 @@ func (s *Store) appendEvent(action, phase, message string) {
 		return
 	}
 	defer func() { _ = f.Close() }()
-	f.Write(append(raw, '\n'))
+	_, _ = f.Write(append(raw, '\n'))
 }
 
 // VerifyFact is one thing `cafe box verify` checked, reported as a fact rather

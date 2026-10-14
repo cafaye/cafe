@@ -653,15 +653,15 @@ func (d *doctor) writeFindings(section, title string, findings []Finding) {
 	}
 	w := d.out
 	if title != "" {
-		fmt.Fprintf(w, "\n%s\n", title)
+		_, _ = fmt.Fprintf(w, "\n%s\n", title)
 	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprint(tw, "check\tstate\tdetail\tfix\n")
+	_, _ = fmt.Fprint(tw, "check\tstate\tdetail\tfix\n")
 	for _, f := range findings {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", f.Name, f.Severity, dash(f.Detail), dash(f.Fix))
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", f.Name, f.Severity, dash(f.Detail), dash(f.Fix))
 	}
-	tw.Flush()
-	fmt.Fprintf(w, "%s\n", summarize(section, findings))
+	_ = tw.Flush()
+	_, _ = fmt.Fprintf(w, "%s\n", summarize(section, findings))
 }
 
 // summarize is the trailing line: how many of each state. It counts all three

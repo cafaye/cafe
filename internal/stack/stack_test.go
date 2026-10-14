@@ -235,6 +235,8 @@ func TestAReleaseThatFailsItsGateFlipsBack(t *testing.T) {
 			}
 		case Live:
 			good++
+		default:
+			// Other outcomes are not on disk in this history.
 		}
 	}
 	if failed != 1 || good != 1 {
@@ -685,7 +687,7 @@ func TestNewIDSortsInDeployOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("id: %v", err)
 	}
-	if !(one < two) {
+	if one >= two {
 		t.Fatalf("%q is not before %q, so the history's order is not deploy order", one, two)
 	}
 	if _, err := NewID(base, "latest"); err == nil {

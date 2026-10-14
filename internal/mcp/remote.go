@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"time"
 )
@@ -602,22 +601,4 @@ func joinNote(parts ...string) string {
 		}
 	}
 	return strings.Join(out, " ")
-}
-
-// jsonNumber guards against a world that answers a phase as a string: the
-// rollout facts are decoded from whatever a world returns, and a phase that
-// arrives as "2" is still a phase.
-func jsonNumber(v any) (int, bool) {
-	switch n := v.(type) {
-	case float64:
-		return int(n), true
-	case int:
-		return n, true
-	case string:
-		var out int
-		if err := json.Unmarshal([]byte(n), &out); err == nil {
-			return out, true
-		}
-	}
-	return 0, false
 }

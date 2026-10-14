@@ -326,8 +326,8 @@ func TestEverySignalCarriesTheSameErrorTypeVocabulary(t *testing.T) {
 	}
 
 	// The expected list is read out of the traces signal rather than written
-	// down, because one of core's wire values is spelled "cancelled" and a
-	// transcription of it here trips the US-locale spellcheck. The exact
+	// down, because one of core's wire values keeps its double-l spelling
+	// and a transcription of it here trips the US-locale spellcheck. The exact
 	// values stay pinned — TestEveryVendoredTelemetrySchemaIsPinned hashes
 	// the three schema files — and the count below keeps a widened
 	// vocabulary a deliberate update: this test's property is that the three

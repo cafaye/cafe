@@ -130,8 +130,8 @@ func failureCheckCommand(deps failureDeps) *Command {
 			return fmt.Errorf("cafe failure check: %w", err)
 		}
 		report := failure.Evaluate(failure.Library(), obs)
-		fmt.Fprint(env.Stdout, report.String())
-		fmt.Fprintf(env.Stdout, "cafe failure: %s\n", report.Describe())
+		_, _ = fmt.Fprint(env.Stdout, report.String())
+		_, _ = fmt.Fprintf(env.Stdout, "cafe failure: %s\n", report.Describe())
 		return nil
 	}
 	return c

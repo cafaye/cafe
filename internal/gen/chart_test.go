@@ -325,7 +325,7 @@ func TestEnvFlagsReachValuesInNameOrder(t *testing.T) {
 	if alpha == -1 || mid == -1 || zed == -1 {
 		t.Fatalf("values.yaml does not carry all three env pairs:\n%s", values)
 	}
-	if !(alpha < mid && mid < zed) {
+	if alpha >= mid || mid >= zed {
 		t.Errorf("values.yaml's env is not in name order (ALPHA_KEY at %d, MID_KEY at %d, ZED_LAST at %d):\n%s",
 			alpha, mid, zed, values)
 	}

@@ -248,7 +248,7 @@ func (d *liveRuntime) ids(ctx context.Context, filters ...string) []string {
 	if err != nil {
 		return nil
 	}
-	return strings.Fields(string(out))
+	return strings.Fields(out)
 }
 
 func (d *liveRuntime) remove(ctx context.Context, name string) {

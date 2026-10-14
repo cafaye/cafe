@@ -87,7 +87,7 @@ func runLockWrite(root string, env *Env) error {
 	if err != nil {
 		return fmt.Errorf("cafe lock: %w", err)
 	}
-	fmt.Fprintf(env.Stdout, "cafe lock: wrote %s — %s\n", path, built.Describe())
+	_, _ = fmt.Fprintf(env.Stdout, "cafe lock: wrote %s — %s\n", path, built.Describe())
 	return nil
 }
 
@@ -107,7 +107,7 @@ func runLockVerify(root string, env *Env) error {
 	if err != nil {
 		return fmt.Errorf("cafe lock --verify: %w", err)
 	}
-	fmt.Fprint(env.Stdout, report.String())
+	_, _ = fmt.Fprint(env.Stdout, report.String())
 	if !report.OK() {
 		return errReported
 	}

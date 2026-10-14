@@ -157,6 +157,8 @@ func fillStrings(v reflect.Value) {
 		}
 	case reflect.Pointer:
 		fillStrings(v.Elem())
+	default:
+		// Other kinds carry no strings to fill.
 	}
 }
 

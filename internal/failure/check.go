@@ -159,35 +159,35 @@ func (r Report) String() string {
 	holds := r.Holds()
 	unknown := r.Unknown()
 
-	fmt.Fprintf(&out, "cafe failure: %d rule(s) evaluated: %d hold, %d do not hold, %d unknown.\n",
+	_, _ = fmt.Fprintf(&out, "cafe failure: %d rule(s) evaluated: %d hold, %d do not hold, %d unknown.\n",
 		r.Rules, len(holds), r.Rules-len(holds)-len(unknown), len(unknown))
 
 	if len(holds) > 0 {
-		fmt.Fprintf(&out, "\nCONDITIONS THAT HOLD\n")
+		_, _ = fmt.Fprintf(&out, "\nCONDITIONS THAT HOLD\n")
 		for _, f := range holds {
-			fmt.Fprintf(&out, "\n  %s\n", f.Rule.ID)
-			fmt.Fprintf(&out, "    failure:  %s\n", f.Rule.Failure)
-			fmt.Fprintf(&out, "    a monitor sees: %s\n", f.Rule.Sees)
-			fmt.Fprintf(&out, "    identified by: %s\n", f.Rule.Condition.describe())
+			_, _ = fmt.Fprintf(&out, "\n  %s\n", f.Rule.ID)
+			_, _ = fmt.Fprintf(&out, "    failure:  %s\n", f.Rule.Failure)
+			_, _ = fmt.Fprintf(&out, "    a monitor sees: %s\n", f.Rule.Sees)
+			_, _ = fmt.Fprintf(&out, "    identified by: %s\n", f.Rule.Condition.describe())
 			for _, m := range f.Matched {
-				fmt.Fprintf(&out, "    observed: %s\n", m)
+				_, _ = fmt.Fprintf(&out, "    observed: %s\n", m)
 			}
-			fmt.Fprintf(&out, "    what we know: %s\n", f.Rule.Known)
-			fmt.Fprintf(&out, "    remedy:   %s\n", f.Rule.Remedy)
+			_, _ = fmt.Fprintf(&out, "    what we know: %s\n", f.Rule.Known)
+			_, _ = fmt.Fprintf(&out, "    remedy:   %s\n", f.Rule.Remedy)
 			if f.Rule.Contract != "" {
-				fmt.Fprintf(&out, "    contract: %s\n", f.Rule.Contract)
+				_, _ = fmt.Fprintf(&out, "    contract: %s\n", f.Rule.Contract)
 			}
 		}
 	}
 
 	if len(unknown) > 0 {
-		fmt.Fprintf(&out, "\nCONDITIONS THAT COULD NOT BE ANSWERED\n")
+		_, _ = fmt.Fprintf(&out, "\nCONDITIONS THAT COULD NOT BE ANSWERED\n")
 		for _, f := range unknown {
-			fmt.Fprintf(&out, "\n  %s\n", f.Rule.ID)
-			fmt.Fprintf(&out, "    failure: %s\n", f.Rule.Failure)
-			fmt.Fprintf(&out, "    the observation does not carry %s, so this rule was not evaluated.\n", f.Missing)
+			_, _ = fmt.Fprintf(&out, "\n  %s\n", f.Rule.ID)
+			_, _ = fmt.Fprintf(&out, "    failure: %s\n", f.Rule.Failure)
+			_, _ = fmt.Fprintf(&out, "    the observation does not carry %s, so this rule was not evaluated.\n", f.Missing)
 		}
-		fmt.Fprintf(&out, "\n  A rule that could not be answered is not a rule that passed. The facts above are "+
+		_, _ = fmt.Fprintf(&out, "\n  A rule that could not be answered is not a rule that passed. The facts above are "+
 			"what the box's observation surface owes this library.\n")
 	}
 

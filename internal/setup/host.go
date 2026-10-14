@@ -53,8 +53,3 @@ type Output struct {
 // OK reports whether the command succeeded. A method rather than a field so
 // the zero value is a failure rather than a lie about the host.
 func (o Output) OK() bool { return o.Code == 0 }
-
-// first lines, bounded: a command's output in a report is a sentence, not a
-// transcript. The bound is here rather than at the print site so a caller that
-// forgets cannot print ten megabytes of `curl` progress into a bootstrap log.
-func (o Output) lines(n int) string { return clip(o.Stdout, n) }

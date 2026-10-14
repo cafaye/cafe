@@ -88,9 +88,10 @@ func unameSm() string {
 	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
 		return "Darwin arm64"
 	}
-	if runtime.GOARCH == "amd64" {
+	switch runtime.GOARCH {
+	case "amd64":
 		machine = "x86_64"
-	} else if runtime.GOARCH == "arm64" {
+	case "arm64":
 		machine = "aarch64"
 	}
 	return "Linux " + machine

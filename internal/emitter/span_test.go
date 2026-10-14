@@ -427,11 +427,11 @@ func TestIdentityIsOnTheResourceAndNotOnTheSpan(t *testing.T) {
 // gives deployment.environment a four-value enum, so a guess is a value in the
 // backend somebody later has to filter out.
 func TestAnUnknownVersionOrEnvironmentIsAbsentRatherThanGuessed(t *testing.T) {
-	session, exp, err := recordingInstall(t, map[string]string{})
+	_, exp, err := recordingInstall(t, map[string]string{})
 	if err != nil {
 		t.Fatalf("Install: %v", err)
 	}
-	session, err = Install(context.Background(), Options{
+	session, err := Install(context.Background(), Options{
 		Lookup:      func(string) string { return "" },
 		NewExporter: func(context.Context, string, bool) (sdktrace.SpanExporter, error) { return exp, nil },
 	})
@@ -1186,7 +1186,7 @@ func TestTheSpanReachesARealOTLPReceiverOverTheWire(t *testing.T) {
 	if span.span.GetKind() != tracepb.Span_SPAN_KIND_INTERNAL {
 		t.Errorf("span kind on the wire = %v, want INTERNAL", span.span.GetKind())
 	}
-	if got := span.span.GetParentSpanId(); got != nil && len(got) != 0 {
+	if got := span.span.GetParentSpanId(); len(got) != 0 {
 		t.Errorf("the span on the wire has parent %x, want a root span", got)
 	}
 

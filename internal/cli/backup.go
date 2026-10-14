@@ -264,7 +264,7 @@ func (r backupRun) run() error {
 		return err
 	}
 	if !ok {
-		fmt.Fprint(r.out(), "cafe backup: nothing was taken. Run it with --yes when you mean it.\n")
+		_, _ = fmt.Fprint(r.out(), "cafe backup: nothing was taken. Run it with --yes when you mean it.\n")
 		return errReported
 	}
 	return r.runCycle(runner, false)
@@ -344,7 +344,7 @@ func (r backupRun) recordAndReport(started time.Time, err error, report string) 
 	// strength of a restore nobody will be able to point at.
 	if writeErr := r.writeRecord(rec); writeErr != nil {
 		return fmt.Errorf("cafe backup: the drill %s, and cafe could not record it: %w\n"+
-			"  The result is only in the report above. Set CAF_DRILL_DIR to a writable directory and run it again.",
+			"  The result is only in the report above. Set CAF_DRILL_DIR to a writable directory and run it again",
 			rec.Outcome, writeErr)
 	}
 
@@ -372,12 +372,12 @@ func (r backupRun) recordAndReport(started time.Time, err error, report string) 
 		// is paged (OPS-P20) — so the convention this uses is the one cafe already
 		// has: exit nonzero and a named reason. A monitor that wants more reads
 		// --json.
-		fmt.Fprintf(r.errOut(), "cafe backup drill: %s: %s did not prove a restore (%s)\n",
+		_, _ = fmt.Fprintf(r.errOut(), "cafe backup drill: %s: %s did not prove a restore (%s)\n",
 			rec.Reason, rec.Service, rec.Outcome)
 		if rec.Detail != "" {
-			fmt.Fprintf(r.errOut(), "  %s\n", rec.Detail)
+			_, _ = fmt.Fprintf(r.errOut(), "  %s\n", rec.Detail)
 		}
-		fmt.Fprintf(r.errOut(), "  recorded in %s\n", r.deps.drills)
+		_, _ = fmt.Fprintf(r.errOut(), "  recorded in %s\n", r.deps.drills)
 	}
 	return r.classify(err)
 }

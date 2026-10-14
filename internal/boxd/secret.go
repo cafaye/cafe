@@ -138,6 +138,9 @@ func walk(t reflect.Type, path string, seen map[reflect.Type]bool) string {
 		}
 	case reflect.Func:
 		return path + " (a function is not an answer)"
+	default:
+		// Any other kind carries no structure the walk descends into.
+		return ""
 	}
 	return ""
 }

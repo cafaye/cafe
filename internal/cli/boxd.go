@@ -401,19 +401,6 @@ func (w boxWorld) save(state boxState) error {
 	return nil
 }
 
-func (w boxWorld) applied(phase int) bool {
-	state, err := w.load()
-	if err != nil {
-		return false
-	}
-	for _, p := range state.Applied {
-		if p == phase {
-			return true
-		}
-	}
-	return false
-}
-
 // Identity implements boxd.World's first question: the enrollment this
 // connection loaded. The daemon built this world from the identity at dial
 // time, so the answer is the one Redeem compares a capability's binding

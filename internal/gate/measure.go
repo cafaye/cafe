@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -103,14 +104,14 @@ func ParseOutput(out []byte) (Measured, error) {
 // the summary line is printed either way. The error is reserved for output with
 // no summary line at all, which is a run that proved nothing.
 func Measure(root string) (Measured, error) {
-	cmd := exec.Command(filepath.Join(root, "bin", "prime"))
+	cmd := exec.CommandContext(context.Background(), filepath.Join(root, "bin", "prime"))
 	cmd.Dir = root
 	out, err := cmd.CombinedOutput()
 
 	m, parseErr := ParseOutput(out)
 	if parseErr != nil {
 		if err != nil {
-			return Measured{}, fmt.Errorf("run bin/prime: %v\n%s", err, out)
+			return Measured{}, fmt.Errorf("run bin/prime: %w\n%s", err, out)
 		}
 		return Measured{}, parseErr
 	}

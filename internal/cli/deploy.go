@@ -216,7 +216,7 @@ func (r deployRun) run() error {
 		return err
 	}
 	if !ok {
-		fmt.Fprintf(r.out(), "cafe deploy: nothing was deployed. Run it with --yes when you mean it.\n")
+		_, _ = fmt.Fprintf(r.out(), "cafe deploy: nothing was deployed. Run it with --yes when you mean it.\n")
 		return errReported
 	}
 

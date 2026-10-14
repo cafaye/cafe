@@ -360,7 +360,7 @@ func (r *rehearsal) startSSHHost() {
 	// The name is fixed, so a run that died before its teardown was registered
 	// leaves it taken. Taking the name back first makes the case idempotent, which
 	// is the property a test owning a global name needs.
-	quiet(exec.Command("docker", "rm", "--force", "--volumes", liveSSHHostName))
+	quiet(exec.CommandContext(context.Background(), "docker", "rm", "--force", "--volumes", liveSSHHostName))
 
 	socket, err := hostDockerSocket()
 	if err != nil {
@@ -391,7 +391,7 @@ func (r *rehearsal) writeKnownHosts() {
 	var lastErr error
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		out, err := exec.Command("ssh-keyscan", "-p", fmt.Sprint(liveSSHPort), "-t", "ed25519", "127.0.0.1").Output()
+		out, err := exec.CommandContext(context.Background(), "ssh-keyscan", "-p", fmt.Sprint(liveSSHPort), "-t", "ed25519", "127.0.0.1").Output()
 		if err != nil {
 			lastErr = err
 		}
@@ -554,7 +554,7 @@ func (r *rehearsal) linkDockerPlugins() {
 		r.t.Skipf("%s has no buildx plugin, and kamal cannot run without one", from)
 	}
 
-	cmd := exec.Command("docker", "buildx", "version")
+	cmd := exec.CommandContext(context.Background(), "docker", "buildx", "version")
 	cmd.Env = append(os.Environ(), "HOME="+r.home)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		r.t.Fatalf("the rehearsal's scratch HOME cannot run `docker buildx version`, so a kamal command "+
@@ -578,7 +578,7 @@ func (r *rehearsal) linkDockerPlugins() {
 // is not part of what this test is about.
 func (r *rehearsal) startRepository() {
 	r.t.Helper()
-	cmd := exec.Command("docker", "run", "--rm",
+	cmd := exec.CommandContext(context.Background(), "docker", "run", "--rm",
 		"--volume", liveService+"_backup_repo:/backups",
 		"--env", "RESTIC_REPOSITORY="+liveRepo,
 		"--env", "RESTIC_PASSWORD="+liveResticPassword,
@@ -761,7 +761,8 @@ func (r *rehearsal) mustValidate(t *testing.T, wantOK bool) {
 func (r *rehearsal) gemValidate(t *testing.T) string {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
-	asked, last := 0, ""
+	asked := 0
+	var last string
 	for {
 		last = r.execIn(liveService+"-backup", "kamal-backup validate")
 		asked++
@@ -801,18 +802,13 @@ func isGemAnswer(out string) bool {
 
 func (r *rehearsal) accessoryExists(t *testing.T) bool {
 	t.Helper()
-	out, err := exec.Command("docker", "ps", "--all", "--quiet",
+	out, err := exec.CommandContext(context.Background(), "docker", "ps", "--all", "--quiet",
 		"--filter", "name=^"+liveService+"-backup$").Output()
 	if err != nil {
 		t.Logf("could not ask the host daemon: %v", err)
 		return false
 	}
 	return strings.TrimSpace(string(out)) != ""
-}
-
-func (r *rehearsal) removeAccessory(t *testing.T) {
-	t.Helper()
-	quiet(exec.Command("docker", "rm", "--force", "--volumes", liveService+"-backup"))
 }
 
 // engine is the real runner, pointed at the real kamal on PATH, wrapped so the
@@ -905,7 +901,7 @@ func (r *rehearsal) publicKey() string {
 
 // kamal runs one kamal command in the project and returns its combined output.
 func (r *rehearsal) kamal(args ...string) (string, error) {
-	cmd := exec.Command("kamal", args...)
+	cmd := exec.CommandContext(context.Background(), "kamal", args...)
 	cmd.Dir = r.project
 	cmd.Env = append(os.Environ(), "HOME="+r.home)
 	out, err := cmd.CombinedOutput()
@@ -919,7 +915,7 @@ func (r *rehearsal) execIn(container, command string) string {
 	if err != nil {
 		r.t.Skipf("no host Docker socket to reach the rehearsal's containers: %v", err)
 	}
-	cmd := exec.Command("docker", "--host", "unix://"+socket, "exec", container, "sh", "-c", command)
+	cmd := exec.CommandContext(context.Background(), "docker", "--host", "unix://"+socket, "exec", container, "sh", "-c", command)
 	out, _ := cmd.CombinedOutput()
 	return strings.TrimSpace(string(out))
 }
@@ -934,12 +930,12 @@ func (r *rehearsal) teardown() {
 	// this test's, and an accessory left behind makes the next run skip the boot
 	// and pass for the wrong reason.
 	for _, name := range []string{liveService + "-backup", liveService + "-postgres"} {
-		quiet(exec.Command("docker", "rm", "--force", "--volumes", name))
+		quiet(exec.CommandContext(context.Background(), "docker", "rm", "--force", "--volumes", name))
 	}
-	quiet(exec.Command("docker", "rm", "--force", "--volumes", liveSSHHostName))
-	if out, err := exec.Command("docker", "ps", "--all", "--quiet", "--filter", "label="+liveLabel).Output(); err == nil {
+	quiet(exec.CommandContext(context.Background(), "docker", "rm", "--force", "--volumes", liveSSHHostName))
+	if out, err := exec.CommandContext(context.Background(), "docker", "ps", "--all", "--quiet", "--filter", "label="+liveLabel).Output(); err == nil {
 		if ids := strings.Fields(string(out)); len(ids) > 0 {
-			cmd := exec.Command("docker", "rm", "--force", "--volumes")
+			cmd := exec.CommandContext(context.Background(), "docker", "rm", "--force", "--volumes")
 			cmd.Args = append(cmd.Args, ids...)
 			quiet(cmd)
 		}
@@ -950,7 +946,7 @@ func (r *rehearsal) teardown() {
 		liveService + "_backup_repo",
 		"kamal-proxy-config",
 	} {
-		quiet(exec.Command("docker", "volume", "rm", "--force", volume))
+		quiet(exec.CommandContext(context.Background(), "docker", "volume", "rm", "--force", volume))
 	}
 }
 
@@ -964,7 +960,7 @@ func (r *rehearsal) run(name string, args ...string) { r.runIn(r.project, name, 
 
 func (r *rehearsal) runIn(dir, name string, args ...string) {
 	r.t.Helper()
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "HOME="+r.home)
 	out, err := cmd.CombinedOutput()
@@ -984,7 +980,7 @@ func requireTools(t *testing.T, names ...string) {
 }
 
 func portInUse(port int) bool {
-	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return true
 	}
@@ -1000,7 +996,7 @@ func waitForPort(t *testing.T, port int, budget time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(budget)
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
+		conn, err := (&net.Dialer{Timeout: time.Second}).DialContext(context.Background(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 		if err == nil {
 			_ = conn.Close()
 			return
@@ -1022,7 +1018,7 @@ func hostDockerSocket() (string, error) {
 }
 
 func hostArch() string {
-	out, err := exec.Command("docker", "version", "--format", "{{.Server.Arch}}").Output()
+	out, err := exec.CommandContext(context.Background(), "docker", "version", "--format", "{{.Server.Arch}}").Output()
 	if err != nil {
 		return "arm64"
 	}

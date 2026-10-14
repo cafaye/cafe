@@ -164,9 +164,3 @@ func pluralArgs(n int) string {
 	}
 	return fmt.Sprintf("%d arguments", n)
 }
-
-// notImplemented is what every stub returns. The command name goes in so the
-// message is useful on a terminal: "cafe deploy: not implemented in v0".
-func notImplemented(c *Command) error {
-	return fmt.Errorf("cafe %s: %w", c.Name, errNotImplemented)
-}

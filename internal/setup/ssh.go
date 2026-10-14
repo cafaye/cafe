@@ -139,7 +139,7 @@ func (h SSHHost) run(ctx context.Context, command string, stdin []byte, sock str
 		Stderr: strings.TrimSpace(stderr.String()),
 	}
 	if runErr != nil && out.Code == -1 {
-		return out, fmt.Errorf("cafe box setup: ssh to %s: %v: %s", h.Name, runErr, firstLine(stderr.String()))
+		return out, fmt.Errorf("cafe box setup: ssh to %s: %w: %s", h.Name, runErr, firstLine(stderr.String()))
 	}
 	return out, nil
 }
@@ -188,10 +188,6 @@ func (h SSHHost) sshArgs() []string {
 // cannot accidentally inherit the walk's rule — the two are asserted to differ
 // in exactly that line and nothing else.
 func (h SSHHost) baseArgs() []string {
-	timeout := h.Timeout
-	if timeout <= 0 {
-		timeout = DefaultTimeout
-	}
 	connect := h.ConnectTimeout
 	if connect <= 0 {
 		connect = DefaultConnectTimeout

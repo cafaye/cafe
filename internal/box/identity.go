@@ -80,20 +80,6 @@ func publicKeyText(key ed25519.PublicKey) string {
 	return base64.RawStdEncoding.EncodeToString(key)
 }
 
-// parsePublicKey reads it back and refuses anything that is not 32 bytes,
-// because a key of the wrong length is a key that will fail to verify at the
-// far end and the moment to find that out is here.
-func parsePublicKey(text string) (ed25519.PublicKey, error) {
-	raw, err := base64.RawStdEncoding.DecodeString(strings.TrimSpace(text))
-	if err != nil {
-		return nil, fmt.Errorf("box public key is not base64: %w", err)
-	}
-	if len(raw) != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("box public key is %d bytes, want %d", len(raw), ed25519.PublicKeySize)
-	}
-	return ed25519.PublicKey(raw), nil
-}
-
 // privateKeyText is the keyring form of a private key: raw standard base64 of
 // the full 64-byte seed-and-public pair. It is written to the Keyring and to
 // nothing else — see ring.go for the whole argument.

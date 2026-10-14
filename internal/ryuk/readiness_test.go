@@ -113,7 +113,7 @@ type unreadyReaper struct {
 
 func newUnreadyReaper(t *testing.T, refusals int64) *unreadyReaper {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestTheLeaseIsWaitedForRatherThanAssumed(t *testing.T) {
 	filter := Filter{Labels: []Label{SessionLabel(session)}}
 
 	// Control 1: the old readiness check. It cannot fail, which is the problem.
-	conn, err := net.DialTimeout("tcp", reaper.address(), time.Second)
+	conn, err := (&net.Dialer{Timeout: time.Second}).DialContext(context.Background(), "tcp", reaper.address())
 	if err != nil {
 		t.Fatalf("the control could not connect at all, so it is not demonstrating anything: %v", err)
 	}

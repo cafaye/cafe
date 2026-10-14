@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -228,15 +229,15 @@ func runPublish(project string, opts *publishOptions, deps publishDeps, env *Env
 // will happen after.
 func printProposal(w io.Writer, proposal publish.Proposal) {
 	reg := proposal.Registration
-	fmt.Fprintf(w, "cafe publish: proposal for `%s`\n", reg.Name)
-	fmt.Fprintf(w, "  register     %s (%s, %s) — manifest sha256 %s…\n",
+	_, _ = fmt.Fprintf(w, "cafe publish: proposal for `%s`\n", reg.Name)
+	_, _ = fmt.Fprintf(w, "  register     %s (%s, %s) — manifest sha256 %s…\n",
 		reg.Name, reg.Language, reg.Kind, reg.ManifestSHA256[:12])
-	fmt.Fprintf(w, "  version      %s\n", proposal.Tag)
+	_, _ = fmt.Fprintf(w, "  version      %s\n", proposal.Tag)
 	if len(proposal.Requirements) == 0 {
-		fmt.Fprintf(w, "  require      none — this project declares no dependencies\n")
+		_, _ = fmt.Fprintf(w, "  require      none — this project declares no dependencies\n")
 	}
 	for _, req := range proposal.Requirements {
-		fmt.Fprintf(w, "  require      %s %s (%s)\n", req.Name, req.VersionRange, req.Dependency)
+		_, _ = fmt.Fprintf(w, "  require      %s %s (%s)\n", req.Name, req.VersionRange, req.Dependency)
 	}
 }
 
@@ -281,7 +282,7 @@ func renderStep(step publish.Step) string {
 // sayPublish is the stderr half of the split: one sentence per event, for a
 // person.
 func sayPublish(w io.Writer, format string, args ...any) {
-	fmt.Fprintf(w, "cafe publish: "+format+"\n", args...)
+	_, _ = fmt.Fprintf(w, "cafe publish: "+format+"\n", args...)
 }
 
 // semverTag is the shape of a tag the derivation accepts: an optional leading
@@ -317,7 +318,7 @@ func latestSemverTag(dir string) (string, error) {
 // trimmed. It is the same helper shape deploy's argo engine uses, because the
 // question — "what did git say" — is one question.
 func gitOutput(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(context.Background(), "git", args...)
 	if dir != "" {
 		cmd.Dir = dir
 	}

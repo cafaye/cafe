@@ -516,7 +516,7 @@ func httpInitialize(t *testing.T, addr string) string {
 // a POST of a JSON body with an Accept header naming both response types.
 func post(t *testing.T, addr, sessionID, body string) *http.Response {
 	t.Helper()
-	request, err := http.NewRequest(http.MethodPost, "http://"+addr+"/", strings.NewReader(body))
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+addr+"/", strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}

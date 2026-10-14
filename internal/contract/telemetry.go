@@ -926,10 +926,10 @@ func skipValue(decoder *json.Decoder) error {
 			return err
 		}
 		if nested, ok := token.(json.Delim); ok {
-			switch {
-			case nested == '{' || nested == '[':
+			switch nested {
+			case '{', '[':
 				depth++
-			case nested == '}' || nested == ']':
+			case '}', ']':
 				depth--
 			}
 		}

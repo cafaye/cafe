@@ -91,9 +91,9 @@ func secretVerbTable(verbs []secretVerb) string {
 	table.WriteString("Commands:\n")
 	tw := tabwriter.NewWriter(&table, 0, 0, 2, ' ', 0)
 	for _, verb := range verbs {
-		fmt.Fprintf(tw, "  %s\t%s\n", verb.cmd.Name, verb.cmd.Summary)
+		_, _ = fmt.Fprintf(tw, "  %s\t%s\n", verb.cmd.Name, verb.cmd.Summary)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 	return table.String()
 }
 
@@ -289,14 +289,14 @@ func (r secretRotateRun) run() error {
 	// stdout, and there is no flag that chooses between them because a flag
 	// that chose would guarantee one of the two was wrong in some script.
 	for _, refusal := range refused {
-		fmt.Fprint(r.errOut(), refusal.Human())
+		_, _ = fmt.Fprint(r.errOut(), refusal.Human())
 	}
 
 	// NOTHING IS DUE and NOTHING IS REFUSED is the one quiet answer, and it is
 	// quiet because there is nothing to say: the schedule is not behind on
 	// anything.
 	if len(targets) == 0 && len(refused) == 0 {
-		fmt.Fprint(r.out(), "cafe secret: nothing is due. cafe secret inventory says what is held and when each was last rotated.\n")
+		_, _ = fmt.Fprint(r.out(), "cafe secret: nothing is due. cafe secret inventory says what is held and when each was last rotated.\n")
 		return nil
 	}
 
@@ -318,7 +318,7 @@ func (r secretRotateRun) run() error {
 		return err
 	}
 	if !ok {
-		fmt.Fprint(r.out(), "cafe secret: nothing was rotated. Run it with --yes when you mean it.\n")
+		_, _ = fmt.Fprint(r.out(), "cafe secret: nothing was rotated. Run it with --yes when you mean it.\n")
 		return errReported
 	}
 
@@ -436,15 +436,15 @@ func (r secretRotateRun) printPlan(plan secret.Plan) error {
 			return err
 		}
 		if step.Stdin == "" {
-			fmt.Fprintf(r.out(), "  %s\n", strings.Join(step.Argv, " "))
+			_, _ = fmt.Fprintf(r.out(), "  %s\n", strings.Join(step.Argv, " "))
 			continue
 		}
-		fmt.Fprintf(r.out(), "  kubectl apply -f - with:\n")
+		_, _ = fmt.Fprintf(r.out(), "  kubectl apply -f - with:\n")
 		for _, line := range strings.Split(strings.TrimRight(step.Redacted, "\n"), "\n") {
-			fmt.Fprintf(r.out(), "    %s\n", line)
+			_, _ = fmt.Fprintf(r.out(), "    %s\n", line)
 		}
 	}
-	fmt.Fprintf(r.out(), "cafe secret: %s (dry run — nothing was changed)\n", plan.Report)
+	_, _ = fmt.Fprintf(r.out(), "cafe secret: %s (dry run — nothing was changed)\n", plan.Report)
 	return nil
 }
 

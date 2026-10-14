@@ -281,6 +281,8 @@ func (s *Store) BeginStep(l *Lease, key string) error {
 	switch step.State {
 	case StepDone, StepRunning:
 		return nil
+	case StepPending, StepFailed:
+		// Begin (or re-begin) the step below.
 	}
 	now := s.stamp()
 	step.State = StepRunning

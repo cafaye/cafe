@@ -37,9 +37,6 @@ type envDeps struct {
 	// reasons and with the same defaults as `cafe dev`.
 	load     func(dir string) (dev.Project, error)
 	registry func(path string) (dev.Registry, error)
-	// ledgerDir is where the receipt and the entries live. Empty means the
-	// resolved default, and a test always sets it.
-	ledgerDir string
 	// composeFile is where the rendered document goes, inside the project.
 	composeFile string
 }
@@ -331,7 +328,7 @@ func (r envUp) run(env *Env) error {
 		// The compose document is printed even on a dry run, for the same reason
 		// `cafe dev` prints it: a generated artifact nobody can inspect is an
 		// artifact nobody can debug.
-		fmt.Fprint(r.out(env), stack.Compose)
+		_, _ = fmt.Fprint(r.out(env), stack.Compose)
 		return r.print(env, receipt)
 	}
 
@@ -378,13 +375,13 @@ func (r envUp) run(env *Env) error {
 // is armed before `up` runs because the runtime makes containers and networks
 // before it discovers that a port is taken.
 func (r envUp) up(ctx context.Context, stack dev.Stack, file string, env *Env) error {
-	fmt.Fprintf(r.out(env), "starting %d services in %s\n", len(stack.Services), stack.Project)
+	_, _ = fmt.Fprintf(r.out(env), "starting %d services in %s\n", len(stack.Services), stack.Project)
 	err := r.deps.runtime.Up(ctx, stack.Project, file)
 	return err
 }
 
 func (r envUp) down(ctx context.Context, project string, env *Env) error {
-	fmt.Fprintf(r.out(env), "\nstopping %s\n", project)
+	_, _ = fmt.Fprintf(r.out(env), "\nstopping %s\n", project)
 	// On a context that is not the caller's: a teardown on a canceled context is
 	// a teardown that does not happen, and the difference is four containers a
 	// developer has to clean up by hand.
@@ -431,7 +428,7 @@ func (r envUp) reclaim(env *Env, book *ledger.Ledger, entry ledger.Entry, cause 
 // where it is still running against a stack that is going away is exactly the
 // window in which a suite reports something that is not true.
 func (r envUp) runChild(ctx context.Context, env *Env) error {
-	fmt.Fprintf(r.out(env), "\n$ %s\n", strings.Join(r.command, " "))
+	_, _ = fmt.Fprintf(r.out(env), "\n$ %s\n", strings.Join(r.command, " "))
 
 	cmd := exec.CommandContext(ctx, r.command[0], r.command[1:]...)
 	cmd.Stdin = os.Stdin
@@ -526,16 +523,16 @@ func (r envUp) release(held []int) {
 func (r envUp) print(env *Env, receipt Receipt) error {
 	w := r.out(env)
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "%s\t%s\n", "tier", receipt.Tier)
-	fmt.Fprintf(tw, "%s\t%s\n", "session", receipt.Session)
-	fmt.Fprintf(tw, "%s\t%d\n", "generation", receipt.Generation)
-	fmt.Fprintf(tw, "%s\t%s\n", "worktree", receipt.Worktree)
-	fmt.Fprintf(tw, "%s\t%s\n", "project", receipt.Project)
-	fmt.Fprintf(tw, "%s\t%s\n", "ports", joinPorts(receipt.Ports))
-	fmt.Fprintf(tw, "%s\t%s\n", "databases", joinNames(receipt.Databases))
-	fmt.Fprintf(tw, "%s\t%s\n", "ledger", receipt.Ledger)
-	fmt.Fprintf(tw, "%s\t%s\n", "tier policy", receipt.Policy)
-	tw.Flush()
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "tier", receipt.Tier)
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "session", receipt.Session)
+	_, _ = fmt.Fprintf(tw, "%s\t%d\n", "generation", receipt.Generation)
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "worktree", receipt.Worktree)
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "project", receipt.Project)
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "ports", joinPorts(receipt.Ports))
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "databases", joinNames(receipt.Databases))
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "ledger", receipt.Ledger)
+	_, _ = fmt.Fprintf(tw, "%s\t%s\n", "tier policy", receipt.Policy)
+	_ = tw.Flush()
 
 	// The machine-readable half, on its own line, because a gate reads one line
 	// and a human reads the table above it.
@@ -543,7 +540,7 @@ func (r envUp) print(env *Env, receipt Receipt) error {
 	if err != nil {
 		return fmt.Errorf("cafe env up: %w", err)
 	}
-	fmt.Fprintf(w, "\nreceipt:\n%s\nCAF_RECEIPT=%s\n", receipt.Compose, encoded)
+	_, _ = fmt.Fprintf(w, "\nreceipt:\n%s\nCAF_RECEIPT=%s\n", receipt.Compose, encoded)
 	return nil
 }
 

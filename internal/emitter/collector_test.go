@@ -136,7 +136,7 @@ func (w wireSpan) resourceAttributeNames() []string {
 func startCollector(t *testing.T) collector {
 	t.Helper()
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("bind a loopback port for the collector: %v", err)
 	}

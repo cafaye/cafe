@@ -156,10 +156,10 @@ func newBoxWipeCommand(deps boxWipeDeps) *Command {
 			// still a non-zero exit, because a script that ran a wipe without
 			// --yes must not read as success.
 			if errors.Is(wipeErr, setup.ErrWipeDeclined) {
-				fmt.Fprintf(env.Stderr, "cafe box wipe: nothing was removed. Run it with --yes when you mean it.\n")
+				_, _ = fmt.Fprintf(env.Stderr, "cafe box wipe: nothing was removed. Run it with --yes when you mean it.\n")
 				return errReported
 			}
-			fmt.Fprintf(env.Stderr, "cafe box wipe: %v\n", wipeErr)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe box wipe: %v\n", wipeErr)
 			return errReported
 		}
 		return nil
@@ -199,13 +199,13 @@ func wipePassword(opts *boxWipeFlags) string {
 // document to stdout, always.
 func printWipeResult(env *Env, res setup.WipeResult, asJSON bool) {
 	for _, line := range res.Log {
-		fmt.Fprintln(env.Stderr, line)
+		_, _ = fmt.Fprintln(env.Stderr, line)
 	}
 	if len(res.Kept) > 0 {
 		say(env.Stderr, "host %s: kept %s", res.Host, strings.Join(res.Kept, ", "))
 	}
 	if err := writeDoc(env.Stdout, res, asJSON); err != nil {
-		fmt.Fprintf(env.Stderr, "cafe box wipe: write the document: %v\n", err)
+		_, _ = fmt.Fprintf(env.Stderr, "cafe box wipe: write the document: %v\n", err)
 	}
 }
 

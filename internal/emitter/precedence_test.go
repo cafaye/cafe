@@ -220,7 +220,7 @@ type dialRecorder struct {
 
 func startDialRecorder(t *testing.T) *dialRecorder {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("bind a loopback port: %v", err)
 	}

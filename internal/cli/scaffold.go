@@ -26,8 +26,8 @@ import (
 // inside a tool is a document nobody can diff. A path and a byte count would
 // tell a reader that five files exist and nothing about what is in them.
 func printScaffolded(w io.Writer, verb string, out scaffold.Output) {
-	fmt.Fprintf(w, "cafe %s wrote %d file(s) from template %s:\n", verb, len(out.Files), out.Template)
+	_, _ = fmt.Fprintf(w, "cafe %s wrote %d file(s) from template %s:\n", verb, len(out.Files), out.Template)
 	for _, file := range out.Files {
-		fmt.Fprintf(w, "\n===== %s =====\n%s", file.Path, file.Content)
+		_, _ = fmt.Fprintf(w, "\n===== %s =====\n%s", file.Path, file.Content)
 	}
 }

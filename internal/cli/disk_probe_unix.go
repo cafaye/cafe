@@ -37,7 +37,11 @@ func diskUsage(path string) (diskReading, error) {
 	// reserved blocks — which exist precisely so a box filling up does not stop
 	// root from logging in.
 	return diskReading{
-		Total: bsize * uint64(st.Blocks),
-		Free:  bsize * uint64(st.Bavail),
+		// The double conversion is the portable spelling: on linux these
+		// fields are already 64 bits and on darwin they are 32, so a single
+		// uint64() is either unnecessary (and flagged) or missing (and does
+		// not compile). int64 is the width both platforms reach.
+		Total: bsize * uint64(int64(st.Blocks)),
+		Free:  bsize * uint64(int64(st.Bavail)),
 	}, nil
 }

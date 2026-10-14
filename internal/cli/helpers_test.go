@@ -85,7 +85,7 @@ func (d *recordingDocker) Volumes(context.Context, string) ([]ledger.Resource, e
 	// The second listing is the one after the containers are gone, which is when
 	// a pinned volume becomes removable. A fake that answered identically both
 	// times would hide the re-list.
-	if d.removed == nil || len(d.removed) == 0 || d.removed[len(d.removed)-1] != "container" {
+	if len(d.removed) == 0 || d.removed[len(d.removed)-1] != "container" {
 		return d.volumes, nil
 	}
 	return d.volumes, nil

@@ -252,5 +252,5 @@ func (d *Daemon) redeem(ctx context.Context, ch ControlPlane, world World, cap C
 }
 
 func (d *Daemon) logf(format string, args ...any) {
-	fmt.Fprintf(d.log, format+"\n", args...)
+	_, _ = fmt.Fprintf(d.log, format+"\n", args...)
 }

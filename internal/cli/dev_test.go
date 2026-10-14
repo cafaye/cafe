@@ -869,7 +869,7 @@ func TestDevReportsARuntimeFailure(t *testing.T) {
 func TestDevReportsASubprocessFailureTheRouterWouldSwallow(t *testing.T) {
 	// Really fail a command, so what is under test is a genuine
 	// *exec.ExitError rather than a type declared in this package.
-	_, runErr := exec.Command("sh", "-c", "exit 127").CombinedOutput()
+	_, runErr := exec.CommandContext(context.Background(), "sh", "-c", "exit 127").CombinedOutput()
 	if runErr == nil {
 		t.Fatal("sh exited 0; this test needs a command that fails")
 	}

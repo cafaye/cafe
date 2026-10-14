@@ -90,9 +90,9 @@ func genVerbTable(verbs []genVerb) string {
 	table.WriteString("Targets:\n")
 	tw := tabwriter.NewWriter(&table, 0, 0, 2, ' ', 0)
 	for _, verb := range verbs {
-		fmt.Fprintf(tw, "  %s\t%s\n", verb.cmd.Name, verb.cmd.Summary)
+		_, _ = fmt.Fprintf(tw, "  %s\t%s\n", verb.cmd.Name, verb.cmd.Summary)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 	return table.String()
 }
 
@@ -389,8 +389,8 @@ func writeGenerated(root string, file gen.File) error {
 // nobody can diff. A path and a byte count would tell a reader that three files
 // exist and nothing about what is in them.
 func printGenerated(w io.Writer, out gen.Output) {
-	fmt.Fprintf(w, "cafe gen %s wrote %d file(s) from this project's cafaye.yml:\n", out.Target, len(out.Files))
+	_, _ = fmt.Fprintf(w, "cafe gen %s wrote %d file(s) from this project's cafaye.yml:\n", out.Target, len(out.Files))
 	for _, file := range out.Files {
-		fmt.Fprintf(w, "\n===== %s =====\n%s", file.Path, file.Content)
+		_, _ = fmt.Fprintf(w, "\n===== %s =====\n%s", file.Path, file.Content)
 	}
 }

@@ -196,7 +196,7 @@ func stackStatusRoute() Route {
 		if err != nil {
 			return status{}, err
 		}
-		return status{Services: s.Services, Phase: s.Phase, Detail: s.Detail}, nil
+		return status(s), nil
 	})
 	return route("stack.status", "report which substrate services run and the phase the install reached", true, struct{}{}, status{}, h)
 }
@@ -222,7 +222,7 @@ func stackApplyRoute() Route {
 		if err != nil {
 			return result{}, err
 		}
-		return result{Applied: r.Applied, Phase: r.Phase, Detail: r.Detail}, nil
+		return result(r), nil
 	})
 	return route("stack.apply", "apply one phase of the recorded substrate plan", false, params{}, result{}, h)
 }

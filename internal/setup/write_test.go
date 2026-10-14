@@ -146,7 +146,8 @@ func (h *shellHost) execOne(op string, stdin []byte) (int, string, string) {
 	case "wc":
 		// wc -c < 'path'
 		i := 0
-		for ; i < len(f) && f[i] != "<"; i++ {
+		for i < len(f) && f[i] != "<" {
+			i++
 		}
 		if i+1 >= len(f) {
 			return 1, "", "wc: missing stdin redirect"
@@ -336,7 +337,7 @@ func TestAChunkBoundaryAtExactlyOneMebibyteIsOneChunk(t *testing.T) {
 
 func TestAMultiChunkWriteLandsWholeAndTheHostKeepsNoSibling(t *testing.T) {
 	host := newShellHost(t)
-	tr, _ := transferOver(host)
+	_, _ = transferOver(host)
 
 	payload := make([]byte, 2*WriteChunkSize+513)
 	copy(payload, "#!/bin/sh\nexec cafe-real \"$@\"\n")

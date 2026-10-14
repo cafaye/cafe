@@ -379,20 +379,20 @@ func Save(dir string, s Spec) error {
 	}
 	name := tmp.Name()
 	if _, err := tmp.Write(raw); err != nil {
-		tmp.Close()
-		os.Remove(name)
+		_ = tmp.Close()
+		_ = os.Remove(name)
 		return fmt.Errorf("write the edge spec: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(name)
+		_ = os.Remove(name)
 		return fmt.Errorf("close the temporary spec: %w", err)
 	}
 	if err := os.Chmod(name, 0o600); err != nil {
-		os.Remove(name)
+		_ = os.Remove(name)
 		return fmt.Errorf("set the edge spec's mode: %w", err)
 	}
 	if err := os.Rename(name, SpecPath(dir)); err != nil {
-		os.Remove(name)
+		_ = os.Remove(name)
 		return fmt.Errorf("install the edge spec: %w", err)
 	}
 	return nil

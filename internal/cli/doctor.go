@@ -253,7 +253,7 @@ func (d *doctor) report(dir string, opts doctorOptions) error {
 		d.writeFindings(sectionReclamation, "reclamation", bySection[sectionReclamation])
 	}
 
-	fmt.Fprintf(d.out, "\n%s\n", verdictLine(Verdict(all)))
+	_, _ = fmt.Fprintf(d.out, "\n%s\n", verdictLine(Verdict(all)))
 	if Verdict(all).MovesExitCode() {
 		// errReported: the verdict is the page, and the exit code is all that is
 		// left to say. Nothing goes on stderr, so a CI log does not carry the
@@ -437,16 +437,16 @@ func (d *doctor) check() doctorReport {
 // works with nothing else present.
 func (d *doctor) write(report doctorReport) {
 	tw := tabwriter.NewWriter(d.out, 0, 0, 2, ' ', 0)
-	fmt.Fprint(tw, "tool\tstatus\tfound at\n")
+	_, _ = fmt.Fprint(tw, "tool\tstatus\tfound at\n")
 	for _, row := range report {
 		location := row.Path
 		if location == "" {
 			location = "-"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\n", row.Name, row.Status(), location)
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\n", row.Name, row.Status(), location)
 	}
-	tw.Flush()
-	fmt.Fprintf(d.out, "%s\n", report.summary())
+	_ = tw.Flush()
+	_, _ = fmt.Fprintf(d.out, "%s\n", report.summary())
 }
 
 // summary is the trailing line a person reads first: how much of the toolchain

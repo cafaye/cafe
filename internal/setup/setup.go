@@ -456,7 +456,7 @@ func readBinary(path string) ([]byte, string, error) {
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return nil, "", fmt.Errorf("%w: %v", ErrNoBinary, err)
+		return nil, "", fmt.Errorf("%w: %w", ErrNoBinary, err)
 	}
 	if len(raw) == 0 {
 		return nil, "", fmt.Errorf("%w: %s is empty", ErrNoBinary, path)

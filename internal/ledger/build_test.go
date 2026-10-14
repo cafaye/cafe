@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -40,7 +41,7 @@ func TestEveryLockImplementationIsReachableOnSomePlatform(t *testing.T) {
 // which file is selected for *some* platform, not which one is selected here.
 func filesFor(t *testing.T, goos string) []string {
 	t.Helper()
-	cmd := exec.Command("go", "list", "-f", "{{range .GoFiles}}{{.}} {{end}}{{range .IgnoredGoFiles}}{{.}} {{end}}", ".")
+	cmd := exec.CommandContext(context.Background(), "go", "list", "-f", "{{range .GoFiles}}{{.}} {{end}}{{range .IgnoredGoFiles}}{{.}} {{end}}", ".")
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH=amd64", "CGO_ENABLED=0")
 	out, err := cmd.Output()
 	if err != nil {

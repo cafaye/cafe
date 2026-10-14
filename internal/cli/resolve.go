@@ -304,5 +304,5 @@ func (d resolveDeps) callerToken(env *Env) string {
 // sayResolve is the stderr half of the split: one sentence per dependency, for
 // a person.
 func sayResolve(w io.Writer, format string, args ...any) {
-	fmt.Fprintf(w, "cafe resolve: "+format+"\n", args...)
+	_, _ = fmt.Fprintf(w, "cafe resolve: "+format+"\n", args...)
 }

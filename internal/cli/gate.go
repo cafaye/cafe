@@ -136,12 +136,12 @@ func runGateFloors(root string, write bool, deps gateDeps, env *Env) error {
 	want := measured.Floors()
 	delta := gate.Delta{Before: before, After: want}
 
-	fmt.Fprintf(env.Stdout, "cafe gate floors: the gate reported %d packages, %d top-level passes, %d subtest passes, %d failures, %d skips\n",
+	_, _ = fmt.Fprintf(env.Stdout, "cafe gate floors: the gate reported %d packages, %d top-level passes, %d subtest passes, %d failures, %d skips\n",
 		measured.Packages, measured.TopLevel, measured.Subtests, measured.Failures, measured.Skips)
-	fmt.Fprintf(env.Stdout, "cafe gate floors: %s\n", delta)
+	_, _ = fmt.Fprintf(env.Stdout, "cafe gate floors: %s\n", delta)
 
 	if !write {
-		fmt.Fprint(env.Stdout, "cafe gate floors: dry run; pass --write to set the floors and re-pin caf.lock\n")
+		_, _ = fmt.Fprint(env.Stdout, "cafe gate floors: dry run; pass --write to set the floors and re-pin caf.lock\n")
 		return nil
 	}
 
@@ -166,6 +166,6 @@ func runGateFloors(root string, write bool, deps gateDeps, env *Env) error {
 	if _, err := lock.Write(root, built); err != nil {
 		return fmt.Errorf("cafe gate floors: re-pin %s: %w", lock.FileName, err)
 	}
-	fmt.Fprintf(env.Stdout, "cafe gate floors: re-pinned %s\n", lock.FileName)
+	_, _ = fmt.Fprintf(env.Stdout, "cafe gate floors: re-pinned %s\n", lock.FileName)
 	return nil
 }

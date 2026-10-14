@@ -171,7 +171,7 @@ func (g *Gateway) Serve(ctx context.Context, ln net.Listener) error {
 // from the source per handshake, which is what makes a renewal on disk take
 // effect without a restart (see CertStore).
 func (g *Gateway) ListenTLS(addr string) (net.Listener, error) {
-	ln, err := net.Listen("tcp", addr)
+	ln, err := new(net.ListenConfig).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("listen on %s: %w", addr, err)
 	}
@@ -347,16 +347,6 @@ func (g *Gateway) observedHealth(spec Spec, row Host) (Health, string) {
 	return row.Health, ""
 }
 
-// detailFor is the sentence behind an unhealthy answer, and it prefers the
-// observed one.
-func (g *Gateway) detailFor(row Host) string {
-	_, detail := g.probes.get(row.Name)
-	if detail == "" {
-		return fmt.Sprintf("the edge has not reached %s", row.Upstream)
-	}
-	return detail
-}
-
 // probeLoop asks every upstream how it is, on the interval. It stops when the
 // context is canceled or the gateway stops serving.
 //
@@ -501,14 +491,4 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	if _, err := w.Write(body); err != nil {
 		return
 	}
-}
-
-// trimPort is what a Host header loses before it is compared: the port, and
-// nothing else. NormalizeHost in spec.go is the one that runs on every
-// request; this one is here for a caller holding a name from somewhere else.
-func trimPort(host string) string {
-	if h, _, err := net.SplitHostPort(host); err == nil {
-		return h
-	}
-	return host
 }

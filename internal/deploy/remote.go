@@ -269,7 +269,7 @@ func (r *RemoteRunner) Run(ctx context.Context, dir string, step Step, stdout, s
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "  account %s is served by deployment %s at %s\n",
+		_, _ = fmt.Fprintf(stdout, "  account %s is served by deployment %s at %s\n",
 			found.ID, found.DeploymentID, orUnrecorded(found.ServedVersion))
 		return nil
 	case RequestStep:
@@ -289,9 +289,9 @@ func runRemoteRequest(ctx context.Context, rem Remote, req RemoteRequest, stdout
 	if !got.Accepted {
 		return fmt.Errorf("%w: the platform took the request and did not accept it, so nothing changed", ErrRefused)
 	}
-	fmt.Fprintf(stdout, "  deploy request %s accepted for account %s\n", got.ID, got.AccountID)
+	_, _ = fmt.Fprintf(stdout, "  deploy request %s accepted for account %s\n", got.ID, got.AccountID)
 	if got.Version != "" {
-		fmt.Fprintf(stdout, "  release %s is now pending on the deployment that serves that account\n", got.Version)
+		_, _ = fmt.Fprintf(stdout, "  release %s is now pending on the deployment that serves that account\n", got.Version)
 	}
 	return nil
 }
@@ -366,7 +366,7 @@ func noAccountRefusal() error {
 	return fmt.Errorf("%w: the remote engine has no account to deploy for.\n"+
 		"  Name it with %s <uuid>: the account is what the shared platform serves, and\n"+
 		"  a remote deploy with no account is a deploy to no place. The two engines that\n"+
-		"  are enabled need no account, because neither of them is the shared platform.", ErrRefused, AccountFlag)
+		"  are enabled need no account, because neither of them is the shared platform", ErrRefused, AccountFlag)
 }
 
 // remoteRefusal is the error the gate returns.
@@ -419,7 +419,7 @@ func runRemoteDeploy(ctx context.Context, r Runner, req Request, stdout, stderr 
 		// person. The error is returned unchanged and the command maps it to
 		// errReported — a script greps the error and a human reads the prose.
 		if errors.Is(err, ErrTenancyUndecided) {
-			fmt.Fprintf(stdout, "%s\n", tenancyUndecidedRefusal)
+			_, _ = fmt.Fprintf(stdout, "%s\n", tenancyUndecidedRefusal)
 		}
 		return err
 	}
@@ -438,9 +438,9 @@ func runRemoteDeploy(ctx context.Context, r Runner, req Request, stdout, stderr 
 		return nil
 	}
 
-	fmt.Fprintf(stdout, "%s: deploying to the operated platform for account %s\n", plan.Service, dep.Account)
-	fmt.Fprintf(stdout, "  the app is built once and deployed once; every client it serves is an\n")
-	fmt.Fprintf(stdout, "  account on the shared platform, not a deployment of its own\n")
+	_, _ = fmt.Fprintf(stdout, "%s: deploying to the operated platform for account %s\n", plan.Service, dep.Account)
+	_, _ = fmt.Fprintf(stdout, "  the app is built once and deployed once; every client it serves is an\n")
+	_, _ = fmt.Fprintf(stdout, "  account on the shared platform, not a deployment of its own\n")
 
 	if err := runRemoteSteps(ctx, r, plan, dep, stdout, stderr); err != nil {
 		return err
@@ -458,7 +458,7 @@ func runRemoteSteps(ctx context.Context, r Runner, plan Plan, dep Deployment, st
 		if step.Argv == nil {
 			return fmt.Errorf("cafe deploy: the plan has no %q step, so the deploy stopped there rather than pretending", name)
 		}
-		fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
+		_, _ = fmt.Fprintf(stdout, "\nrunning %s\n", step.Command())
 		if err := r.Run(ctx, plan.Dir, step, stdout, stderr); err != nil {
 			return fmt.Errorf("%s failed: %w", step.Command(), err)
 		}
@@ -473,26 +473,26 @@ func runRemoteSteps(ctx context.Context, r Runner, plan Plan, dep Deployment, st
 // a report that left them out would read as a complete deploy when it is a
 // request that was taken.
 func printRemoteReport(stdout io.Writer, plan Plan, dep Deployment) {
-	fmt.Fprintf(stdout, "\n%s: deploy request accepted on the operated platform\n", plan.Service)
+	_, _ = fmt.Fprintf(stdout, "\n%s: deploy request accepted on the operated platform\n", plan.Service)
 	if plan.Version != "" {
-		fmt.Fprintf(stdout, "  release %s is pending on the deployment serving account %s\n", plan.Version, dep.Account)
+		_, _ = fmt.Fprintf(stdout, "  release %s is pending on the deployment serving account %s\n", plan.Version, dep.Account)
 	} else {
-		fmt.Fprintf(stdout, "  the platform chose the release; account %s will serve it when it has applied\n", dep.Account)
+		_, _ = fmt.Fprintf(stdout, "  the platform chose the release; account %s will serve it when it has applied\n", dep.Account)
 	}
-	fmt.Fprint(stdout, "  what this did NOT do: apply the release, and prove the app is answering. Both are\n")
-	fmt.Fprint(stdout, "  the platform's, and neither is claimed here. Ask for the deployment's state before\n")
-	fmt.Fprint(stdout, "  treating this as a deploy that is serving.\n")
+	_, _ = fmt.Fprint(stdout, "  what this did NOT do: apply the release, and prove the app is answering. Both are\n")
+	_, _ = fmt.Fprint(stdout, "  the platform's, and neither is claimed here. Ask for the deployment's state before\n")
+	_, _ = fmt.Fprint(stdout, "  treating this as a deploy that is serving.\n")
 }
 
 // printRemoteDryRun is the remote engine's dry run: every step, and the fact
 // that no request was made.
 func printRemoteDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what cafe deploy would ask:\n\n")
+	_, _ = fmt.Fprintf(stdout, "\nthis is what cafe deploy would ask:\n\n")
 	for _, step := range plan.Steps {
-		fmt.Fprintf(stdout, "  %s\n", step.Command())
-		fmt.Fprintf(stdout, "      %s\n", step.Why)
+		_, _ = fmt.Fprintf(stdout, "  %s\n", step.Command())
+		_, _ = fmt.Fprintf(stdout, "      %s\n", step.Why)
 	}
-	fmt.Fprintf(stdout, "\nDry run, and nothing was asked: not the boundary question and not the request.\n")
-	fmt.Fprintf(stdout, "No account was queried and no release was requested on the platform.\n")
-	fmt.Fprintf(stdout, "\nDeploy it for real with:\n  cafe deploy --engine remote --account <uuid> %s --yes\n", plan.Service)
+	_, _ = fmt.Fprintf(stdout, "\nDry run, and nothing was asked: not the boundary question and not the request.\n")
+	_, _ = fmt.Fprintf(stdout, "No account was queried and no release was requested on the platform.\n")
+	_, _ = fmt.Fprintf(stdout, "\nDeploy it for real with:\n  cafe deploy --engine remote --account <uuid> %s --yes\n", plan.Service)
 }

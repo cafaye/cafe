@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"context"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -14,7 +15,7 @@ import (
 // report. It is a subprocess, so it is the second thing in `cafe doctor` that
 // runs a command after the container runtime probe, and both are bounded.
 func sysctlByName(name string) (uint64, error) {
-	out, err := exec.Command("sysctl", "-n", name).Output()
+	out, err := exec.CommandContext(context.Background(), "sysctl", "-n", name).Output()
 	if err != nil {
 		return 0, err
 	}

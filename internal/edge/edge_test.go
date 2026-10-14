@@ -140,7 +140,7 @@ func clientFor(addr, sni string) *http.Client {
 		Timeout: 5 * time.Second,
 		Transport: &http.Transport{
 			DialTLSContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
-				conn, err := net.DialTimeout(network, addr, 5*time.Second)
+				conn, err := (&net.Dialer{Timeout: 5*time.Second}).DialContext(ctx, network, addr)
 				if err != nil {
 					return nil, err
 				}
@@ -168,7 +168,7 @@ func clientFor(addr, sni string) *http.Client {
 func get(t *testing.T, client *http.Client, addr, host, path string) (int, string) {
 	t.Helper()
 	url := "https://" + host + path
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("build the request for %s: %v", url, err)
 	}

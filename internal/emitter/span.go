@@ -49,19 +49,6 @@ const (
 	OutcomeCancelled
 )
 
-// exitCode is the process exit code for an outcome, and it is the mapping cafe
-// has already committed to in internal/cli.
-func (o Outcome) exitCode() int {
-	switch o {
-	case OutcomeSuccess:
-		return 0
-	case OutcomeUsage:
-		return 2
-	default:
-		return 1
-	}
-}
-
 // Classified lets a command name its own error class.
 //
 // It exists because the default is `internal_error` and that default is right

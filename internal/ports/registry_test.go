@@ -381,5 +381,5 @@ func errText(err error) string {
 // netListen opens a real loopback listener on a port, for the case that needs
 // "something is genuinely listening" rather than a stub saying so.
 func netListen(port int) (net.Listener, error) {
-	return net.Listen("tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	return new(net.ListenConfig).Listen(context.Background(), "tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 }

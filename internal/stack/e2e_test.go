@@ -131,7 +131,7 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 // really serving.
 func get(t *testing.T, url, host string) string {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("GET %s: %v", url, err)
 	}
@@ -204,7 +204,12 @@ func TestTheEdgeSeesThePointerSwitchAsNoDowntime(t *testing.T) {
 				return
 			default:
 			}
-			resp, err := http.Get(edge.URL)
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, edge.URL, nil)
+			if err != nil {
+				// A listener that is shutting down is not a pointer failure.
+				continue
+			}
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				// A listener that is shutting down is not a pointer failure.
 				continue

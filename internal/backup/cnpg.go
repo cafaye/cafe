@@ -179,10 +179,10 @@ func runCNPGCycle(ctx context.Context, r Runner, req Request, stdout, stderr io.
 		return err
 	}
 
-	fmt.Fprintf(stdout, "%s: backing up the %s cluster with kubectl cnpg %s\n",
+	_, _ = fmt.Fprintf(stdout, "%s: backing up the %s cluster with kubectl cnpg %s\n",
 		plan.Service, plan.Service, version)
-	fmt.Fprintf(stdout, "  the restore is drilled into the %s cluster\n", plan.Scratch)
-	fmt.Fprintf(stdout, "  the assertion checks %s after the restore\n", strings.Join(plan.Tables, ", "))
+	_, _ = fmt.Fprintf(stdout, "  the restore is drilled into the %s cluster\n", plan.Scratch)
+	_, _ = fmt.Fprintf(stdout, "  the assertion checks %s after the restore\n", strings.Join(plan.Tables, ", "))
 
 	cause := runAll(ctx, r, plan, []string{Backup, WaitBackup, Restore, WaitReady, Assert}, stdout, stderr)
 	if cause != nil {
@@ -200,20 +200,20 @@ func runCNPGCycle(ctx context.Context, r Runner, req Request, stdout, stderr io.
 // value a real run writes — so the document on the screen and the document on
 // disk are one fact, and a dry run cannot drift from the run it describes.
 func printCNPGDryRun(stdout io.Writer, plan Plan) {
-	fmt.Fprintf(stdout, "\nthis is what cafe backup would run:\n\n")
+	_, _ = fmt.Fprintf(stdout, "\nthis is what cafe backup would run:\n\n")
 	for _, step := range plan.Steps {
-		fmt.Fprintf(stdout, "  %s\n", step.Command())
-		fmt.Fprintf(stdout, "      %s\n", step.Why)
+		_, _ = fmt.Fprintf(stdout, "  %s\n", step.Command())
+		_, _ = fmt.Fprintf(stdout, "      %s\n", step.Why)
 		for _, file := range step.Files {
-			fmt.Fprintf(stdout, "    and writes %s:\n%s\n", file.Path, file.Content)
+			_, _ = fmt.Fprintf(stdout, "    and writes %s:\n%s\n", file.Path, file.Content)
 		}
 	}
-	fmt.Fprintf(stdout, "\nDry run, and nothing was executed: not the preflight a real run makes\n")
-	fmt.Fprintf(stdout, "first, and none of the steps above. No backup was taken, no cluster was\n")
-	fmt.Fprintf(stdout, "created or deleted, and no file in %s was written — the recovery\n", plan.Dir)
-	fmt.Fprintf(stdout, "manifest above is the document the restore step would apply, printed\n")
-	fmt.Fprintf(stdout, "rather than written.\n")
-	fmt.Fprintf(stdout, "\nBack it up for real with:\n  cafe backup --engine cnpg%s %s\n", yesFlag(plan), plan.Service)
+	_, _ = fmt.Fprintf(stdout, "\nDry run, and nothing was executed: not the preflight a real run makes\n")
+	_, _ = fmt.Fprintf(stdout, "first, and none of the steps above. No backup was taken, no cluster was\n")
+	_, _ = fmt.Fprintf(stdout, "created or deleted, and no file in %s was written — the recovery\n", plan.Dir)
+	_, _ = fmt.Fprintf(stdout, "manifest above is the document the restore step would apply, printed\n")
+	_, _ = fmt.Fprintf(stdout, "rather than written.\n")
+	_, _ = fmt.Fprintf(stdout, "\nBack it up for real with:\n  cafe backup --engine cnpg%s %s\n", yesFlag(plan), plan.Service)
 }
 
 // cnpgSuccessReport is what a CNPG cycle that restored something says.
@@ -223,14 +223,14 @@ func printCNPGDryRun(stdout io.Writer, plan Plan) {
 // is the backup.schedule in the config file; the CNPG engine does not read a
 // schedule at all, so the honest limit is the cluster's own.
 func cnpgSuccessReport(plan Plan, stdout io.Writer) error {
-	fmt.Fprintf(stdout, "\n%s: the backup restored\n", plan.Service)
-	fmt.Fprintf(stdout, "  kubectl cnpg backup took a real backup of the %s cluster during this run,\n", plan.Service)
-	fmt.Fprintf(stdout, "  and the %s cluster was bootstrapped from it. The assertion's exit\n", plan.Scratch)
-	fmt.Fprintf(stdout, "  status is the verdict, and the row counts it printed are above. %s\n", tablesSentence(plan.Tables))
-	fmt.Fprintf(stdout, "  %s has been deleted, so nothing is left to restore into by accident\n", plan.Scratch)
-	fmt.Fprintf(stdout, "  what this does NOT prove: that the next backup will be taken. This engine takes\n")
-	fmt.Fprintf(stdout, "  a backup on every run; the schedule that protects the service between drills\n")
-	fmt.Fprintf(stdout, "  is the cluster's own, and cafe does not read it.\n")
+	_, _ = fmt.Fprintf(stdout, "\n%s: the backup restored\n", plan.Service)
+	_, _ = fmt.Fprintf(stdout, "  kubectl cnpg backup took a real backup of the %s cluster during this run,\n", plan.Service)
+	_, _ = fmt.Fprintf(stdout, "  and the %s cluster was bootstrapped from it. The assertion's exit\n", plan.Scratch)
+	_, _ = fmt.Fprintf(stdout, "  status is the verdict, and the row counts it printed are above. %s\n", tablesSentence(plan.Tables))
+	_, _ = fmt.Fprintf(stdout, "  %s has been deleted, so nothing is left to restore into by accident\n", plan.Scratch)
+	_, _ = fmt.Fprintf(stdout, "  what this does NOT prove: that the next backup will be taken. This engine takes\n")
+	_, _ = fmt.Fprintf(stdout, "  a backup on every run; the schedule that protects the service between drills\n")
+	_, _ = fmt.Fprintf(stdout, "  is the cluster's own, and cafe does not read it.\n")
 	return nil
 }
 
@@ -241,13 +241,13 @@ func cnpgSuccessReport(plan Plan, stdout io.Writer) error {
 // cluster is deleted, and a backup that was already taken is a real backup of
 // the live cluster, unaffected by the failure.
 func cnpgFailureReport(plan Plan, stdout io.Writer, cause error) error {
-	fmt.Fprintf(stdout, "\n%s\n", cause)
-	fmt.Fprint(stdout, "\nwhat to do:\n")
-	fmt.Fprint(stdout, "  the scratch cluster is deleted on the way out, including on this failure, so nothing is\n")
-	fmt.Fprint(stdout, "  left to restore into by accident.\n")
-	fmt.Fprint(stdout, "  a backup the backup step already took is a real backup of the live cluster, and a\n")
-	fmt.Fprint(stdout, "  failed drill does not delete it: the next drill restores from it.\n")
-	fmt.Fprint(stdout, "  the reason is the command's own, above.\n")
+	_, _ = fmt.Fprintf(stdout, "\n%s\n", cause)
+	_, _ = fmt.Fprint(stdout, "\nwhat to do:\n")
+	_, _ = fmt.Fprint(stdout, "  the scratch cluster is deleted on the way out, including on this failure, so nothing is\n")
+	_, _ = fmt.Fprint(stdout, "  left to restore into by accident.\n")
+	_, _ = fmt.Fprint(stdout, "  a backup the backup step already took is a real backup of the live cluster, and a\n")
+	_, _ = fmt.Fprint(stdout, "  failed drill does not delete it: the next drill restores from it.\n")
+	_, _ = fmt.Fprint(stdout, "  the reason is the command's own, above.\n")
 	// ErrCycleFailed is a sentinel so the caller can tell "the report is above"
 	// from "cafe failed before it could report anything" — the first is errReported
 	// (exit 1, stderr empty), the second is an error that belongs there.

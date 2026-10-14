@@ -352,7 +352,7 @@ func writeDrillFile(path string, journal *DrillJournal) error {
 	}
 	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := tmp.Write(raw); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return fmt.Errorf("drill store: write %s: %w", path, err)
 	}
 	if err := tmp.Close(); err != nil {

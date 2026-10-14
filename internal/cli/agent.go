@@ -167,7 +167,7 @@ func unknownAgentVerb(name string, verbs []agentVerb) error {
 
 // say is the stderr half of the split: one sentence, for a person.
 func sayAgent(w io.Writer, format string, args ...any) {
-	fmt.Fprintf(w, "cafe agent: "+format+"\n", args...)
+	_, _ = fmt.Fprintf(w, "cafe agent: "+format+"\n", args...)
 }
 
 // agentBaseURL resolves the origin: the flag wins, the environment variable is
@@ -188,11 +188,11 @@ func agentBaseURL(deps agentDeps, flagURL string) (string, error) {
 // instruction, not a status — and both go to stderr beside the error, so the
 // sentence a person reads names the cause and the remedy.
 func agentError(env *Env, err error) error {
-	fmt.Fprintf(env.Stderr, "cafe agent: %v\n", err)
+	_, _ = fmt.Fprintf(env.Stderr, "cafe agent: %v\n", err)
 	var status *agent.StatusError
 	if errors.As(err, &status) {
 		if hint := status.Hint(); hint != "" {
-			fmt.Fprintf(env.Stderr, "cafe agent: %s\n", hint)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe agent: %s\n", hint)
 		}
 	}
 	return errReported

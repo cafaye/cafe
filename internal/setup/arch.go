@@ -380,8 +380,10 @@ func elfTarget(raw []byte) (target, bool) {
 		return target{"linux", "riscv64"}, true
 	case elf.EM_LOONGARCH:
 		return target{"linux", "loong64"}, true
+	default:
+		// Any other machine is not a platform cafe ships.
+		return target{}, false
 	}
-	return target{}, false
 }
 
 // machoTarget reads a Mach-O header's CPU field. Mach-O is darwin's, on this
@@ -398,8 +400,10 @@ func machoTarget(raw []byte) (target, bool) {
 		return target{"darwin", "arm64"}, true
 	case macho.CpuArm:
 		return target{"darwin", "arm"}, true
+	default:
+		// Any other CPU is not a platform cafe ships.
+		return target{}, false
 	}
-	return target{}, false
 }
 
 // peTarget reads a PE header's machine word. Windows has no box, but its

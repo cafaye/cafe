@@ -99,19 +99,19 @@ func Render(w io.Writer, r Report) error {
 	b.WriteString(r.Summary())
 	b.WriteString("\n")
 	if r.Schedule != "" {
-		fmt.Fprintf(&b, "  schedule: %s (%s)\n", r.Schedule, r.Staleness)
+		_, _ = fmt.Fprintf(&b, "  schedule: %s (%s)\n", r.Schedule, r.Staleness)
 	}
 	if r.DurationSeconds > 0 {
-		fmt.Fprintf(&b, "  scan took %.1fs\n", r.DurationSeconds)
+		_, _ = fmt.Fprintf(&b, "  scan took %.1fs\n", r.DurationSeconds)
 	}
 	if len(r.Unmatched) > 0 {
-		fmt.Fprintf(&b, "  the advisory feed was asked about and did not answer for: %s\n", strings.Join(r.Unmatched, ", "))
+		_, _ = fmt.Fprintf(&b, "  the advisory feed was asked about and did not answer for: %s\n", strings.Join(r.Unmatched, ", "))
 	}
 	if len(r.Divergences) > 0 {
 		b.WriteString("\n")
 		b.WriteString("  what the box is running that the substrate does not declare:\n")
 		for _, d := range r.Divergences {
-			fmt.Fprintf(&b, "    %-16s declared %-14s running %-14s %s\n",
+			_, _ = fmt.Fprintf(&b, "    %-16s declared %-14s running %-14s %s\n",
 				d.Component, dashIf(d.Declared), dashIf(d.Observed), d.Why)
 		}
 	}
@@ -126,23 +126,23 @@ func Render(w io.Writer, r Report) error {
 	}
 	for _, f := range r.Findings {
 		b.WriteString("\n")
-		fmt.Fprintf(&b, "  %s  %s  %s\n", f.Severity.up(), f.AdvisoryID, f.Class)
-		fmt.Fprintf(&b, "    component: %s %s (%s)\n", f.Component, dashIf(f.Version), f.Kind)
+		_, _ = fmt.Fprintf(&b, "  %s  %s  %s\n", f.Severity.up(), f.AdvisoryID, f.Class)
+		_, _ = fmt.Fprintf(&b, "    component: %s %s (%s)\n", f.Component, dashIf(f.Version), f.Kind)
 		if f.Summary != "" {
-			fmt.Fprintf(&b, "    advisory:  %s\n", f.Summary)
+			_, _ = fmt.Fprintf(&b, "    advisory:  %s\n", f.Summary)
 		}
 		if f.URL != "" {
-			fmt.Fprintf(&b, "    read it:   %s\n", f.URL)
+			_, _ = fmt.Fprintf(&b, "    read it:   %s\n", f.URL)
 		}
 		if f.Class == ClassAffected {
-			fmt.Fprintf(&b, "    fix:       release %s\n", f.ReleaseTo)
+			_, _ = fmt.Fprintf(&b, "    fix:       release %s\n", f.ReleaseTo)
 		}
 		if f.ImpactUnknown {
 			b.WriteString("    touches:   unknown — this component is not in the substrate catalog, so nobody has said what installing it restarts\n")
 		} else {
-			fmt.Fprintf(&b, "    touches:   %s\n", blastOf(Component{Name: f.Component, Blast: f.Impact}))
+			_, _ = fmt.Fprintf(&b, "    touches:   %s\n", blastOf(Component{Name: f.Component, Blast: f.Impact}))
 		}
-		fmt.Fprintf(&b, "    why:       %s\n", f.Why)
+		_, _ = fmt.Fprintf(&b, "    why:       %s\n", f.Why)
 	}
 	_, err := io.WriteString(w, b.String())
 	return err

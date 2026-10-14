@@ -46,7 +46,7 @@ func askOnStdin(command, prompt string) (bool, error) {
 	// asked a question without a newline was a test the gate could not see. The
 	// interactive reading is the same defect one layer down: after `cafe backup`
 	// asked and exited, the shell's own prompt appeared beside the question.
-	fmt.Fprintln(os.Stderr, prompt)
+	_, _ = fmt.Fprintln(os.Stderr, prompt)
 	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil && line == "" {
 		return false, fmt.Errorf("%s: no answer on stdin, so nothing was done.\n"+
@@ -74,22 +74,22 @@ func askOnStdin(command, prompt string) (bool, error) {
 func callerToken(command, dir string, ring agent.Keyring, env *Env) string {
 	cfg, err := agent.LoadConfig(dir)
 	if err != nil {
-		fmt.Fprintf(errOrDiscard(env), "%s: could not read the agent config: %v\n", command, err)
+		_, _ = fmt.Fprintf(errOrDiscard(env), "%s: could not read the agent config: %v\n", command, err)
 		return ""
 	}
 	sess, err := cfg.Select("", "")
 	if err != nil {
 		if errors.Is(err, agent.ErrNotRegistered) {
-			fmt.Fprintf(errOrDiscard(env), "%s: no agent session is registered, so the server will answer unauthorized; "+
+			_, _ = fmt.Fprintf(errOrDiscard(env), "%s: no agent session is registered, so the server will answer unauthorized; "+
 				"run `cafe agent register` and have a human claim it\n", command)
 			return ""
 		}
-		fmt.Fprintf(errOrDiscard(env), "%s: could not select the agent session: %v\n", command, err)
+		_, _ = fmt.Fprintf(errOrDiscard(env), "%s: could not select the agent session: %v\n", command, err)
 		return ""
 	}
 	token, err := ring.Get(agent.KeyringService, sess.TokenRef)
 	if err != nil || strings.TrimSpace(token) == "" {
-		fmt.Fprintf(errOrDiscard(env), "%s: no token in the keyring for session %s, so the server will answer unauthorized; "+
+		_, _ = fmt.Fprintf(errOrDiscard(env), "%s: no token in the keyring for session %s, so the server will answer unauthorized; "+
 			"run `cafe agent register`\n", command, sess.Name)
 		return ""
 	}

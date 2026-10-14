@@ -346,8 +346,12 @@ func (v Violation) explanation() string {
 				"    or rename the service to match — which ORPHANS every existing snapshot, so read the retention "+
 				"trade-off first",
 			v.Subject, v.service, v.Subject, v.service)
+	default:
+		// Drill outcomes are not violations and carry no explanation: the
+		// fallback after the switch already returns the raw reason, and this
+		// default keeps that answer while naming it.
+		return string(v.Reason)
 	}
-	return string(v.Reason)
 }
 
 // Service and ConfigFile read the two facts the refusals quote and that travel

@@ -29,15 +29,6 @@ import (
 // error is exit 2, a failure names what to do next, and nothing is written to
 // stdout that does not belong there.
 
-// boxdFakes is the seam a test injects: a store, a key, a channel and a world
-// factory, so the command runs the real daemon loop against nothing real.
-type boxdFakes struct {
-	store    boxd.IdentityStore
-	keys     boxd.KeySource
-	dial     boxd.Dialer
-	worldFor func(id boxd.Identity) boxd.World
-}
-
 // writeIdentity writes the identity document the enrollment flow writes, and
 // returns its path. The paths inside are absolute, because a test's directory
 // is not where a real box keeps its enrollment and the document must honor

@@ -153,7 +153,7 @@ func Install(ctx context.Context, opts Options) (Session, error) {
 		// and nowhere else — see the noOp.warnings rule, which forbids
 		// per-attempt spam, and this is one line once per process rather than
 		// per attempt.
-		fmt.Fprintf(os.Stderr, "cafe: telemetry is configured but no exporter could be built (%v); "+
+		_, _ = fmt.Fprintf(os.Stderr, "cafe: telemetry is configured but no exporter could be built (%v); "+
 			"running without it. The command itself is unaffected.\n", err)
 		otel.SetTracerProvider(noop.NewTracerProvider())
 		return Session{tracer: noop.NewTracerProvider().Tracer(instrumentationName), reason: "exporter: " + err.Error()}, nil
@@ -324,7 +324,3 @@ func (s Session) Shutdown(ctx context.Context) error {
 	}
 	return err
 }
-
-// errClosedSpan is returned when a caller ends a span twice, which is a bug in
-// the caller rather than in telemetry and is stated rather than ignored.
-var errClosedSpan = errors.New("cafe: span already ended")

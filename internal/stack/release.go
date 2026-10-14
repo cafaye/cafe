@@ -131,19 +131,6 @@ func (h History) find(id string) (Release, bool) {
 	return Release{}, false
 }
 
-// count reports how many releases of one service the history holds, for the
-// prune: the keep count is per service, not per box, or one busy service
-// would evict every release another one ever had.
-func (h History) count(service string) int {
-	n := 0
-	for _, r := range h.Releases {
-		if r.Service == service {
-			n++
-		}
-	}
-	return n
-}
-
 // Store is the stack rooted at one directory. It is a value, not a
 // connection, because the whole point is that a rollback is a file operation
 // and not a session: there is nothing to connect to and nothing to time out
@@ -291,7 +278,7 @@ func (s *Store) Stage(rel Release) (Release, error) {
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(rel); err != nil {
-		f.Close()
+		_ = f.Close()
 		return Release{}, fmt.Errorf("write %s: %w", path, err)
 	}
 	if err := f.Close(); err != nil {
@@ -394,7 +381,7 @@ func (s *Store) save(h History) error {
 	enc := json.NewEncoder(tmp)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(h); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return fmt.Errorf("write the release history: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
@@ -527,9 +514,9 @@ func writePointer(link, id string) error {
 		return fmt.Errorf("switch the current pointer: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }()
 	if _, err := tmp.WriteString(id + "\n"); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return fmt.Errorf("switch the current pointer: %w", err)
 	}
 	if err := tmp.Close(); err != nil {

@@ -92,9 +92,6 @@ type recordingRunner struct {
 	errs map[string]error
 	// commandsSeen is every call as the operator would type it.
 	commandsSeen []string
-	// confirms records the prompts, so a case can assert the prompt names the
-	// service and the environment.
-	confirmed []bool
 }
 
 func newRecordingRunner() *recordingRunner {

@@ -140,7 +140,7 @@ func cveVerbTable(verbs []cveVerb) string {
 	var b strings.Builder
 	b.WriteString("Commands:\n")
 	for _, verb := range verbs {
-		fmt.Fprintf(&b, "  %-16s %s\n", verb.name, verb.cmd.Summary)
+		_, _ = fmt.Fprintf(&b, "  %-16s %s\n", verb.name, verb.cmd.Summary)
 	}
 	return b.String()
 }
@@ -189,18 +189,18 @@ func newCveInventoryCommand(deps cveDeps) *Command {
 			var b strings.Builder
 			b.WriteString("  declared by the substrate:\n")
 			for _, c := range inv.Declared {
-				fmt.Fprintf(&b, "    %-16s %-16s %-9s %s\n", c.Name, dash(c.Version), c.Kind, c.Source)
+				_, _ = fmt.Fprintf(&b, "    %-16s %-16s %-9s %s\n", c.Name, dash(c.Version), c.Kind, c.Source)
 			}
 			if len(inv.Observed) > 0 {
 				b.WriteString("\n  observed on the box:\n")
 				for _, c := range inv.Observed {
-					fmt.Fprintf(&b, "    %-16s %-16s %-9s %s\n", c.Name, dash(c.Version), c.Kind, c.Source)
+					_, _ = fmt.Fprintf(&b, "    %-16s %-16s %-9s %s\n", c.Name, dash(c.Version), c.Kind, c.Source)
 				}
 			}
 			if len(inv.Divergences) > 0 {
 				b.WriteString("\n  where they disagree:\n")
 				for _, d := range inv.Divergences {
-					fmt.Fprintf(&b, "    %-16s declared %-14s running %-14s %s\n",
+					_, _ = fmt.Fprintf(&b, "    %-16s declared %-14s running %-14s %s\n",
 						d.Component, dash(d.Declared), dash(d.Observed), d.Why)
 				}
 			}
@@ -257,7 +257,7 @@ func newCveScanCommand(deps cveDeps) *Command {
 					// phase it stopped in in the mail cron sends. This is
 					// the whole answer to "a network call that hangs is an
 					// invisible stall": not a faster network, a line.
-					fmt.Fprintf(env.Stderr, "cafe cve scan: %s: %s\n", phase, detail)
+					_, _ = fmt.Fprintf(env.Stderr, "cafe cve scan: %s: %s\n", phase, detail)
 				}),
 			}.Run(context.Background())
 			if err != nil {
@@ -268,7 +268,7 @@ func newCveScanCommand(deps cveDeps) *Command {
 			// rather than swallowed, because the only real loss is that the
 			// next run may be early.
 			if outcome.Err != nil {
-				fmt.Fprintf(env.Stderr, "cafe cve scan: %v\n", outcome.Err)
+				_, _ = fmt.Fprintf(env.Stderr, "cafe cve scan: %v\n", outcome.Err)
 			}
 			return nil
 		},
