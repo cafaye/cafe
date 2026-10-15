@@ -91,18 +91,26 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) 
 // dialTarget turns the identity's control-plane fact into what the network
 // needs: the host:port to dial and the hostname to verify the server against.
 //
-// The identity stores the URL form — `http://host:port`, the spelling `--box`
-// and CAF_BOX_URL accept and the form already on every enrolled box — because
-// that is what a human typed, what `cafe boxd --report` shows, and what the
-// enrollment HTTP client needs. The dial needs a bare host:port, so the
-// translation happens HERE, where a stored fact becomes a network address,
-// rather than in the writer: a writer that normalised would leave every
-// already-written identity undialable until a re-enrollment, while a dialer
-// that accepts both heals those boxes with a binary upgrade alone. The scheme
-// and any path are irrelevant to the dial — the channel is always TLS over
-// TCP — so they are stripped, and a value with no port is still refused with
-// the same sentence, because an address without a port is an enrollment that
-// was read wrong and naming the field beats a tls error about the hostname.
+// The identity stores the URL form — `https://box.svc.cafaye.com`, the
+// spelling `--box` and CAF_BOX_URL accept and the form already on every
+// enrolled box — because that is what a human typed, what `cafe boxd
+// --report` shows, and what the enrollment HTTP client needs. The dial needs
+// a bare host:port, so the translation happens HERE, where a stored fact
+// becomes a network address, rather than in the writer: a writer that
+// normalised would leave every already-written identity undialable until a
+// re-enrollment, while a dialer that accepts both heals those boxes with a
+// binary upgrade alone. The scheme and any path are irrelevant to the dial —
+// the channel is always TLS over TCP — so they are stripped.
+//
+// A URL with NO port is the deployed form, not a mistake: the control plane
+// is `https://box.svc.cafaye.com`, exactly what `cafe box enroll --box` is
+// documented to take and stores verbatim, and a dialer that refused it meant
+// a box enrolled exactly as documented could never report. So a portless URL
+// dials the scheme's default — 443 for https, 80 for http. Those are the
+// only two schemes whose default is worth guessing: any other scheme with no
+// port, and a bare host with neither scheme nor port, are still refused with
+// the same sentence, because they are enrollments that were read wrong and
+// naming the field beats a tls error about the hostname.
 func dialTarget(controlPlane string) (addr, host string, err error) {
 	raw := strings.TrimSpace(controlPlane)
 	if raw == "" {
@@ -114,7 +122,25 @@ func dialTarget(controlPlane string) (addr, host string, err error) {
 			return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
 		}
 		host, port, serr := net.SplitHostPort(u.Host)
-		if serr != nil || host == "" || port == "" {
+		switch {
+		case serr != nil && isMissingPort(serr):
+			// The URL named no port. That is the deployed form rather
+			// than a mistake — see the comment above — so the scheme's
+			// default is dialed; a scheme with no known default is
+			// refused rather than sent to a port nobody chose.
+			def, ok := defaultSchemePort(u.Scheme)
+			if !ok {
+				return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
+			}
+			// SplitHostPort leaves the host empty when the port is
+			// missing; Hostname() is the bracket-free host — the form
+			// JoinHostPort expects for an IPv6 literal.
+			host = u.Hostname()
+			return net.JoinHostPort(host, def), host, nil
+		case serr != nil || host == "" || port == "":
+			// A host malformed in some way other than lacking a port, or
+			// none at all — an enrollment that was read wrong, named
+			// rather than handed to a tls handshake as a hostname error.
 			return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
 		}
 		return net.JoinHostPort(host, port), host, nil
@@ -124,6 +150,30 @@ func dialTarget(controlPlane string) (addr, host string, err error) {
 		return "", "", fmt.Errorf("control plane %q is not host:port", controlPlane)
 	}
 	return net.JoinHostPort(host, port), host, nil
+}
+
+// isMissingPort reports whether err is SplitHostPort's "there was no port in
+// the address" answer, as opposed to some other way the host was malformed —
+// too many colons, a bracket in the wrong place. Only the first is a port the
+// scheme can supply; the second is an address that was never dialable.
+func isMissingPort(err error) bool {
+	var addrErr *net.AddrError
+	return errors.As(err, &addrErr) && addrErr.Err == "missing port in address"
+}
+
+// defaultSchemePort is the port a portless URL dials: the scheme's own
+// default, which is what a browser, a curl and a human typing into `--box`
+// all mean. The table is deliberately two rows — a scheme whose default is
+// not in it has no port the dialer can honestly guess, so it is refused.
+func defaultSchemePort(scheme string) (string, bool) {
+	switch scheme {
+	case "https":
+		return "443", true
+	case "http":
+		return "80", true
+	default:
+		return "", false
+	}
 }
 
 // NewTLSDialer is the real Dialer for a box: mutual TLS to the control plane the
