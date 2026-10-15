@@ -42,6 +42,10 @@ Deploy it for real with:
 go install github.com/cafaye/cafe/cmd/cafe@latest
 ```
 
+`@latest` resolves to the newest tag. Prebuilt archives, their checksums and the
+release notes are on the [Releases page](https://github.com/cafaye/cafe/releases);
+see [Release](#release) for how one is cut.
+
 Or build from source:
 
 ```sh
@@ -72,6 +76,41 @@ also needs `kamal` on `PATH`, and it really deploys; see
 before running it on a machine that is not yours. And the declaration's
 `live-tier` proof exists so that a run in which they *were* skipped cannot read as
 a run in which they passed.
+
+## Release
+
+A release is a tag, and **the tag is the version**. A Go CLI has no version file
+to bump: goreleaser reads `{{ .Version }}` off the tag (leading `v` trimmed) and
+injects it into the binary's build identity, which is what `cafe version` prints.
+So there is nothing to keep in sync — the tag is the whole declaration.
+
+```sh
+git switch master && git pull --ff-only
+bin/prime                  # green before anything is tagged
+git tag -a v0.1.0 -m "cafe v0.1.0"
+git push origin v0.1.0
+```
+
+The tag push runs [`.github/workflows/release.yml`](.github/workflows/release.yml),
+which runs goreleaser `release --clean` and publishes a GitHub Release with, for
+each of `darwin`, `linux` and `windows` on `amd64` and `arm64`:
+
+- `cafe_<version>_<os>_<arch>.tar.gz` — a `.zip` on Windows — each containing the
+  `cafe` binary, `README.md` and `LICENSE`;
+- `cafe_<version>_checksums.txt`, the sha256 of every archive;
+- the generated release notes, which are **the changelog of record for the tag**.
+
+`CHANGELOG.md` stays the human log: it is written and grouped by hand, and a
+release does not rewrite it. The two are different documents on purpose — the
+notes come from the commits that are in the tag and nowhere else, so a stranger
+can check them against `git log v0.1.0`, which is not true of a file edited after
+the fact.
+
+`go install github.com/cafaye/cafe/cmd/cafe@vX.Y.Z` installs one exact tag from
+the module proxy; `@latest` is the newest. There is deliberately **no Homebrew,
+Scoop or Docker target yet** — each is a target with an owner, a place to publish
+into and a credential to hold, and none of those exists. GitHub Releases plus
+`go install` are the install paths until one does.
 
 ## Commands
 
@@ -1638,7 +1677,8 @@ Phase 0 (v0, now):
 - [ ] `cafe gate` — the tier policy (MD12), reading `env up`'s receipt. **Not
       written here on purpose:** a gate that can be passed is worse than no gate,
       because it turns "not built yet" into a green badge.
-- [ ] Homebrew and Scoop install targets
+- [ ] Homebrew and Scoop install targets (GitHub Releases + `go install` are the
+      install paths until they exist; see [Release](#release))
 - [ ] shell completions
 
 See [AGENTS.md](AGENTS.md) for the conventions this repository follows.

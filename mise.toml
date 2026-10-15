@@ -1,5 +1,6 @@
-# Toolchain pins for this repository: Go, the language cafe is written in, and
-# golangci-lint, the linter bin/prime runs over kit's config.
+# Toolchain pins for this repository: Go, the language cafe is written in,
+# golangci-lint, the linter bin/prime runs over kit's config, and goreleaser,
+# the release tool `.github/workflows/release.yml` runs on a tag push.
 #
 #   mise install    # install the pinned toolchain
 #   mise run prime  # the gate
@@ -10,9 +11,15 @@
 # `golangci/golangci-lint-action` step, which pins the same version via its
 # `version:` input. A bump touches both, in the same commit — otherwise local
 # and CI disagree, which is the defect this packet exists to close.
+#
+# goreleaser is a single source too: the release workflow reads this pin out of
+# this file rather than repeating it, exactly as CI's gate job reads
+# golangci-lint's — so a local `goreleaser release --snapshot --clean` exercises
+# the same config a tag push runs.
 [tools]
 go = "1.25.0"
 "golangci-lint" = "2.14.0"
+"goreleaser" = "2.18.3"
 
 [tasks.prime]
 description = "The gate: download, build, test"

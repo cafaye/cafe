@@ -1,9 +1,25 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
 # vim: set ts=2 sw=2 tw=0 fo=jcroql
 #
-# cafe releases are build-only for now. No Homebrew, no Scoop, no Docker image
-# and no package managers until the install story has an owner; see the roadmap
-# in README.md.
+# This file is part of cafe's install story, and the install story now has an
+# owner: a push of an annotated `vX.Y.Z` tag runs
+# `.github/workflows/release.yml`, which runs `goreleaser release --clean` and
+# publishes a GitHub Release. What a release contains, per platform:
+#
+#   cafe_<version>_<os>_<arch>.tar.gz    (a .zip on windows)
+#   cafe_<version>_checksums.txt         (sha256, one line per archive)
+#
+# plus the generated release notes, and they are the changelog OF RECORD for
+# the tag. `CHANGELOG.md` stays the human log: written by hand, grouped by
+# hand, and never rewritten by a release. The split is deliberate — the tag's
+# notes come from the commits that are in the tag and nowhere else, which is
+# the only release description a stranger can verify.
+#
+# Deliberately NOT here yet: Homebrew, Scoop, a Docker image, or any package
+# manager. Each is a target with an owner, a place to publish into and a
+# credential to hold, and none of those exists yet. GitHub Releases and
+# `go install github.com/cafaye/cafe/cmd/cafe@latest` are the install paths
+# until one does.
 version: 2
 
 project_name: cafe
@@ -52,6 +68,45 @@ archives:
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+# The generated notes, grouped and filtered. `use: git` reads the commits
+# between the previous tag and this one out of the local history rather than
+# asking GitHub's API, so the notes are the same whether the release is cut
+# from CI or from a laptop with no network — and the tag is the record they
+# come from.
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      # Everything here changes no behaviour a consumer can observe: docs,
+      # tests, CI and housekeeping. `.github/workflows/release.yml` checks the
+      # history out at full depth precisely so this filter has a real range to
+      # read rather than a one-commit shallow clone.
+      - "^docs:"
+      - "^doc:"
+      - "^test:"
+      - "^tests:"
+      - "^ci:"
+      - "^chore:"
+      - "^report:"
+      # A merge commit is not a change; it is how the change arrived.
+      - "^Merge "
+      - "Merge pull request"
+      - "Merge branch"
+      - "Merge remote-tracking branch"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Bug fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    # The default bucket. This repository's commits are often `scope: what
+    # changed` rather than conventional-commit prefixed, and a note that named
+    # only two groups would drop them silently.
+    - title: Other changes
+      order: 999
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"

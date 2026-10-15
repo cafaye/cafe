@@ -1,0 +1,84 @@
+---
+# cafe's release. A tag push is the only human step: `v*` in, a GitHub Release
+# out — per-platform archives, one checksums file, and the generated notes that
+# are the changelog of record for the tag. `.goreleaser.yml` says what a release
+# contains and why; `README.md`'s Release section says how one is cut.
+#
+# THE VERSION IS THE TAG. A Go CLI has no version file to bump — goreleaser
+# reads `{{ .Version }}` off the tag (the leading `v` trimmed) and injects it
+# into the binary's `main.version` through ldflags, which is exactly what
+# `cafe version` prints. So there is nothing to keep in sync and nothing that can
+# report the wrong version: the tag is the whole declaration.
+#
+# WHY THIS IS NOT A JOB IN ci.yml. ci.yml's own header states the rule from the
+# other side — "a red test can never publish." ci.yml is read-only
+# (`permissions: contents: read`) and runs on every push and pull request; this
+# workflow runs only on a tag, and a tag on this repository is cut from master
+# after `bin/prime` is green there. Two files means a defect in one cannot give
+# the other powers it should not have.
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Least privilege, and it starts here rather than at the job: a workflow-level
+# `contents: read` means any step outside the release job below cannot write to
+# a release even if a later edit gave it somewhere to try. The job raises it.
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: goreleaser
+    runs-on: ubuntu-latest
+    # The one place `contents: write` is granted, because this is the one job
+    # that creates the GitHub Release and uploads the artifacts. That write is
+    # the workflow's own GITHUB_TOKEN — no PAT, no secret, nothing stored in the
+    # repository that outlives the run.
+    permissions:
+      contents: write
+    steps:
+      # Full history, deliberately. goreleaser builds the changelog from the
+      # commits between the previous tag and this one, and Actions' default
+      # shallow clone (fetch-depth: 1) has neither — it would quietly produce a
+      # changelog of one commit and a release that names nothing.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # The same pinned toolchain ci.yml's gate job sets up, read out of go.mod
+      # for the same reason: a literal here would be a second copy of the pin
+      # that `internal/ci` already asserts against kit's reusable workflow.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: read the goreleaser pin
+        # The pin lives in mise.toml, one source that a local
+        # `mise install` materialises. Reading it here rather than typing a
+        # literal is the same argument as ci.yml's golangci-lint step: a second
+        # copy is a second thing to forget. `grep -v` on the comment marker then
+        # a field match, so a header edit cannot silently hand the action the
+        # wrong line.
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^"goreleaser" *= *"\(.*\)"/\1/p' mise.toml)"
+          if [ -z "$version" ]; then
+            echo "::error::mise.toml pins no goreleaser version; a release" >&2
+            echo "::error::must not fall back to whatever the action calls latest." >&2
+            exit 1
+          fi
+          echo "GORELEASER_VERSION=$version" >> "$GITHUB_ENV"
+      - name: goreleaser
+        # `release --clean` builds every target, writes the archives and the
+        # checksums, and creates the Release with the notes. `--clean`
+        # deletes the dist directory first so a rerun cannot publish the
+        # previous run's stale archives.
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: ${{ env.GORELEASER_VERSION }}
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
