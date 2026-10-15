@@ -4,7 +4,7 @@
   "hash": "sha256",
   "files": [
     {"path": "cafaye.yml", "kind": "spec", "sha256": "69f21db40a77f98f02d11709cea3917e5f882fd1c47a37517a7a1a3abd8d11a9"},
-    {"path": "gate.yml", "kind": "rule-bundle", "sha256": "06ff0bf507ad15fa6a5051250a312a6be3199aff76543841d4803f0caf3c88a4"},
+    {"path": "gate.yml", "kind": "rule-bundle", "sha256": "07a239c930eb2387d3674e939c3c154ea5cce2eda8e052eead0cbf10a2f45f22"},
     {"path": "internal/contract/schemas/manifest-0.2.json", "kind": "vendored-schema", "sha256": "9f90b3707d39da40b2416ac815ad9127681b65c8d87e5b50879e5f7af69ef0b9"},
     {"path": "internal/contract/schemas/telemetry/logs.schema.json", "kind": "vendored-schema", "sha256": "816cb1066d17bc13cef82d095208bb895b75bb347bb897771bda7890b08f78e6"},
     {"path": "internal/contract/schemas/telemetry/metrics.schema.json", "kind": "vendored-schema", "sha256": "1f816b16b3962a1390d71a482466bf3b33aa67fbcb0023d06ebefb5d3699746a"},
