@@ -210,6 +210,19 @@ func (d *Daemon) round(ctx context.Context) error {
 	world := d.opts.WorldFor(id)
 	for {
 		cap, err := ch.Next(ctx)
+		if errors.Is(err, ErrIdle) {
+			// The healthy quiet case: box answered `{}` — nothing queued —
+			// and the daemon asks again on the SAME connection. No round-end
+			// line, no reconnect, no fresh client-cert load. Cancellation is
+			// checked HERE rather than left to the next read because the real
+			// CLI's context is signal.NotifyContext's, which carries no
+			// deadline: without this line a SIGTERM to an idle daemon would
+			// be re-polled past forever.
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			continue
+		}
 		if err != nil {
 			// A channel that ends between capabilities is a channel that went
 			// away; the round is over and Run reconnects.

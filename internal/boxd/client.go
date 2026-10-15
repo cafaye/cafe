@@ -32,10 +32,28 @@ import (
 // than discovered from a server, so both sides have something to be checked
 // against from day one, and the failure when they disagree is a failed test
 // on one side or the other rather than a protocol invented twice.
+//
+// The idle case is part of that contract, measured live before it was written
+// down: a `next` with nothing queued is answered with the empty object `{}` —
+// "nothing now" — and the client re-polls on the same connection. It is named
+// here because it was the case nobody wrote, and the measured cost of that
+// omission was a healthy channel logging a protocol violation and dropping a
+// TLS connection every next_wait (see ErrIdle).
 const (
 	opNext = "next"
 	opAck  = "ack"
 )
+
+// ErrIdle marks the healthy quiet case, and it is the server's own answer
+// rather than a client invention: box's serve_next holds a `next` up to its
+// next_wait and, with nothing queued, replies the empty object `{}` —
+// "nothing for you, ask again". It is neither a failure nor a capability, so
+// the daemon re-polls on the SAME connection: an idle channel is a channel
+// working, not a reason to end the round and burn a fresh TLS connection
+// every next_wait. Measured on Contabo 2026-10-15 — before this sentinel
+// existed, `{}` was decoded as a capability with no id and the daemon logged
+// "box sent a capability with no id" once per poll interval forever.
+var ErrIdle = errors.New("box has nothing queued; the channel re-polls")
 
 // dialTimeout bounds the TCP+TLS handshake. A dial that hangs is a round that
 // never learns anything, and Run's backoff cannot start for a connection that
@@ -203,6 +221,15 @@ type request struct {
 // context's deadline as a read deadline, because a Next with no deadline is a
 // Next that can hang forever on a connection box has quietly dropped —
 // and a hung round is a box that looks alive and redeems nothing.
+//
+// The idle case is decided on the LINE, before the capability decode, and the
+// discriminator is deliberate: a line that names NO field at all is box saying
+// "nothing now" and is ErrIdle, while a line that names fields but no id is
+// still the anomaly it always was — a capability-shaped answer nobody can
+// name cannot be acked, and answering it with a quiet re-poll would hide a
+// real contract break. Decoding straight into Capability could not tell the
+// two apart (`{}` is the zero value, and so is a capability with its fields
+// missing), which is why the answer is read as a map of field names first.
 func (c *tlsControlPlane) Next(ctx context.Context) (Capability, error) {
 	if deadline, ok := ctx.Deadline(); ok {
 		if err := c.conn.SetReadDeadline(deadline); err != nil {
@@ -212,9 +239,24 @@ func (c *tlsControlPlane) Next(ctx context.Context) (Capability, error) {
 	if err := c.send(request{Op: opNext}); err != nil {
 		return Capability{}, err
 	}
-	var cap Capability
-	if err := c.read(&cap); err != nil {
+	var answer map[string]json.RawMessage
+	if err := c.read(&answer); err != nil {
 		return Capability{}, err
+	}
+	if len(answer) == 0 {
+		return Capability{}, ErrIdle
+	}
+	// The same bytes, now read as a capability: the map decode above is what
+	// separates idle from capability-shaped, and this decode is the one that
+	// fills the fields — unchanged from before ErrIdle existed, so a real
+	// capability decodes exactly as it always did.
+	raw, err := json.Marshal(answer)
+	if err != nil {
+		return Capability{}, fmt.Errorf("re-encode box's answer: %w", err)
+	}
+	var cap Capability
+	if err := json.Unmarshal(raw, &cap); err != nil {
+		return Capability{}, fmt.Errorf("decode the capability: %w", err)
 	}
 	if cap.ID == "" {
 		return Capability{}, errors.New("box sent a capability with no id; a capability nobody can name cannot be acked")

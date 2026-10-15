@@ -171,9 +171,12 @@ type EnvelopeResult struct {
 // on this interface that would let the box be driven inbound — no listener in
 // the type system any more than in the process.
 type ControlPlane interface {
-	// Next blocks until box sends a capability for this box or ctx ends.
-	// The daemon holds the connection open; a box that polls is a box whose
-	// failure mode is a slow capability rather than an open port.
+	// Next blocks until box sends a capability for this box or ctx ends,
+	// with one quiet exception: box may answer with the empty object `{}` —
+	// "nothing queued" — in which case Next returns ErrIdle and the daemon
+	// polls again on the same connection. The daemon holds the connection
+	// open; a box that polls is a box whose failure mode is a slow capability
+	// rather than an open port.
 	Next(ctx context.Context) (Capability, error)
 	// Ack reports one capability's outcome and answer. The daemon acks every
 	// capability, including the ones it refused — a refusal box did not
