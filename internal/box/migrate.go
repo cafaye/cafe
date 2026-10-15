@@ -78,11 +78,11 @@ func migrateFiles(dir, legacyDir string) ([]string, error) {
 		return nil, fmt.Errorf("%w: %s and %s hold different box identities; move one aside by hand and re-run",
 			ErrBoxStoreDiverged, filepath.Join(dir, identityFile), filepath.Join(legacyDir, identityFile))
 	}
-	if km, err := migrateKeyring(dir, legacyDir); err != nil {
+	km, err := migrateKeyring(dir, legacyDir)
+	if err != nil {
 		return nil, err
-	} else {
-		moved = append(moved, km...)
 	}
+	moved = append(moved, km...)
 	// The credential and the journal travel with the identity: a box.json
 	// naming a key that stayed behind is a box that cannot dial.
 	for _, name := range []string{PrivateKeyFileName, CertificateFileName, journalFile} {
@@ -92,17 +92,17 @@ func migrateFiles(dir, legacyDir string) ([]string, error) {
 		}
 		moved = append(moved, m...)
 	}
-	if m, err := migrateEvents(dir, legacyDir); err != nil {
+	m, err := migrateEvents(dir, legacyDir)
+	if err != nil {
 		return nil, err
-	} else {
-		moved = append(moved, m...)
 	}
+	moved = append(moved, m...)
 	// The identity moves last: its presence in the new store is the
 	// "migrated" marker the next run reads, so a process killed mid-move
 	// re-runs the migration and converges instead of stranding a half-moved
 	// enrollment. When both sides already agree, this converges to the new
 	// side's copy like every other file.
-	m, err := migrateOneFile(dir, legacyDir, identityFile)
+	m, err = migrateOneFile(dir, legacyDir, identityFile)
 	if err != nil {
 		return nil, err
 	}
