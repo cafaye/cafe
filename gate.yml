@@ -115,7 +115,7 @@ gate:
       # a separate floor from the suite's because the two measure different
       # things: a test folded into a subtest keeps the "any-level" count and
       # loses the top-level one, and only the suite floor notices.
-      minimum: 1279
+      minimum: 1282
 
     - id: live-tier
       match: '^cafe: live tier: [0-9]+ of 7 executed'
