@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 )
@@ -41,6 +42,17 @@ func runLoginCLI(t *testing.T, deps loginDeps, args ...string) (int, string, str
 	t.Helper()
 	var out, errOut bytes.Buffer
 	env := &Env{Stdout: &out, Stderr: &errOut, Version: testVersion, Context: context.Background()}
+	err := newLoginCommand(deps).Execute(env, args)
+	return codeFor(*env, err), out.String(), errOut.String()
+}
+
+// runLoginCLIStdin is the same run with a reader the test owns on stdin, the way
+// runBoxCLIStdin drives `cafe box enroll --token -`: the stdin path is provable
+// without redirecting the test binary's own standard input.
+func runLoginCLIStdin(t *testing.T, deps loginDeps, stdin io.Reader, args ...string) (int, string, string) {
+	t.Helper()
+	var out, errOut bytes.Buffer
+	env := &Env{Stdout: &out, Stderr: &errOut, Stdin: stdin, Version: testVersion, Context: context.Background()}
 	err := newLoginCommand(deps).Execute(env, args)
 	return codeFor(*env, err), out.String(), errOut.String()
 }
@@ -122,5 +134,103 @@ func TestLoginRejectsBadArgs(t *testing.T) {
 		if code != exitUsage {
 			t.Errorf("args %v exit %d want usage", args, code)
 		}
+	}
+}
+
+// The stdin path and the flag path are the same login: the value the pipe
+// carried is the value the endpoint was called with, and the token that lands
+// in the keyring is the one the flag path would have stored. The negative half
+// is the secret itself: neither stream carries the password.
+func TestLoginPasswordStdinStoresTheSameTokenAsTheFlagPath(t *testing.T) {
+	flagDeps, flagFake, flagRing := loginTestEnv(t)
+	code, _, _ := runLoginCLI(t, flagDeps, "--email", "noel@cafaye.test", "--password", "secret123")
+	if code != 0 {
+		t.Fatalf("flag path exit %d", code)
+	}
+
+	stdinDeps, stdinFake, stdinRing := loginTestEnv(t)
+	code, stdout, stderr := runLoginCLIStdin(t, stdinDeps, strings.NewReader("secret123\n"), "--email", "noel@cafaye.test", "--password-stdin")
+	if code != 0 {
+		t.Fatalf("stdin path exit %d stderr %s", code, stderr)
+	}
+
+	if got := stdinRing.entries["cafe/human/noel@cafaye.test"]; got != loginTestToken {
+		t.Errorf("stdin path stored %q, want the token the flag path stores (%q)", got, loginTestToken)
+	}
+	if stdinRing.entries["cafe/human/noel@cafaye.test"] != flagRing.entries["cafe/human/noel@cafaye.test"] {
+		t.Error("the two paths stored different tokens")
+	}
+	// The value the pipe carried, trimmed of the writer's newline, is the value
+	// the endpoint was called with.
+	want := "login:noel@cafaye.test:secret123"
+	if !containsCall(stdinFake.calls, want) {
+		t.Errorf("endpoint calls %v, want %q", stdinFake.calls, want)
+	}
+	_ = flagFake
+	for _, s := range []string{stdout, stderr} {
+		if strings.Contains(s, "secret123") {
+			t.Error("the password leaked to a stream")
+		}
+		if strings.Contains(s, loginTestToken) {
+			t.Error("the token leaked to a stream")
+		}
+	}
+	// control: the email IS printed, so a run that redacted everything would
+	// not pass by leaking nothing at all.
+	if !strings.Contains(stdout, "noel@cafaye.test") {
+		t.Errorf("stdout missing email: %s", stdout)
+	}
+}
+
+func containsCall(calls []string, want string) bool {
+	for _, c := range calls {
+		if c == want {
+			return true
+		}
+	}
+	return false
+}
+
+// The two flags are the same secret on two channels, and the refusal names
+// both: a caller who passed both has two ideas about where the password lives,
+// and neither deserves to win silently.
+func TestLoginPasswordAndPasswordStdinTogetherIsARefusal(t *testing.T) {
+	deps, fake, ring := loginTestEnv(t)
+	code, _, stderr := runLoginCLIStdin(t, deps, strings.NewReader("secret123\n"), "--email", "noel@cafaye.test", "--password", "secret123", "--password-stdin")
+	if code != exitUsage {
+		t.Fatalf("exit %d want usage; stderr %s", code, stderr)
+	}
+	if !strings.Contains(stderr, "--password") || !strings.Contains(stderr, "--password-stdin") {
+		t.Errorf("refusal does not name both flags: %s", stderr)
+	}
+	if len(fake.calls) != 0 {
+		t.Errorf("the endpoint was dialed anyway: %v", fake.calls)
+	}
+	if len(ring.entries) != 0 {
+		t.Errorf("something was stored: %v", ring.entries)
+	}
+}
+
+// An empty pipe is a refusal, not a login attempt with an empty password, and
+// it is named as the flag it came from: a reader who pipes nothing has a broken
+// command, and the sentence they read should say which channel was empty.
+func TestLoginPasswordStdinEmptyIsARefusal(t *testing.T) {
+	for name, stdin := range map[string]string{"empty": "", "blank": "  \n\t\n"} {
+		t.Run(name, func(t *testing.T) {
+			deps, fake, ring := loginTestEnv(t)
+			code, _, stderr := runLoginCLIStdin(t, deps, strings.NewReader(stdin), "--email", "noel@cafaye.test", "--password-stdin")
+			if code != exitUsage {
+				t.Fatalf("exit %d want usage; stderr %s", code, stderr)
+			}
+			if !strings.Contains(stderr, "--password-stdin") {
+				t.Errorf("refusal does not name the flag: %s", stderr)
+			}
+			if len(fake.calls) != 0 {
+				t.Errorf("a login was attempted with nothing: %v", fake.calls)
+			}
+			if len(ring.entries) != 0 {
+				t.Errorf("something was stored: %v", ring.entries)
+			}
+		})
 	}
 }
