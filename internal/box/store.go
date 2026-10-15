@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -674,4 +675,48 @@ func (s *Store) BoxKey(id *Identity) (ed25519.PrivateKey, error) {
 		return nil, err
 	}
 	return parsePrivateKey(stored)
+}
+
+// ErrNoClientCredential is what the store answers when its identity names no
+// client certificate and key. It is the enrollment recovery path — a recorded
+// redemption whose certificate was lost with the response, or a redemption box
+// issued none for — and it is distinct from ErrNotEnrolled because the remedy
+// is different: the box exists, and a fresh capability is what issues the
+// credential the daemon dials with.
+var ErrNoClientCredential = errors.New("the stored box identity names no client credential")
+
+// ClientCertificate loads the client certificate and private key this box
+// presents on one handshake. It is the store's OWN accessor for the credential
+// it filed — the daemon reads the store rather than re-deriving `box.crt` and
+// `box.key` by hand, which is what "one source of truth" means in code: the
+// names live in the identity the store wrote and the resolution against the
+// store directory is the same one writeClientCertificate used to place them.
+//
+// The pair is loaded fresh on every call and never cached: the box key's
+// lifetime is a connection's (boxd's doc, rule three), and a store that held it
+// between dials would hold it for the life of the process.
+func (s *Store) ClientCertificate() (tls.Certificate, error) {
+	id, ok := s.loadIdentity()
+	if !ok {
+		return tls.Certificate{}, ErrNotEnrolled
+	}
+	if id.Certificate == "" || id.Key == "" {
+		return tls.Certificate{}, fmt.Errorf("%w: box %s enrolled without one", ErrNoClientCredential, id.BoxID)
+	}
+	cert, err := tls.LoadX509KeyPair(s.resolvePath(id.Certificate), s.resolvePath(id.Key))
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("load the box client keypair: %w", err)
+	}
+	return cert, nil
+}
+
+// resolvePath makes a path the identity records relative to the store itself
+// unless it is absolute. It is the read half of writeClientCertificate's
+// promise: the names in box.json are meaningful only against the directory
+// that wrote them.
+func (s *Store) resolvePath(p string) string {
+	if filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join(s.Dir, p)
 }

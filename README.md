@@ -116,7 +116,7 @@ a run in which they passed.
 | `cafe cve scan` | the box's CVE surface: the component, the advisory, the fixed version, and what applying it touches | **works** |
 | `cafe cve schedule` | print the cron line that puts the scan on a schedule | **works** |
 | `cafe mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
-| `cafe boxd` | run the box daemon: outbound-only mTLS to box, redeeming whitelisted capabilities (invariant 4) | **works** |
+| `cafe boxd` | run the box daemon: outbound-only mTLS to box, redeeming whitelisted capabilities (invariant 4); its identity comes from the box-owned store, with `$CAF_BOX_IDENTITY` a deprecated fallback | **works** |
 | `cafe version` | print the cafe version | **works** |
 | `cafe doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
 | `cafe reclaim` | reclaim what a cafe session left behind, containers before volumes | **works** |
@@ -1595,6 +1595,16 @@ with it — a daemon whose core dump is a keyring would defeat the point.
 round trip under an operator's eye rather than a signal they cannot see. The
 daemon needs the enrolled identity `cafe box enroll` writes; without it, it says
 so and names that command.
+
+The daemon reads its identity and its client certificate from the box-owned
+**store** (`/var/lib/cafe/box`, or `$CAF_BOX_DIR`) — the same store every
+`cafe box` verb reads and the migration owns. `$CAF_BOX_IDENTITY` is still
+honored for a box that has not been migrated to the store yet, with one
+deprecation sentence naming the store; when both exist, the **store wins** and
+the daemon says so. This is what keeps a re-enroll from leaving the daemon
+presenting a certificate the store has already replaced (measured on Contabo
+2026-10-15: `x509: unknown certificate authority`). `-identity <path>` still
+overrides both, for the operator who means one file.
 
 ## Roadmap
 

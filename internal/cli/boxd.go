@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/cafaye/cafe/internal/backup"
+	"github.com/cafaye/cafe/internal/box"
 	"github.com/cafaye/cafe/internal/boxd"
 )
 
@@ -88,9 +90,15 @@ func newBoxdCommand(deps boxdDeps) *Command {
 			"do something; it can only ask for what the box can do.\n" +
 			"\n" +
 			"Needs an enrolled box: run `cafe box enroll --token …` first. Without the\n" +
-			"identity it prints that and exits rather than running unenrolled.",
+			"identity it prints that and exits rather than running unenrolled.\n" +
+			"\n" +
+			"The identity comes from the box-owned store (/var/lib/cafe/box, or $CAF_BOX_DIR)\n" +
+			"when one is enrolled there — the same store `cafe box enroll` writes and every\n" +
+			"`cafe box` verb reads. $CAF_BOX_IDENTITY is still honored for a box that has not\n" +
+			"been migrated yet, but when both exist the STORE WINS and this daemon says so;\n" +
+			"with only the old file, the daemon runs as it always did and names the store.",
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.identity, "identity", "", "path to the enrolled box identity; $CAF_BOX_IDENTITY or the user state directory")
+			fs.StringVar(&opts.identity, "identity", "", "path to the enrolled box identity; overrides the box store and $CAF_BOX_IDENTITY")
 			fs.BoolVar(&opts.once, "once", false, "redeem at most one capability and exit; one round under an operator's eye")
 			fs.BoolVar(&opts.report, "report", false, "print this box's observe.report document and exit; no dial, no capability, nothing changed")
 		},
@@ -121,34 +129,26 @@ func newBoxdCommand(deps boxdDeps) *Command {
 // It dials nothing, mints nothing and changes nothing: it is a read, which is
 // why it is safe for a bootstrap log to run it on every setup.
 func reportBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
-	identityPath, err := resolveBoxIdentityPath(opts.identity)
+	src, err := resolveBoxdIdentity(opts.identity, env.Version.Semver)
 	if err != nil {
 		return fmt.Errorf("cafe boxd: %w", err)
 	}
-	if _, err := os.Stat(identityPath); err != nil {
-		return fmt.Errorf("cafe boxd: no enrolled identity at %s; run `cafe box enroll --token …` "+
-			"on this box first (enrollment is the W2-P6 packet)", identityPath)
+	if src.notice != "" {
+		_, _ = fmt.Fprintf(env.Stderr, "boxd: %s\n", src.notice)
+	}
+	id, err := src.enrolled(env.Context)
+	if err != nil {
+		return err
 	}
 	statePath := deps.statePath
 	if statePath == "" {
-		statePath = boxStatePath(identityPath)
+		statePath = filepath.Join(src.dir, defaultBoxStateFile)
 	}
-	// The identity is read from the same document the daemon reads, so a
-	// report says which box it is about rather than which file it came from.
-	store, err := newFileIdentityStore(identityPath)
-	if err != nil {
-		return fmt.Errorf("cafe boxd: %w", err)
-	}
-	doc, err := store.read()
-	if err != nil {
-		return fmt.Errorf("cafe boxd: %w", err)
-	}
-	id := boxd.Identity{BoxID: doc.BoxID, ControlPlane: doc.ControlPlane, Version: doc.Version}
 	var world boxd.World
 	if deps.worldFor != nil {
 		world = deps.worldFor(id)
 	} else {
-		world = newBoxWorld(id, identityPath, statePath)
+		world = newBoxWorldWithKeys(id, src.keys, statePath)
 	}
 	report, err := world.Observe(env.Context, boxd.ObserveParams{})
 	if err != nil {
@@ -161,37 +161,35 @@ func runBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
 	deps = deps.withDefaults()
 	ctx := envOrBackground(*env)
 
-	identityPath, err := resolveBoxIdentityPath(opts.identity)
+	src, err := resolveBoxdIdentity(opts.identity, env.Version.Semver)
 	if err != nil {
 		return fmt.Errorf("cafe boxd: %w", err)
 	}
-	if _, err := os.Stat(identityPath); err != nil {
+	if src.notice != "" {
+		_, _ = fmt.Fprintf(env.Stderr, "boxd: %s\n", src.notice)
+	}
+	if _, err := src.enrolled(ctx); err != nil {
 		// An unenrolled box is a box that was never told what it is. The
 		// message names the one command that fixes it, because a daemon that
 		// cannot say what it lacks is a daemon nobody can act on.
-		return fmt.Errorf("cafe boxd: no enrolled identity at %s; run `cafe box enroll --token …` "+
-			"on this box first (enrollment is the W2-P6 packet)", identityPath)
-	}
-
-	store, err := newFileIdentityStore(identityPath)
-	if err != nil {
-		return fmt.Errorf("cafe boxd: %w", err)
+		return err
 	}
 	if deps.store == nil {
-		deps.store = store
+		deps.store = src.store
 	}
 	if deps.keys == nil {
-		deps.keys = store
+		deps.keys = src.keys
 	}
 	if deps.dial == nil {
-		deps.dial = boxd.NewTLSDialer(store)
+		deps.dial = boxd.NewTLSDialer(deps.keys)
 	}
 	if deps.worldFor == nil {
+		keys := deps.keys
 		statePath := deps.statePath
 		if statePath == "" {
-			statePath = boxStatePath(identityPath)
+			statePath = filepath.Join(src.dir, defaultBoxStateFile)
 		}
-		deps.worldFor = func(id boxd.Identity) boxd.World { return newBoxWorld(id, identityPath, statePath) }
+		deps.worldFor = func(id boxd.Identity) boxd.World { return newBoxWorldWithKeys(id, keys, statePath) }
 	}
 
 	daemon, err := boxd.Open(boxd.Options{
@@ -208,20 +206,154 @@ func runBoxd(opts *boxdOptions, env *Env, deps boxdDeps) error {
 	return daemon.Run(ctx)
 }
 
-// resolveBoxIdentityPath finds the enrolled identity: the flag, then the
-// environment, then the user state directory.
-func resolveBoxIdentityPath(flagPath string) (string, error) {
-	if flagPath != "" {
-		return flagPath, nil
+// boxdIdentityEnv is the tunnel-era variable that named where an enrolled
+// identity document lived. It is still honored, but the box store outranks it;
+// see resolveBoxdIdentity for the whole argument.
+const boxdIdentityEnv = "CAF_BOX_IDENTITY"
+
+// boxdIdentity is where the daemon's identity comes from, resolved once at
+// startup. The two seams boxd.Open takes are a PAIR — the identity to dial as
+// and the client certificate to dial with — and resolving them together is
+// what keeps them from being the box store's identity and the env-file's
+// certificate. That mismatch is the measured defect this packet fixes: a
+// re-enroll wrote a new keypair and certificate to the store while the daemon
+// kept presenting the old certificate from /etc/cafe, and the server answered
+// x509: unknown certificate authority.
+type boxdIdentity struct {
+	store boxd.IdentityStore
+	keys  boxd.KeySource
+	// path is the identity document when the source is a file; empty for the
+	// store. where() is what a refusal names.
+	path string
+	// dir is the source's directory: the store's, or the document's. It is
+	// where the daemon's own state file defaults to.
+	dir string
+	// fromStore is true when the box-owned store answered. It is a field
+	// rather than a comparison so a test asserts the decision, not a path.
+	fromStore bool
+	// notice is one sentence for the daemon's log: the store winning over an
+	// env-file, or the env-file's deprecation. Empty when there is nothing to
+	// say, and the caller prints it exactly once.
+	notice string
+}
+
+func (b boxdIdentity) where() string {
+	if b.fromStore {
+		return b.dir
 	}
-	if fromEnv := os.Getenv("CAF_BOX_IDENTITY"); fromEnv != "" {
-		return fromEnv, nil
-	}
-	dir, err := os.UserHomeDir()
+	return b.path
+}
+
+// enrolled loads the identity or refuses with the sentence that names the one
+// command that fixes it. It is the read both the daemon path and the report
+// path share, so both refuse an unenrolled box with the same words.
+func (b boxdIdentity) enrolled(ctx context.Context) (boxd.Identity, error) {
+	id, err := b.store.Load(ctx)
 	if err != nil {
-		return "", fmt.Errorf("find the home directory: %w", err)
+		return boxd.Identity{}, fmt.Errorf("cafe boxd: no enrolled identity at %s; run `cafe box enroll --token …` "+
+			"on this box first (enrollment is the W2-P6 packet): %w", b.where(), err)
 	}
-	return filepath.Join(dir, ".config", "cafe", "box-identity.json"), nil
+	return id, nil
+}
+
+// resolveBoxdIdentity finds the identity the daemon runs as. The box-owned
+// STORE wins over the tunnel-era $CAF_BOX_IDENTITY file: the store is what
+// enrollment writes, what the migration owns, and what every `cafe box` verb
+// reads, so a daemon that read the env-file first would present a certificate
+// the store had already replaced — the exact divergence measured on Contabo
+// 2026-10-15. An explicit -identity still overrides both, because that is the
+// operator saying which file they mean.
+//
+// version is the running cafe build; the store's identity does not record the
+// build a box enrolled as, so the store path carries the running one (see
+// storeIdentity).
+func resolveBoxdIdentity(flagPath, version string) (boxdIdentity, error) {
+	if flagPath != "" {
+		return newFileBoxdIdentity(flagPath)
+	}
+	storeDir := defaultBoxDir()
+	if _, err := box.NewStore(storeDir, nil, nil).Identity(); err == nil {
+		src := newStoreBoxdIdentity(storeDir, version)
+		if envPath := os.Getenv(boxdIdentityEnv); envPath != "" {
+			src.notice = fmt.Sprintf("the box store at %s is the source of truth; %s=%s is also set and is ignored",
+				storeDir, boxdIdentityEnv, envPath)
+		}
+		return src, nil
+	}
+	if envPath := os.Getenv(boxdIdentityEnv); envPath != "" {
+		src, err := newFileBoxdIdentity(envPath)
+		if err != nil {
+			return boxdIdentity{}, err
+		}
+		src.notice = fmt.Sprintf("%s=%s is deprecated; the box store at %s is the source of truth",
+			boxdIdentityEnv, envPath, storeDir)
+		return src, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return boxdIdentity{}, fmt.Errorf("find the home directory: %w", err)
+	}
+	return newFileBoxdIdentity(filepath.Join(home, ".config", "cafe", "box-identity.json"))
+}
+
+// newFileBoxdIdentity resolves the identity from an identity document: the
+// same reader boxd has always used, unchanged, so a deployed unit that names a
+// file keeps working.
+func newFileBoxdIdentity(path string) (boxdIdentity, error) {
+	store, err := newFileIdentityStore(path)
+	if err != nil {
+		return boxdIdentity{}, err
+	}
+	return boxdIdentity{store: store, keys: store, path: store.path, dir: store.dir}, nil
+}
+
+// newStoreBoxdIdentity resolves the identity from the box-owned store — the
+// same store `cafe box enroll` writes and every `cafe box` verb reads.
+func newStoreBoxdIdentity(dir, version string) boxdIdentity {
+	store := storeIdentity{store: box.NewStore(dir, nil, nil), version: version}
+	return boxdIdentity{store: store, keys: store, dir: dir, fromStore: true}
+}
+
+// storeIdentity adapts the box's own store to boxd's two seams. It is the
+// whole of "boxd reads the store": Load answers the identity the store holds,
+// and Certificate answers the client certificate the store filed, THROUGH THE
+// STORE'S OWN ACCESSOR rather than a path re-derived here — which is what "one
+// source of truth" means in code.
+type storeIdentity struct {
+	store *box.Store
+	// version is the build running as the daemon. The store's identity does
+	// not record the build a box enrolled as, and an observation whose
+	// deployed version is empty is a fact consumers cannot act on, so the
+	// running build is the honest stand-in — it is also what setup installed
+	// at enrollment.
+	version string
+}
+
+func (s storeIdentity) Load(context.Context) (boxd.Identity, error) {
+	id, err := s.store.Identity()
+	if err != nil {
+		return boxd.Identity{}, err
+	}
+	return boxd.Identity{BoxID: id.BoxID, ControlPlane: id.ControlPlane, Version: s.version}, nil
+}
+
+func (s storeIdentity) Certificate(context.Context) (tls.Certificate, error) {
+	cert, err := s.store.ClientCertificate()
+	if err != nil {
+		return tls.Certificate{}, boxClientCredentialError(err)
+	}
+	return cert, nil
+}
+
+// boxClientCredentialError turns the store's "nothing to dial with" answers
+// into the sentinel the daemon counts as permanent, so a store-enrolled box
+// with no client certificate refuses after its bound exactly as a file-based
+// one does — rather than retry-looping over a fact waiting cannot change.
+func boxClientCredentialError(err error) error {
+	if errors.Is(err, box.ErrNoClientCredential) || errors.Is(err, box.ErrNotEnrolled) {
+		return fmt.Errorf("%w: %w", boxd.ErrNoClientCredential, err)
+	}
+	return err
 }
 
 // ---------------------------------------------------------------------------
@@ -327,11 +459,6 @@ func (s *fileIdentityStore) resolve(p string) string {
 	return filepath.Join(s.dir, p)
 }
 
-// boxStatePath is the state file beside a given identity file.
-func boxStatePath(identityPath string) string {
-	return filepath.Join(filepath.Dir(identityPath), "boxd-state.json")
-}
-
 // ---------------------------------------------------------------------------
 // the world the routes touch
 // ---------------------------------------------------------------------------
@@ -353,15 +480,40 @@ func boxStatePath(identityPath string) string {
 // box is running as right now.
 type boxWorld struct {
 	id boxd.Identity
-	// identityPath is where the enrolled identity lives, so Observe can read
-	// the box's own client certificate for its expiry date — the one
-	// credential-adjacent fact that decides whether the box can dial at all.
-	identityPath string
-	path         string
+	// keys loads the box's own client certificate, so Observe can read its
+	// expiry — the one credential-adjacent fact that decides whether the box
+	// can dial at all. It is the SAME source the dialer uses, box store or
+	// identity file, so the certificate an observation reports is never a
+	// different one than the certificate the handshake presents.
+	keys boxd.KeySource
+	path string
 }
 
+// newBoxWorld builds a world whose certificate comes from an identity
+// document, which is how the file path and the tests that already hold one
+// build it.
 func newBoxWorld(id boxd.Identity, identityPath, statePath string) boxWorld {
-	return boxWorld{id: id, identityPath: identityPath, path: statePath}
+	return newBoxWorldWithKeys(id, fileKeySource(identityPath), statePath)
+}
+
+// newBoxWorldWithKeys builds a world over whatever key source the daemon
+// resolved — the box store's or an identity file's.
+func newBoxWorldWithKeys(id boxd.Identity, keys boxd.KeySource, statePath string) boxWorld {
+	return boxWorld{id: id, keys: keys, path: statePath}
+}
+
+// fileKeySource is the identity file as a KeySource, for the world's
+// certificate read. The dialer's file store is the same reader; this exists
+// because the world holds the SEAM rather than a path, so a store-based daemon
+// reads the store's certificate and not a file's.
+type fileKeySource string
+
+func (p fileKeySource) Certificate(context.Context) (tls.Certificate, error) {
+	store, err := newFileIdentityStore(string(p))
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	return store.Certificate(context.Background())
 }
 
 // boxState is the daemon's own record: which phase the plan reached and which
@@ -518,23 +670,28 @@ func (w boxWorld) Observe(ctx context.Context, params boxd.ObserveParams) (boxd.
 // is why an observation carries it rather than leaving it to be discovered
 // when the handshake starts failing.
 func (w boxWorld) certificate(now time.Time) boxd.Certificate {
-	store, err := newFileIdentityStore(w.identityPath)
+	if w.keys == nil {
+		return boxd.Certificate{Status: "unknown", Detail: "the daemon resolved no client certificate source"}
+	}
+	pair, err := w.keys.Certificate(context.Background())
 	if err != nil {
 		return boxd.Certificate{Status: "unknown", Detail: err.Error()}
 	}
-	doc, err := store.read()
-	if err != nil {
-		return boxd.Certificate{Status: "unknown", Detail: err.Error()}
+	leaf := pair.Leaf
+	if leaf == nil && len(pair.Certificate) > 0 {
+		// tls.LoadX509KeyPair fills Leaf on recent Go, but a leaf that is not
+		// parsed here would be a nil dereference, so the parse is done
+		// explicitly when it is absent rather than assumed.
+		parsed, perr := x509.ParseCertificate(pair.Certificate[0])
+		if perr != nil {
+			return boxd.Certificate{Status: "unknown", Detail: fmt.Sprintf("parse the box certificate: %v", perr)}
+		}
+		leaf = parsed
 	}
-	if doc.Certificate == "" || doc.Key == "" {
-		return boxd.Certificate{Status: "unknown", Detail: "the enrolled identity names no certificate and key; " +
-			"issuance is deferred to the Phase C packet named in boxd's package doc, and until it lands the daemon refuses after its bound"}
+	if leaf == nil {
+		return boxd.Certificate{Status: "unknown", Detail: "the box's client certificate could not be read"}
 	}
-	pair, err := tls.LoadX509KeyPair(store.resolve(doc.Certificate), store.resolve(doc.Key))
-	if err != nil {
-		return boxd.Certificate{Status: "unknown", Detail: fmt.Sprintf("load the box certificate: %v", err)}
-	}
-	notAfter := pair.Leaf.NotAfter
+	notAfter := leaf.NotAfter
 	status, days := certStatus(notAfter, now, certWarnWindow)
 	c := boxd.Certificate{Status: status, ExpiresAt: &notAfter, DaysLeft: &days}
 	switch status {
