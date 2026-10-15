@@ -1,9 +1,14 @@
 package cli
 
 import (
+	"errors"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // The measured defect: a box enrolled under one HOME read as "not enrolled"
@@ -109,6 +114,93 @@ func TestBoxDirEnvOverrideIsHonored(t *testing.T) {
 	}
 	if got := (providerDeps{}.withDefaults().dir); got != custom {
 		t.Fatalf("provider dir = %q, want override %q", got, custom)
+	}
+}
+
+// A box enrolled before the box-owned default migrates itself on first use:
+// the first defaulted `cafe box status` moves the legacy identity, names the
+// move on stderr, and answers enrolled — and the second run finds nothing.
+func TestBoxStatusMigratesLegacyOnFirstUse(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	legacy, err := legacyBoxDir()
+	if err != nil {
+		t.Fatalf("resolve the legacy box dir: %v", err)
+	}
+	boxID := "box-11111111-2222-3333-4444-555555555555"
+	identity := `{"box_id":"` + boxID + `","account_id":"acct-x","public_key":"p","status":"active","phase":"enrolled","enrolled_at":"2026-10-15T00:00:00Z","box_url":"https://box.test"}`
+	if err := os.MkdirAll(legacy, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacy, "box.json"), []byte(identity), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	boxDir := t.TempDir()
+	t.Setenv(boxDirEnv, boxDir)
+	cp := &countingBoxControlPlane{answer: fakeBoxInstallation(), cert: fakeBoxClientCertificate()}
+
+	code, stdout, stderr := runBoxCLI(t, boxDeps{controlPlane: cp}, "status", "--json")
+	if code != 0 {
+		t.Fatalf("status exited %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, boxID) {
+		t.Fatalf("migrated status names no box: %s", stdout)
+	}
+	if !strings.Contains(stderr, "migrated") || !strings.Contains(stderr, legacy) {
+		t.Fatalf("migration sentence names neither the move nor the source: %s", stderr)
+	}
+	if _, err := os.Stat(filepath.Join(legacy, "box.json")); !os.IsNotExist(err) {
+		t.Fatal("legacy identity still present: the migration copied instead of moving")
+	}
+
+	code, _, stderr = runBoxCLI(t, boxDeps{controlPlane: cp}, "status", "--json")
+	if code != 0 {
+		t.Fatalf("second status exited %d: %s", code, stderr)
+	}
+	if strings.Contains(stderr, "migrated") {
+		t.Fatalf("second status migrated again: %s", stderr)
+	}
+}
+
+// Both locations holding different identities refuses through the verbs too:
+// the command exits non-zero and the legacy store is untouched.
+func TestBoxStatusRefusesDivergedStores(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	legacy, err := legacyBoxDir()
+	if err != nil {
+		t.Fatalf("resolve the legacy box dir: %v", err)
+	}
+	if err := os.MkdirAll(legacy, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	legacyIdentity := `{"box_id":"box-legacy-0000-0000-000000000000","account_id":"a","public_key":"p","status":"active","phase":"enrolled","enrolled_at":"t","box_url":"u"}`
+	if err := os.WriteFile(filepath.Join(legacy, "box.json"), []byte(legacyIdentity), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	boxDir := t.TempDir()
+	t.Setenv(boxDirEnv, boxDir)
+	newIdentity := `{"box_id":"box-new-ffff-ffff-ffffffffffff","account_id":"a","public_key":"p","status":"active","phase":"enrolled","enrolled_at":"t","box_url":"u"}`
+	if err := os.WriteFile(filepath.Join(boxDir, "box.json"), []byte(newIdentity), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cp := &countingBoxControlPlane{answer: fakeBoxInstallation(), cert: fakeBoxClientCertificate()}
+	code, _, _ := runBoxCLI(t, boxDeps{controlPlane: cp}, "status", "--json")
+	if code == 0 {
+		t.Fatal("status over diverged stores exited 0; want a refusal")
+	}
+	if raw, err := os.ReadFile(filepath.Join(legacy, "box.json")); err != nil || string(raw) != legacyIdentity {
+		t.Fatal("refusal moved the legacy identity it refused to prefer")
+	}
+
+	// And the refusal is the named sentinel, not a wrapped surprise.
+	if _, err := boxStoreFor(nil, &Env{Stderr: io.Discard}, boxDeps{controlPlane: cp}); !errors.Is(err, box.ErrBoxStoreDiverged) {
+		t.Fatalf("boxStoreFor = %v, want %v", err, box.ErrBoxStoreDiverged)
 	}
 }
 

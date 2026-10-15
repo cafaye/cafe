@@ -383,7 +383,10 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 			url = os.Getenv(boxURLEnv)
 		}
 		deps.url = url
-		store := boxStoreFor(c, env, deps)
+		store, err := boxStoreFor(c, env, deps)
+		if err != nil {
+			return err
+		}
 		res, err := store.Enroll(env.Context, token, url)
 		if err != nil {
 			// The refusal is the honest half of the design: a capability that
@@ -404,8 +407,28 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 // injected control plane are what the whole tree of subcommands sees — which is
 // the property the CLI-level retry test relies on, because the count it
 // asserts is the count across TWO INVOCATIONS of the command.
-func boxStoreFor(_ *Command, _ *Env, deps boxDeps) *box.Store {
-	return deps.store()
+//
+// It also runs the legacy migration, once, when the caller left the directory
+// to the default: a box enrolled under the old HOME-derived location moves
+// itself on first use, with a sentence on stderr naming what moved and from
+// where. An explicitly set directory (which is what every test hands in) is
+// never migrated: it belongs to the caller, and a migration that reached into
+// it would touch state the caller did not offer. A diverged store — both
+// locations holding different identities — is a refusal, not a preference.
+func boxStoreFor(_ *Command, env *Env, deps boxDeps) (*box.Store, error) {
+	if deps.dir == "" {
+		deps = deps.withDefaults()
+		if legacy, err := legacyBoxDir(); err == nil {
+			msg, merr := box.MigrateStore(deps.dir, legacy)
+			if merr != nil {
+				return nil, merr
+			}
+			if msg != "" {
+				say(env.Stderr, "%s", msg)
+			}
+		}
+	}
+	return deps.store(), nil
 }
 
 // say is the stderr half of the split: one sentence, for a person.
@@ -491,7 +514,10 @@ func newBoxStatusCommand(deps boxDeps) *Command {
 		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
 			return err
 		}
-		store := boxStoreFor(c, env, deps)
+		store, err := boxStoreFor(c, env, deps)
+		if err != nil {
+			return err
+		}
 		st, err := store.Status()
 		if err != nil {
 			return err
@@ -524,7 +550,11 @@ func newBoxPlanCommand(deps boxDeps) *Command {
 		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
 			return err
 		}
-		plan, err := boxStoreFor(c, env, deps).Plan()
+		store, err := boxStoreFor(c, env, deps)
+		if err != nil {
+			return err
+		}
+		plan, err := store.Plan()
 		if err != nil {
 			return err
 		}
@@ -580,7 +610,11 @@ func newBoxApplyCommand(deps boxDeps) *Command {
 		if phase == "" {
 			return fmt.Errorf("%w: cafe box apply wants --phase <name|index> or one positional argument (usage: %s)", errUsage, c.Usage)
 		}
-		res, err := boxStoreFor(c, env, deps).Apply(phase)
+		store, err := boxStoreFor(c, env, deps)
+		if err != nil {
+			return err
+		}
+		res, err := store.Apply(phase)
 		if err != nil {
 			// A phase that is not in the table is a usage mistake, not a failure:
 			// the box was never asked to do anything it could misread.
@@ -646,7 +680,11 @@ func newBoxLogsCommand(deps boxDeps) *Command {
 		if opts.release != "" {
 			return writeReleaseLog(env, deps, opts)
 		}
-		events, err := boxStoreFor(c, env, deps).Logs()
+		store, err := boxStoreFor(c, env, deps)
+		if err != nil {
+			return err
+		}
+		events, err := store.Logs()
 		if err != nil {
 			return err
 		}
@@ -702,7 +740,11 @@ func newBoxVerifyCommand(deps boxDeps) *Command {
 		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
 			return err
 		}
-		v, err := boxStoreFor(c, env, deps).Verify()
+		store, err := boxStoreFor(c, env, deps)
+		if err != nil {
+			return err
+		}
+		v, err := store.Verify()
 		if err != nil {
 			return err
 		}
