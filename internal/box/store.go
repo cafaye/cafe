@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,6 +75,12 @@ const (
 	// did nothing at all. It is a SUCCESS: the machine is in the state the
 	// operator asked for.
 	ActionAlreadyEnrolled = "already-enrolled"
+	// ActionRotated means the box was already enrolled and its certificate was
+	// replaced by presenting a fresh capability. It is the `cafe box enroll
+	// --rotate` path: the local already-enrolled check is bypassed
+	// deliberately, the capability IS presented, and the store's identity and
+	// client certificate are REPLACED.
+	ActionRotated = "rotated"
 	// ActionRefused means the attempt did not complete and the box is still
 	// unenrolled. It is a failure, and it is the honest one: the capability is
 	// gone and cafe will not pretend otherwise.
@@ -189,6 +197,24 @@ var ErrNoBox = errors.New("no box configured: pass --box <url> or set CAF_BOX_UR
 // remedy (`cafe box enroll` with a freshly minted token), which is strictly
 // better than a client that hid the refusal and reported success.
 func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (EnrollResult, error) {
+	return s.enroll(ctx, token, controlPlaneURL, false)
+}
+
+// Rotate replaces the certificate of an already-enrolled box by presenting a
+// freshly minted capability. It bypasses the already-enrolled check
+// deliberately: the capability IS presented, the server rotates (box's
+// Capability#redeem! finds-or-initializes by box_id, writes the new public key,
+// and BoxCertificate.issue_for! revokes the certificate it supersedes), and the
+// store's identity and certificate are REPLACED. The old keypair must not linger
+// in the ring.
+func (s *Store) Rotate(ctx context.Context, token, controlPlaneURL string) (EnrollResult, error) {
+	if _, ok := s.loadIdentity(); !ok {
+		return EnrollResult{Action: ActionRefused}, fmt.Errorf("%w: run `cafe box enroll --token …` first", ErrNotEnrolled)
+	}
+	return s.enroll(ctx, token, controlPlaneURL, true)
+}
+
+func (s *Store) enroll(ctx context.Context, token, controlPlaneURL string, rotate bool) (EnrollResult, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return EnrollResult{Action: ActionRefused}, fmt.Errorf("cafe box enroll: --token is required; it is the single-use capability minted for this box")
@@ -197,15 +223,17 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 		return EnrollResult{Action: ActionRefused}, ErrNoBox
 	}
 
-	if id, ok := s.loadIdentity(); ok {
-		s.appendEvent("enroll", id.Phase, "box was already enrolled; the capability was not presented")
-		return EnrollResult{
-			Action:            ActionAlreadyEnrolled,
-			Identity:          id,
-			Redemptions:       0,
-			CertificateStored: id.Certificate != "",
-			Message:           "this box is already enrolled as " + id.BoxID + "; nothing was redeemed",
-		}, nil
+	if !rotate {
+		if id, ok := s.loadIdentity(); ok {
+			s.appendEvent("enroll", id.Phase, "box was already enrolled; the capability was not presented")
+			return EnrollResult{
+				Action:            ActionAlreadyEnrolled,
+				Identity:          id,
+				Redemptions:       0,
+				CertificateStored: id.Certificate != "",
+				Message:           "this box is already enrolled as " + id.BoxID + "; nothing was redeemed",
+			}, nil
+		}
 	}
 
 	jr, _, err := s.loadJournal()
@@ -225,7 +253,10 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 	// identity that names no client credential, and the daemon reports that
 	// fact by name rather than the client re-redeeming a spent token or
 	// inventing a path to a key that was never written.
-	if jr != nil && jr.State == journalRedeemed {
+	//
+	// A deliberate rotation bypasses this convergence: the operator asked for a
+	// fresh certificate, so a recorded redemption is not finished quietly.
+	if !rotate && jr != nil && jr.State == journalRedeemed {
 		id, err := s.finish(*jr, nil)
 		if err != nil {
 			return EnrollResult{Action: ActionRefused}, err
@@ -240,6 +271,25 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 			Message: "recovered the recorded redemption and wrote the box identity; " +
 				"the redemption's client certificate was not recorded, so re-enroll with a freshly minted token to issue one",
 		}, nil
+	}
+
+	// For a rotation, discard any prepared journal and generate a fresh keypair.
+	// Reusing the pending key would make the rotation a function of how many
+	// times the operator retried, and would strand the fresh key the capability
+	// is meant to bind.
+	if rotate {
+		// Clear any stale pending state so the new keypair is fresh.
+		_ = s.Ring.Delete(ringService, journalPending)
+		if jr != nil && jr.State == journalPrepared {
+			_ = os.Remove(s.paths(journalFile))
+			jr = nil
+		}
+		if jr != nil && jr.State == journalRedeemed {
+			// A redeemed journal during a rotation is stale; remove it so a
+			// fresh redemption is performed.
+			_ = os.Remove(s.paths(journalFile))
+			jr = nil
+		}
 	}
 
 	private, err := s.pendingKey(jr)
@@ -282,6 +332,20 @@ func (s *Store) Enroll(ctx context.Context, token, controlPlaneURL string) (Enro
 	id, err := s.finish(*jr, cert)
 	if err != nil {
 		return EnrollResult{Action: ActionRefused, Redemptions: 1}, err
+	}
+	if rotate {
+		s.appendEvent("enroll", id.Phase, "box certificate rotated for "+id.BoxID)
+		msg := "box " + id.BoxID + " certificate rotated; the previous certificate was superseded and revoked — restart cafe-boxd.service to pick up the new certificate"
+		if id.Certificate == "" {
+			msg = "box " + id.BoxID + " rotated but the redemption issued no client certificate; the daemon cannot dial until one is issued — restart cafe-boxd.service after re-enrolling"
+		}
+		return EnrollResult{
+			Action:            ActionRotated,
+			Identity:          id,
+			Redemptions:       1,
+			CertificateStored: id.Certificate != "",
+			Message:           msg,
+		}, nil
 	}
 	s.appendEvent("enroll", id.Phase, "box enrolled as "+id.BoxID)
 	return EnrollResult{
@@ -489,6 +553,106 @@ func (s *Store) Identity() (*Identity, error) {
 		return nil, ErrNotEnrolled
 	}
 	return id, nil
+}
+
+// RetargetResult is what a control-plane re-point concluded.
+type RetargetResult struct {
+	BoxID   string `json:"box_id"`
+	Before  string `json:"before"`
+	After   string `json:"after"`
+	Message string `json:"message"`
+}
+
+// Retarget updates the persisted control-plane URL without touching the
+// identity's keypair or certificate. It refuses when not enrolled (with the
+// enroll pointer), validates the URL shape with the same dialTarget rules the
+// boxd client uses, prints before/after, and reminds that boxd must restart.
+func (s *Store) Retarget(newURL string) (RetargetResult, error) {
+	newURL = strings.TrimSpace(newURL)
+	if newURL == "" {
+		return RetargetResult{}, fmt.Errorf("control plane URL is required: pass --box <url>")
+	}
+	if err := validateBoxURL(newURL); err != nil {
+		return RetargetResult{}, err
+	}
+	id, ok := s.loadIdentity()
+	if !ok {
+		return RetargetResult{}, fmt.Errorf("%w: run `cafe box enroll --token …` first", ErrNotEnrolled)
+	}
+	before := id.ControlPlane
+	if before == newURL {
+		return RetargetResult{
+			BoxID:   id.BoxID,
+			Before:  before,
+			After:   newURL,
+			Message: "control plane already " + newURL + "; restart cafe-boxd.service to pick it up if it has not already",
+		}, nil
+	}
+	id.ControlPlane = newURL
+	if err := s.writeIdentity(id); err != nil {
+		return RetargetResult{}, err
+	}
+	s.appendEvent("retarget", id.Phase, "control plane "+before+" -> "+newURL)
+	return RetargetResult{
+		BoxID:   id.BoxID,
+		Before:  before,
+		After:   newURL,
+		Message: "control plane " + before + " -> " + newURL + "; restart cafe-boxd.service to pick up the new control plane",
+	}, nil
+}
+
+// validateBoxURL validates the URL shape with the host + optional port rules
+// the boxd client uses (internal/boxd/client.go dialTarget). It accepts the
+// URL form (--box https://host[:port]) and the bare host:port the dial needs,
+// and refuses a value that dialTarget would refuse, naming the field.
+func validateBoxURL(raw string) error {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return fmt.Errorf("control plane %q is not host:port", raw)
+	}
+	if strings.Contains(trimmed, "://") {
+		u, err := url.Parse(trimmed)
+		if err != nil || u.Host == "" {
+			return fmt.Errorf("control plane %q is not host:port", raw)
+		}
+		host, port, serr := net.SplitHostPort(u.Host)
+		switch {
+		case serr != nil && isMissingPort(serr):
+			def, ok := defaultSchemePortForValidate(u.Scheme)
+			if !ok {
+				return fmt.Errorf("control plane %q is not host:port", raw)
+			}
+			_ = def
+			if u.Hostname() == "" {
+				return fmt.Errorf("control plane %q is not host:port", raw)
+			}
+			return nil
+		case serr != nil || host == "" || port == "":
+			return fmt.Errorf("control plane %q is not host:port", raw)
+		}
+		return nil
+	}
+	host, port, serr := net.SplitHostPort(trimmed)
+	if serr != nil || host == "" || port == "" {
+		return fmt.Errorf("control plane %q is not host:port", raw)
+	}
+	return nil
+}
+
+func isMissingPort(err error) bool {
+	var addrErr *net.AddrError
+	return errors.As(err, &addrErr) && addrErr.Err == "missing port in address"
+}
+
+func defaultSchemePortForValidate(scheme string) (string, bool) {
+	switch scheme {
+	case "https":
+		return "443", true
+	case "http":
+		return "80", true
+	default:
+		return "", false
+	}
 }
 
 // BoxKey is the box's private key, for the duration of one call. It is not

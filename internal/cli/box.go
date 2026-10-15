@@ -197,6 +197,7 @@ func boxVerbs(deps boxDeps) []boxVerb {
 		{name: "logs", cmd: newBoxLogsCommand(deps)},
 		{name: "mint", cmd: newBoxMintCommand(mint)},
 		{name: "plan", cmd: newBoxPlanCommand(deps)},
+		{name: "retarget", cmd: newBoxRetargetCommand(deps)},
 		{name: "setup", cmd: newBoxSetupCommand(deps.setup)},
 		{name: "wipe", cmd: newBoxWipeCommand(deps.wipe)},
 		{name: "rollback", cmd: newBoxRollbackCommand(deps)},
@@ -265,8 +266,8 @@ func newBoxCommand(deps boxDeps) *Command {
 	verbs := boxVerbs(deps)
 	c := &Command{
 		Name:     "box",
-		Summary:  "the box lifecycle: enroll, then status, plan, apply, setup, wipe, deploy, rollback, logs, verify — and the edge: publish, edge",
-		Usage:    "cafe box <enroll|status|plan|apply|setup|wipe|deploy|rollback|logs|verify|publish|edge> [flags] [arguments]",
+		Summary:  "the box lifecycle: enroll, then status, plan, apply, setup, wipe, deploy, rollback, logs, verify, retarget — and the edge: publish, edge",
+		Usage:    "cafe box <enroll|status|plan|apply|setup|wipe|deploy|rollback|logs|verify|retarget|publish|edge> [flags] [arguments]",
 		LongHelp: boxLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -316,8 +317,9 @@ func (f *boxFlags) declare(fs *flag.FlagSet) {
 
 // boxEnrollOptions is `cafe box enroll`'s flag state.
 type boxEnrollOptions struct {
-	token string
-	box   string
+	token  string
+	box    string
+	rotate bool
 }
 
 const (
@@ -370,10 +372,11 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 	c := &Command{
 		Name:    "box enroll",
 		Summary: "enroll this box: generate its keypair, redeem the capability, store its identity",
-		Usage:   "cafe box enroll --token <capability|-> [--box <url>]",
+		Usage:   "cafe box enroll --token <capability|-> [--box <url>] [--rotate]",
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.token, "token", "", "the single-use box.enroll capability minted for this box; - reads it from stdin, which is a pipe rather than argv")
 			fs.StringVar(&opts.box, "box", "", "box's origin; without it, "+boxURLEnv+" is read and an unset variable is a refusal")
+			fs.BoolVar(&opts.rotate, "rotate", false, "replace the certificate of an already-enrolled box by presenting a fresh capability; without it, an enrolled box is left untouched and the capability is not presented")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -396,7 +399,12 @@ func newBoxEnrollCommand(deps boxDeps) *Command {
 		if err != nil {
 			return err
 		}
-		res, err := store.Enroll(env.Context, token, url)
+		var res box.EnrollResult
+		if opts.rotate {
+			res, err = store.Rotate(env.Context, token, url)
+		} else {
+			res, err = store.Enroll(env.Context, token, url)
+		}
 		if err != nil {
 			// The refusal is the honest half of the design: a capability that
 			// is gone is gone, and saying so is better than a client that
@@ -465,6 +473,8 @@ func writeDoc(w io.Writer, v any, asJSON bool) error {
 	}
 	switch doc := v.(type) {
 	case box.EnrollResult:
+		return writeHuman(w, doc.Message)
+	case box.RetargetResult:
 		return writeHuman(w, doc.Message)
 	case setup.Result:
 		return writeSetupHuman(w, doc)

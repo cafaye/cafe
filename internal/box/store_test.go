@@ -872,3 +872,163 @@ func TestARecoveredEnrollmentFinishesWithoutTheCertificateAndSaysSo(t *testing.T
 		}
 	}
 }
+
+// The rotation distinction: without --rotate on an enrolled box the capability
+// is NOT presented (already-enrolled); with --rotate it IS presented once, the
+// store is replaced, and the old keypair does not linger. Red-proof both.
+func TestEnrollWithoutRotateDoesNotPresentTheCapability(t *testing.T) {
+	s, cp := openTestStore(t)
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
+		t.Fatalf("first enroll: %v", err)
+	}
+	idBefore, _ := s.Identity()
+	pubBefore := idBefore.PublicKey
+	cp.calls = 0
+	cp.tripwire = true // any redeem would panic
+
+	res, err := s.Enroll(context.Background(), "cap_second", "https://box.test")
+	if err != nil {
+		t.Fatalf("second enroll without rotate: %v", err)
+	}
+	if res.Action != ActionAlreadyEnrolled {
+		t.Errorf("action = %q, want %q", res.Action, ActionAlreadyEnrolled)
+	}
+	if res.Redemptions != 0 {
+		t.Errorf("redemptions = %d, want 0", res.Redemptions)
+	}
+	if cp.calls != 0 {
+		t.Errorf("control plane called %d times without --rotate, want 0", cp.calls)
+	}
+	idAfter, _ := s.Identity()
+	if idAfter.PublicKey != pubBefore {
+		t.Error("identity public key changed without --rotate")
+	}
+	// Control half: a rotate DOES present.
+}
+
+func TestRotatePresentsTheCapabilityOnceAndReplacesTheStore(t *testing.T) {
+	s, cp := openTestStore(t)
+	if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
+		t.Fatalf("first enroll: %v", err)
+	}
+	idBefore, _ := s.Identity()
+	pubBefore := idBefore.PublicKey
+	ring := s.Ring.(*testRing)
+	_ = ring
+	// Plant a new certificate for the rotation answer.
+	cp.certificate = &ClientCertificate{
+		Certificate: "-----BEGIN CERTIFICATE-----\nMIIrotated\n-----END CERTIFICATE-----\n",
+		ExpiresAt:   "2028-01-01T00:00:00Z",
+		Fingerprint: "dd:ee:ff",
+		key:         "-----BEGIN PRIVATE KEY-----\nMIIrotatedkey\n-----END PRIVATE KEY-----\n",
+	}
+	cp.calls = 0
+	cp.tripwire = false
+	cp.err = nil
+
+	res, err := s.Rotate(context.Background(), "cap_rotate_"+strings.Repeat("c", 64), "https://box.test")
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	if res.Action != ActionRotated {
+		t.Errorf("action = %q, want %q", res.Action, ActionRotated)
+	}
+	if res.Redemptions != 1 {
+		t.Errorf("redemptions = %d, want 1", res.Redemptions)
+	}
+	if cp.calls != 1 {
+		t.Errorf("control plane called %d times with --rotate, want 1", cp.calls)
+	}
+	if !strings.Contains(res.Message, "superseded") || !strings.Contains(res.Message, "cafe-boxd.service") {
+		t.Errorf("rotate message = %q, want it to name superseded and cafe-boxd.service", res.Message)
+	}
+	idAfter, _ := s.Identity()
+	if idAfter.PublicKey == pubBefore {
+		t.Error("identity public key did not change after rotate")
+	}
+	if idAfter.BoxID != idBefore.BoxID {
+		t.Errorf("box_id changed on rotate: before %q after %q", idBefore.BoxID, idAfter.BoxID)
+	}
+	// Old keypair must not linger: only one box/ entry.
+	var boxKeys []string
+	for k := range ring.entries {
+		if strings.Contains(k, "box/") && !strings.Contains(k, "enrollment-pending") {
+			boxKeys = append(boxKeys, k)
+		}
+	}
+	if len(boxKeys) != 1 {
+		t.Errorf("ring has %d box keys after rotate, want 1: %v", len(boxKeys), boxKeys)
+	}
+	if ring.entries["cafe/box/"+idAfter.BoxID] == "" {
+		t.Error("no key for rotated identity in ring")
+	}
+	// Certificate file replaced.
+	raw, _ := os.ReadFile(filepath.Join(s.Dir, CertificateFileName))
+	if !strings.Contains(string(raw), "MIIrotated") {
+		t.Error("certificate file was not replaced on rotate")
+	}
+}
+
+func TestRotateRefusesWhenNotEnrolled(t *testing.T) {
+	s, cp := openTestStore(t)
+	cp.tripwire = true
+	_, err := s.Rotate(context.Background(), testToken, "https://box.test")
+	if err == nil || !strings.Contains(err.Error(), ErrNotEnrolled.Error()) {
+		t.Fatalf("rotate on unenrolled box err = %v, want ErrNotEnrolled", err)
+	}
+	if cp.calls != 0 {
+		t.Errorf("control plane called %d times on unenrolled rotate, want 0", cp.calls)
+	}
+}
+
+// Retarget updates the persisted control-plane URL without touching the
+// identity, refuses when not enrolled, and validates the URL shape.
+func TestRetargetUpdatesTheStoreAndValidates(t *testing.T) {
+	t.Run("not enrolled", func(t *testing.T) {
+		s, _ := openTestStore(t)
+		_, err := s.Retarget("https://box.new.test")
+		if err == nil || !strings.Contains(err.Error(), ErrNotEnrolled.Error()) {
+			t.Fatalf("err = %v, want ErrNotEnrolled", err)
+		}
+	})
+	t.Run("updates url", func(t *testing.T) {
+		s, _ := openTestStore(t)
+		if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
+			t.Fatal(err)
+		}
+		before, _ := s.Identity()
+		res, err := s.Retarget("https://box.new.test:8443")
+		if err != nil {
+			t.Fatalf("retarget: %v", err)
+		}
+		if res.Before != "https://box.test" || res.After != "https://box.new.test:8443" {
+			t.Errorf("retarget = %+v, want before/after", res)
+		}
+		if !strings.Contains(res.Message, "cafe-boxd.service") {
+			t.Errorf("message = %q, want cafe-boxd.service", res.Message)
+		}
+		after, _ := s.Identity()
+		if after.ControlPlane != "https://box.new.test:8443" {
+			t.Errorf("control plane = %q, want new", after.ControlPlane)
+		}
+		if after.BoxID != before.BoxID || after.PublicKey != before.PublicKey {
+			t.Error("retarget touched identity beyond control plane")
+		}
+		// Key still present.
+		if _, err := s.Ring.Get(ringService, ringAccount(after.BoxID)); err != nil {
+			t.Errorf("key missing after retarget: %v", err)
+		}
+	})
+	t.Run("invalid url", func(t *testing.T) {
+		s, _ := openTestStore(t)
+		if _, err := s.Enroll(context.Background(), testToken, "https://box.test"); err != nil {
+			t.Fatal(err)
+		}
+		for _, bad := range []string{"", "not a url", "https://", "ftp://box.test", "box.test"} {
+			_, err := s.Retarget(bad)
+			if err == nil || !strings.Contains(err.Error(), "control plane") {
+				t.Errorf("retarget %q err = %v, want control plane field named", bad, err)
+			}
+		}
+	})
+}

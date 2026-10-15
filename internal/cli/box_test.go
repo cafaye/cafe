@@ -676,13 +676,114 @@ func TestBareBoxIsAQuestionNotAMistake(t *testing.T) {
 	if err := newBoxCommand(boxDeps{}).Execute(env, nil); err != nil {
 		t.Fatalf("bare `cafe box` failed: %v", err)
 	}
-	if !strings.Contains(out.String(), "cafe box <enroll|status|plan|apply|setup|wipe|deploy|rollback|logs|verify|publish|edge>") {
+	if !strings.Contains(out.String(), "cafe box <enroll|status|plan|apply|setup|wipe|deploy|rollback|logs|verify|retarget|publish|edge>") {
 		t.Errorf("help does not carry its usage line:\n%s", out.String())
 	}
-	for _, verb := range []string{"enroll", "status", "plan", "apply", "setup", "wipe", "deploy", "rollback", "logs", "verify", "publish", "edge"} {
+	for _, verb := range []string{"enroll", "status", "plan", "apply", "setup", "wipe", "deploy", "rollback", "logs", "verify", "retarget", "publish", "edge"} {
 		if !strings.Contains(out.String(), verb) {
 			t.Errorf("help does not list %q:\n%s", verb, out.String())
 		}
+	}
+}
+
+// `cafe box enroll --rotate` on an enrolled box bypasses the already-enrolled
+// check, presents the capability once, replaces the store, and says the
+// previous certificate was superseded so cafe-boxd.service must restart.
+// Without --rotate the capability is NOT presented. Red-proof both.
+func TestBoxEnrollRotatePresentsOnceVersusAlreadyEnrolled(t *testing.T) {
+	deps, cp, _ := boxTestEnv(t)
+	if code, _, stderr := runBoxCLI(t, deps, "enroll", "--token", boxTestToken); code != 0 {
+		t.Fatalf("first enroll %d %s", code, stderr)
+	}
+	idBefore, _ := deps.store().Identity()
+	pubBefore := idBefore.PublicKey
+
+	// Without --rotate: already-enrolled, 0 calls.
+	cp.calls = 0
+	cp.tripwire = true
+	code, stdout, stderr := runBoxCLI(t, deps, "enroll", "--token", "cap_second")
+	if code != 0 {
+		t.Fatalf("second without --rotate %d %s", code, stderr)
+	}
+	res := enrollResult(t, stdout)
+	if res.Action != box.ActionAlreadyEnrolled {
+		t.Errorf("without --rotate action %q want already-enrolled", res.Action)
+	}
+	if cp.calls != 0 {
+		t.Errorf("without --rotate calls %d want 0", cp.calls)
+	}
+	if !strings.Contains(stderr, "nothing was redeemed") {
+		t.Errorf("stderr %q want nothing was redeemed", stderr)
+	}
+
+	// With --rotate: 1 call, rotated, store replaced, message names superseded.
+	cp.tripwire = false
+	cp.calls = 0
+	cp.cert = box.NewClientCertificate("-----BEGIN CERTIFICATE-----\nMIIrotated cli\n-----END CERTIFICATE-----\n", fakeBoxKeyPEM)
+	code, stdout, stderr = runBoxCLI(t, deps, "enroll", "--token", "cap_rotate_"+strings.Repeat("r", 64), "--rotate")
+	if code != 0 {
+		t.Fatalf("rotate %d %s", code, stderr)
+	}
+	res = enrollResult(t, stdout)
+	if res.Action != box.ActionRotated {
+		t.Errorf("rotate action %q want rotated", res.Action)
+	}
+	if cp.calls != 1 {
+		t.Errorf("rotate calls %d want 1", cp.calls)
+	}
+	if !strings.Contains(stderr, "superseded") || !strings.Contains(stderr, "cafe-boxd.service") {
+		t.Errorf("rotate stderr %q want superseded and cafe-boxd.service", stderr)
+	}
+	idAfter, _ := deps.store().Identity()
+	if idAfter.PublicKey == pubBefore {
+		t.Error("public key unchanged after --rotate")
+	}
+}
+
+func TestBoxRetargetCLINotEnrolledInvalidAndUpdate(t *testing.T) {
+	// not enrolled -> refusal with enroll pointer
+	deps, _, _ := boxTestEnv(t)
+	code, _, stderr := runBoxCLI(t, deps, "retarget", "--box", "https://box.new.test")
+	if code == 0 {
+		t.Fatal("retarget on unenrolled box should fail")
+	}
+	if !strings.Contains(stderr, "not enrolled") {
+		t.Errorf("stderr %q want not enrolled", stderr)
+	}
+
+	// enroll then retarget
+	if code, _, stderr := runBoxCLI(t, deps, "enroll", "--token", boxTestToken, "--box", "https://box.test"); code != 0 {
+		t.Fatalf("enroll %d %s", code, stderr)
+	}
+	code, stdout, stderr := runBoxCLI(t, deps, "retarget", "--box", "https://box.new.test:8443")
+	if code != 0 {
+		t.Fatalf("retarget %d %s", code, stderr)
+	}
+	var res box.RetargetResult
+	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
+		t.Fatalf("stdout not json %v %s", err, stdout)
+	}
+	if res.Before != "https://box.test" || res.After != "https://box.new.test:8443" {
+		t.Errorf("retarget %+v", res)
+	}
+	if !strings.Contains(stderr, "https://box.test") || !strings.Contains(stderr, "https://box.new.test:8443") {
+		t.Errorf("stderr %q want before/after", stderr)
+	}
+	if !strings.Contains(stderr, "cafe-boxd.service") {
+		t.Errorf("stderr %q want cafe-boxd.service", stderr)
+	}
+	id, _ := deps.store().Identity()
+	if id.ControlPlane != "https://box.new.test:8443" {
+		t.Errorf("store control plane %q", id.ControlPlane)
+	}
+
+	// invalid URL -> usage 2 and field named
+	code, _, stderr = runBoxCLI(t, deps, "retarget", "--box", "not a url")
+	if code != exitUsage {
+		t.Errorf("invalid url code %d want %d stderr %s", code, exitUsage, stderr)
+	}
+	if !strings.Contains(stderr, "control plane") {
+		t.Errorf("stderr %q want control plane", stderr)
 	}
 }
 
