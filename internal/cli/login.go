@@ -108,11 +108,25 @@ func (e *httpHumanEndpoint) Login(ctx context.Context, email, password string) (
 	var payload struct {
 		Token string `json:"token"`
 		Email string `json:"email"`
+		// Identity answers an account with a second factor with 202
+		// {mfa_required, challenge, expires_at} and NO token, by design
+		// (identity's challengeResponse). 202 is < 300, so this client parses
+		// the document and the missing token is all a token-only reader sees.
+		MFARequired bool `json:"mfa_required"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return nil, fmt.Errorf("cafe login: the answer was not the document this CLI expects: %w", err)
 	}
 	if strings.TrimSpace(payload.Token) == "" {
+		// Refusing is correct — identity minted a challenge, not a session, and
+		// there is no token to store — but the sentence has to say so. "identity
+		// did not mint one" is true and useless: it sends a human to retry a
+		// password that already worked. Name MFA and the remedy instead: the
+		// challenge is completed in the browser, and only then can a session be
+		// minted. The challenge value itself is opaque and is not repeated here.
+		if payload.MFARequired {
+			return nil, fmt.Errorf("cafe login: identity answered mfa_required: this account has a second factor; complete the MFA challenge in the browser and then log in again — identity minted a challenge, not a session, so there is no token to store")
+		}
 		return nil, fmt.Errorf("cafe login: the answer carried no token; identity did not mint one")
 	}
 	emailOut := payload.Email

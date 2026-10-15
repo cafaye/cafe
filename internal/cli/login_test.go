@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -232,5 +234,66 @@ func TestLoginPasswordStdinEmptyIsARefusal(t *testing.T) {
 				t.Errorf("something was stored: %v", ring.entries)
 			}
 		})
+	}
+}
+
+// loginOverHTTP drives the real httpHumanEndpoint against an answer the test
+// writes: the MFA refusal lives in the parse, so the parse is what is proven
+// rather than a fake that could agree with the implementation by construction.
+func loginOverHTTP(t *testing.T, answer string) (int, string, string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(answer))
+	}))
+	t.Cleanup(srv.Close)
+	deps := loginDeps{dir: t.TempDir(), ring: newAgentTestRing(), baseURL: srv.URL, dial: defaultHumanDial()}
+	return runLoginCLI(t, deps, "--email", "mfa@cafaye.test", "--password", "secret123")
+}
+
+// A 202 with mfa_required is identity minting a challenge rather than a session.
+// The refusal names it verbatim and says the remedy — the challenge is completed
+// in the browser before a session can be minted — and it does NOT say "identity
+// did not mint one", the sentence that sends a human to retry a password that
+// already worked.
+func TestLoginMFARequiredNamesMFAAndTheRemedy(t *testing.T) {
+	code, stdout, stderr := loginOverHTTP(t, `{"mfa_required":true,"challenge":"chal_9f1c2a","expires_at":"2026-10-15T12:00:00Z"}`)
+	if code != exitFailure {
+		t.Fatalf("exit %d want failure; stdout %s stderr %s", code, stdout, stderr)
+	}
+	if stdout != "" {
+		t.Errorf("a failed login printed a document: %s", stdout)
+	}
+	if !strings.Contains(stderr, "mfa_required") {
+		t.Errorf("the refusal does not name mfa_required: %s", stderr)
+	}
+	if !strings.Contains(stderr, "browser") {
+		t.Errorf("the refusal does not name the remedy (complete the challenge in the browser): %s", stderr)
+	}
+	if strings.Contains(stderr, "did not mint one") {
+		t.Errorf("the misleading sentence survived: %s", stderr)
+	}
+}
+
+// The hard error for a genuinely empty token is unchanged: a 200 with no token
+// and no mfa_required is identity answering a document that is not a session,
+// and the old sentence is the honest one there.
+func TestLoginEmptyTokenStillSaysIdentityDidNotMintOne(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"expires_at":"2026-10-15T12:00:00Z"}`))
+	}))
+	t.Cleanup(srv.Close)
+	deps := loginDeps{dir: t.TempDir(), ring: newAgentTestRing(), baseURL: srv.URL, dial: defaultHumanDial()}
+	code, _, stderr := runLoginCLI(t, deps, "--email", "noel@cafaye.test", "--password", "secret123")
+	if code != exitFailure {
+		t.Fatalf("exit %d want failure", code)
+	}
+	if !strings.Contains(stderr, "identity did not mint one") {
+		t.Errorf("the old error did not survive: %s", stderr)
+	}
+	if strings.Contains(stderr, "mfa_required") {
+		t.Errorf("a non-MFA answer was described as MFA: %s", stderr)
 	}
 }
