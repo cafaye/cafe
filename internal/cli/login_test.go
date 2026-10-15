@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -295,5 +296,38 @@ func TestLoginEmptyTokenStillSaysIdentityDidNotMintOne(t *testing.T) {
 	}
 	if strings.Contains(stderr, "mfa_required") {
 		t.Errorf("a non-MFA answer was described as MFA: %s", stderr)
+	}
+}
+
+// The help's example command is paste-safe only if the variable it sets is the
+// one the code reads. Both sides are measured against the same constant: the
+// expected name is derived from identityURLEnv rather than written down a second
+// time, because a second literal is exactly how this help came to tell users to
+// set IDENTITY_URL while cafe login reads CAF_IDENTITY_URL — a command the code
+// then refuses by name.
+func TestLoginHelpExampleNamesTheEnvVarTheCodeReads(t *testing.T) {
+	var out bytes.Buffer
+	printHelp(&out, newLoginCommand(loginDeps{}))
+	help := out.String()
+
+	// Every environment-variable assignment the help teaches must name the
+	// variable login actually reads. This is the shape that matters: the help
+	// and the constant can never disagree about the variable.
+	assignments := regexp.MustCompile(`[A-Z][A-Z0-9_]*=`).FindAllString(help, -1)
+	if len(assignments) == 0 {
+		t.Fatalf("the help's example sets no environment variable at all:\n%s", help)
+	}
+	for _, assignment := range assignments {
+		if name := strings.TrimSuffix(assignment, "="); name != identityURLEnv {
+			t.Errorf("the help example sets %s but cafe login reads %s", assignment, identityURLEnv)
+		}
+	}
+
+	// The positive half: the exact runnable example is present, built from the
+	// constant so the URL it shows (a self-hosted box, not the hosted endpoint)
+	// is anchored to the variable the code reads.
+	want := identityURLEnv + "=https://identity.cafaye.com cafe login --email you@example.com --password-stdin"
+	if !strings.Contains(help, want) {
+		t.Errorf("the example command is not runnable as pasted; want a line containing:\n%s\ngot:\n%s", want, help)
 	}
 }

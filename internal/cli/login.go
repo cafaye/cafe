@@ -194,7 +194,10 @@ func newLoginCommand(deps loginDeps) *Command {
 			"it in argv, which is a password in `ps aux` on a shared box, while\n" +
 			"`--password-stdin` reads it from a pipe, which is the paste-safe form the\n" +
 			"website's copyable command uses:\n\n" +
-			"\tIDENTITY_URL=https://identity.cafaye.com cafe login --email you@example.com --password-stdin\n\n" +
+			// The example interpolates identityURLEnv rather than naming the
+			// variable a second time: a second literal is how this help came to
+			// tell users to set IDENTITY_URL while the code read CAF_IDENTITY_URL.
+			"\t" + identityURLEnv + "=https://identity.cafaye.com cafe login --email you@example.com --password-stdin\n\n" +
 			"Nothing about the password is echoed, logged, or carried into an error or a\n" +
 			"report on either channel.",
 		Flags: func(fs *flag.FlagSet) {
