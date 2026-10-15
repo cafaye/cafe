@@ -22,7 +22,11 @@ import (
 // fake: a dozen lines, per the house rule, and it records every Ack with the
 // answer alongside so a test can assert the daemon acked what it redeemed.
 type fakeControlPlane struct {
-	queue   []Capability
+	queue []Capability
+	// idle is how many `{}` answers box gives before the queue is consulted:
+	// a next_wait that expired with nothing queued while a capability was on
+	// its way. It counts down as the answers are given.
+	idle    int
 	acks    []Ack
 	nextErr error
 	ackErr  error
@@ -34,18 +38,37 @@ type fakeControlPlane struct {
 	nextCalls atomic.Int64
 }
 
-func (f *fakeControlPlane) Next(context.Context) (Capability, error) {
+// idleOrDone is the fake's "nothing queued" answer: ErrIdle, the same sentinel
+// the real client returns when box replies `{}` after its next_wait. The real
+// client only answers idle after that wait has elapsed — the poll is a long
+// poll — so returning it at once compresses time without changing what the
+// daemon must do; ctx still ends the round, and the daemon's idle branch is
+// where cancellation is observed.
+func (f *fakeControlPlane) idleOrDone(ctx context.Context) (Capability, error) {
+	select {
+	case <-ctx.Done():
+		return Capability{}, ctx.Err()
+	default:
+		return Capability{}, ErrIdle
+	}
+}
+
+func (f *fakeControlPlane) Next(ctx context.Context) (Capability, error) {
 	f.nextCalls.Add(1)
 	if f.nextErr != nil {
 		return Capability{}, f.nextErr
 	}
+	if f.idle > 0 {
+		f.idle--
+		return f.idleOrDone(ctx)
+	}
 	if len(f.queue) == 0 {
-		// An empty channel blocks in reality. A fake that returned here would
-		// give the daemon a zero Capability and a wrong ack; a fake that
-		// blocks until canceled is the same shape as the connection it stands
-		// in for, so it does exactly that.
-		<-make(chan struct{})
-		return Capability{}, context.Canceled
+		// An empty channel does not block forever: box answers `{}` after its
+		// next_wait and the daemon polls again on the same connection. That
+		// was measured on the deployed channel — see ErrIdle — and a fake
+		// that blocked here would test the protocol as it was before that
+		// measurement rather than as the server speaks it.
+		return f.idleOrDone(ctx)
 	}
 	cap := f.queue[0]
 	f.queue = f.queue[1:]
@@ -245,6 +268,101 @@ func TestTheDaemonReconnectsAfterTheChannelEnds(t *testing.T) {
 	}
 	if !ch.closed.Load() {
 		t.Error("the dropped connection was never closed")
+	}
+}
+
+// TestAnIdleAnswerKeepsTheDaemonOnOneConnection is the live-defect regression,
+// deterministic: box answers `{}` three times — nothing queued, next_wait
+// expired — and then the capability it had queued meanwhile. The daemon must
+// hold ONE connection for all of it and still redeem the capability, because
+// idle is a healthy channel rather than a round end. The assertion that
+// matters is the dial count: a response-only count would pass against a
+// daemon that reconnected between every idle answer.
+func TestAnIdleAnswerKeepsTheDaemonOnOneConnection(t *testing.T) {
+	ch := &fakeControlPlane{idle: 3, queue: []Capability{oneCapability("box.status")}}
+	dialer := &fakeDialer{ch: ch}
+	var log lockedBuffer
+	d, err := Open(Options{
+		Store:    &fakeStore{id: testIdentity()},
+		Keys:     &testKeys{},
+		Dial:     dialer,
+		WorldFor: testWorldFor,
+		Once:     true,
+		Log:      &log,
+	})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if err := d.Run(context.Background()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if dialer.dials.Load() != 1 {
+		t.Fatalf("dials = %d, want exactly 1: an idle answer is not a round end, and each new dial is a fresh TLS connection and a fresh client-cert load", dialer.dials.Load())
+	}
+	if got := ch.nextCalls.Load(); got != 4 {
+		t.Errorf("polls = %d, want 4: three idle answers and then the capability", got)
+	}
+	if len(ch.acks) != 1 {
+		t.Fatalf("acked %d capabilities, want the one behind the idle answers", len(ch.acks))
+	}
+	if got := ch.acks[0].Outcome.Status; got != Accepted {
+		t.Errorf("status = %q, want %q — idle must not disturb the redemption that follows it", got, Accepted)
+	}
+	if strings.Contains(log.String(), "round ended") {
+		t.Errorf("an idle channel logged a round end:\n%s", log.String())
+	}
+}
+
+// TestAnIdleChannelHoldsTheConnectionForever is the same property driven the
+// other way: nothing is ever queued, so the daemon keeps polling on the one
+// connection it has. The run is canceled once the poll count has climbed,
+// and the two assertions are that the connection survived (one dial) and that
+// nothing was logged as an error — the measured live symptom was a
+// protocol-violation line and a reconnect every next_wait.
+func TestAnIdleChannelHoldsTheConnectionForever(t *testing.T) {
+	ch := &fakeControlPlane{}
+	dialer := &fakeDialer{ch: ch}
+	var log lockedBuffer
+	d, err := Open(Options{
+		Store:    &fakeStore{id: testIdentity()},
+		Keys:     &testKeys{},
+		Dial:     dialer,
+		WorldFor: testWorldFor,
+		Log:      &log,
+	})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- d.Run(ctx) }()
+	// Wait on the EVENT (the poll count) rather than a sleep: the question is
+	// whether the daemon keeps asking, and the count is that fact.
+	deadline := time.After(2 * time.Second)
+	for ch.nextCalls.Load() < 5 {
+		select {
+		case <-deadline:
+			cancel()
+			t.Fatalf("the daemon polled %d times on a channel with nothing queued; an idle channel must keep polling", ch.nextCalls.Load())
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("run returned %v after cancellation, want context.Canceled", err)
+	}
+	if dialer.dials.Load() != 1 {
+		t.Fatalf("dials = %d, want 1: a healthy idle channel must not drop its connection", dialer.dials.Load())
+	}
+	if logged := strings.TrimSpace(log.String()); logged != "" {
+		// The enrollment line is expected; anything else — a round end, an
+		// error — is the live defect logging again.
+		for _, line := range strings.Split(logged, "\n") {
+			if !strings.Contains(line, "outbound to") {
+				t.Errorf("an idle channel logged: %q", line)
+			}
+		}
 	}
 }
 
