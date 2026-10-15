@@ -16,8 +16,8 @@ func plantLegacyEnrollment(t *testing.T, dir string) (boxID string) {
 	t.Helper()
 	boxID = "box-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	for name, data := range map[string]string{
-		identityFile:      `{"box_id":"` + boxID + `","account_id":"acct-x","public_key":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","status":"active","phase":"enrolled","enrolled_at":"2026-10-15T00:00:00Z","box_url":"https://box.test"}`,
-		journalFile:       `{"state":"prepared","public_key":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","started_at":"2026-10-15T00:00:00Z"}`,
+		identityFile:        `{"box_id":"` + boxID + `","account_id":"acct-x","public_key":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","status":"active","phase":"enrolled","enrolled_at":"2026-10-15T00:00:00Z","box_url":"https://box.test"}`,
+		journalFile:         `{"state":"prepared","public_key":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","started_at":"2026-10-15T00:00:00Z"}`,
 		CertificateFileName: "-----BEGIN CERTIFICATE-----\nlegacy leaf\n-----END CERTIFICATE-----\n",
 		PrivateKeyFileName:  "-----BEGIN PRIVATE KEY-----\nlegacy key\n-----END PRIVATE KEY-----\n",
 		eventsFile:          "{\"action\":\"enroll\",\"message\":\"legacy line\"}\n",
@@ -36,7 +36,7 @@ func plantLegacyEnrollment(t *testing.T, dir string) (boxID string) {
 	for name, data := range map[string]string{
 		"cafe-box_" + strings.ReplaceAll(boxID, "-", "_"): "legacy private key",
 		"cafe-box_enrollment-pending":                     "legacy pending key",
-		"cafe-agent_someone":                               "not the box's; do not move",
+		"cafe-agent_someone":                              "not the box's; do not move",
 	} {
 		if err := os.WriteFile(filepath.Join(ring, name), []byte(data), 0o600); err != nil {
 			t.Fatal(err)
