@@ -58,9 +58,8 @@ jobs:
         # The pin lives in mise.toml, one source that a local
         # `mise install` materialises. Reading it here rather than typing a
         # literal is the same argument as ci.yml's golangci-lint step: a second
-        # copy is a second thing to forget. `grep -v` on the comment marker then
-        # a field match, so a header edit cannot silently hand the action the
-        # wrong line.
+        # copy is a second thing to forget. A `sed` field match on the quoted
+        # key, so a header edit cannot silently hand the action the wrong line.
         run: |
           set -euo pipefail
           version="$(sed -n 's/^"goreleaser" *= *"\(.*\)"/\1/p' mise.toml)"

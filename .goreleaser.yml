@@ -29,7 +29,17 @@ env:
 
 before:
   hooks:
-    - go mod tidy
+    # `go mod download`, NOT `go mod tidy`. The tag's go.mod and go.sum are the
+    # pinned module graph for the release, and `tidy` rewrites them: run on this
+    # tree at 30f0e69 it promoted two direct imports marked `// indirect`
+    # (`github.com/google/uuid`, `go.opentelemetry.io/proto/otlp`) and added two
+    # go.sum lines, so a release would have been built from module files that are
+    # not the ones in the tag. `download` only populates the cache and lets a
+    # genuinely inconsistent tree fail the build loudly instead of being tidied
+    # in silence — the same "a pin is of the bytes" rule the vendored schemas and
+    # `caf.lock` hold to. (The tree's own untidiness is real and is reported as a
+    # follow-up; it is not this file's job to paper over it.)
+    - go mod download
 
 builds:
   - id: cafe
