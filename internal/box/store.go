@@ -87,8 +87,10 @@ const (
 // afterwards.
 type Store struct {
 	// Dir is where box.json, box-journal.json and box-events.jsonl live. It is
-	// the operator's config directory (~/.config/cafe), never a temp directory:
-	// an enrollment is durable state and a temp directory is not.
+	// the box-owned store directory (/var/lib/cafe/box), never a temp
+	// directory and never a user's config dir: an enrollment is durable
+	// machine state, a temp directory is not, and a config dir moves with
+	// whichever HOME invoked the command.
 	Dir string
 	// Ring holds the private key. See ring.go.
 	Ring Keyring

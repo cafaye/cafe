@@ -22,7 +22,10 @@ import (
 // through the real router without a network, a keychain or a real capability.
 type boxDeps struct {
 	// dir is where box.json, the journal and the event log live. Empty means
-	// the resolved default, and a test always sets it.
+	// the resolved box-owned default (defaultBoxDir), and a test always
+	// sets it. It is box-owned — /var/lib/cafe/box — rather than the user's
+	// config dir, because a box is a server: its identity must resolve the
+	// same for every HOME that invokes it.
 	dir string
 	// stateDir is where the box's own state lives: the release directories,
 	// the `current` symlink and the edge's routing record. Empty means the
@@ -34,8 +37,8 @@ type boxDeps struct {
 	// and a release directory written into the first would be a deploy that
 	// disappeared with a dotfile cleanup.
 	stateDir string
-	// ring holds the private key. Nil means a file ring under the config
-	// directory, and a test always sets it.
+	// ring holds the private key. Nil means a file ring under the box-owned
+	// store directory, and a test always sets it.
 	ring box.Keyring
 	// controlPlane redeems the capability. Nil means a real HTTP client, which is why
 	// a test always sets it: the whole point of the seam is the count.
@@ -69,12 +72,14 @@ type boxDeps struct {
 	stdin io.Reader
 }
 
-// defaultConfigDir is the config directory a box's non-secrets and an agent's
-// non-secrets live in. It is resolved here rather than read from a global so
-// the only function that knows about the home directory is the one that
-// resolves a default — and it is ONE function for both subjects, because two
-// of them is how the agent's config ends up in a different directory from the
-// box's.
+// defaultConfigDir is the config directory an AGENT's non-secrets live in. It
+// is resolved here rather than read from a global so the only function that
+// knows about the home directory is the one that resolves a default — and it
+// is the USER subject's default only. An agent principal belongs to whoever
+// runs it, so ~/.config is exactly right for it; the BOX subject's default is
+// defaultBoxDir instead. One function per subject, because one function for
+// both is how the box's identity ended up wherever the enrolling shell's HOME
+// happened to point.
 func defaultConfigDir() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
@@ -92,6 +97,35 @@ func defaultBoxStateDir() string {
 	return filepath.Join(string(os.PathSeparator)+"var", "lib", "cafe")
 }
 
+// boxDirEnv overrides the box store directory the way CAF_BOX_URL overrides
+// the endpoint: an environment variable rather than a flag default, because a
+// flag default baked into the binary is a default that goes stale when the
+// layout moves and nobody rebuilds cafe to find out. It is for tests and
+// unusual layouts; an unset one means the box-owned default below.
+const boxDirEnv = "CAF_BOX_DIR"
+
+// defaultBoxDir is where a box's identity, journal, event log, client
+// credential and keyring live when nothing names one: under /var/lib/cafe,
+// beside the release state — never under a user's config dir. A box is a
+// SERVER, not a user session: its identity must resolve the same for every
+// HOME that invokes it, which a $HOME-derived path cannot do. It is a function
+// rather than a constant so tests can see the shape without the path being
+// baked into a comparison, and so the override above has one place to live.
+func defaultBoxDir() string {
+	if dir := strings.TrimSpace(os.Getenv(boxDirEnv)); dir != "" {
+		return dir
+	}
+	return filepath.Join(defaultBoxStateDir(), "box")
+}
+
+// legacyBoxDir is where enrollments before the box-owned default wrote: the
+// user's config dir, wherever the enrolling shell's HOME pointed. Nothing
+// resolves a default to it anymore; only the migration reads it, once, to
+// move what is there.
+func legacyBoxDir() (string, error) {
+	return defaultConfigDir()
+}
+
 // boxURLEnv is where the endpoint comes from when no flag names one.
 // An environment variable rather than a flag default, because a flag default
 // baked into the binary is a default that goes stale when box moves and
@@ -100,9 +134,7 @@ const boxURLEnv = "CAF_BOX_URL"
 
 func (d boxDeps) withDefaults() boxDeps {
 	if d.dir == "" {
-		if dir, err := defaultConfigDir(); err == nil {
-			d.dir = dir
-		}
+		d.dir = defaultBoxDir()
 	}
 	if d.stateDir == "" {
 		d.stateDir = defaultBoxStateDir()
@@ -213,7 +245,8 @@ has been failed by the product rather than by the code.
 
 THE PRIVATE KEY IS NEVER PRINTED. It lives in the keyring and the only thing
 any of these commands says about it is whether it is there. The non-secrets
-are in ~/.config/cafe/box.json and are safe to read, share and paste.
+are in the box-owned store (/var/lib/cafe/box/box.json, or $CAF_BOX_DIR when
+that names one) and are safe to read, share and paste.
 
 stdout carries the document, stderr carries the sentence. A machine reads one;
 a person reads the other, and the split is why ` + "`--json`" + ` exists on every

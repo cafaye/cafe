@@ -21,10 +21,13 @@ import (
 // drive a whole connect without a network, a keychain or a real box.
 type providerDeps struct {
 	// dir is where box.json and the keyring live. Empty means the resolved
-	// default, and a test always sets it.
+	// box-owned default — defaultBoxDir, the same directory `cafe box`
+	// resolves — and a test always sets it. A provider verb reads the BOX's
+	// identity, so it resolves the BOX subject's directory; an agent's config
+	// dir would be a second opinion about where the box is.
 	dir string
 	// ring holds the box's private key. Nil means a file ring under the
-	// config directory, and a test always sets it.
+	// box-owned store directory, and a test always sets it.
 	ring box.Keyring
 	// controlPlane connects and reports status. Nil means a real HTTP client, which
 	// is why a test always sets it: the whole point of the seam is the count.
@@ -37,9 +40,7 @@ type providerDeps struct {
 
 func (d providerDeps) withDefaults() providerDeps {
 	if d.dir == "" {
-		if dir, err := defaultConfigDir(); err == nil {
-			d.dir = dir
-		}
+		d.dir = defaultBoxDir()
 	}
 	if d.url == "" {
 		d.url = os.Getenv(boxURLEnv)
