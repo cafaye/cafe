@@ -80,7 +80,7 @@ One JSON document per box, all six facts the packet row names:
   "disk": {"status": "ok", "path": "/", "total_bytes": 245107195904,
            "free_bytes": 25712783360, "used_bytes": 219394412544,
            "used_percent": 89.51},
-  "last_drill": {"outcome": "failed", "reason": "caf-backup/drill-refused", …},
+  "last_drill": {"outcome": "failed", "reason": "cafe-backup/drill-refused", …},
   "drills": [{"service": "billing", "outcome": "failed", …}, …],
   "pending_releases": [{"name": "core", "version": "1.5.0"}]
 }
@@ -97,8 +97,8 @@ One JSON document per box, all six facts the packet row names:
   and `go test ./internal/boxd/ -count=1` → ok. `internal/boxd`'s type-graph
   walk (`secret_test.go`) still passes with `ServiceDrill` reachable from
   `Observation`.
-- `go run ./cmd/caf lock --verify .` → exit 0, 12 pinned files.
-- **`bin/prime` → exit 0**, observed: `caf: 25 packages, 1132 top-level passes,
+- `go run ./cmd/cafe lock --verify .` → exit 0, 12 pinned files.
+- **`bin/prime` → exit 0**, observed: `cafe: 25 packages, 1132 top-level passes,
   1218 subtest passes, 0 failures, 8 skips`. The floors are met with the suite
   at exactly its floor (1132), which is the ratchet saying the tree declares
   what it says it declares.
@@ -116,7 +116,7 @@ tests). `caf.lock` re-pinned in both.
 
 ## Deliberately not done
 
-- **`caf box observe` as a verb.** A box-local rendering of the document
+- **`cafe box observe` as a verb.** A box-local rendering of the document
   without conductor would be a genuinely useful operator tool, and it is a new
   subcommand: registry row, `stub_test.go`, README table, `wiring_test.go`,
   another floor raise. Not in an hour that still had a report to write.
@@ -144,7 +144,7 @@ tests). `caf.lock` re-pinned in both.
 
 At 18:08, while this session was running, a process I did not start committed a
 mid-flight snapshot of my work to this branch:
-`127a0f0 recover(w3-observe-caf): in-flight work after the provider dropped the
+`127a0f0 recover(w3-observe-cafe): in-flight work after the provider dropped the
 session` (author date 18:08:03, six files). I had run no `git commit` at that
 point; my first commit was 30 minutes later. The workspace also holds
 `/private/tmp/resume-wt/` worktrees from earlier packets, so the shape is an

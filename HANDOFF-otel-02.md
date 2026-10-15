@@ -1,6 +1,6 @@
-# HANDOFF-otel-02 — caf's dev registry carries the endpoint, and the precedence is true
+# HANDOFF-otel-02 — cafe's dev registry carries the endpoint, and the precedence is true
 
-Branch `worker/caf-otlreg-01`, four commits on top of `worker/caf-otel-01`. This
+Branch `worker/cafe-otlreg-01`, four commits on top of `worker/cafe-otel-01`. This
 file supersedes the parts of `HANDOFF-otel-01.md` that are now wrong; the rest of
 that file still stands.
 
@@ -8,7 +8,7 @@ that file still stands.
 
 Packet: two defects named by wave-1 workers.
 
-### 1. `caf dev` rendered no telemetry endpoint
+### 1. `cafe dev` rendered no telemetry endpoint
 
 `internal/dev` mentioned neither `<SERVICE>_OTEL_ENDPOINT>` nor 4317/4318, so
 every service in a rendered compose document was left to whatever default its own
@@ -67,13 +67,13 @@ default branch built anyway. What changes is which input decides.
 ```
 $ go mod download && go test ./internal/dev/... ./internal/telemetry/... \
       ./internal/emitter/... ./internal/gen/... -count=1
-ok  	github.com/cafaye/caf/internal/dev	0.590s
-ok  	github.com/cafaye/caf/internal/telemetry	0.666s
-ok  	github.com/cafaye/caf/internal/emitter	5.211s
-ok  	github.com/cafaye/caf/internal/gen	0.922s
+ok  	github.com/cafaye/cafe/internal/dev	0.590s
+ok  	github.com/cafaye/cafe/internal/telemetry	0.666s
+ok  	github.com/cafaye/cafe/internal/emitter	5.211s
+ok  	github.com/cafaye/cafe/internal/gen	0.922s
 
 $ bin/prime
-caf: 16 packages, 771 top-level passes, 965 subtest passes, 0 failures, 8 skips
+cafe: 16 packages, 771 top-level passes, 965 subtest passes, 0 failures, 8 skips
 
 $ gofmt -l .          # prints nothing
 $ go vet ./...        # clean
@@ -107,7 +107,7 @@ that moved `gate.yml`.
   **not** contradict the documented precedence: it never mentions
   `OTEL_EXPORTER_OTLP_ENDPOINT` at all, and it describes the endpoint variable as
   "the ONLY contract". Nothing to report there, and nothing to fix.
-- **Did not edit kit's snippets, which have the same shape caf just fixed.**
+- **Did not edit kit's snippets, which have the same shape cafe just fixed.**
   `kit/templates/otel/go/otelhttp.go.snippet` resolves the same precedence and
   passes the result to `otlptrace.New(ctx, otlptrace.WithEndpointURL(endpoint))`.
   `WithEndpointURL` takes the scheme, so that snippet is **not** affected by the
@@ -127,9 +127,9 @@ that moved `gate.yml`.
 
 ## Open, and not mine
 
-- **`caf gen telemetry` still refuses `gateway/cafaye.yml`** because that manifest
+- **`cafe gen telemetry` still refuses `gateway/cafaye.yml`** because that manifest
   says `language: typescript` and the generator is Go-only. Unchanged from
-  `HANDOFF-otel-01.md`, and still a core/kit decision rather than a caf one.
+  `HANDOFF-otel-01.md`, and still a core/kit decision rather than a cafe one.
 - **The port in the generated default is `4317`** (gRPC), from core's
   `examples/valid/telemetry/otel-endpoint.json`. kit's Go snippet and courier both
   default to `4318`. Both are plaintext on the compose network and both work; it is

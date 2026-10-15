@@ -882,7 +882,7 @@ Docker socket mounted is started, and a control container plus a sibling worker'
 resources asserted intact afterwards. **Read those comments before running one on
 a machine that is not yours.**
 
-caf-07 added the third way to run them, `bin/prime --live`, and the declaration
+cafe-07 added the third way to run them, `bin/prime --live`, and the declaration
 that keeps the tier accounted for. That is the next section, and it supersedes
 the first two paragraphs of this one as the current answer to "why is the live
 tier not in the gate" — this section is kept because the *files* are still the
@@ -916,7 +916,7 @@ repository, and they are rules rather than notes:
 - **`bin/prime`'s last two lines are load-bearing.** They are the only countable
   output this gate has, and `gate.yml`'s three floors are read out of the first
   of them. `go test` on its own prints one `ok <pkg>` line per package and no
-  test count at all, so before caf-07 there was nothing in this tree a floor
+  test count at all, so before cafe-07 there was nothing in this tree a floor
   could be read from. The accounting section is not decoration and
   `internal/ci`'s `TestTheGateReportsItsOwnCounts` fails if either line changes
   shape. If you reformat them, fix `gate.yml` in the same commit.
@@ -967,9 +967,9 @@ second mode and not the declared gate, for three measured reasons, all in
    `t.Fatalf` rather than skip, so a gate carrying it would be red on every
    GitHub-hosted runner, which is plain dockerd.
 2. `TestAClosedLeaseReapsAndAnOpenOneDoesNot` is currently red on the machine
-   caf-06's report says it was verified on.
+   cafe-06's report says it was verified on.
 3. `bin/prime` must run on a bare CI runner. That has been the rule here since
-   caf-06 and nothing in this packet reverses it.
+   cafe-06 and nothing in this packet reverses it.
 
 Reason 3 is the general one, and it is why `internal/deploy`'s two and
 `internal/backup`'s three joined the tier rather than the gate: they need `kamal` on

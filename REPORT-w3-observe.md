@@ -1,4 +1,4 @@
-# REPORT — OPS-P15, the observe pipeline (caf half)
+# REPORT — OPS-P15, the observe pipeline (cafe half)
 
 Branch: `ops/w3-observe`. Gate: `bin/prime` **exit 0**, observed and captured.
 Two commits: `e460deb` (the packet) and `3e015bc` (gate housekeeping). The
@@ -6,15 +6,15 @@ manager merges; I did not push.
 
 ## What this packet is
 
-`caf boxd` already dials conductor outbound over mTLS and redeems capabilities
+`cafe boxd` already dials conductor outbound over mTLS and redeems capabilities
 against a whitelisted route table (`internal/boxd`). OPS-P15 makes the READ
 half of that channel real: a conductor mints an `observe.report` capability,
 and the box answers with one machine-readable `Observation` document that the
 policy engine (OPS-P16) and the monthly report (OPS-P13) consume as JSON
 rather than prose.
 
-The packet row is `conductor+caf / both gates`. **This worktree is caf; I
-built the caf (box-side) half.** The conductor half — the route that receives
+The packet row is `conductor+cafe / both gates`. **This worktree is cafe; I
+built the cafe (box-side) half.** The conductor half — the route that receives
 and stores the report, and the mint that carries the account's pending
 releases into an observe capability — is not in this repository and is the
 successor's job (see "What a successor does next").
@@ -69,7 +69,7 @@ wire format.
 ## Pre-existing failures I found and swept up (not this packet's fault)
 
 The `bin/prime` I fired first came back with **3 failures that pre-date my
-work**: the w2 merges (OPS-P10 `caf secret`, OPS-P11 `caf cve`) added commands
+work**: the w2 merges (OPS-P10 `cafe secret`, OPS-P11 `cafe cve`) added commands
 and tests but never updated the tables that pin the registry, nor the gate's
 suite floor.
 
@@ -82,12 +82,12 @@ suite floor.
 Commit `3e015bc` completes that interrupted housekeeping (AGENTS.md "adding a
 subcommand" steps 3/4), raises the floor to `1133-8 = 1125` (which now also
 carries my five observe tests), and regenerates `caf.lock` (a pinned
-rule-bundle changed). Only `caf.lock`'s rule-bundle pin moved; `caf lock
+rule-bundle changed). Only `caf.lock`'s rule-bundle pin moved; `cafe lock
 --verify` passes.
 
 ## Gate — exit codes I actually observed
 
-- `bin/prime` → **`PRIME_EXIT=0`**, captured: `caf: 25 packages, 1125
+- `bin/prime` → **`PRIME_EXIT=0`**, captured: `cafe: 25 packages, 1125
   top-level passes, 1218 subtest passes, 0 failures, 8 skips`. All three
   floors met (25≥23, 1125≥1125, 1218≥1157); the 8 skips are the 7 live tests
   plus the re-exec'd child, as `expectedSkips` names.

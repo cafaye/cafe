@@ -1,8 +1,8 @@
-# REPORT — caf-21-deploy
+# REPORT — cafe-21-deploy
 
 ## What this is
 
-`caf deploy` was a 32-line stub that returned `notImplemented(c)`. It is now a
+`cafe deploy` was a 32-line stub that returned `notImplemented(c)`. It is now a
 command that runs a real Kamal 2 deployment, refuses one configuration that puts
 the database on the network, and reports honestly afterwards.
 
@@ -69,38 +69,38 @@ that is not yours.**
 --- PASS: TestADeployRefusesAReleaseThatNeverGoesHealthy (52.30s)
 --- PASS: TestADeployIsRefusedWhenAnAccessoryPublishesItsPort (0.00s)
 PASS
-ok  	github.com/cafaye/caf/internal/deploy	69.400s
+ok  	github.com/cafaye/cafe/internal/deploy	69.400s
 ```
 
-### 2.1 The successful deploy, caf's own report
+### 2.1 The successful deploy, cafe's own report
 
-This is `caf deploy`'s stdout, verbatim from the run:
+This is `cafe deploy`'s stdout, verbatim from the run:
 
 ```
-caf-rehearsal: deploying config/deploy.yml from /var/folders/.../002 with kamal 2.12.0
+cafe-rehearsal: deploying config/deploy.yml from /var/folders/.../002 with kamal 2.12.0
   credentials come from .kamal/secrets.staging, by name only
   environment staging, so config/deploy.staging.yml is merged over config/deploy.yml
 
 running kamal setup --destination staging
 ...
-  INFO [...] Running docker run --detach --restart unless-stopped --name caf-rehearsal-postgres \
-       --network kamal --publish ... --volume caf-rehearsal_postgres:/var/lib/postgresql/data \
-       --label service="caf-rehearsal-postgres" postgres:17-alpine on 127.0.0.1
+  INFO [...] Running docker run --detach --restart unless-stopped --name cafe-rehearsal-postgres \
+       --network kamal --publish ... --volume cafe-rehearsal_postgres:/var/lib/postgresql/data \
+       --label service="cafe-rehearsal-postgres" postgres:17-alpine on 127.0.0.1
   INFO [...] Finished in 0.484 seconds with exit status 0 (successful).
   INFO [...] Running docker run --detach --restart unless-stopped \
-       --name caf-rehearsal-web-staging-7f51c5b3... --network kamal ... \
-       --env release="live1" --env served="by-nginx" --env db_host="caf-rehearsal-postgres" \
-       --env db_port="5432" --env STAGE="staging" --env-file .kamal/apps/caf-rehearsal-staging/env/roles/web.env \
-       --label service="caf-rehearsal" --label role="web" --label destination="staging" \
-       localhost:5555/caf-rehearsal/web:7f51c5b3... on 127.0.0.1
-  INFO [...] Running docker exec kamal-proxy kamal-proxy deploy caf-rehearsal-web-staging \
-       --target="bfc4881a798c:80" --host="caf-rehearsal.test" --deploy-timeout="30s" \
+       --name cafe-rehearsal-web-staging-7f51c5b3... --network kamal ... \
+       --env release="live1" --env served="by-nginx" --env db_host="cafe-rehearsal-postgres" \
+       --env db_port="5432" --env STAGE="staging" --env-file .kamal/apps/cafe-rehearsal-staging/env/roles/web.env \
+       --label service="cafe-rehearsal" --label role="web" --label destination="staging" \
+       localhost:5555/cafe-rehearsal/web:7f51c5b3... on 127.0.0.1
+  INFO [...] Running docker exec kamal-proxy kamal-proxy deploy cafe-rehearsal-web-staging \
+       --target="bfc4881a798c:80" --host="cafe-rehearsal.test" --deploy-timeout="30s" \
        --health-check-path="/up" --buffer-requests --buffer-responses on 127.0.0.1
   INFO [...] Finished in 6.136 seconds with exit status 0 (successful).
   INFO First web container is healthy on 127.0.0.1, booting any other roles
-  INFO [...] Running docker image prune --force --filter label=service=caf-rehearsal on 127.0.0.1
+  INFO [...] Running docker image prune --force --filter label=service=cafe-rehearsal on 127.0.0.1
 
-caf-rehearsal is deployed
+cafe-rehearsal is deployed
   environment staging, from config/deploy.staging.yml over config/deploy.yml
   release: kamal's own default, the short commit hash of the repository in /var/folders/.../002
   it is serving behind kamal-proxy on ports 80 and 443, routed by the `proxy.host`
@@ -111,7 +111,7 @@ caf-rehearsal is deployed
 
 ### 2.2 Something answered, through the proxy, on the healthchecked path
 
-`curl -H 'Host: caf-rehearsal.test' http://127.0.0.1/up`:
+`curl -H 'Host: cafe-rehearsal.test' http://127.0.0.1/up`:
 
 ```json
 {"status":"up","release":"live1","db":"reachable","token":"live-deploy-token"}
@@ -125,15 +125,15 @@ Every field is load-bearing:
 - `db: reachable` — the deployed container opened a connection to its database
   **by name**, with the accessory publishing no port. See §4.
 - `token: live-deploy-token` — a value from `.kamal/secrets.staging` reached the
-  container. The credential path works, and no value appears in any of caf's own
+  container. The credential path works, and no value appears in any of cafe's own
   output.
 
 And measured from *inside* the app container, so the two halves of the claim come
 from two different places:
 
 ```
-$ docker exec <app> pg_isready -h caf-rehearsal-postgres -p 5432 -t 5
-caf-rehearsal-postgres:5432 - accepting connections          exit=0
+$ docker exec <app> pg_isready -h cafe-rehearsal-postgres -p 5432 -t 5
+cafe-rehearsal-postgres:5432 - accepting connections          exit=0
 
 $ docker exec <app> pg_isready -h 127.0.0.1 -p 5432 -t 3
 127.0.0.1:5432 - no response                               exit=2
@@ -157,8 +157,8 @@ kamal setup --destination staging failed: exit status 1
 what is running now (kamal app containers --destination staging):
 App Host: 127.0.0.1
 CONTAINER ID   IMAGE                    STATUS                     NAMES
-9586677b96f3   .../web:7f51c5b3...     Exited (1) 4 seconds ago     caf-rehearsal-web-staging-7f51c5b3...
-6f3ce7867e8b   .../web:592115a8...     Up 43 seconds               caf-rehearsal-web-staging-592115a8...
+9586677b96f3   .../web:7f51c5b3...     Exited (1) 4 seconds ago     cafe-rehearsal-web-staging-7f51c5b3...
+6f3ce7867e8b   .../web:592115a8...     Up 43 seconds               cafe-rehearsal-web-staging-592115a8...
 
 what to do:
   the database was not touched. kamal boots accessories separately from the app, so
@@ -182,14 +182,14 @@ with exit 1".
 
 Note the `rollback` line says *read the previous release's name from the list
 above* rather than naming a version, because the version was Kamal's default (the
-commit hash) and caf did not invent one. With `-version` pinned, the line names
+commit hash) and cafe did not invent one. With `-version` pinned, the line names
 it — asserted in `TestAFailedDeployNamesTheReleaseToRollBackTo`.
 
 ---
 
 ## 3. The one command that changes a server, and why
 
-caf runs exactly one Kamal command that changes anything:
+cafe runs exactly one Kamal command that changes anything:
 
 ```
 kamal setup --destination <env>
@@ -201,7 +201,7 @@ first version of this packet ran `kamal deploy`; the live test caught the
 consequence within one run, because the accessory was not booted and the app came
 up with a `db: unreachable` it had no way to explain. A customer following the
 recommended path onto a fresh VPS would have got a service with no database — a
-connection-refused from inside the application, caused by a step caf chose not to
+connection-refused from inside the application, caused by a step cafe chose not to
 take.
 
 `setup` is idempotent about accessories (`Kamal::Cli::Accessory#boot` skips an
@@ -210,7 +210,7 @@ every deploy after the first, and **there is exactly one path to tell somebody
 about**:
 
 ```sh
-caf deploy <service> --env <env> --yes
+cafe deploy <service> --env <env> --yes
 ```
 
 Three other commands run, and only these three:
@@ -328,12 +328,12 @@ thing it buys is a `psql` run on the box itself.
 Delete `port:` and the accessory publishes nothing at all:
 
 ```
-$ docker ps --filter name=caf-rehearsal-postgres
-caf-rehearsal-postgres   5432/tcp          <- no host binding
+$ docker ps --filter name=cafe-rehearsal-postgres
+cafe-rehearsal-postgres   5432/tcp          <- no host binding
 ```
 
 and the deployed app still reaches it, by name, on the `kamal` network —
-`{"db":"reachable"}` in §2.2, and `pg_isready -h caf-rehearsal-postgres` from
+`{"db":"reachable"}` in §2.2, and `pg_isready -h cafe-rehearsal-postgres` from
 inside the app container in §2.2's second block. The published port is not how
 anything reaches it.
 
@@ -345,14 +345,14 @@ at a host address breaks when the port is deleted, and that is the one migration
 this change costs.** It is a one-line change per service, in a file that is
 already a secret and already per-service.
 
-### 4.5 What caf does about it
+### 4.5 What cafe does about it
 
-`caf deploy` reads Kamal's **own resolved config** — `kamal config`, after the
+`cafe deploy` reads Kamal's **own resolved config** — `kamal config`, after the
 ERB is evaluated — and refuses to deploy a config whose accessory publishes a port
 to anything but loopback. From the live run:
 
 ```
-caf deploy: refusing to deploy
+cafe deploy: refusing to deploy
 
 accessory postgres publishes port 5432 on every interface of the host, and its data is reachable from the network.
   kamal turns `port: 5432` into `docker run --publish 5432:5432`, and Docker binds 0.0.0.0 and :: when the
@@ -403,7 +403,7 @@ checked gets called checked.
 
 **This belongs in `kit`, not in caf.** `templates/kamal/deploy.yml.erb` is the
 file every service copies, so the unsafe line is in every service that copied it.
-caf's refusal is a backstop for configs already on disk, not a fix.
+cafe's refusal is a backstop for configs already on disk, not a fix.
 
 The change is **one line deleted**:
 
@@ -443,11 +443,11 @@ that is the file that renders.
 A dry run executes every step that **cannot** change a server — `kamal version`
 and `kamal config` — and prints every step that can, including the one that only
 runs after a failure. Those two really do run, because the configuration is an
-ERB template only Kamal can evaluate; printing a plan caf had to guess at would
+ERB template only Kamal can evaluate; printing a plan cafe had to guess at would
 be a template with extra steps.
 
 ```
-this is what caf deploy would run:
+this is what cafe deploy would run:
 
   kamal version
       kamal is the deploy engine; this prints its version and fails if it is not installed
@@ -465,7 +465,7 @@ server, was NOT run. No container was started, no image was built or pushed,
 no file in <project> was written, and no secret was read.
 
 Deploy it for real with:
-  caf deploy --env staging --yes identity
+  cafe deploy --env staging --yes identity
 ```
 
 Three separate proofs it changes nothing, and each is a different kind of proof:
@@ -501,11 +501,11 @@ question — and in a pipeline with no terminal, asking would hang.
   was removed when the preflight became a plan step, because a seam exists to be
   the smallest thing that cannot be faked and every method on it is a thing a
   test has to be able to make fail.
-- `KamalRunner` is the only implementation and the only place caf knows the name
+- `KamalRunner` is the only implementation and the only place cafe knows the name
   "kamal". It resolves the binary on `PATH` and never executes it at construction,
   so building the command is safe on a machine with no deploy engine.
 
-`caf deploy` in `internal/cli` takes `deployDeps` (a `Runner` and a confirmation
+`cafe deploy` in `internal/cli` takes `deployDeps` (a `Runner` and a confirmation
 function) for the same reason `devDeps` and `reclaimDeps` exist. A fake that
 records argv is a dozen lines.
 
@@ -526,7 +526,7 @@ Four were found by the live tier, which is the argument for having one.
 |---|---|---|
 | the deploy step was `kamal deploy`, which does not boot accessories | live test | a first deploy shipped a service with no database, and the error was a connection-refused from inside the app |
 | `deploy.yml.erb` fixture was comment-only; Kamal merges it and got `false` | live test | `undefined method 'symbolize_keys' for false` — a fixture wrong about the tool, which reads exactly like a broken deploy |
-| `.kamal/secrets` was written; Kamal reads `.kamal/secrets.<env>` **and** `.kamal/secrets-common` for a destination, and never the undotted file | live test | `Secret 'token' not found, no secret files (.kamal/secrets-common, .kamal/secrets.staging) provided` — and caf's own report had named a file Kamal would not open |
+| `.kamal/secrets` was written; Kamal reads `.kamal/secrets.<env>` **and** `.kamal/secrets-common` for a destination, and never the undotted file | live test | `Secret 'token' not found, no secret files (.kamal/secrets-common, .kamal/secrets.staging) provided` — and cafe's own report had named a file Kamal would not open |
 | the second "release" was uncommitted, so Kamal saw the same version and renamed the running container | live test | the healthcheck-gate test asserted a refusal and got a success; nothing was wrong with the gate, the second deploy was not a second release |
 
 `Read` now resolves the secrets files by **Kamal's** rule
@@ -554,7 +554,7 @@ path" are different sentences and only the second one is actionable.
   credential is not a thing this rehearsal can demonstrate.
 - **The kit change is described, not made** (§5). It is a cross-repo edit and the
   user merges.
-- **No `caf deploy` against a real VPS**, for want of one. §1 says precisely what
+- **No `cafe deploy` against a real VPS**, for want of one. §1 says precisely what
   the rig substitutes and §2 shows the substitution is the address and the
   certificate.
 
@@ -564,13 +564,13 @@ path" are different sentences and only the second one is actionable.
 
 ```
 $ ./bin/prime
-caf: 11 packages, 506 top-level passes, 558 subtest passes, 0 failures, 5 skips
-caf: live tier: 0 of 4 executed; not enabled, so the 4 live tests skipped rather than ran.
+cafe: 11 packages, 506 top-level passes, 558 subtest passes, 0 failures, 5 skips
+cafe: live tier: 0 of 4 executed; not enabled, so the 4 live tests skipped rather than ran.
 ```
 
 ```
 $ /Users/kaka/Code/any/moon/cafaye/core/harness/bin/gate-check .
-OK …/wt-caf-deploy: 0 failure(s), 3 warning(s) — warnings do not move the exit code
+OK …/wt-cafe-deploy: 0 failure(s), 3 warning(s) — warnings do not move the exit code
 
 $ bash tests/gate-declaration-self-test.sh
 PASS: gate-declaration-self-test — 3 controls green, 21 breakages went red and each

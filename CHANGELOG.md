@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to caf are recorded here. The format follows
+All notable changes to cafe are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -8,7 +8,7 @@ All notable changes to caf are recorded here. The format follows
 
 ### Removed
 
-- **`caf gen chart` no longer emits `chart/templates/application.yaml`.** The
+- **`cafe gen chart` no longer emits `chart/templates/application.yaml`.** The
   chart now writes six files, not seven. The ArgoCD `Application` belongs to
   the substrate: kit owns one static `Application` per service — OCI-sourced
   (`oci://ghcr.io/cafaye/charts`), applied by `install.sh` — and a service
@@ -25,7 +25,7 @@ All notable changes to caf are recorded here. The format follows
 
 ### Changed
 
-- **`internal/resolve` speaks pantry's 1.7.0 addressing, and `caf resolve`
+- **`internal/resolve` speaks pantry's 1.7.0 addressing, and `cafe resolve`
   accepts an address.** Every project's address is `<owner_slug>/<name>` —
   `cafaye/<name>` for the fleet, a publisher's immutable slug otherwise — and
   `Project` now decodes the `owner_slug` that makes a name addressable.
@@ -40,22 +40,22 @@ All notable changes to caf are recorded here. The format follows
   detail signals that the bare name is no longer globally unique, and a row
   whose `owner_slug` is not the address that was asked for. A plain "no such
   project" 404 stays a 404, and with no owner supplied the address read is
-  never made. `caf resolve <owner>/<name>` supplies one: the slash form is
+  never made. `cafe resolve <owner>/<name>` supplies one: the slash form is
   parsed for a path with no manifest in it, so a directory spelled
   `owner/name` is still a directory, and the report's resolution carries the
   owner beside the name so a machine reading it can tell an addressed
   resolution from a bare one.
 
-  `caf publish`'s report and its stderr sentence now name the address the
+  `cafe publish`'s report and its stderr sentence now name the address the
   project registered under — the 201 body's `owner_slug` and its name — which
   is the one fact about a community project its publisher cannot derive for
   themselves.
 
-- **`caf publish` is non-interactive by default.** Per the user's ruling of
+- **`cafe publish` is non-interactive by default.** Per the user's ruling of
   2026-10-11 — "for cafaye i think we should make everything non interactive
   by default as it shall mostly be used by agents" — the interactive
   confirmation prompt is removed from the default path (not gated behind a
-  TTY check — gone): an agent runs `caf publish`, it publishes. `--dry-run`
+  TTY check — gone): an agent runs `cafe publish`, it publishes. `--dry-run`
   remains exactly as it is — the proposal mode, safe anywhere, still the way
   a human or an agent previews. `--yes` is retained as an accepted no-op
   (help text says why), so scripts written while it was the escape hatch keep
@@ -66,7 +66,7 @@ All notable changes to caf are recorded here. The format follows
 
 ### Added
 
-- **`caf publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api|worker|both|cli>]
+- **`cafe publish [--dry-run] [--yes] [--tag <git-tag>] [--kind <api|worker|both|cli>]
   [--json] [--pantry <url>] <project>` — take a project from a checkout into
   the public catalog.** It is OPS-D7's boundary at the level of a command:
   the customer's own agent reads, proposes and mints freely, and
@@ -83,7 +83,7 @@ All notable changes to caf are recorded here. The format follows
 
   The three writes run in order — register the project, publish the version,
   declare each dependency edge — publisher-authenticated through the caller's
-  caf token, which is read, presented and never printed. Each is
+  cafe token, which is read, presented and never printed. Each is
   idempotent-tolerant: a 409 carrying pantry's own "already registered /
   published / declared" phrase is a report line and the sequence continues,
   while the ordering rule's 409 ("no published semver version") is a refusal
@@ -97,8 +97,8 @@ All notable changes to caf are recorded here. The format follows
   trust model is Docker Hub's: push and it is public — publish is not gated
   on entitlement for community projects, and conductor stays untouched.
 
-- **`caf lock <path>` — one file that pins the tree's specs, its vendored
-  schemas and its generated clients, and `caf lock --verify <path>` to check
+- **`cafe lock <path>` — one file that pins the tree's specs, its vendored
+  schemas and its generated clients, and `cafe lock --verify <path>` to check
   them.** buf pins three classes in its lockfile — modules, the remote plugins
   that are the code generators, and the policies, which are named versioned rule
   bundles — and its `--verify-only` fails when the files on disk are not what
@@ -110,7 +110,7 @@ All notable changes to caf are recorded here. The format follows
   `caf.lock` is one entry per file the tree **declares**, in four kinds:
   `spec` (`cafaye.yml` and the OpenAPI document `exposes.api` names),
   `vendored-schema` (every `*.json` under `internal/contract/schemas`),
-  `generated-client` (every path `caf gen` writes for *this* manifest, read out
+  `generated-client` (every path `cafe gen` writes for *this* manifest, read out
   of `internal/gen` rather than from a list written beside it) and `rule-bundle`
   (`gate.yml`, the one declaration here that a named versioned rule set owns).
   Each carries the SHA-256 of the file's bytes, plus the `lockVersion` that
@@ -128,13 +128,13 @@ All notable changes to caf are recorded here. The format follows
   twice is a sentence in two streams, one of which a CI log greps and the other
   of which nobody reads.
 
-  caf pins its own tree in `caf.lock` and `internal/ci/lock_test.go` verifies it
+  cafe pins its own tree in `caf.lock` and `internal/ci/lock_test.go` verifies it
   on every gate run, with a self-test row that copies the tree, moves one byte
   of one pinned schema, and asserts the report goes red and names it. **Adding
-  tests to caf now also means re-running `caf lock`**, because `gate.yml` is a
+  tests to cafe now also means re-running `cafe lock`**, because `gate.yml` is a
   pinned `rule-bundle` and raising a floor moves its hash.
 
-- **`caf backup <service>` — take one real backup and prove it restores.** A
+- **`cafe backup <service>` — take one real backup and prove it restores.** A
   backup that has never been drilled is not a backup:
   `config/kamal-backup.yml` is a *specification* until the accessory that runs
   it is booted, and a specification has never restored anything. So this
@@ -146,23 +146,23 @@ All notable changes to caf are recorded here. The format follows
   It checks the two files agree **before it boots anything** — the accessory
   exists, it mounts that configuration read-only, every secret the backup
   configuration names is declared by the accessory's `env.secret`, and `app:`
-  is the service — and refuses with a machine-matchable `caf-backup/…` reason
+  is the service — and refuses with a machine-matchable `cafe-backup/…` reason
   each time. A pair whose accessory does not exist is a pair nothing will ever
   validate, because the container that would have validated it is the thing
   that is missing, so the check is not only cheaper there, it is the only place
   the question can be answered with evidence.
 
   Two things it deliberately does **not** own. The refusal of a
-  production-looking scratch database is **kamal-backup's**, and caf hands it
+  production-looking scratch database is **kamal-backup's**, and cafe hands it
   the name and reports the gem's own words: a second copy of a rule about
   which database gets dropped is a second opinion about the one thing that
-  must not be in doubt. And the shell caf says to the accessory — splitting
+  must not be in doubt. And the shell cafe says to the accessory — splitting
   `DATABASE_URL` into `PG*`, because `ps` shows argv to every user on the
   machine, and building a check whose exit status *is* the assertion, because
   `SELECT count(*)` exits 0 on an empty table — is **cafaye/kit's
-  `templates/kamal/drill.sh`**, attributed as such in the code. caf runs the
+  `templates/kamal/drill.sh`**, attributed as such in the code. cafe runs the
   same gem command without `--interactive`, because `--interactive` shells out
-  to the system `ssh` for a pty caf cannot give.
+  to the system `ssh` for a pty cafe cannot give.
 
   **One bounded retry exists because a race was measured, not imagined.**
   Booting a backup accessory starts its scheduler and the scheduler's first
@@ -183,9 +183,9 @@ All notable changes to caf are recorded here. The format follows
   done: no TLS, no multi-host, and **no real R2** — the rehearsal uses restic's
   local backend, which is a real repository and not an object store.
 
-- **`LICENSE`: caf is MIT.** The repository shipped no licence file, which is
+- **`LICENSE`: cafe is MIT.** The repository shipped no licence file, which is
   not "unlicensed, therefore free" — it is **all rights reserved**, the default
-  copyright position when a public repository grants nothing. caf is the tool
+  copyright position when a public repository grants nothing. cafe is the tool
   every cafaye service is built with, so its licence is the first thing a
   stranger reads.
 
@@ -194,14 +194,14 @@ All notable changes to caf are recorded here. The format follows
   repositories that already shipped a licence exactly: `Copyright (c) 2026
   cafaye`.
 
-- **A gate declaration** (`gate.yml`). caf now says what its gate is, what the
+- **A gate declaration** (`gate.yml`). cafe now says what its gate is, what the
   gate needs from the machine, and what the gate's own output must contain
   before the word "passed" means anything. The format is `cafaye/core`'s
   `schemas/gate.schema.json`, the checker is its `harness/gate_check.py`, and
   the reasoning is its `docs/gate.md` — the brief for this packet is debt entry
   D2, and closing it is the whole of this change.
 
-  Two reasons this was more than a YAML file. caf-06 merged 12,480 lines across
+  Two reasons this was more than a YAML file. cafe-06 merged 12,480 lines across
   60 files into the component whose entire job is noticing that a port is
   occupied and reclaiming what is not, and **a service that cannot fail is worse
   than no service, because it is trusted.** And `go test` prints one `ok <pkg>`
@@ -213,8 +213,8 @@ All notable changes to caf are recorded here. The format follows
   its last two lines are the only countable output this gate has:
 
   ```
-  caf: 10 packages, 435 top-level passes, 537 subtest passes, 0 failures, 3 skips
-  caf: live tier: 0 of 2 executed; not enabled, so the two live tests skipped rather than ran. …
+  cafe: 10 packages, 435 top-level passes, 537 subtest passes, 0 failures, 3 skips
+  cafe: live tier: 0 of 2 executed; not enabled, so the two live tests skipped rather than ran. …
   ```
 
   Three floors are read out of the first line — 10 packages, 435 top-level tests,
@@ -259,20 +259,20 @@ All notable changes to caf are recorded here. The format follows
 
 ### Changed
 
-- **`caf resolve` now speaks pantry's `/v1/projects` API and decodes its
+- **`cafe resolve` now speaks pantry's `/v1/projects` API and decodes its
   `Project` schema.** pantry's catalog renamed its routes (`/v1/services` →
   `/v1/projects`, and `…/coordinates` with them) and its document's `Service`
-  schema to `Project`; this is caf's half of the same pinned contract. The
+  schema to `Project`; this is cafe's half of the same pinned contract. The
   client's two routes, the `Pantry` seam's tier-1 method and the type it
   decodes moved; every filter, paging, error code and the tier-2 flow are
   unchanged, so a 404 is still a `not_found` carrying pantry's own detail and
-  the caller's caf token is still presented for exactly one call. Field names
+  the caller's cafe token is still presented for exactly one call. Field names
   are unchanged (`name`, `description`, `language`,
   `repository.visibility`), which is why this is a rename and not a rewrite:
   a client that spelled `visibility` top-level would read a key pantry never
   sends. Nothing was added — the versions LIST route is a later phase, and
-  `caf resolve` does not call it. What did not move is the runtime word
-  "service": `caf dev`'s own vocabulary and conductor's product list
+  `cafe resolve` does not call it. What did not move is the runtime word
+  "service": `cafe dev`'s own vocabulary and conductor's product list
   (`kit`, `platform`, `identity`, `courier`) still name services, because
   those contracts did not change.
 
@@ -283,14 +283,14 @@ All notable changes to caf are recorded here. The format follows
   this repository's declaration can match.
 
 - **`bin/prime` no longer depends on `wc` or `tr`.** Found by running the gate
-  under a minimal `PATH`: with `wc` missing it printed `caf:  packages, …` — an
+  under a minimal `PATH`: with `wc` missing it printed `cafe:  packages, …` — an
   empty field, which reads as a count of nothing rather than as a broken gate.
   The package count goes through `grep -c`, which the counting below already
   needed.
 
 ### Fixed
 
-- **`caf dev` rendered no telemetry endpoint at all, so a service started by the
+- **`cafe dev` rendered no telemetry endpoint at all, so a service started by the
   CLI could not be told where the collector is.** `internal/dev` mentioned
   neither `<SERVICE>_OTEL_ENDPOINT` nor 4317/4318 anywhere, and pantry's
   `HANDOFF-otel-01.md` names why that mattered: pantry holds no
@@ -303,7 +303,7 @@ All notable changes to caf are recorded here. The format follows
   self-hoster escape hatch core's schema describes.
 
   ```
-  $ caf dev -dry-run -registry catalog.json demo-svc
+  $ cafe dev -dry-run -registry catalog.json demo-svc
     my-service:
       environment:
         DATABASE_URL: postgres://my-service:my-service@postgres:5432/my-service
@@ -322,7 +322,7 @@ All notable changes to caf are recorded here. The format follows
   variable, because that flag names postgres and redis and widening it would make
   a flag a developer reaches for during a database outage silently turn telemetry
   off. And the variable name is derived with the dash dropped, the same
-  transformation `caf gen telemetry` performs, because two derivations that
+  transformation `cafe gen telemetry` performs, because two derivations that
   disagree leave a kebab-case service handed a variable its own generated code
   does not read.
 
@@ -360,7 +360,7 @@ All notable changes to caf are recorded here. The format follows
   `credentials.NewTLS(nil)`, which is what the secure default branch built
   anyway. What changes is which input decides, not what is dialled.
 
-  `caf gen telemetry` now emits `Scheme`, `Secure` and `PlaintextScheme` beside
+  `cafe gen telemetry` now emits `Scheme`, `Secure` and `PlaintextScheme` beside
   the endpoint resolution, and the emitted setup states that the precedence covers
   the scheme, why that is measured rather than restated, and that a caller must
   hand the exporter **both** the address and the scheme. The generated suite's
@@ -368,9 +368,9 @@ All notable changes to caf are recorded here. The format follows
   conflicting row conflicts on the address *and* the scheme — the only row a
   resolution with no precedence at all cannot pass.
 
-- **`caf dev` handed every service with a database the same environment
+- **`cafe dev` handed every service with a database the same environment
   variable, and two of the four services in the platform do not read it.** Any
-  `caf dev` run in a project that depends on pantry produced a pantry container
+  `cafe dev` run in a project that depends on pantry produced a pantry container
   that exited on boot.
 
   `connectionURLs` in `internal/dev/registry.go` hardcoded one name per piece of
@@ -389,7 +389,7 @@ All notable changes to caf are recorded here. The format follows
   Reproduced, before:
 
   ```
-  $ cd pantry && caf dev --dry-run
+  $ cd pantry && cafe dev --dry-run
         DATABASE_URL: postgres://pantry:pantry@postgres:5432/pantry
   ```
 
@@ -397,7 +397,7 @@ All notable changes to caf are recorded here. The format follows
   `no database is configured: PANTRY_DATABASE_URL is unset, so there is no
   address to reach the registry`.
 
-  **A service catalog entry now names the variable it reads**, and `caf dev`
+  **A service catalog entry now names the variable it reads**, and `cafe dev`
   renders the local postgres address into that name:
 
   ```json
@@ -434,8 +434,8 @@ All notable changes to caf are recorded here. The format follows
     address is built per project
     (`postgres://<project>:<project>@postgres:5432/<project>`), so a catalog that
     spelled one out would go stale the moment a developer renamed their checkout.
-    The catalog names the variable; caf renders the address.
-  - **A declaration caf cannot act on is refused, not ignored.** `connections` is
+    The catalog names the variable; cafe renders the address.
+  - **A declaration cafe cannot act on is refused, not ignored.** `connections` is
     a map, so a misspelled key is silent by construction — `{"postgresql": …}`
     would decode fine and the service would get the default `DATABASE_URL`, which
     is the original defect back again in a catalog that reads as though it were
@@ -447,21 +447,21 @@ All notable changes to caf are recorded here. The format follows
   own literal value still outranks the rendered address. `-no-infra` still wins:
   a stack that asked for no database gets no variable under any name.
 
-- **Any caf command that failed while running an external program exited
+- **Any cafe command that failed while running an external program exited
   non-zero and printed nothing at all.** This is the defect this binary exists
   to prevent, and it was in `Run`.
 
-  `exitCoder` — the interface behind `caf env up` passing a child suite's own
+  `exitCoder` — the interface behind `cafe env up` passing a child suite's own
   status through — was declared with an **exported** `ExitCode() int`. That is
   also the method on `*os/exec.ExitError`, which is what every wrapped
   subprocess produces. So `errors.As(err, &coded)` matched the `*exec.ExitError`
   buried inside any error from any command that shells out, and `Run` took the
   pass-through branch: return the child's code, print nothing.
 
-  Measured, on `caf dev` against a project whose image build fails:
+  Measured, on `cafe dev` against a project whose image build fails:
 
   ```
-  $ caf dev --registry caf.dev.json -wait 20s
+  $ cafe dev --registry caf.dev.json -wait 20s
   starting 3 services in cafbreak-dev
 
   stopping cafbreak-dev
@@ -472,14 +472,14 @@ All notable changes to caf are recorded here. The format follows
 
   stderr empty. The Dockerfile's line number, `command not found`, `exit code
   127` — all of it was built by `ComposeRuntime.exec`, wrapped twice, and
-  discarded. `caf dev`, `caf env`, `caf reclaim` and every future command that
+  discarded. `cafe dev`, `cafe env`, `cafe reclaim` and every future command that
   runs a binary inherited it, and each reports failure the one way that is
   indistinguishable from success.
 
   The method is now `cafExitCode() int`, **unexported**. An unexported method
   cannot be satisfied by a type in another package, so the only thing that can
-  ever match `exitCoder` is caf's own `childStatus` — which is what the
-  pass-through was for in the first place. `caf env up` still passes a child's
+  ever match `exitCoder` is cafe's own `childStatus` — which is what the
+  pass-through was for in the first place. `cafe env up` still passes a child's
   status through, and a test says so.
 
   The test that could have caught this did not, and why is worth writing down:
@@ -494,7 +494,7 @@ All notable changes to caf are recorded here. The format follows
   After:
 
   ```
-  caf: caf dev: docker compose up (project cafbreak-dev): exit status 1: …
+  cafe: cafe dev: docker compose up (project cafbreak-dev): exit status 1: …
       RUN this-command-does-not-exist … not found … exit code: 127
   ```
 
@@ -502,16 +502,16 @@ All notable changes to caf are recorded here. The format follows
   developer was later told the catalog was missing something it plainly
   contained.** `encoding/json` discards a key it does not recognise, so a
   catalog whose only image was spelled `imag` was accepted, the entry came back
-  with no image, and `caf dev` failed three layers down with *"the local
+  with no image, and `cafe dev` failed three layers down with *"the local
   registry names no image for identity"* — a claim about the catalog's
   contents, sent to somebody holding a file that has an image in it.
 
-  A catalog is the one input caf parses that a person writes by hand, and the
+  A catalog is the one input cafe parses that a person writes by hand, and the
   only one where a mistake is a human's typing met by a machine's silence. It
   is now refused, naming the service that holds the key, the key itself, and the
   keys that would have been right:
 
-  > `1 key no entry has: "imag" in the entry for identity; caf would have
+  > `1 key no entry has: "imag" in the entry for identity; cafe would have
   > dropped it without saying so. An entry takes name, image, command, port,
   > publish, environment, volumes, healthcheck, dependencies; …`
 
@@ -532,10 +532,10 @@ All notable changes to caf are recorded here. The format follows
   shape off the struct is the same answer on both.
 
 - **The suite floor, which the merge made wrong in the same commit that
-  introduced it.** caf-07 branched from caf-06, added four tests, and set
-  `minimum: 432` from the 435 its own tree declared. caf-09 then landed on
+  introduced it.** cafe-07 branched from cafe-06, added four tests, and set
+  `minimum: 432` from the 435 its own tree declared. cafe-09 then landed on
   master underneath it. Each packet was correct about the tree it could see;
-  merging them put caf-07's four on top of caf-09's three, for 438 declared,
+  merging them put cafe-07's four on top of cafe-09's three, for 438 declared,
   and left a floor three below what runs. Raised to the measured **435**, with
   the identity the declaration asserts now true on both sides —
   `declared (438) - floor (435) == 3 skips`.
@@ -546,13 +546,13 @@ All notable changes to caf are recorded here. The format follows
   is the third repository in a row to drift this way: billing's floor sat 187
   below its suite and nothing complained, because nothing there checked the
   identity, and its self-test reported a green that was proving nothing. It is
-  caught red here only because caf-07 also wrote
+  caught red here only because cafe-07 also wrote
   `TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave` — **the check that would
   have caught billing's is the check that caught this.** The rule that follows:
   a floor is owed a re-measurement in the merge that moves the tree, and the
   merge is the only place that knows.
 
-  caf-09's own report predicted 434/437 for this line and was one short in both
+  cafe-09's own report predicted 434/437 for this line and was one short in both
   — it measured its branch as 430 passes + 3 skips = 433 where the branch is
   434 — so the number here is measured, not predicted.
 
@@ -571,11 +571,11 @@ All notable changes to caf are recorded here. The format follows
   `internal/ryuk` — a settle window that is never transmitted, and a live test
   whose whole-machine assertion cannot pass on a shared machine — are **reported
   and not fixed** here, because a fix belongs in a packet about `internal/ryuk`
-  and not in a rider on the gate. caf-09 is that packet and has since fixed the
+  and not in a rider on the gate. cafe-09 is that packet and has since fixed the
   settle window. See `REPORT-caf-07-gate.md` and `REPORT-caf-09-mcpwire.md`.
 
-- **The reclamation ledger** (`internal/ledger`). Every stack caf brings up is
-  written to a ledger **before** the resource is created, so a caf killed
+- **The reclamation ledger** (`internal/ledger`). Every stack cafe brings up is
+  written to a ledger **before** the resource is created, so a cafe killed
   mid-run leaves a row naming something that still exists. The reverse order is
   recoverable by a human; this is not, because a human cannot see an orphan
   either. The generation is a monotonic per-worktree counter and it is the
@@ -583,7 +583,7 @@ All notable changes to caf are recorded here. The format follows
   the ledger at generation 3 cannot reach a resource created at generation 4.
   That is the difference between "a stale sweeper kills a fresh worker" being
   unlikely and being structurally impossible.
-- **`caf reclaim`**, a dry run unless `-yes`. It removes containers before
+- **`cafe reclaim`**, a dry run unless `-yes`. It removes containers before
   volumes, always, because Docker will not remove a volume a container still
   references and a single leaked stopped container pins its named volume
   forever; the sweep re-lists the volumes once the containers are gone so a
@@ -594,7 +594,7 @@ All notable changes to caf are recorded here. The format follows
   broken one. It never runs a blanket prune: every call is scoped by the
   compose project label, and a name that does not carry the entry's generation
   is refused and reported rather than removed.
-- **The port registry** (`internal/ports`). caf publishes from 15000-15999, and
+- **The port registry** (`internal/ports`). cafe publishes from 15000-15999, and
   a reservation is *held* — an advisory lock taken before the probe and kept for
   the life of the session — rather than probed once. A probe answers at one
   instant and the collision happens after it. The prober binds on both
@@ -603,7 +603,7 @@ All notable changes to caf are recorded here. The format follows
   identifies nothing and the failure would present as an unreachable service
   rather than a busy port. Every port outside the block is refused by name,
   which is what stops the sprawl (`15001`, `16001`, `21101`, `55432`).
-- **`caf env up <tier> -- <command>`**, the only provisioning verb. It writes the
+- **`cafe env up <tier> -- <command>`**, the only provisioning verb. It writes the
   stack to the ledger before creating it, reserves and holds its ports, runs the
   command as its **child**, and tears the stack down and releases the entry when
   the child is gone. It is the parent rather than a sibling because a parent that
@@ -622,9 +622,9 @@ All notable changes to caf are recorded here. The format follows
   Verified live on this machine against a real reaper, with the filter asserted
   non-empty and matching nothing beforehand, and with a control container and a
   sibling worker's containers asserted intact afterwards.
-- **A reclamation section in `caf doctor`**, so cleanup stops depending on
+- **A reclamation section in `cafe doctor`**, so cleanup stops depending on
   somebody remembering: whether the ledger holds stacks nothing has reclaimed,
-  and whether something outside caf's ledger is holding a port in the block.
+  and whether something outside cafe's ledger is holding a port in the block.
 
 ### Changed
 
@@ -652,8 +652,8 @@ All notable changes to caf are recorded here. The format follows
   a silent total failure.
 
   So the field, the constant behind it, the environment read, and the test that
-  only checked the copy are gone. What caf actually gets is now stated plainly
-  in the package doc: **caf's reaper is a liveness guess, not a monotonic
+  only checked the copy are gone. What cafe actually gets is now stated plainly
+  in the package doc: **cafe's reaper is a liveness guess, not a monotonic
   sweep.** What protects a running worker is the lease — the reaper counts its
   clients, and while the socket is open it prunes nothing — plus session-scoped
   labels, which are structural. What is *not* claimed: a resource created after a
@@ -668,22 +668,22 @@ All notable changes to caf are recorded here. The format follows
   mitigation for the underlying race lives elsewhere: `internal/reclaim`'s
   generation fencing, which *is* implemented and tested.
 
-- **`caf doctor` is tri-state and is now a gate for `fail`.** Rows are
+- **`cafe doctor` is tri-state and is now a gate for `fail`.** Rows are
   `ok | warn | fail`; `warn` never moves the exit code; the command exits 1 only
   when some row is `fail`. This is a behaviour change to a shipped command and
-  `caf help doctor` says so. A boolean check forced a choice between failing on
+  `cafe help doctor` says so. A boolean check forced a choice between failing on
   warnings — noisy, and the first thing a team disables — and ignoring them,
   which makes the report a decoration. Severity is reasoned per *fact* rather
   than per check, so a missing `tilt` is a `warn` and a missing container runtime
   is a `fail`, and every fact a check can raise is in one table that a test holds
   complete. Every row that is not `ok` carries the exact command that fixes it.
-- **The project's ports are warned about when they are outside caf's block.** A
+- **The project's ports are warned about when they are outside cafe's block.** A
   port outside 15000-15999 works, and no sibling worker on the machine can see
-  it, which is how the sprawl happens. `caf dev` publishing a service on its own
-  port is not wrong, and an explicit `-port` is honoured — caf checks a port it
+  it, which is how the sprawl happens. `cafe dev` publishing a service on its own
+  port is not wrong, and an explicit `-port` is honoured — cafe checks a port it
   was given rather than overriding it.
 - **A command that is a parent passes its child's exit code through.** A new
-  `exitCoder` interface, used by `caf env up` alone; the other two codes are
+  `exitCoder` interface, used by `cafe env up` alone; the other two codes are
   unchanged.
 
 - CI, on `.github/workflows/ci.yml`. The toolchain half is kit's shared
@@ -696,25 +696,25 @@ All notable changes to caf are recorded here. The format follows
   Two companion jobs carry what kit cannot know: `gate` runs `bin/prime`
   unmodified and then fails if the gate moved `go.mod` or `go.sum`, and
   `root-gated` asserts that the suite's one environment-gated test actually
-  **passed** rather than skipped. **`caf` is the tool the rest of the fleet's
-  CI shells out to** — `caf contract lint` is what prints the `OK …` lines
+  **passed** rather than skipped. **`cafe` is the tool the rest of the fleet's
+  CI shells out to** — `cafe contract lint` is what prints the `OK …` lines
   pantry's gate ends on — so a red build here is a red build in every
   repository whose contract check runs.
-- **`caf mcp`**, a real MCP server. It starts, lists six tools and answers a
+- **`cafe mcp`**, a real MCP server. It starts, lists six tools and answers a
   call — over stdio, which is what an agent host spawns, and over the
   streamable HTTP transport on a loopback address. The tools are
   `caf_doctor`, `caf_manifest`, `caf_registry`, `caf_dev_plan`, `caf_dev_up`
-  and `caf_dev_down`, and every one is a read over work caf already does:
+  and `caf_dev_down`, and every one is a read over work cafe already does:
   the existing `doctor`, the existing contract linter, the existing planner
   and the existing `dev` runtime seam. No tool is a second implementation
-  of something `caf` already knows.
+  of something `cafe` already knows.
   - **A failing tool is a tool error**, a result with `isError`, never a
     JSON-RPC error and never a dead process. A panic inside a tool is
     caught and becomes a tool error. An agent gets one broken call and
     carries on; one that kills the server needs its host to restart it.
   - **An unknown method is answered** with `-32601` rather than swallowed.
   - **Stdout is the protocol** on the stdio transport, so every print a tool
-    would have made — `caf doctor`'s tables, `caf dev`'s compose document —
+    would have made — `cafe doctor`'s tables, `cafe dev`'s compose document —
     goes to stderr. A stray line in the stream is a corrupt stream, not
     untidy output.
   - **Environment values are never returned.** A catalog entry's
@@ -735,7 +735,7 @@ All notable changes to caf are recorded here. The format follows
   description at registration, because a description is what an agent reads
   to decide whether to call the tool and an empty one is a tool nobody ever
   calls.
-- The wire-level tests for `caf mcp` spawn the built binary, speak
+- The wire-level tests for `cafe mcp` spawn the built binary, speak
   newline-delimited JSON-RPC to its stdin and read framed responses from its
   stdout: a `tools/list`, a `tools/call`, an unknown method, an unknown
   tool, a failing tool followed by a working one, and the redaction. They
@@ -761,56 +761,56 @@ All notable changes to caf are recorded here. The format follows
   lockfiles. A caller of a shared workflow is code, and code that nobody
   executes is code nobody has tested.
 
-- `caf dev [project]` — reads a project's `cafaye.yml`, validates it with the
-  same rules `caf contract lint` applies, renders a compose file from it,
+- `cafe dev [project]` — reads a project's `cafaye.yml`, validates it with the
+  same rules `cafe contract lint` applies, renders a compose file from it,
   **writes that file and prints it in full**, brings the stack up, waits for
   health, and reports what came up and what did not. The document is printed
-  because it is the only copy of what caf decided: a command that generates
+  because it is the only copy of what cafe decided: a command that generates
   something nobody can inspect is a command nobody can debug.
 - `internal/dev`, the one place that knows what a local stack is. `Plan` is
   pure — a manifest and a registry in, a rendered compose document and a start
-  order out — so every interesting behaviour of `caf dev` is covered by tests
+  order out — so every interesting behaviour of `cafe dev` is covered by tests
   that start no container at all. The two things that do touch the world sit
   behind interfaces there: `Registry` (how a service is run locally, which
   pantry owns) and `Runtime` (the container runtime, three calls wide).
-- The service registry seam `caf dev` and `caf deploy` will share. One JSON
+- The service registry seam `cafe dev` and `cafe deploy` will share. One JSON
   object keyed by service name, and the same document whether it is read from a
   file or served over HTTP, so a pantry response and a hand-written catalog are
-  the same bytes. **caf ships no catalog**: an image reference guessed by a CLI
+  the same bytes. **cafe ships no catalog**: an image reference guessed by a CLI
   is a reference that pulls the wrong thing, so a project that declares
   dependencies is told which one it needs and how to supply it.
 - `internal/contract.Manifest`: `Language()`, `Description()` and
   `Dependencies()`, and `CheckData`, so a caller that already holds a manifest
   does not read and re-implement the rules to get an answer. A command that
-  validated with its own copy would accept a manifest `caf contract lint`
+  validated with its own copy would accept a manifest `cafe contract lint`
   rejects, which is the one divergence a single CLI cannot have.
-- A second table in `caf doctor`: whether this machine can run *this* project.
+- A second table in `cafe doctor`: whether this machine can run *this* project.
   The tool table cannot answer it — a Ruby project on a machine with no Ruby
   reports every tool it needs, and a container runtime that is installed and not
   answering is invisible from `PATH`. So `doctor` now also checks the runtime
   server, the machine's memory and CPUs, the ports the plan publishes, and the
   toolchain for the language in the manifest. The ports come from the same plan
-  `caf dev` would build, so the two cannot drift. `-tools-only` prints the
+  `cafe dev` would build, so the two cannot drift. `-tools-only` prints the
   original table alone; `doctor` still always exits 0.
-- `caf contract lint <path>` — validates every `cafaye.yml` under a file or a
+- `cafe contract lint <path>` — validates every `cafaye.yml` under a file or a
   directory against the manifest schema owned by cafaye/core, plus the three
   cross-field rules a JSON Schema cannot state. One line per manifest, in
   lexical order: `OK <path>` or `INVALID <path>: <the first error>`. Exits 1 if
   any manifest is invalid, or if the path holds none at all.
-- `caf contract resolve <constraint> <version>` — resolves a core version
+- `cafe contract resolve <constraint> <version>` — resolves a core version
   constraint (`1.2.3`, `^1.2.3`, `~1.2.3`, `>=1.2.3`) against a version and
   prints the answer with the reason: `yes  ^0.2.0 allows 0.2.3: 0.2.3 is in
   [0.2.0, 0.3.0)`. Exits 0 inside the range, 1 outside, 2 on input it cannot
   read, so a CI job can gate on it.
 - `internal/contract`, the one place the contract is enforced: manifest
   loading, schema validation, the cross-field rules, and version resolution.
-  `caf init`, `caf gen` and `caf deploy` will read manifests through it rather
+  `cafe init`, `cafe gen` and `cafe deploy` will read manifests through it rather
   than each growing its own copy.
 - The core manifest schema, vendored at
   `internal/contract/schemas/manifest-0.2.json` as a byte-identical copy of
   core at `3340e0f` pinned by sha256, with its provenance and refresh procedure
   in `schemas/README.md`. Nothing is fetched at runtime.
-- The three cross-field rules, named so a caf rule is never mistaken for a
+- The three cross-field rules, named so a cafe rule is never mistaken for a
   schema keyword: `convention.event-prefix` (a published event type carries its
   own service prefix), `convention.no-self-consume` (a service never consumes
   its own events) and `convention.declares-surface` (an `exposes` that names
@@ -823,12 +823,12 @@ All notable changes to caf are recorded here. The format follows
   in the order the validator walked a Go map, so the first error on a line is
   the same on every run.
 - Five manifest fixtures copied verbatim from cafaye/core (four valid, one
-  invalid) plus four written for caf, each of which the JSON Schema accepts so
-  that only a caf rule can reject it.
+  invalid) plus four written for cafe, each of which the JSON Schema accepts so
+  that only a cafe rule can reject it.
 
 ### Fixed
 
-- Three bugs a real `caf dev` run found that the tests with fakes had not. The
+- Three bugs a real `cafe dev` run found that the tests with fakes had not. The
   teardown was armed after `up`, so an interrupt during the bring-up skipped it
   entirely — exactly when the daemon has already made networks and containers.
   It is armed before `up` now, and it checks what is left and repeats itself
@@ -837,8 +837,8 @@ All notable changes to caf are recorded here. The format follows
   missed the containers. Measured against real Docker, the first pass left two
   containers behind and the loop leaves none. `ps` was passed `-f ""`, which the
   runtime reads as the working directory, so a stack that was up and healthy was
-  reported as four absent services. And `caf doctor` had no way to see the
-  catalog `caf dev` uses, so a project with dependencies reported "nothing to
+  reported as four absent services. And `cafe doctor` had no way to see the
+  catalog `cafe dev` uses, so a project with dependencies reported "nothing to
   run" on a machine that runs it fine; it takes `-registry` now.
 - The wait loop measured its deadline on the wall clock while its sleep was
   injected, so the test that exercises the timeout took as long as the timeout it
@@ -872,16 +872,16 @@ All notable changes to caf are recorded here. The format follows
 
 ### Changed
 
-- `caf dev` takes an **optional** project directory (`.` by default) instead of
+- `cafe dev` takes an **optional** project directory (`.` by default) instead of
   a required one, and `-service` and `-no-tui` are gone: `-no-tui` described a
   TUI this packet deliberately did not add, and `-service` duplicated what the
   manifest already declares. Nothing released used either. The flags are `-out`,
   `-dry-run`, `-no-infra`, `-port`, `-registry` and `-wait`.
-- `caf doctor` takes an optional project directory and a `-registry`, and two
+- `cafe doctor` takes an optional project directory and a `-registry`, and two
   project paths is a usage error.
 - `cafaye.yml` is core's 0.2 shape. It was still the pre-0.2 draft — declaring
   `languages`, `contracts` and `dev`, and none of core's required fields — so
-  `caf contract lint .` failed on this repository's own manifest. It is green
+  `cafe contract lint .` failed on this repository's own manifest. It is green
   now.
 - `internal/cli/stub_test.go`: `dev` moved out of `stubCommands` into
   `workingCommands`.
@@ -889,8 +889,8 @@ All notable changes to caf are recorded here. The format follows
   the thin wiring around it, and amends the no-subprocess rule for `doctor`'s
   environment section, which cannot answer its question without asking the
   container runtime whether it is running.
-- `caf contract` is now a group of subcommands, `caf contract lint` and `caf
-  contract resolve`, and bare `caf contract` prints them. The placeholder flags
+- `cafe contract` is now a group of subcommands, `cafe contract lint` and `cafe
+  contract resolve`, and bare `cafe contract` prints them. The placeholder flags
   it carried as a stub (`-service`, `-format`, `-out`) are gone: they described
   a contract-fetching command that does not exist yet. Nothing is released
   that used them.
@@ -912,9 +912,9 @@ are `version` and `doctor`.
 
 ### Added
 
-- `caf version` — prints `caf <semver> (commit <sha>)` from link-time ldflags,
+- `cafe version` — prints `cafe <semver> (commit <sha>)` from link-time ldflags,
   and falls back to `0.0.0-dev (commit unknown)` for an un-injected build.
-- `caf doctor` — reports git, docker, docker compose, tilt, go, ruby, elixir,
+- `cafe doctor` — reports git, docker, docker compose, tilt, go, ruby, elixir,
   python, bun and rust as an aligned `ok`/`missing` table naming the binary that
   answered, then a `checked N tools, N ok, N missing` summary. Resolves
   binaries on `PATH` and never executes them, and always exits 0.
@@ -925,7 +925,7 @@ are `version` and `doctor`.
   third-party dependencies at all.
 - Exit codes as a contract: 0 for success or help, 1 for a command that failed,
   2 for a wrong invocation.
-- `caf help <command>` and `<command> --help`, both rendering every declared
+- `cafe help <command>` and `<command> --help`, both rendering every declared
   flag with its default.
 - `bin/prime` (the kit Go gate: `go mod download && go build ./... && go test
   ./...`), `mise.toml` pinning Go 1.25, and a build-only `.goreleaser.yml` with

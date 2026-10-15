@@ -2,8 +2,8 @@
 
 ## What this is
 
-`caf boxd` is the root daemon that runs on the customer's box, in the same
-binary as every other caf subcommand. It dials **out** to conductor over mTLS,
+`cafe boxd` is the root daemon that runs on the customer's box, in the same
+binary as every other cafe subcommand. It dials **out** to conductor over mTLS,
 waits for capabilities, and redeems them against a whitelisted route table
 compiled into the binary. It opens no listener.
 
@@ -33,7 +33,7 @@ listener *inside the test process*, which is a socket and not a container, so
 | `internal/boxd/secret_test.go` | **the load-bearing test** |
 | `internal/boxd/daemon_test.go` | the loop's seven cases against a fake conductor |
 | `internal/boxd/tls_test.go` | the real mTLS proof, over a loopback listener |
-| `internal/cli/boxd.go` | `caf boxd`: the identity store, the file contract, the v0 world |
+| `internal/cli/boxd.go` | `cafe boxd`: the identity store, the file contract, the v0 world |
 | `internal/cli/boxd_test.go` | the command layer: wiring, refusals, the seam |
 
 ### The four routes
@@ -92,7 +92,7 @@ deletion a reviewer sees rather than a route nobody notices.
 
 ## 3. What W2-P6 and W1-P3 left for me to decide, and what I decided
 
-**W2-P6 (`caf box enroll`) has not landed in master.** I read `master` for it
+**W2-P6 (`cafe box enroll`) has not landed in master.** I read `master` for it
 before starting: there is no `box` subcommand, no keyring, no box identity. So
 this packet could not authenticate with machinery that does not exist, and it
 does not build that machinery — the brief says so too.
@@ -107,7 +107,7 @@ shape, that test fails and names the field — which is what a file format with 
 test is for.
 
 **Conductor's capability machinery (W1-P3) is Rails, in another repo.** The
-wire protocol this daemon speaks is therefore caf's side of a contract with no
+wire protocol this daemon speaks is therefore cafe's side of a contract with no
 counterpart yet. It is written down in `client.go` as one JSON object per line
 over TLS — `{"op":"next"}` / `{"op":"ack","ack":…}` — rather than discovered
 from a server that does not exist in this tree. Both sides now have something
@@ -129,7 +129,7 @@ reason is a capability an operator can act on; a silent success is a lie.
 ## 4. The two things I would tell the successor to look at first
 
 **The protocol is one-sided until conductor's half exists.** `tls_test.go`
-proves caf's client against a listener that follows caf's own spec. That is
+proves cafe's client against a listener that follows cafe's own spec. That is
 real crypto over a real socket, and it is not a conversation with conductor.
 The first integration task of the packet after this one is to make the two
 protocols meet; the shape to preserve is that the failure when they disagree

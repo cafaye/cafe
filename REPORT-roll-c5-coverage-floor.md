@@ -31,7 +31,7 @@ option; `78` is the only integer the measurement supports.
 
 ## Why 85 was never met
 
-85 dates to caf-06, when the tree measured 89.1% on darwin — the floor was
+85 dates to cafe-06, when the tree measured 89.1% on darwin — the floor was
 earned then. Packets since added under-tested code and the tree drifted to
 78.7 without CI saying so, because every earlier failure was at the lint step
 which runs first (the onion; this packet is its last layer). The drift is

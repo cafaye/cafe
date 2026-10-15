@@ -1,4 +1,4 @@
-# REPORT — caf-w6p1: the template catalog and a real `caf new` / `caf init`
+# REPORT — cafe-w6p1: the template catalog and a real `cafe new` / `cafe init`
 
 **Branch:** `agents-first/w6p1`
 **Base commit:** `027693c` (gate floor 852 -> 853 for m169)
@@ -6,7 +6,7 @@
 
 ## What the packet was for
 
-W6-P1 of AGENTS-FIRST.md: `caf new` and `caf init` were stubs — `new.go`
+W6-P1 of AGENTS-FIRST.md: `cafe new` and `cafe init` were stubs — `new.go`
 itself said the template catalog "lands with the generator packet", and this
 is that packet. The deliverable is a catalog, a working `--template app`
 scaffold whose manifest validates against the vendored manifest schema and
@@ -20,7 +20,7 @@ split:
 - `doc.go` — the package and its three rules: templates are embedded (one
   binary, one catalog), a scaffold is rendered into memory and refused before
   anything is written, and the manifest is validated by the same compiled
-  code `caf contract lint` runs.
+  code `cafe contract lint` runs.
 - `catalog.go` — `templates/index.json` (one entry: `app`) plus a walk of the
   template's directory. The tree is the single source of truth for what a
   template contains; an index that listed files would be a second copy that
@@ -39,7 +39,7 @@ split:
 **The app template** — `cafaye.yml` (no `exposes`: a scaffolded app publishes
 nothing yet, which is the `worker`/`spec` fixture shape), `main.go` (a real
 service on :8080 answering `/healthz` and `/readyz`), `go.mod`,
-`docker/Dockerfile` (where `caf dev` looks), `README.md` (the loop, and the
+`docker/Dockerfile` (where `cafe dev` looks), `README.md` (the loop, and the
 two rules: the manifest is identity not configuration; the customer's app is
 the editable surface). No `exposes.api`, deliberately — the OpenAPI document
 would be W6-P2's surface, not a guess made here.
@@ -52,14 +52,14 @@ print-every-file-in-full report, for the reason `confirm.go` gives.
 ## The proofs, by hand, with the built binary
 
 ```
-$ caf new --template app acme          # wrote 5 files, all printed in full
-$ caf contract lint acme
+$ cafe new --template app acme          # wrote 5 files, all printed in full
+$ cafe contract lint acme
 OK acme/cafaye.yml                     # exit 0
-$ caf new acme                          # second scaffold
-caf new: nothing was written; 5 files already exist. ... then re-run with -force
+$ cafe new acme                          # second scaffold
+cafe new: nothing was written; 5 files already exist. ... then re-run with -force
                                        # exit 1; the hand-edited manifest survived
 $ (cd acme && go build ./... && go vet ./...)   # the scaffolded Go compiles
-$ caf init -dir acme                   # in an existing project: manifest only
+$ cafe init -dir acme                   # in an existing project: manifest only
 OK cafaye.yml
 ```
 
@@ -72,17 +72,17 @@ OK cafaye.yml
   deterministic renders; the clobber refusal plus `-force`; init writes only
   the manifest; name derivation; and the name table driven through BOTH
   `ValidateName` and the real schema — including the four reserved names the
-  schema admits and caf refuses (the divergence is deliberate and pinned).
+  schema admits and cafe refuses (the divergence is deliberate and pinned).
 - `internal/cli/new_test.go`, `init_test.go` — the same claims at the command
   surface, through `runCLI`, in a `t.Chdir`'d temp dir.
 
 ## Gate
 
 `bin/prime`: **17 packages, 871 top-level passes, 0 failures, 8 skips** — the
-floor was raised 853 -> 871 in the same commit and `caf lock .` re-run
+floor was raised 853 -> 871 in the same commit and `cafe lock .` re-run
 (gate.yml is the tree's pinned rule-bundle). `go vet ./...` clean, `gofmt -l .`
 clean, `tests/gate-declaration-self-test.sh` green (3 controls, 21
-breakages red), `caf lock . --verify` green, `caf contract lint .` green.
+breakages red), `cafe lock . --verify` green, `cafe contract lint .` green.
 Coverage: tree 88.0% (CI floor 85%), `internal/scaffold` 79.7%.
 
 ## Ruled out, and why
@@ -105,6 +105,6 @@ Coverage: tree 88.0% (CI floor 85%), `internal/scaffold` 79.7%.
 W6-P2 composes identity + gateway + courier + parlor into a platform app
 template. It needs the four dependencies' version constraints for the
 manifest's `dependencies` (the schema's `serviceRef` allows name/version/
-required) and a `caf dev`-runnable compose path. The catalog already resolves
+required) and a `cafe dev`-runnable compose path. The catalog already resolves
 a second template directory; the `TestEveryTemplateScaffoldsAProjectThatLints`
 case will hold it to the same pair of proofs the moment it exists.

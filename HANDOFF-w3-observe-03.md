@@ -1,4 +1,4 @@
-# HANDOFF-w3-observe-03 — what is left of OPS-P15 after the caf half
+# HANDOFF-w3-observe-03 — what is left of OPS-P15 after the cafe half
 
 Read `REPORT-w3-observe.md` (the stream itself) and `REPORT-w3-observe-02.md`
 (disk measured, drills per service). This file is only the remaining work, in
@@ -22,7 +22,7 @@ facts the packet row names are all measured, none of them guessed.
 2. **OPS-P16 (policy engine)** consumes this document. The per-service drill
    rows are what make its monthly-report output honest; `disk.used_percent` is
    the capacity input it classifies rather than the box.
-3. **`caf box observe`** — a box-local rendering of the document without
+3. **`cafe box observe`** — a box-local rendering of the document without
    conductor. Useful, and a full subcommand: registry row in
    `internal/cli/command.go`, `stub_test.go`, README table, `wiring_test.go`,
    and a floor raise. Deliberately not started.

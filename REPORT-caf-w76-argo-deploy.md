@@ -1,7 +1,7 @@
-# REPORT — caf-w76-argo-deploy: the Argo deploy engine
+# REPORT — cafe-w76-argo-deploy: the Argo deploy engine
 
-**Branch:** `worker/caf-w76-argo-deploy`
-**Base commit:** `933ca9c` (Merge worker/caf-w73-cnpg-backup — the CNPG backup.Runner)
+**Branch:** `worker/cafe-w76-argo-deploy`
+**Base commit:** `933ca9c` (Merge worker/cafe-w73-cnpg-backup — the CNPG backup.Runner)
 **Landed:** `34e698b` (predecessor's compiling partial), `9ce7c64` (proofs + two bugs), `d1109c6` (engine-selection fix)
 
 ## What the predecessor left, and what I did with it
@@ -22,7 +22,7 @@ red. They are in §4 and §5.
 
 ## 1. The base commit
 
-`933ca9c` — the m73 merge. The worktree was cut from caf master at dispatch;
+`933ca9c` — the m73 merge. The worktree was cut from cafe master at dispatch;
 `git log --oneline -3` at start named it, and the branch carries it.
 
 ## 2. m73's seam: present
@@ -54,14 +54,14 @@ was added.
 
 ### The selection rule, and the refusal when it is ambiguous
 
-`caf deploy --engine <name>` selects the engine. The rule:
+`cafe deploy --engine <name>` selects the engine. The rule:
 
 - `--engine ""` (the default) or `--engine kamal` → the Kamal engine, because
   the fleet runs Kamal today (`DEPLOYMENT.md`: "Kamal and kit/templates/kamal
   retire at parity, not before").
 - `--engine argo` → the Argo engine, the launch substrate's.
 - Anything else → `ErrUsage`, exit 2. A typo in `--engine` is the operator
-  invoking caf wrongly, and the wrong answer to it is a deploy run against the
+  invoking cafe wrongly, and the wrong answer to it is a deploy run against the
   wrong substrate — the one outcome a deploy command must never produce by
   accident. There is no silent fallback and no guessing.
 
@@ -76,7 +76,7 @@ kit's merged tree, every Application is `source: {repoURL: oci://…, chart:
 <service>, targetRevision: 0.1.0}` with no `helm:` block, and `DEPLOYMENT.md`
 forbids a git source in as many words. So:
 
-1. caf resolves the service repository's `chart/values.yaml` and `Chart.yaml`.
+1. cafe resolves the service repository's `chart/values.yaml` and `Chart.yaml`.
 2. It bumps the image tag in `chart/values.yaml` and the version in
    `Chart.yaml`, and commits the two files **in the service repository** with a
    message naming the service, the version and the commit it was built from.
@@ -84,10 +84,10 @@ forbids a git source in as many words. So:
 4. It waits for Argo to sync by polling the Application's status.
 
 The Application's `targetRevision` must then move to the new chart version —
-a **second commit, in kit**, or an operator action. caf does not make it: caf
+a **second commit, in kit**, or an operator action. cafe does not make it: cafe
 writes commits, never the cluster, and never another repository's tree. The
 sync-wait refuses to claim a deploy that leaves `targetRevision` behind — it
-polls until the Application's synced revision matches the version caf committed,
+polls until the Application's synced revision matches the version cafe committed,
 and reports the status it stopped at when it does not.
 
 Lever 2 (an inline `helm.values` block) was rejected because it does not exist
@@ -146,7 +146,7 @@ a command. Three defects, each found by a proof going red:
    `withDefaults()` filled a nil `deps.runner` with a `KamalRunner`, and
    `runner()` prefers an injected runner over the engine-resolved one — so it
    could no longer tell a test's injected runner from a default it had filled
-   in itself. The router passes the zero value, so `caf deploy --engine argo`
+   in itself. The router passes the zero value, so `cafe deploy --engine argo`
    ran the Argo orchestration (`runArgoDeploy`) with the **Kamal plan**: it
    printed `kamal setup` as the step and would have run kamal, not the values
    commit. Fixed by letting `runner()` resolve the engine and keeping a test's
@@ -158,7 +158,7 @@ a command. Three defects, each found by a proof going red:
 ## 6. The dry run
 
 ```
-caf deploy --engine argo --dry-run identity
+cafe deploy --engine argo --dry-run identity
 ```
 
 Run against a real local git repository with `chart/values.yaml` and

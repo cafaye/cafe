@@ -1,12 +1,12 @@
-# REPORT — caf-w88: the no-Application packet
+# REPORT — cafe-w88: the no-Application packet
 
-**Branch:** `worker/caf-w88-no-application`
-**Base commit:** `1c8d4d3` (Merge worker/caf-w81-chart-ingress)
+**Branch:** `worker/cafe-w88-no-application`
+**Base commit:** `1c8d4d3` (Merge worker/cafe-w81-chart-ingress)
 **Head when reported:** `791aab0` (three commits on the base, listed below)
 
 ## What the packet did
 
-`caf gen chart` emitted a seventh file, `chart/templates/application.yaml` —
+`cafe gen chart` emitted a seventh file, `chart/templates/application.yaml` —
 an ArgoCD `Application` document generated per service. The substrate owns the
 Application: one static per service, OCI-sourced, applied by `install.sh`
 (moon/DEPLOYMENT.md, "Who owns the Application"). A generated one would be a
@@ -43,13 +43,13 @@ path, and no `targetRevision` in `values.yaml`.
 
 ## The real-manifest proof
 
-`caf gen chart` run against `internal/contract/testdata/valid/identity.cafaye.yml`
+`cafe gen chart` run against `internal/contract/testdata/valid/identity.cafaye.yml`
 — a real manifest with an HTTP surface (`exposes.api: openapi/openapi.yaml`),
 copied to a scratch directory outside the repository:
 
 ```
-$ caf gen chart
-caf gen chart wrote 6 file(s) from this project's cafaye.yml:
+$ cafe gen chart
+cafe gen chart wrote 6 file(s) from this project's cafaye.yml:
 exit: 0
 
 chart/Chart.yaml
@@ -74,7 +74,7 @@ written down, so the next reader does not re-add it.
 | suite (top-level passes) | 795 | 795 |
 | subtests | 969 | 969 |
 
-The floors were last moved by `d17519d` (caf-w81, the ingress packet). This
+The floors were last moved by `d17519d` (cafe-w81, the ingress packet). This
 packet **swapped one top-level test for another** —
 `TestTheApplicationSyncsTheManifestsRepository` out (its subject no longer
 exists), `TestTheGeneratorEmitsNoArgoApplication` in — and neither test has
@@ -98,8 +98,8 @@ generator source, not one of the four pinned kinds (`spec`, `vendored-schema`,
 final tree:
 
 ```
-$ caf lock --verify .
-caf: caf.lock matches 12 pinned file(s), and nothing the tree declares is missing from it.
+$ cafe lock --verify .
+cafe: caf.lock matches 12 pinned file(s), and nothing the tree declares is missing from it.
 ```
 
 ## The gate
@@ -117,5 +117,5 @@ command and was not run; the gate as declared is the three commands above.
 
 ## Out of scope, as instructed
 
-No new behaviour; `m76` (caf's Argo deploy) is a separate packet; no other
+No new behaviour; `m76` (cafe's Argo deploy) is a separate packet; no other
 repository was touched; the generator was not re-run into another repo's tree.

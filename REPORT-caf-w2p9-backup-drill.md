@@ -1,13 +1,13 @@
 # REPORT-caf-w2p9-backup-drill.md
 
 **Packet:** OPS-P9 — backup drills that PROVE the backup restores, and report the result.
-**Repo:** `caf` (`github.com/cafaye/caf`), branch `ops/w2-backup-drill`.
+**Repo:** `cafe` (`github.com/cafaye/cafe`), branch `ops/w2-backup-drill`.
 **Commits:** `57bfdd6` (the record and its store), `900c945` (the drill verb), and a third
 landing the Windows fix, the `gate.yml` floor and the regenerated `caf.lock`.
 
 ## What the gap was
 
-`caf backup` already takes a real snapshot and proves it restores into a scratch database it
+`cafe backup` already takes a real snapshot and proves it restores into a scratch database it
 then drops. I read where the verdict goes: `backup.Run` writes it with
 `successReport`/`failureReport` (`internal/backup/run.go:477` and `:497`) and returns either
 `nil` or the `ErrCycleFailed` sentinel. The engine's own doc comment states the boundary —
@@ -25,40 +25,40 @@ scratch database's *name*, the tables asserted, the outcome, a machine-matchable
 one-line detail, both timestamps and the duration in milliseconds.
 
 `DrillStore` persists it as one JSON file per service under
-`DefaultDrillDir()` — `CAF_DRILL_DIR`, else `$XDG_STATE_HOME/caf/drills`, else
-`~/.local/state/caf/drills`. **This is not a new mechanism**: it is `ledger.DefaultDir`'s
+`DefaultDrillDir()` — `CAF_DRILL_DIR`, else `$XDG_STATE_HOME/cafe/drills`, else
+`~/.local/state/cafe/drills`. **This is not a new mechanism**: it is `ledger.DefaultDir`'s
 exact resolution order and its exact argument
 (`internal/ledger/ledger.go:127-140`), and the store's shape — a directory, a lock file, an
 append under the lock, a write-by-rename — is `internal/run`'s `Store`
 (`internal/run/store.go:13-46`, `internal/run/files.go`). Three outcomes rather than a
-boolean, because "the restore worked" and "caf would not touch the service" are different
+boolean, because "the restore worked" and "cafe would not touch the service" are different
 facts with different fixes.
 
-### 2. The verb — `caf backup drill`, `internal/cli/backup_drill.go`
+### 2. The verb — `cafe backup drill`, `internal/cli/backup_drill.go`
 
-`caf backup drill <service>` is the same cycle with the confirmation taken away and the
+`cafe backup drill <service>` is the same cycle with the confirmation taken away and the
 outcome recorded. It never asks: a drill on a schedule has nobody to answer a prompt, and a
 command that hung waiting for one would be a schedule that never ran. `--json` writes ONE
-document to stdout and moves caf's own report to stderr — the split `caf agent` already
+document to stdout and moves cafe's own report to stderr — the split `cafe agent` already
 makes (`internal/cli/box_render.go:26-31`, `internal/cli/agent.go`).
 
-`caf backup <service>` records too, so a manual drill is not forgotten either.
+`cafe backup <service>` records too, so a manual drill is not forgotten either.
 
 ### 3. The alert
 
-caf has no notification transport — the packet's own copy says nobody is paged (OPS-P20,
-`CAFAYE-OPS.md:121-124`). So this uses the convention caf already has: **exit 1, a named
+cafe has no notification transport — the packet's own copy says nobody is paged (OPS-P20,
+`CAFAYE-OPS.md:121-124`). So this uses the convention cafe already has: **exit 1, a named
 reason, one line on stderr** naming the service and where the record went.
 
 The reason is extracted from the refusal's own report rather than invented:
-`backup.ReportReason` (`internal/backup/drill.go:80`) reads back the `caf-backup/` line
+`backup.ReportReason` (`internal/backup/drill.go:80`) reads back the `cafe-backup/` line
 `contract.go:288` writes, so a refused drill's record names the *clause* that broke
-(`caf-backup/secret-not-declared`) and not only the class.
+(`cafe-backup/secret-not-declared`) and not only the class.
 
 ## Three decisions worth arguing about
 
-**The alert line is the drill's, not the cycle's.** `caf backup`'s contract is that a
-refusal is a report on stdout and **stderr stays empty**, because a `caf: ...` line there is
+**The alert line is the drill's, not the cycle's.** `cafe backup`'s contract is that a
+refusal is a report on stdout and **stderr stays empty**, because a `cafe: ...` line there is
 a truncated copy in the place a CI log greps (`internal/cli/backup.go:232-239`, and the test
 that pins it at `internal/cli/backup_test.go:115-117`). I did not revisit that. A drill is
 the other case — nobody is watching a terminal — so the line is gated on the verb.
@@ -66,11 +66,11 @@ the other case — nobody is watching a terminal — so the line is gated on the
 **A record that cannot be written is a failure, not a warning.** The gap being closed is a
 verdict that was printed and forgotten; a drill whose record did not land has been forgotten
 exactly as thoroughly. It exits nonzero and names `CAF_DRILL_DIR`. I judged this worth the
-behaviour change to `caf backup`, and it is the one place I would accept pushback.
+behaviour change to `cafe backup`, and it is the one place I would accept pushback.
 
 **I did not build a scheduler.** The packet says "wrap it: a schedule". A daemon that sleeps
-for a month is a daemon nobody has watched run, and `caf` has no long-lived process — its
-only one, `boxd`, holds an outbound mTLS channel and is not a cron. So `caf backup drill` is
+for a month is a daemon nobody has watched run, and `cafe` has no long-lived process — its
+only one, `boxd`, holds an outbound mTLS channel and is not a cron. So `cafe backup drill` is
 what a schedule RUNS, and the record (with `finished_at`) is what tells you whether the
 schedule has been running. The verb's long help says so in a paragraph headed
 "THE SCHEDULE IS NOT HERE" rather than implying otherwise. **Flagging this as the one place
@@ -87,11 +87,11 @@ I read the packet narrowly**, and I think it is the right narrowing, but it is a
 - `go test ./...` — **exit 0** on the final run (`/tmp/gate-w2-backup-drill-final2.log`,
   `/tmp/gate-w2-backup-drill-final2.exit`), 22 packages `ok`, no `FAIL` lines.
 - `./bin/prime` — **exit 0**, and its countable line reads exactly
-  `caf: 23 packages, 1078 top-level passes, 1157 subtest passes, 0 failures, 8 skips`
+  `cafe: 23 packages, 1078 top-level passes, 1157 subtest passes, 0 failures, 8 skips`
   on the run before the last test was added; the tree now declares 1087 and the floor is
   1079. **Every number in this report is one a run printed, not one I computed.**
 - End-to-end, against the real binary in a scratch project with no `kamal` on PATH:
-  `caf backup drill --table users --json identity` exits **1**, writes a single JSON
+  `cafe backup drill --table users --json identity` exits **1**, writes a single JSON
   document to stdout and nothing else, writes the report plus one alert line to stderr,
   and appends the record. Verified stream-by-stream, not from a merged terminal.
 
@@ -103,7 +103,7 @@ Three runs went red before going green, and all three were real:
    right.
 2. `TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave` (`internal/ci/prime_test.go:529`) —
    I added tests, so the tree declares more than `gate.yml`'s `suite` floor. Raised to
-   1079 (1087 − 8 expected skips) and `caf.lock` re-pinned with `go run ./cmd/caf lock .`,
+   1079 (1087 − 8 expected skips) and `caf.lock` re-pinned with `go run ./cmd/cafe lock .`,
    because `gate.yml` is the tree's one `rule-bundle`. No new subtests, so the `subtests`
    floor did not move.
 3. The `detail` field on a `drill-not-run` record was picking the report's own header
@@ -139,7 +139,7 @@ it.
 
 - The record's history is bounded at 12 (`drillHistoryLimit`, `internal/backup/drill.go`),
   a year of the monthly cadence. The monthly report (OPS-P13) reads
-  `<state>/caf/drills/<service>.json` directly — the field names are asserted in
+  `<state>/cafe/drills/<service>.json` directly — the field names are asserted in
   `TestADrillRecordSurvivesTheRoundTrip` so a rename is a red test rather than a silent
   break of OPS-P13 and the box agent at once.
 - `internal/ci`'s `notASourceTree` and the drift gate were untouched: I added files to two
@@ -147,5 +147,5 @@ it.
 - The worktree directory `/Users/kaka/Code/any/ops-wt/w2-backup-drill` was removed
   underneath me twice mid-run while other workers were running in the same parent
   directory. Both times the branch and its commits survived in
-  `/Users/kaka/Code/any/moon/cafaye/caf` and I re-created the worktree with
+  `/Users/kaka/Code/any/moon/cafaye/cafe` and I re-created the worktree with
   `git worktree add`. Nothing was lost, but it cost two gate runs.

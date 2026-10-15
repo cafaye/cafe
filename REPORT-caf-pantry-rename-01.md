@@ -1,11 +1,11 @@
-# REPORT — caf's catalog client: the project rename (W3, caf side)
+# REPORT — cafe's catalog client: the project rename (W3, cafe side)
 
-Packet: `moon/PLAN-pantry-registry.md` Phase 1, caf half.
-Branch: `worker/caf-rename` (commits `e6799ff`, `50a0489`, `0eed2dc`).
+Packet: `moon/PLAN-pantry-registry.md` Phase 1, cafe half.
+Branch: `worker/cafe-rename` (commits `e6799ff`, `50a0489`, `0eed2dc`).
 Base: `697abe0` on master.
 
 The pinned contract was followed exactly. No route outside it was invented,
-no field was added to what caf decodes, and no capability was added.
+no field was added to what cafe decodes, and no capability was added.
 
 ## The surface, and what moved
 
@@ -43,23 +43,23 @@ Field names are untouched: `name`, `description`, `language`,
 
 **`Report.Services` and its `"services"` JSON key** (`internal/resolve/resolve.go:166`,
 `internal/cli/resolve.go:165`). This is the assumption I recorded, and it is
-the only judgement call in the packet. `Report.Services` is caf's own output
+the only judgement call in the packet. `Report.Services` is cafe's own output
 document, not pantry's schema; the brief's rule is no behaviour change beyond
 the rename, and the phase renames the CATALOG vocabulary (MD23) while the
-runtime word survives. `caf resolve`'s JSON therefore reads exactly as it did
+runtime word survives. `cafe resolve`'s JSON therefore reads exactly as it did
 before this commit, so no consumer's parser moves. **If the wave's seam audit
 reads this the other way, the change is four lines and one test.**
 
 **The versions LIST route.** `GET /v1/projects/{name}/versions` is a later
-phase per the pinned contract. caf does not call it and does not declare it.
+phase per the pinned contract. cafe does not call it and does not declare it.
 
-**`.../required-by`.** Renamed by the contract, but caf has no client for it
+**`.../required-by`.** Renamed by the contract, but cafe has no client for it
 and never did — there was nothing to move. Recorded so the audit does not
 look for a gap that was never a hole.
 
 **The tier-1 struct's field set.** pantry's schema lists `kind`, `core`,
 `basePath`, `exposes`, `consumes`, `dependencies` and `owner` alongside the
-four fields caf decodes. caf asks tier 1 one question — does this name exist,
+four fields cafe decodes. cafe asks tier 1 one question — does this name exist,
 and is it public — so the struct still carries four. Adding the rest would be
 extending, not renaming, and a struct that carried the whole schema would be a
 second copy of it. The comment on `Project` says so.
@@ -89,7 +89,7 @@ filters and no paging to preserve. What there is to preserve:
   trace_id), `firstLine`'s rune-boundary truncation and `failureFrom` are not
   touched. A 404 is still a `not_found` carrying pantry's own sentence, and
   that sentence still does not echo the requested name.
-- **The tier-2 flow.** The caf token is presented as a bearer for the length
+- **The tier-2 flow.** The cafe token is presented as a bearer for the length
   of one call and is still never stored; tier 3 still mints, redeems and drops
   the capability token on the floor. `internal/cli/resolve_test.go`'s
   token-discipline assertions (the token reaches neither stream, the
@@ -106,8 +106,8 @@ was the right one and not an accident:
 internal/resolve/resolve_test.go:16:14: undefined: Project
 internal/resolve/pantry_test.go:28:16: p.Project undefined (type HTTPPantry has no field or method Project)
 internal/resolve/resolve_test.go:80:19: *fakePantry does not implement Pantry (missing method Service)
-FAIL github.com/cafaye/caf/internal/resolve [build failed]
-FAIL github.com/cafaye/caf/internal/cli   [build failed]
+FAIL github.com/cafaye/cafe/internal/resolve [build failed]
+FAIL github.com/cafaye/cafe/internal/cli   [build failed]
 ```
 
 Six failures in two packages, all naming the rename and nothing else — which
@@ -118,13 +118,13 @@ Commit `e6799ff` is that tree; `50a0489` turns it green.
 
 ```
 $ go test ./internal/resolve/... ./internal/cli/...
-ok  github.com/cafaye/caf/internal/resolve  0.732s
-ok  github.com/cafaye/caf/internal/cli      66.209s
+ok  github.com/cafaye/cafe/internal/resolve  0.732s
+ok  github.com/cafaye/cafe/internal/cli      66.209s
 exit: 0
 
 $ ./bin/prime
-caf: 27 packages, 1207 top-level passes, 1228 subtest passes, 0 failures, 8 skips
-caf: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
+cafe: 27 packages, 1207 top-level passes, 1228 subtest passes, 0 failures, 8 skips
+cafe: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
 exit: 0
 
 $ gofmt -l .     # no output
@@ -148,10 +148,10 @@ backgrounded per the quarterly contract, keyed to
 
 1. **`Report.Services` keeps its name and its JSON key.** Reasoning above. If
    the audit disagrees it is a four-line change plus one assertion.
-2. **pantry's document version 1.4.0 is a no-op for caf.** caf asserts no
+2. **pantry's document version 1.4.0 is a no-op for caf.** cafe asserts no
    pantry document version anywhere — `grep -rn "documentVersion\|document
    version"` over `internal/`, `cmd/`, `README.md` finds nothing — so the
-   contract's "caf asserts that value only if it asserts a document version
+   contract's "cafe asserts that value only if it asserts a document version
    today" clause has nothing to act on. Nothing was invented to act on it.
 
 ## What a successor should know

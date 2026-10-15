@@ -1,6 +1,6 @@
-# REPORT — W2-P6: `caf box enroll` and the box lifecycle commands
+# REPORT — W2-P6: `cafe box enroll` and the box lifecycle commands
 
-**Packet:** W2-P6, `caf`. Branch `agents-first/w2p6`, worktree `caf-w2p6`.
+**Packet:** W2-P6, `cafe`. Branch `agents-first/w2p6`, worktree `cafe-w2p6`.
 **State:** the packet is accomplished and the gate is green. 17 packages, 872
 top-level passes, 1059 subtests, 0 failures, 8 skips (the 8 are the live tier
 and the re-exec'd child, both named at `expectedSkips`).
@@ -55,7 +55,7 @@ not go back to the network.
 A crash between step 3's response and step 4's write cannot be recovered from
 this side: the retry presents the token again and conductor refuses it, and the
 response carries no installation facts to write. `Enroll` answers an honest
-refusal naming the window and the remedy (`caf box enroll` with a freshly
+refusal naming the window and the remedy (`cafe box enroll` with a freshly
 minted token), and leaves the journal at `prepared` so the *next* capability
 converges. `TestARefusedRedemptionLeavesARetryableState` proves that second
 half.
@@ -70,7 +70,7 @@ half.
   a later packet that changes `withDefaults`'s constructor call and nothing
   else.
 - **`apply` running the installer.** kit owns the substrate install (W2-P4) and
-  `caf boxd` drives it (W2-P7); neither exists. `apply` owns the RECORD — which
+  `cafe boxd` drives it (W2-P7); neither exists. `apply` owns the RECORD — which
   phase was reached and what the handoff is — and says plainly that the
   installer is not here. A command that claimed a phase completed when nothing
   ran it would be a command nobody could trust.
@@ -92,11 +92,11 @@ half.
 
 ## What the successor's first move is
 
-**W2-P7, `caf boxd`** — the box daemon, in the same binary, sharing this one.
+**W2-P7, `cafe boxd`** — the box daemon, in the same binary, sharing this one.
 Its seams are already here and already tested:
 
 - `Store.BoxKey(id)` fetches the private key **for the duration of one call**.
-  It has no caller yet, because nothing in caf signs until boxd does. It exists
+  It has no caller yet, because nothing in cafe signs until boxd does. It exists
   so the day the signer arrives, the key is fetched at the point of use rather
   than threaded through three layers of arguments.
 - The phase table is pure data, so a driver writes *into* it rather than
@@ -113,7 +113,7 @@ go vet ./...          clean
 gofmt -l .            no output
 ./bin/prime           17 packages, 872 top-level passes, 1059 subtests,
                       0 failures, 8 skips
-go run ./cmd/caf lock .    12 files, re-pinned for the new gate.yml
+go run ./cmd/cafe lock .    12 files, re-pinned for the new gate.yml
 ```
 
 The first gate run went **red on `TestTheGateFloorIsNotBelowTheSuiteCafClaims-

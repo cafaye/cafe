@@ -14,10 +14,10 @@
 | `internal/ports` | the 15000-15999 block, the reservation that **holds** a port, the dual-family prober | 48 pass, 2 gated |
 | `internal/reclaim` | the sweep's container-runtime seam, scoped to one compose project | 13 pass |
 | `internal/ryuk` | the fifteen-line reaper lease client, and the empty-filter guard | 23 pass, 1 gated |
-| `internal/cli` | `caf reclaim`, `caf env up`, tri-state `doctor`, the meta-test | 486 pass |
+| `internal/cli` | `cafe reclaim`, `cafe env up`, tri-state `doctor`, the meta-test | 486 pass |
 | `internal/dev` | `PortAllocator`, the third seam, and the ports tests | 120 pass |
 
-Four commits on `worker/caf-06`. The gate is green and coverage is **89.1%**,
+Four commits on `worker/cafe-06`. The gate is green and coverage is **89.1%**,
 unchanged from the baseline: the first pass through this packet dropped the tree
 to 82.9% with the four new packages at 68-75%, and the reclamation path was the
 least-tested part of the binary — which is the part that runs when something has
@@ -51,7 +51,7 @@ implemented the correction rather than restating it.
 
 The design consequence is the part worth arguing about: **a reservation is held,
 not probed.** `internal/ports` takes the advisory lock *before* it probes and
-keeps it for the life of the session, so two caf sessions racing for one port are
+keeps it for the life of the session, so two cafe sessions racing for one port are
 serialised by the kernel rather than by whichever probe happened to run last. A
 probe answers at one instant and the collision happens after it.
 
@@ -66,10 +66,10 @@ here, and both have tests that were **run, not written**:
   only succeeds when every socket on the address opted in — and asserts the
   prober cannot bind. It is a real trap now, not a bind failure mistaken for one.
 
-**What the hold does not close, stated rather than buried.** A non-caf process
+**What the hold does not close, stated rather than buried.** A non-cafe process
 that takes a port between the probe and `up` is caught by the daemon on Linux and
-**not** caught on OrbStack (§5.1). The hold keeps the *caf fleet* correct; it
-cannot make the daemon arbiter honest. `caf doctor`'s block check is the
+**not** caught on OrbStack (§5.1). The hold keeps the *cafe fleet* correct; it
+cannot make the daemon arbiter honest. `cafe doctor`'s block check is the
 backstop that makes the other half visible rather than invisible, and it found
 two real squatters on this machine while this packet ran (§6).
 
@@ -117,7 +117,7 @@ The fence is enforced twice, and the second one is the one that matters:
 answers a gen-1 query with somebody else's container. The name is reported
 `:failed` and left alone. Worth being precise about what this costs: the refusal
 counts as a failure, so the gen-1 entry is *kept* even though nothing was harmed.
-That is the safe direction — a kept entry is one `caf reclaim` can clear, and a
+That is the safe direction — a kept entry is one `cafe reclaim` can clear, and a
 wrongly-released one is a volume nothing can find.
 
 ### Three outcomes, and one of them keeps the entry
@@ -127,7 +127,7 @@ them. Two distinctions the tests hold:
 
 - a volume the **entry names and the runtime does not have** is `:missing` and
   not "no action". That is the case the ledger exists for: the entry was written
-  before the volume was created, and a caf that died in between leaves exactly
+  before the volume was created, and a cafe that died in between leaves exactly
   that row. Printing no action for it would make "nothing to reclaim" and "the
   thing is already gone" the same sentence, which is the mistake yamine's `clean`
   made.
@@ -136,15 +136,15 @@ them. Two distinctions the tests hold:
   failure keeps an entry alive for something that is already gone — which is how
   people learn to distrust the sweeper.
 
-`caf reclaim` exits 1 on a `:failed` and 0 otherwise, so a script can tell a
+`cafe reclaim` exits 1 on a `:failed` and 0 otherwise, so a script can tell a
 clean sweep from a broken one.
 
 ## 4. The command surface
 
-`env up` is described as "or extend `caf dev`" in the packet. It is a new verb
+`env up` is described as "or extend `cafe dev`" in the packet. It is a new verb
 that **reuses** `dev`'s plan, renderer and `Runtime` seam rather than
 reimplementing any of them, and the README says so. The reason it is not folded
-into `caf dev` is that `dev` is "bring the stack up and leave it up" and this is
+into `cafe dev` is that `dev` is "bring the stack up and leave it up" and this is
 "bring it up, run this, take it down" — a different lifetime, and a flag on `dev`
 would have to change what `dev` means for everyone who uses it today.
 
@@ -265,7 +265,7 @@ load-bearing rather than asserted.
 
 ## 6. Sibling workers, found and left alone
 
-`caf doctor`'s block check found **two** cafaye containers publishing inside
+`cafe doctor`'s block check found **two** cafaye containers publishing inside
 15000-15999 while this packet ran:
 
 ```
@@ -277,14 +277,14 @@ kit reported the second one; the first appeared later, during this session. Both
 were left running and untouched. `identity-pg-identity10` is kit's container and
 has been up for over an hour; `billing08-pg` belongs to a worker that started
 after this packet began. Neither is named in a ledger this packet wrote, so
-`caf reclaim` cannot reach either, and the registry refuses to publish over them.
+`cafe reclaim` cannot reach either, and the registry refuses to publish over them.
 
 This is the report the packet asked for, and it is also the check earning its
 place: the sprawl did not stop because anybody was careful, it restarted one
 packet after the ruling that named the block.
 
 **Left alone, deliberately:** `searxng-core`, `searxng-valkey`, the kamal buildkit
-volume and container, and the `kit-canary-*` pair. `caf reclaim` has no code path
+volume and container, and the `kit-canary-*` pair. `cafe reclaim` has no code path
 that could reach any of them — every call is scoped by
 `label=com.docker.compose.project=<name>` and re-checked against the entry's
 generation — and `internal/reclaim`'s tests assert the absence of any prune verb
@@ -328,7 +328,7 @@ comment, per row, and the test restates it.
 
 ### The behaviour change, and who it can break
 
-`caf doctor` now exits 1 when a row is `fail`. It used to always exit 0. This is
+`cafe doctor` now exits 1 when a row is `fail`. It used to always exit 0. This is
 stated in the help, the README, the CHANGELOG and this report, because a shipped
 command changing its exit code is the kind of change that gets discovered by a CI
 job somebody else owns. `warn` and the tool table are unchanged, so a caller
@@ -350,10 +350,10 @@ Two defects, one mine and one pre-existing:
 - **Mine.** The Windows lock referenced a field only the unix implementation had.
   The fallback had been written and never compiled, because no gate on this
   machine compiles it and no CI job did either.
-- **Pre-existing, since caf-04.** `doctor`'s memory probe had implementations for
+- **Pre-existing, since cafe-04.** `doctor`'s memory probe had implementations for
   darwin and linux and none for windows, so **the binary `.goreleaser.yml` ships a
-  Windows build of has not compiled for months.** `caf doctor` has never run on
-  Windows; `caf version` and `caf dev` have not either, because the package they
+  Windows build of has not compiled for months.** `cafe doctor` has never run on
+  Windows; `cafe version` and `cafe dev` have not either, because the package they
   share with `doctor` does not build.
 
 The second one is outside this packet's scope and I want to be plain about that
@@ -375,7 +375,7 @@ this repository actually ships.
 - **The silent collision on a native Linux daemon or Docker Desktop.** Both live
   tests ran on OrbStack. The mechanism is almost certainly OrbStack's userspace
   port forwarding rather than a kernel bind, and on Linux the daemon may well
-  arbitrate correctly against a host process too. **caf is a shipped tool that
+  arbitrate correctly against a host process too. **cafe is a shipped tool that
   runs on all three, and this was tested on one.** The design does not depend on
   the answer — the hold and the dual-family probe are correct either way — but the
   *severity* of not holding is machine-specific, and the report's claim should be
@@ -390,9 +390,9 @@ this repository actually ships.
 - **The 7.4 GiB figure and `identity-worker-identity-06_postgres-data`.** Not
   present on this machine; not re-measured, not re-claimed. kit already recorded
   this.
-- **`caf env up` against a real container stack.** Every test drives it with a
+- **`cafe env up` against a real container stack.** Every test drives it with a
   recording runtime and a real child process; no test starts a container. The
-  bring-up, the wait and the teardown are the parts `caf dev` already owns and
+  bring-up, the wait and the teardown are the parts `cafe dev` already owns and
   already tests, and they are reused rather than rewritten — but this packet did
   not run a real stack through `env up`, and a receipt from a fake runtime is
   evidence about the receipt, not about Postgres.

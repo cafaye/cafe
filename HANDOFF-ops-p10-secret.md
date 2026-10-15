@@ -10,8 +10,8 @@ No merge, no push — that is the manager's.
    holds every key the kit installer's SECRET RECORD declares plus the three it
    does not (Redis password, Postgres role passwords, muse's vault key). Each
    entry carries a class, a reason and a `file:line` citation.
-2. **The rotation path for the rotatable class, on a schedule.** `caf secret
-   rotate [<name>]` and bare `caf secret rotate` for everything DUE, with
+2. **The rotation path for the rotatable class, on a schedule.** `cafe secret
+   rotate [<name>]` and bare `cafe secret rotate` for everything DUE, with
    `--dry-run`, `--yes`, `--all`, `--timeout`. The schedule is a state file
    (`secret-rotations.json`, no credential in it), so "on a schedule" is a fact
    about the last run rather than a cron line.
@@ -37,7 +37,7 @@ No merge, no push — that is the manager's.
    mid-session deletions of `/Users/kaka/Code/any/ops-wt/` took uncommitted
    files each time; the branch survived both.
 2. **The lock tests are red.** If you edited `gate.yml`, re-run
-   `go run ./cmd/caf lock .` in the same commit — gate.yml is the tree's one
+   `go run ./cmd/cafe lock .` in the same commit — gate.yml is the tree's one
    `rule-bundle` and its hash is pinned.
 3. **The floor ratchet is red.** `declared - minimum == 8`. Raise the floor in
    `gate.yml` in the same commit as the tests; do not touch the assertion.

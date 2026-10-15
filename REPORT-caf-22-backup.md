@@ -1,8 +1,8 @@
-# REPORT — caf-22-backup
+# REPORT — cafe-22-backup
 
 ## What this is
 
-`caf backup` did not exist. It is now a command that boots a service's backup
+`cafe backup` did not exist. It is now a command that boots a service's backup
 accessory, takes **one real snapshot** through kamal-backup, restores that snapshot
 into a scratch database, asserts the tables you name hold rows, drops the scratch
 database on every path — and refuses a service whose `config/kamal-backup.yml` and
@@ -14,7 +14,7 @@ the real `ghcr.io/crmne/kamal-backup:0.5.2`, restored into a real scratch databa
 over the real `kamal` network, with seven rows asserted and the scratch database
 dropped afterwards. Nothing in §2 is a mock, a fixture or a plan.
 
-What caf adds around that is four things, and §3–§7 are them: the cross-file
+What cafe adds around that is four things, and §3–§7 are them: the cross-file
 contract check, the scratch database's lifecycle, the assertion, and one bounded
 retry that exists because a measured race makes it necessary.
 
@@ -43,10 +43,10 @@ The third one is the honest limit of this report: **this is not R2, and it is no
 S3** — §10 says so again as a scope-out, because "we rehearsed the local backend"
 and "we rehearsed object storage" are different claims and only the first is true.
 
-The `postgres` accessory declares **no `port:`** at all, deliberately. `caf deploy`
+The `postgres` accessory declares **no `port:`** at all, deliberately. `cafe deploy`
 refuses an accessory that publishes its port on anything but loopback, so a
 rehearsal that published one to make its own life easier would be a rehearsal of a
-configuration caf refuses. Nothing needs it: the create, the restore and the
+configuration cafe refuses. Nothing needs it: the create, the restore and the
 assertion all happen *inside* the backup accessory, reaching the database by name
 over the `kamal` network, which is the shape production has.
 
@@ -85,7 +85,7 @@ $ CAF_LIVE_KAMAL=1 go test ./internal/backup/ -run 'TestABackupIsTaken|TestABrok
 --- PASS: TestABrokenPairIsRefusedBeforeAnythingIsBooted (15.15s)
 --- PASS: TestAProductionLookingScratchDatabaseIsRefusedByTheGemAndStillCleanedUp (26.47s)
 PASS
-ok  	github.com/cafaye/caf/internal/backup	68.541s
+ok  	github.com/cafaye/cafe/internal/backup	68.541s
 ```
 
 Machine: OrbStack 29.4.0, darwin/arm64, kamal 2.12.0, kamal-backup 0.5.2, restic
@@ -96,7 +96,7 @@ things that were flaky are, and both were the harness rather than the command.
 
 ### 2.2 The command an operator types, end to end, through the built binary
 
-This is `caf backup --table users --yes identity` run against the same rig, with the
+This is `cafe backup --table users --yes identity` run against the same rig, with the
 giant escaped scripts elided as `…` and nothing else changed:
 
 ```
@@ -149,7 +149,7 @@ App Host: 127.0.0.1
   ],
   "check": {
     "status": "ok",
-    "output": "caf backup: users holds 7 rows in identity_drill after the restore"
+    "output": "cafe backup: users holds 7 rows in identity_drill after the restore"
   }
 }
 
@@ -170,7 +170,7 @@ identity: the snapshot restored
   its logs: kamal accessory logs backup
 ```
 
-Exit 0. **The line that matters is `caf backup: users holds 7 rows in identity_drill
+Exit 0. **The line that matters is `cafe backup: users holds 7 rows in identity_drill
 after the restore`**, because it is a number and because the gem's `check.status` is
 `ok` only because the check's **exit status** was 0 — which is why the check is an
 assertion and not a count. §5.
@@ -179,7 +179,7 @@ assertion and not a count. §5.
 
 `bin/prime --live`'s third run of this tier failed intermittently, and the failure is
 worth more than the passes. The boot starts the accessory's scheduler, the scheduler
-takes the restic lock, and caf's snapshot walks into it:
+takes the restic lock, and cafe's snapshot walks into it:
 
 ```
 running kamal accessory exec --reuse backup kamal-backup backup --force
@@ -206,7 +206,7 @@ around rather than wished away:
 3. **The lock is not there when you look for it.** The first version conditioned the
    retry on a second `restic list locks`, and the accessory's first cycle on a small
    database finishes in well under a second — measured, the settle step reported
-   free, the snapshot came back 11, and by the time caf asked again the cycle was
+   free, the snapshot came back 11, and by the time cafe asked again the cycle was
    done, so the retry never fired and the command gave up on a snapshot the accessory
    had taken for itself.
 
@@ -245,16 +245,16 @@ database primary: 879732ee at 2026-10-01T23:52:37.398361063Z
 ## 3. The cross-file contract, and what it caught
 
 `config/kamal-backup.yml` and `config/deploy.yml` are **one contract**, and every
-clause of it is a claim about what happens at deploy time. caf reads Kamal's *own
+clause of it is a claim about what happens at deploy time. cafe reads Kamal's *own
 resolved config* — after the ERB is evaluated, so the document is the one the
 accessory will actually be built from — and refuses four things:
 
 | reason | what is wrong |
 |---|---|
-| `caf-backup/accessory-not-declared` | the backup configuration names an accessory the deploy configuration does not have |
-| `caf-backup/config-not-mounted` | the accessory does not mount that backup configuration read-only |
-| `caf-backup/secret-not-declared` | the backup configuration names a secret the accessory's `env.secret` does not declare |
-| `caf-backup/app-name-mismatch` | `app:` disagrees with the service, so every snapshot is unfindable |
+| `cafe-backup/accessory-not-declared` | the backup configuration names an accessory the deploy configuration does not have |
+| `cafe-backup/config-not-mounted` | the accessory does not mount that backup configuration read-only |
+| `cafe-backup/secret-not-declared` | the backup configuration names a secret the accessory's `env.secret` does not declare |
+| `cafe-backup/app-name-mismatch` | `app:` disagrees with the service, so every snapshot is unfindable |
 
 **The check happens before the boot**, and the reason is specific rather than
 tidy: a pair whose accessory does not exist is a pair nothing will ever validate,
@@ -269,19 +269,19 @@ removed from the backup accessory's `env.secret` list**. Both files are then sti
 internally consistent, which is exactly the shape of the defect, and the deployment
 that results boots and then fails validation.
 
-caf refuses it before anything is booted, with the reason a script can match:
+cafe refuses it before anything is booted, with the reason a script can match:
 
 ```
-$ caf backup --table users --yes identity
+$ cafe backup --table users --yes identity
 identity: backing up from config/kamal-backup.yml in … with kamal 2.12.0
   the deployment it belongs to is config/deploy.yml
   credentials come from .kamal/secrets, by name only
   the backup accessory runs it, and the restore is drilled into identity_drill
   its schedule is 1d, which is a scheduled dump and not point-in-time recovery
 
-caf backup: refusing to back up
+cafe backup: refusing to back up
 
-caf-backup/secret-not-declared
+cafe-backup/secret-not-declared
   the backup configuration names the secret RESTIC_REPOSITORY, and the backup accessory does not declare it.
   kamal-backup builds that accessory's environment from that accessory's `env.secret` list and from nothing else, so this pair
   deploys and then fails validation with a message about RESTIC_REPOSITORY — measured on kamal-backup 0.5.2, and what the
@@ -298,7 +298,7 @@ Exit 1, nothing booted, stderr empty. The live test asserts three things at once
 the refusal happened, `docker ps` shows **no** `identity-backup` container, and the
 only steps that ran were `kamal version` and `kamal config`.
 
-And then the third-party agreement, taken *after* caf's own refusal because the gem
+And then the third-party agreement, taken *after* cafe's own refusal because the gem
 can only be consulted once the accessory exists:
 
 ```
@@ -314,23 +314,23 @@ the passing direction (`kamal-backup validate` → `ok`) as the control.
 `config/kamal-backup.yml` at all, and a project with no `config/deploy.yml` at all.
 Both are named, both tell the operator what to do, and neither runs kamal.
 
-### 3.2 What caf deliberately does NOT own
+### 3.2 What cafe deliberately does NOT own
 
 The **production-looking scratch database** refusal is the gem's
 (`Config#production_like_target?` in kamal-backup 0.5.2), and in operator form it is
-cafaye/kit's `templates/kamal/drill.sh`. caf hands the name over and reports what the
+cafaye/kit's `templates/kamal/drill.sh`. cafe hands the name over and reports what the
 gem said:
 
 ```
 "error": "refusing production-looking restore target identity-postgres/caf_prod_drill; choose a scratch target that does not look like production"
 ```
 
-caf carries **no copy** of that rule. A second copy of a rule about which database
+cafe carries **no copy** of that rule. A second copy of a rule about which database
 gets dropped is a second opinion about the one thing that must not be in doubt — and
-the live test asserts the refusal is *the gem's words*, so a future caf that grew a
+the live test asserts the refusal is *the gem's words*, so a future cafe that grew a
 copy would go red rather than quietly start enforcing it.
 
-What caf refuses itself is strictly narrower and is about shells, not databases: a
+What cafe refuses itself is strictly narrower and is about shells, not databases: a
 name it cannot write down unquoted through two shells (`plainIdentifier`). A
 scratch database called `my database` is refused **by name**, rather than producing a
 drill against a database called `my` and a confusing complaint about the other half.
@@ -346,26 +346,26 @@ is credited as such in the code (`internal/backup/script.go`, `run.go`, `doc.go`
   `DATABASE_PASSWORD` and no `PG*` variables — measured against that image — and
   libpq reads `PG*` from the environment and nothing else, so `ps` shows a credential
   in argv to every user on the machine. kit's §CONNECTION splits the URL and exports
-  the four variables for exactly that reason, and caf does the same thing.
+  the four variables for exactly that reason, and cafe does the same thing.
 - **"the check must be an assertion, not a count."** `psql -tAc "SELECT count(*)
   FROM t"` exits 0 whether the answer is 4,000 or 0, so a restore of an empty
   database — which is the shape a broken restore produces — passes. This is why
   `--table` is **required** (exit 2 without it) and why the check is a script.
-- **the refusals.** caf re-implements none of them; see §3.2.
+- **the refusals.** cafe re-implements none of them; see §3.2.
 
-**caf does not shell out to the script**, and that is a measured decision rather than
+**cafe does not shell out to the script**, and that is a measured decision rather than
 a preference:
 
 1. The script reaches the accessory with `kamal accessory exec --interactive`, and
    `--interactive` makes Kamal build a literal `ssh … -t user@host -p port 'docker
    exec -it …'` and hand it to the **system** ssh. `docker exec -it` needs a pty on
-   both ends; caf runs commands with a pipe, so the inner exec fails and the drill
+   both ends; cafe runs commands with a pipe, so the inner exec fails and the drill
    dies with a transport error that says nothing about backups.
 2. The system ssh resolves `~` from the passwd database rather than from `$HOME`, so
    it does not read a scratch `known_hosts` and stops on an interactive host-key
    prompt — a hang, in a pipeline with nobody to answer it.
 
-So caf invokes the same gem command without `--interactive` and keeps the two things
+So cafe invokes the same gem command without `--interactive` and keeps the two things
 the script adds.
 
 ---
@@ -465,7 +465,7 @@ would hang.
 
 | # | defect | why it mattered | where it is fixed |
 |---|---|---|---|
-| 1 | the retry was conditioned on a second reading of the lock, which the cycle finishes before caf can take | the command gave up on a snapshot the accessory had taken for itself — a real failure of the live tier | `run.go`, `script.go` |
+| 1 | the retry was conditioned on a second reading of the lock, which the cycle finishes before cafe can take | the command gave up on a snapshot the accessory had taken for itself — a real failure of the live tier | `run.go`, `script.go` |
 | 2 | `TestACancelledContextStopsTheCycleBeforeItBoots` skipped itself, because the fake runner ignored its context | a test that skips for "this machine cannot prove it" is a new tier, and the gate's skip floor would have had to absorb it silently | the fake honours `ctx.Err()` now |
 | 3 | the confirmation prompt had no trailing newline | `go test -v` prints `--- PASS:` at the start of a line, so the prompt swallowed one test's result line and `bin/prime` counted 588 passes instead of 589 — a floor above the suite, which is a wall. The interactive reading is the same defect: the shell prompt appeared beside the question | `internal/cli/confirm.go` adds the newline in one place |
 | 4 | two concurrent `restic init` on a fresh local repository leaves it with a damaged key (`config or key f8fa… is damaged: ciphertext verification failed`) | a rehearsal-only race, but it reads as a broken restic | the rig pre-creates the repository before the cycle, with the reason in the comment |
@@ -502,7 +502,7 @@ container runtime, no restic repository and no SSH connection: a refusal, a dry 
 a failed drill, the cleanup after it, a successful cycle, and every branch of the
 retry. The three claims that are not — that a snapshot is real, that a broken pair
 is refused by the *gem* too, and that a production-looking scratch target is refused
-by the gem rather than by caf — are the three live tests, and they are in the tier
+by the gem rather than by cafe — are the three live tests, and they are in the tier
 rather than the gate for the reasons in §1.
 
 ---
@@ -520,7 +520,7 @@ rather than the gate for the reasons in §1.
   and the retention are real and the *object store* is not, so nothing here has
   measured R2's credential handling, its multipart behaviour, or what a wrong bucket
   looks like.
-- **No pty.** caf runs the gem without `--interactive` and `docker exec` without `-t`,
+- **No pty.** cafe runs the gem without `--interactive` and `docker exec` without `-t`,
   because it has no terminal to give; the drill therefore proves nothing about
   `--interactive`, which is the half of kit's script that is unusable here anyway.
 - **No real credentials.** `.kamal/secrets` holds `RESTIC_PASSWORD` and
@@ -532,7 +532,7 @@ rather than the gate for the reasons in §1.
   run and reads the window from `backup.schedule`; a `1d` schedule means a destroyed
   primary loses up to a day of committed transactions, and this packet does not change
   that.
-- **`caf backup` is not in `caf mcp`.** Two of the MCP tools are `caf deploy`; no
+- **`cafe backup` is not in `cafe mcp`.** Two of the MCP tools are `cafe deploy`; no
   backup tool is exposed to an agent here, because a tool that creates and drops a
   database on the production Postgres is a different kind of decision from one that
   deploys an app, and it is not one to make by omission.
@@ -546,8 +546,8 @@ rather than the gate for the reasons in §1.
 
 ```
 $ bin/prime
-caf: 12 packages, 589 top-level passes, 652 subtest passes, 0 failures, 8 skips
-caf: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
+cafe: 12 packages, 589 top-level passes, 652 subtest passes, 0 failures, 8 skips
+cafe: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
 
 $ go vet ./...          # clean
 $ gofmt -l .            # nothing
@@ -579,7 +579,7 @@ accounting. The gate reads them in the body now, in all three, with the reason i
 first one's comment.
 
 One more measured find, because it is the kind that hides: `bin/prime` counts tests
-by counting `^--- PASS:` lines, and `caf backup`'s confirmation prompt had no trailing
+by counting `^--- PASS:` lines, and `cafe backup`'s confirmation prompt had no trailing
 newline — so `go test -v` printed `--- PASS: TestAnUnanswerablePrompt…` *after* the
 prompt text and the gate counted **588** passes against a floor of **589**. A floor
 above the suite is a wall, and it was one prompt string away from being one forever.

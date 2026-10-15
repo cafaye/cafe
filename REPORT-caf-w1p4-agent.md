@@ -1,4 +1,4 @@
-# REPORT — W1-P4 caf: `caf agent register` / `login` / `token …` / `whoami`
+# REPORT — W1-P4 cafe: `cafe agent register` / `login` / `token …` / `whoami`
 
 **State: COMPLETE for this packet, one commit on `agents-first/w1p4`. Gate green:
 `bin/prime` exit 0, 19 packages, 902 top-level passes, 1069 subtest passes,
@@ -21,7 +21,7 @@ internal/agent/endpoint.go  the six routes, the Endpoint seam, HTTPEndpoint,
 internal/agent/names.go     the username grammar, the collision retry, the
                             session name
 internal/agent/store.go     register, login, whoami, and the four token verbs
-internal/cli/agent.go       `caf agent <register|login|whoami|token>`: the
+internal/cli/agent.go       `cafe agent <register|login|whoami|token>`: the
                             command tree, the streams, the refusals
 internal/cli/agent_test.go  the ten tests, including the two the brief names
 ```
@@ -46,15 +46,15 @@ nothing at all. The same shape `internal/box`'s
 CLEAN JSON document (`json.Valid` over the whole buffer, because a machine
 parsing it has no way to skip a prose line somebody helpfully added), that the
 claim URL is on stderr, that the token is in the keyring under
-`caf/agent/<session>`, and that `config.json` on disk carries the agent and not
+`cafe/agent/<session>`, and that `config.json` on disk carries the agent and not
 the token.
 
 ## The decisions, and the two I took against the prior art
 
 **The keyring is the repo's `Keyring` seam, and the default implementation is
-`box.FileRing` — a 0600 file under `~/.config/caf/keyring`, not the macOS login
+`box.FileRing` — a 0600 file under `~/.config/cafe/keyring`, not the macOS login
 keychain.** `internal/box/ring.go` already makes the argument: a subprocess is
-not free, and the one thing caf must never do is fail to store a key because a
+not free, and the one thing cafe must never do is fail to store a key because a
 keychain helper was not on PATH. The brief's "OS keyring" is satisfied by the
 seam whose doc comment names the login keychain as an implementation of it, and
 the swap is one constructor call in `agentDeps.withDefaults()`. What this buys
@@ -62,7 +62,7 @@ is the half the brief actually requires: **no test ever touches a keychain**, so
 none can hang on a keychain prompt. `agentTestRing` is a map, and the ten tests
 run on a bare runner with no keychain, no D-Bus and no network.
 
-**No `--json` flag.** `caf box` has one and it is the shape the brief's prior
+**No `--json` flag.** `cafe box` has one and it is the shape the brief's prior
 art does not have: there, stdout is ALWAYS the document and stderr is ALWAYS the
 sentence. A flag that chooses which stream gets the document is a flag that
 guarantees one of the two is wrong in some script, so there is nothing to
@@ -126,7 +126,7 @@ bin/prime                    19 packages, 902 top-level passes,
                              1069 subtest passes, 0 failures, 8 skips
 go vet ./...                 clean
 gofmt -l .                   empty
-caf lock --verify .          clean (caf.lock regenerated with gate.yml)
+cafe lock --verify .          clean (caf.lock regenerated with gate.yml)
 ```
 
 The eight skips are unchanged: the seven live tests and the re-exec'd child,

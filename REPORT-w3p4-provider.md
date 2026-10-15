@@ -1,8 +1,8 @@
-# W3-P4 handoff — `caf provider connect` / `status`
+# W3-P4 handoff — `cafe provider connect` / `status`
 
 **Status: done, committed, gate green.** `1611924` on `agents-first/w3p4`.
 Gate: 919 top-level passes (floor 892 → 919), 1080 subtest passes (floor 1058 → 1079), 19 packages (floor 17 → 19).
-`bin/prime`, `go vet ./...`, `gofmt -l .` and `caf lock --verify .` all green.
+`bin/prime`, `go vet ./...`, `gofmt -l .` and `cafe lock --verify .` all green.
 
 ## What the packet is for
 
@@ -31,11 +31,11 @@ it, kept what was correct, and fixed three things:
    without a network. This is load-bearing: the never-print test depends
    on the fake conductor capturing the posted payload.
 
-3. **A usage line that lied.** `caf provider connect <provider> --account …`
+3. **A usage line that lied.** `cafe provider connect <provider> --account …`
    cannot parse — Go's `flag` stops at the first non-flag argument, and
-   this repo's convention (`caf new --template app acme`,
-   `caf init -dir x -name y`) is flags-first. Changed the usage to
-   `caf provider connect --account <id> [--credential <secret> | stdin]
+   this repo's convention (`cafe new --template app acme`,
+   `cafe init -dir x -name y`) is flags-first. Changed the usage to
+   `cafe provider connect --account <id> [--credential <secret> | stdin]
    [--config key=value]… <provider>` and the tests to match.
 
 I also added `provider` to `workingCommands` (stub_test.go), to
@@ -62,7 +62,7 @@ dependencies" count is unchanged.
   list and a pipe is not.
 - Refusals, each asserting the conductor count where the count is the
   proof: unknown provider (0 calls, exit 2), unenrolled box (0 calls,
-  exit 1, names `caf box enroll`), missing `--account` (exit 2), bad arity
+  exit 1, names `cafe box enroll`), missing `--account` (exit 2), bad arity
   on both verbs (exit 2), unknown verb (exit 2), conductor failure
   (exit 1, says the credential was NOT posted in plaintext).
 - Status: connected (envelopes not echoed, in any encoding), not-connected
@@ -97,8 +97,8 @@ over a counting conductor.
 - **A cross-repo tension worth a packet of its own.** Conductor's own
   `EmailProviderConnection.create_sealed!` seals with RSA-OAEP to
   `installation.public_key` — which requires the box to have reported an
-  **RSA** public key. caf's box reports an **ed25519** one. So
-  conductor's own sealing path cannot seal to a caf box as things stand;
+  **RSA** public key. cafe's box reports an **ed25519** one. So
+  conductor's own sealing path cannot seal to a cafe box as things stand;
   only the client-side path (this packet) works end-to-end. The box side
   that opens what conductor stores (W2-P7 `boxd`) will need the same
   ed25519→X25519 conversion. This is a W3-P2 follow-up question, not a

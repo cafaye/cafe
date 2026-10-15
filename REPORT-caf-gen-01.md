@@ -1,6 +1,6 @@
-# REPORT — caf-gen-01
+# REPORT — cafe-gen-01
 
-**Branch** `worker/caf-gen-01` · **base** `31e77e6` (caf-33) · **gate** `bin/prime`,
+**Branch** `worker/cafe-gen-01` · **base** `31e77e6` (cafe-33) · **gate** `bin/prime`,
 `go vet ./...`, `gofmt -l .`, and core's own `harness/bin/gate-check`.
 
 **Not pushed.** The manager merges to `master`.
@@ -9,9 +9,9 @@
 
 ## What landed
 
-`caf gen` is no longer a stub. `caf gen telemetry` reads a project's `cafaye.yml`
+`cafe gen` is no longer a stub. `cafe gen telemetry` reads a project's `cafaye.yml`
 and writes three files whose every fact is **read out of six vendored core
-schemas** rather than written down in caf:
+schemas** rather than written down in cafe:
 
 | Path | What it is |
 | --- | --- |
@@ -22,7 +22,7 @@ schemas** rather than written down in caf:
 Six schemas vendored at core commit `98b7eb6`, each sha256-pinned:
 `span-naming`, `traces`, `metrics`, `logs`, `otel-endpoint`, `redaction`.
 
-And caf runs its own generator on its own manifest, so `internal/telemetry/` is
+And cafe runs its own generator on its own manifest, so `internal/telemetry/` is
 **committed generated Go that `go build`, `go vet`, `gofmt -l` and `go test` all
 reach**. That is the part of this packet I would defend hardest; the reasoning
 and the failure that forced it are in "the gate caught a defect in itself" below.
@@ -30,8 +30,8 @@ and the failure that forced it are in "the gate caught a defect in itself" below
 ## Gate
 
 ```
-caf: 14 packages, 688 top-level passes, 865 subtest passes, 0 failures, 8 skips
-caf: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
+cafe: 14 packages, 688 top-level passes, 865 subtest passes, 0 failures, 8 skips
+cafe: live tier: 0 of 7 executed; not enabled, so the 7 live tests skipped rather than ran.
 ```
 
 `gate.yml`'s three floors moved 12→14 packages, 605→688, 654→864. The suite
@@ -56,7 +56,7 @@ the same contract tables as the setup it tests, and on its first run it found
    several services into one stream needs it as a label"). The test now checks the
    documented exception as an exception rather than sweeping it up.
 3. **`SpanName("provider.call")` was accepted, and my test said it should not be.**
-   It should: `caf` + `provider.call` is `caf.provider.call`, which is core's own
+   It should: `cafe` + `provider.call` is `caf.provider.call`, which is core's own
    worked example shape. The test was wrong about the grammar, not the code.
 
 A fourth was found before the code ran at all: **`MaxSpanNameSegments` was 0**,
@@ -161,20 +161,20 @@ the manager reverses whatever is wrong.
 
 ### 1. The target is `telemetry`, and it is the only one
 
-`caf gen`'s signature takes one positional argument and the README called it
-`<target>`. The correction brief is entirely about telemetry, so `caf gen telemetry`
+`cafe gen`'s signature takes one positional argument and the README called it
+`<target>`. The correction brief is entirely about telemetry, so `cafe gen telemetry`
 is the one target and an unknown target is refused by name. Three other things the
-roadmap mentions for `caf gen` are explicitly **not** here, and `internal/gen`'s doc
+roadmap mentions for `cafe gen` are explicitly **not** here, and `internal/gen`'s doc
 says so with the reason for each:
 
-- **No typed SDK client.** core says `caf gen` generates SDKs and that is still
+- **No typed SDK client.** core says `cafe gen` generates SDKs and that is still
   true — but it means transpiling an OpenAPI document, and no manifest field records
   one. `exposes.api` is a path. Emitting a client from a path is the generator
   guessing, and a guess that type-checks is worse than none.
 - **No per-language OTel source for the other five languages.** `kit` ships
   `templates/otel/` with a directory per language already. Two generators of one file
   is the drift core's manifest conventions exist to prevent. Go is implemented
-  because caf is Go and a generator whose only output nothing compiles is a
+  because cafe is Go and a generator whose only output nothing compiles is a
   generator with a bug in it. A `ruby` manifest is refused with a sentence naming
   where the template is.
 - **No redaction *policy* document.** `redaction.schema.json` requires
@@ -191,15 +191,15 @@ Every service name in the fleet is a single lowercase word, so this has never co
 up. core's variable pattern is `^[A-Z][A-Z0-9]*_OTEL_ENDPOINT$` — no dash, no
 underscore in the service part — and a manifest is allowed `name: my-service`.
 
-There are two things a generator can do. Refusing is worse: `caf gen telemetry`
-failing on a manifest `caf contract lint` calls OK is a tool contradicting another
+There are two things a generator can do. Refusing is worse: `cafe gen telemetry`
+failing on a manifest `cafe contract lint` calls OK is a tool contradicting another
 tool about a legal document. So the dash is dropped, `my-service` becomes
 `MYSERVICE_OTEL_ENDPOINT`, and the collision it risks — `my-service` and `myservice`
 sharing a variable — is written into both emitted files rather than left for somebody
 to find. The derived name is then checked against core's own pattern.
 
 `TestAVariableCoreWouldRefuseIsRefusedRatherThanInventedAround` records the
-finding that makes this interesting: through `caf gen` the guard is **unreachable**,
+finding that makes this interesting: through `cafe gen` the guard is **unreachable**,
 because core's manifest schema already constrains `name` to
 `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` and upper-casing that with dashes removed always
 matches. The manifest's name pattern is what guarantees the variable is legal. The
@@ -285,7 +285,7 @@ script, no directory nobody runs.
 
 Its failure message names **both** causes, because they look identical from inside
 the generator: *core moved* (a refresh procedure, legitimate, `-update` after reading
-the changelog) and *caf's generator moved without the file being regenerated*. A
+the changelog) and *cafe's generator moved without the file being regenerated*. A
 report that printed only the differing bytes would leave the classification to
 whoever is reading the CI log at midnight.
 
@@ -293,10 +293,10 @@ whoever is reading the CI log at midnight.
 
 ## Things I did not do
 
-- **caf has no telemetry.** `internal/telemetry/` is wired to nothing, imports no
-  OTel SDK, and `caf` exports no signal. It exists so the generator has a first
+- **cafe has no telemetry.** `internal/telemetry/` is wired to nothing, imports no
+  OTel SDK, and `cafe` exports no signal. It exists so the generator has a first
   consumer whose compiler and test runner are the ordinary gate. It is the first
-  thing to delete when caf has a real OTel setup.
+  thing to delete when cafe has a real OTel setup.
 - **The emitted setup is the contract, not the SDK wiring.** It is stdlib-only, and
   its header names the `go get` lines rather than importing them. A generator cannot
   write a file that pulls a dependency into a service, because it cannot know which
@@ -304,7 +304,7 @@ whoever is reading the CI log at midnight.
 - **`probes.schema.json` and the three `slo*` schemas are not vendored.** Emitting a
   `readyz` that checked nothing is the failure the probes schema exists to prevent,
   and an SLO budget is a decision a person makes. Neither is derivable.
-- **`caf init` and `caf new` are still stubs.** Not this packet.
+- **`cafe init` and `cafe new` are still stubs.** Not this packet.
 
 ## For the reviewer
 
@@ -312,12 +312,12 @@ whoever is reading the CI log at midnight.
    SDK is in `internal/gen/doc.go`. If the manager wants SDK generation in this
    packet, that is a different and much larger piece of work and it needs a manifest
    field.
-2. **Is committing `internal/telemetry/` to caf right?** It is 50KB of generated Go
+2. **Is committing `internal/telemetry/` to cafe right?** It is 50KB of generated Go
    for a service that has no telemetry. The alternative — `testdata/`, where nothing
    compiles — was measured and it broke the gate's own floor.
-3. **`caf gen telemetry` takes no path argument.** It reads the current directory, as
-   `caf dev` does. That is a deliberate match to the existing convention and it makes
+3. **`cafe gen telemetry` takes no path argument.** It reads the current directory, as
+   `cafe dev` does. That is a deliberate match to the existing convention and it makes
    the command harder to script against a directory that is not the working one.
 4. **The endpoint variable's dash handling.** `my-service` → `MYSERVICE_OTEL_ENDPOINT`,
    with the collision written into the generated files. The alternative is refusing,
-   which contradicts `caf contract lint`.
+   which contradicts `cafe contract lint`.
