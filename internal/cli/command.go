@@ -112,6 +112,7 @@ func parseArgs(fs *flag.FlagSet, args []string, interspersed bool) ([]string, er
 // Commands returns every subcommand, in the order `cafe help` lists them.
 func Commands() []*Command {
 	return []*Command{
+		newAddCommand(addDeps{}),
 		newAgentCommand(agentDeps{}),
 		newBackupCommand(backupDeps{}),
 		newBoxCommand(boxDeps{}),
@@ -127,6 +128,7 @@ func Commands() []*Command {
 		newGenCommand(),
 		newInitCommand(),
 		newLockCommand(),
+		newLoginCommand(loginDeps{}),
 		newMCPCommand(),
 		newNewCommand(),
 		newProviderCommand(providerDeps{}),

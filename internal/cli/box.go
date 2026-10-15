@@ -153,6 +153,7 @@ func boxVerbs(deps boxDeps) []boxVerb {
 		{name: "apply", cmd: newBoxApplyCommand(deps)},
 		{name: "deploy", cmd: newBoxDeployCommand(deps)},
 		{name: "enroll", cmd: newBoxEnrollCommand(deps)},
+		{name: "init", cmd: newBoxInitCommand()},
 		{name: "logs", cmd: newBoxLogsCommand(deps)},
 		{name: "plan", cmd: newBoxPlanCommand(deps)},
 		{name: "setup", cmd: newBoxSetupCommand(deps.setup)},
