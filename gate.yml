@@ -108,7 +108,7 @@ gate:
       # moves is visible in the command's output and in the diff, and a floor
       # that moves DOWN still needs a human to have run the writer and read it.
       # internal/gate holds the argument in full.
-      minimum: 1467
+      minimum: 1478
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # How many subtests RAN, by the same derivation and the same writer. It is

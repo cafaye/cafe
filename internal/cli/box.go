@@ -70,6 +70,10 @@ type boxDeps struct {
 	// secret never reaches argv, so it arrives on a stream, and a stream the
 	// test cannot replace is a value the test cannot prove stayed off argv.
 	stdin io.Reader
+	// mint is `cafe box mint`'s deps: the human session and the box endpoint.
+	// It is separate because the human token lives under the config dir's
+	// keyring and the box key under the box dir's — two subjects, two stores.
+	mint mintDeps
 }
 
 // defaultConfigDir is the config directory an AGENT's non-secrets live in. It
@@ -181,12 +185,17 @@ type boxVerb struct {
 // §4, "what box ships for this phase"), and a reader scanning the list should
 // see the lifecycle verbs together and the deploy verbs together.
 func boxVerbs(deps boxDeps) []boxVerb {
+	mint := deps.mint
+	if mint.boxURL == "" {
+		mint.boxURL = deps.url
+	}
 	return append([]boxVerb{
 		{name: "apply", cmd: newBoxApplyCommand(deps)},
 		{name: "deploy", cmd: newBoxDeployCommand(deps)},
 		{name: "enroll", cmd: newBoxEnrollCommand(deps)},
 		{name: "init", cmd: newBoxInitCommand()},
 		{name: "logs", cmd: newBoxLogsCommand(deps)},
+		{name: "mint", cmd: newBoxMintCommand(mint)},
 		{name: "plan", cmd: newBoxPlanCommand(deps)},
 		{name: "setup", cmd: newBoxSetupCommand(deps.setup)},
 		{name: "wipe", cmd: newBoxWipeCommand(deps.wipe)},
