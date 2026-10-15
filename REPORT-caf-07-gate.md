@@ -1,4 +1,4 @@
-# REPORT-cafe-07-gate — cafe declares its gate
+# REPORT-caf-07-gate — cafe declares its gate
 
 `worker/cafe-07-gate` · closes debt entry **D2** · branch `worker/cafe-07-gate`
 on top of `de25e37`.

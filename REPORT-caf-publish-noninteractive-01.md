@@ -2,7 +2,7 @@
 
 Packet: R5, `cafe publish` non-interactive flip.
 Branch: `worker/cafe-noninteractive` (base `7da4191`, the W11 publish merge).
-Base report: `REPORT-cafe-publish-01.md` — this packet supersedes its
+Base report: `REPORT-caf-publish-01.md` — this packet supersedes its
 agent-first contract paragraph, not its wire surface.
 
 ## The ruling, verbatim
@@ -53,7 +53,7 @@ cafe publish --yes <project>      # identical to the default (accepted no-op)
 | default run, no flags | refuses without a TTY (exit 1) | **publishes the three writes in order** (exit 0) |
 | `--yes` | the escape hatch that authorizes the writes | accepted no-op; publishes exactly what the default publishes |
 | `--dry-run` / `--dry-run --json` | proposal, zero calls, exit 0 | stands, unchanged (stderr now says "Run it without --dry-run to publish") |
-| `--json` report, 409 tolerance, 401, invalid manifest, `--tag`, `--kind` | as in REPORT-cafe-publish-01.md | stand, unchanged |
+| `--json` report, 409 tolerance, 401, invalid manifest, `--tag`, `--kind` | as in REPORT-caf-publish-01.md | stand, unchanged |
 
 The two old tests (`TestNoYesAndADeclinedConfirmationWritesNothing`,
 `TestNoYesAndNoTerminalRefuses`) are deleted and replaced by

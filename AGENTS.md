@@ -960,7 +960,7 @@ way round.
 `bin/prime --live` sets `CAF_LIVE_DOCKER=1`, `CAF_LIVE_RYUK=1` and
 `CAF_LIVE_KAMAL=1` and runs the seven live tests instead of skipping them. It is a
 second mode and not the declared gate, for three measured reasons, all in
-`REPORT-cafe-07-gate.md`:
+`REPORT-caf-07-gate.md`:
 
 1. `TestTheSilentCollisionIsReal` asserts a blind spot of a **particular**
    container runtime. On a runtime that arbitrates properly its subtests

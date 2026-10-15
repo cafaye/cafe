@@ -179,7 +179,7 @@ lines rather than by `tail`.
 
 **(c) The probe measured its own report.** Caught by the final reproducibility
 check, and the worst of the three because it was silent. Writing
-`REPORT-cafe-adopt-isolation-01.md` at the repository root added ten mentions of
+`REPORT-caf-adopt-isolation-01.md` at the repository root added ten mentions of
 `account_id` in a document *about this measurement*, and cafe's tally moved from
 13 TELEMETRY / 1 OTHER to 14 / 11. Every number still looked plausible and nothing
 went red. The first draft excluded `reports/cafe-adopt-isolation-01/` and forgot

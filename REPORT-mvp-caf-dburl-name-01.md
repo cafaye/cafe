@@ -380,7 +380,7 @@ gap is a stated boundary rather than an unknown.
       1-in-5 measurement.
 - [x] Both "fixed" claims carry before/after: §2 for the defect, §4 for the two
       mutations, each with the mutation verified present in the file by text.
-- [x] `REPORT-mvp-cafe-dburl-name-01.md` exists and is committed.
+- [x] `REPORT-mvp-caf-dburl-name-01.md` exists and is committed.
 - [x] Findings outside the packet are named in §7.
 - [x] No container, image or volume left running. Nothing in this packet starts
       one; `cafe dev --dry-run` renders and exits, and the two demo projects live

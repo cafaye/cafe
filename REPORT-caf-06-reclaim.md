@@ -1,4 +1,4 @@
-# REPORT-cafe-06-reclaim — the reclamation ledger
+# REPORT-caf-06-reclaim — the reclamation ledger
 
 > **Read `kit/REPORT-kit-06-reclaim.md` first.** This packet inherited its
 > research and did not repeat it. kit measured the two mechanisms, checked the

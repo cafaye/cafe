@@ -1,4 +1,4 @@
-# REPORT-cafe-09-mcpwire — the 250ms assertion was asserting about the machine
+# REPORT-caf-09-mcpwire — the 250ms assertion was asserting about the machine
 
 Branch `worker/cafe-09-mcpwire`. **Not pushed.** `gate.yml` and `bin/prime` are
 untouched; cafe-07 owns both and §6 below says what it has to change.
@@ -139,7 +139,7 @@ three-way `select` exists to prevent.
 
 ## 5. §6.2 — the same defect in `internal/ryuk`, and it was in scope
 
-I read §6 of `REPORT-cafe-07-gate.md` as instructed. **§6.2 is the same wall-clock
+I read §6 of `REPORT-caf-07-gate.md` as instructed. **§6.2 is the same wall-clock
 defect and is fixed here.** §6.1 (a dropped field) and §6.3 (an assertion over
 the whole machine) are not wall-clock defects and are left alone — §6.1 belongs
 to whatever packet takes `internal/ryuk` next, which the report already

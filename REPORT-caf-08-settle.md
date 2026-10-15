@@ -1,4 +1,4 @@
-# REPORT-cafe-08-settle — the settle window, and why it was deleted
+# REPORT-caf-08-settle — the settle window, and why it was deleted
 
 > **The choice was deletion, and it was not a close call.** The brief offered two
 > honest end states. "Make it real" turned out to be impossible against

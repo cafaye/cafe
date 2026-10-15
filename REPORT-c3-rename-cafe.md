@@ -66,14 +66,14 @@ record of an earlier rename in the same fleet.
 Counts: `REPORT-w3p4-provider.md` 21, `REPORT-w2p7-boxd.md` 10,
 `REPORT-w3-observe.md` 8, `REPORT-ops-p19-remote-deploy.md` 8,
 `REPORT-w2p6-box.md` 4, `REPORT-w5p3-remote-mcp.md` 3,
-`REPORT-w3-observe-02.md` 3, `REPORT-cafe-publish-01.md` 2,
-`REPORT-cafe-pantry-rename-01.md` 2, `REPORT-cafe-owner-addressing-01.md` 2,
+`REPORT-w3-observe-02.md` 3, `REPORT-caf-publish-01.md` 2,
+`REPORT-caf-pantry-rename-01.md` 2, `REPORT-caf-owner-addressing-01.md` 2,
 `REPORT-w5p4-run.md` 1, `REPORT-repair-seams-caf.md` 1,
-`REPORT-cafe-w1p4-agent.md` 1.
+`REPORT-caf-w1p4-agent.md` 1.
 
 Two of these are load-bearing for the same reason this packet exists, and are
 worth naming: `REPORT-w3-observe.md`/`REPORT-w3-observe-02.md` are the record of
-the observe stream's design, and `REPORT-cafe-pantry-rename-01.md` records a
+the observe stream's design, and `REPORT-caf-pantry-rename-01.md` records a
 sibling rename — pantry's `Service` schema renamed with its fields untouched.
 Both describe the past and are consulted to understand a decision, not to run
 one.

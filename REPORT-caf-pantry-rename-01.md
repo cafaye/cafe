@@ -141,8 +141,8 @@ sees the same suite.
 The narrow command from the brief (`./internal/resolve/... ./internal/cli/...`)
 was run first and then the full gate; both exit 0. The full gate was run
 backgrounded per the quarterly contract, keyed to
-`/tmp/gate-cafe-rename-prime.log`, with the exit code captured into
-`/tmp/gate-cafe-rename-prime2.exit`.
+`/tmp/gate-caf-rename-prime.log`, with the exit code captured into
+`/tmp/gate-caf-rename-prime2.exit`.
 
 ## Assumptions recorded (there are two)
 

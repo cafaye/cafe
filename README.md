@@ -68,7 +68,7 @@ Two things about it that are worth knowing before you read the file.
 `internal/deploy/live_test.go`, which need a container runtime and are otherwise
 skipped — and it refuses to report success if they did not run. The deploy one
 also needs `kamal` on `PATH`, and it really deploys; see
-[`REPORT-cafe-21-deploy.md`](REPORT-cafe-21-deploy.md) and read that file's header
+[`REPORT-caf-21-deploy.md`](REPORT-caf-21-deploy.md) and read that file's header
 before running it on a machine that is not yours. And the declaration's
 `live-tier` proof exists so that a run in which they *were* skipped cannot read as
 a run in which they passed.
@@ -517,7 +517,7 @@ accessory's container (`<service>-<accessory>`, e.g. `identity-postgres`) rather
 than a host address, which is the one change this costs per service.
 
 Both halves of that are measured, not argued, and
-[`REPORT-cafe-21-deploy.md`](REPORT-cafe-21-deploy.md) §4 has the output: a boot
+[`REPORT-caf-21-deploy.md`](REPORT-caf-21-deploy.md) §4 has the output: a boot
 with `port: 5432` fails on `Bind for 0.0.0.0:5432`, a loopback publish is
 invisible to a container on the `kamal` network, and a deployed app reaches its
 database **by name** with the accessory publishing nothing at all.
@@ -573,7 +573,7 @@ A real deployment, to a real Docker daemon reached over real SSH, with a real
 `.kamal/secrets` arriving in the serving container. It is
 `internal/deploy/live_test.go`, it is in the **live** tier rather than the gate
 (it needs `kamal` and a container runtime), and
-[`REPORT-cafe-21-deploy.md`](REPORT-cafe-21-deploy.md) has the output — including
+[`REPORT-caf-21-deploy.md`](REPORT-caf-21-deploy.md) has the output — including
 the release that never goes healthy being refused while the previous one keeps
 serving. **Read that file's header before running it on a machine that is not
 yours**: it starts an SSH daemon, publishes a port, and uses the global container
@@ -757,7 +757,7 @@ real `ghcr.io/crmne/kamal-backup:0.5.2`, restored into a scratch database with s
 rows asserted — plus the two refusals, one of them the gem's. It is
 `internal/backup/live_test.go`, it is in the **live** tier rather than the gate (it
 needs `kamal` and a container runtime), and
-[`REPORT-cafe-22-backup.md`](REPORT-cafe-22-backup.md) has the output. **Read that
+[`REPORT-caf-22-backup.md`](REPORT-caf-22-backup.md) has the output. **Read that
 file's header before running it on a machine that is not yours**: it starts an SSH
 daemon, publishes a port, boots two containers against the host's Docker socket, and
 creates and drops a database.
