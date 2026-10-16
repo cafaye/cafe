@@ -257,6 +257,11 @@ func TestHTTPPublisherPostsTheIngestForm(t *testing.T) {
 	defer server.Close()
 
 	publisher := HTTPPublisher{BaseURL: server.URL}
+	// A docs ingest names the kind and the content and NOTHING else: press
+	// refuses project/version on any kind that is not pantry, and a docs
+	// ingest is tenant-scoped rather than project-scoped. The Project and
+	// Version below are deliberately set and deliberately not sent — a
+	// client that forwards them is a client that invented a contract.
 	receipt, err := publisher.Publish(context.Background(), "the-token", Ingest{
 		Project: "pages", Version: "v1.0.0", Kind: KindDocs, Content: []byte("tarball"),
 	})
@@ -265,8 +270,8 @@ func TestHTTPPublisherPostsTheIngestForm(t *testing.T) {
 	}
 	for _, tc := range []struct{ name, got, want string }{
 		{"kind", gotKind, "docs"},
-		{"project", gotProject, "pages"},
-		{"version", gotVersion, "v1.0.0"},
+		{"project", gotProject, ""},
+		{"version", gotVersion, ""},
 		{"token", gotToken, "the-token"},
 		{"filename", gotFilename, "docs.tar.gz"},
 	} {
@@ -380,13 +385,56 @@ func TestTheIngestFormCarriesExactlyFourFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Publish: %v", err)
 	}
-	want := []string{"kind", "project", "version", "content"}
-	if strings.Join(fields, ",") != strings.Join(multipartFieldOrder(), ",") {
-		t.Errorf("form fields = %v, want %v in order", fields, want)
+	if strings.Join(fields, ",") != strings.Join(multipartFieldOrder("docs"), ",") {
+		t.Errorf("form fields = %v, want %v in order", fields, multipartFieldOrder("docs"))
 	}
 }
 
-// multipartFieldOrder is the field order Publish writes: kind, project,
-// version, then the content part. It is named here so the case above reads
-// as an assertion about the wire rather than about a slice literal.
-func multipartFieldOrder() []string { return []string{"kind", "project", "version", "content"} }
+func TestThePantryIngestFormCarriesProjectAndVersion(t *testing.T) {
+	// The other half of the contract: a pantry ingest is project- and
+	// version-scoped, and press accepts those fields on it and only on it.
+	var fields []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reader, err := r.MultipartReader()
+		if err != nil {
+			t.Errorf("MultipartReader: %v", err)
+			return
+		}
+		for {
+			part, err := reader.NextPart()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Errorf("read a part: %v", err)
+				return
+			}
+			fields = append(fields, part.FormName())
+			_, _ = io.Copy(io.Discard, part)
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = fmt.Fprint(w, `{"id":"ing_01","kind":"pantry","sha256":"abc","size":0,"state":"ready"}`)
+	}))
+	defer server.Close()
+
+	_, err := HTTPPublisher{BaseURL: server.URL}.Publish(context.Background(), "token", Ingest{
+		Project: "payments", Version: "v1.2.3", Kind: "pantry", Content: []byte("x"),
+	})
+	if err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	if strings.Join(fields, ",") != strings.Join(multipartFieldOrder("pantry"), ",") {
+		t.Errorf("form fields = %v, want %v in order", fields, multipartFieldOrder("pantry"))
+	}
+}
+
+// multipartFieldOrder is the field order Publish writes for a kind: kind,
+// then project and version for pantry only, then the content part. It is
+// named here so the cases above read as assertions about the wire rather
+// than about a slice literal.
+func multipartFieldOrder(kind string) []string {
+	if kind == "pantry" {
+		return []string{"kind", "project", "version", "content"}
+	}
+	return []string{"kind", "content"}
+}

@@ -114,11 +114,17 @@ func (c HTTPPublisher) Publish(ctx context.Context, token string, ingest Ingest)
 	if err := form.WriteField("kind", ingest.Kind); err != nil {
 		return Receipt{}, fmt.Errorf("build the ingest form: %w", err)
 	}
-	if err := form.WriteField("project", ingest.Project); err != nil {
-		return Receipt{}, fmt.Errorf("build the ingest form: %w", err)
-	}
-	if err := form.WriteField("version", ingest.Version); err != nil {
-		return Receipt{}, fmt.Errorf("build the ingest form: %w", err)
+	// project and version belong to a PANTRY ingest only, and press refuses
+	// them on any other kind outright — a docs ingest is tenant-scoped, not
+	// project-scoped, and sending a project it would ignore is a contract
+	// the client invented. Kept for pantry, absent everywhere else.
+	if ingest.Kind == "pantry" {
+		if err := form.WriteField("project", ingest.Project); err != nil {
+			return Receipt{}, fmt.Errorf("build the ingest form: %w", err)
+		}
+		if err := form.WriteField("version", ingest.Version); err != nil {
+			return Receipt{}, fmt.Errorf("build the ingest form: %w", err)
+		}
 	}
 	part, err := form.CreatePart(textproto.MIMEHeader{
 		"Content-Disposition": []string{fmt.Sprintf(`form-data; name="content"; filename="%s.tar.gz"`, ingest.Kind)},
