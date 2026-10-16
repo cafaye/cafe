@@ -3,6 +3,7 @@ package docs
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -154,8 +155,15 @@ func BuildTar(project, kind string) ([]byte, Plan, error) {
 	if err != nil {
 		return nil, Plan{}, err
 	}
+	// Gzipped, because that is what the name says and what press requires:
+	// the part is `application/gzip`, the object press files ends .tar.gz,
+	// and its extractor refuses anything without the gzip magic. A raw tar
+	// under a .tar.gz name is a tarball that passes every local test and
+	// fails at the far end with "invalid header" — which is exactly how
+	// this was found.
 	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
 	for _, rel := range files {
 		data, err := os.ReadFile(filepath.Join(project, rel))
 		if err != nil {
@@ -175,6 +183,9 @@ func BuildTar(project, kind string) ([]byte, Plan, error) {
 	}
 	if err := tw.Close(); err != nil {
 		return nil, Plan{}, fmt.Errorf("finish the content tarball: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return nil, Plan{}, fmt.Errorf("finish the compressed tarball: %w", err)
 	}
 	sum := sha256.Sum256(buf.Bytes())
 	plan := Plan{
@@ -281,7 +292,14 @@ func isPage(path string) bool {
 // files and nothing else" a fact about the bytes rather than about the walk.
 func ListTar(tarball []byte) ([]string, error) {
 	var names []string
-	tr := tar.NewReader(bytes.NewReader(tarball))
+	// The same read path press takes: gunzip, then tar. A lister that
+	// skipped the gzip would pass on a tarball press refuses.
+	gz, err := gzip.NewReader(bytes.NewReader(tarball))
+	if err != nil {
+		return nil, fmt.Errorf("read the content tarball: %w", err)
+	}
+	defer gz.Close()
+	tr := tar.NewReader(gz)
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
