@@ -15,9 +15,69 @@ import (
 
 // docsCallerToken is a string no real credential looks like and every fake
 // in this file answers with it. The assertions are that it reaches the
-// ingest and reaches NEITHER stream — the same courier rule the pantry
+// exchange and reaches NEITHER stream — the same courier rule the pantry
 // publisher's tests hold.
 var docsCallerToken = "cafaye_" + strings.Repeat("d", 40)
+
+// docsExchangedToken is what the identity fake mints for press: a JWS-shaped
+// string distinct from the session, so a test can tell which credential
+// reached press. It is asserted to reach the ingest AND neither stream.
+var docsExchangedToken = "eyJhbGciOiJSUzI1NiJ9." + strings.Repeat("e", 40) + ".sig"
+
+// fakeDocsIdentity is identity's half of the flow, recorded: the two calls
+// made before press — the accounts list and the session-to-token exchange.
+// Each answer and each failure is plantable, which is what makes the whole
+// decision table (one account, many, a foreign id, a dead session) testable
+// without a network.
+type fakeDocsIdentity struct {
+	accounts    []docs.Account
+	accountsErr error
+	exchange    docs.Exchange
+	exchangeErr error
+
+	accountsCalls int
+	exchangeCalls int
+	gotSession    string
+	gotAccount    string
+	gotAudience   string
+}
+
+func (f *fakeDocsIdentity) Accounts(_ context.Context, session string) ([]docs.Account, error) {
+	f.accountsCalls++
+	f.gotSession = session
+	if f.accountsErr != nil {
+		return nil, f.accountsErr
+	}
+	return f.accounts, nil
+}
+
+func (f *fakeDocsIdentity) ExchangeToken(_ context.Context, session, accountID, audience string) (docs.Exchange, error) {
+	f.exchangeCalls++
+	f.gotSession = session
+	f.gotAccount = accountID
+	f.gotAudience = audience
+	if f.exchangeErr != nil {
+		return docs.Exchange{}, f.exchangeErr
+	}
+	return f.exchange, nil
+}
+
+var _ docs.Identity = (*fakeDocsIdentity)(nil)
+
+// docsOneAccount is the fresh-signup case: a session that belongs to exactly
+// one account, and it is personal.
+func docsOneAccount() []docs.Account {
+	return []docs.Account{{ID: "acct_0001", Name: "Noel", Slug: "noel", Personal: true, Role: "owner"}}
+}
+
+// fakeDocsIdentityFor is the default identity fake: one personal account and
+// a minted token.
+func fakeDocsIdentityFor() *fakeDocsIdentity {
+	return &fakeDocsIdentity{
+		accounts: docsOneAccount(),
+		exchange: docs.Exchange{Token: docsExchangedToken},
+	}
+}
 
 // A manifest for a public repository: the pages ship as docs. The shape is
 // the schema-valid minimum — name, language, core, repository, owner —
@@ -104,19 +164,30 @@ Hello.
 `
 
 // docsTestEnv builds the deps one command needs: a directory it owns, an
-// in-memory keyring holding the caller's token under a registered session,
-// a publisher that answers without a network and a version derivation that
-// needs no git repository. Nothing here touches the machine's config
-// directory, its keychain, the network, a repository — or a terminal: since
-// the 2026-10-11 ruling there is no confirmation to inject, and a test that
-// could answer a prompt would be a test for a prompt that must not exist.
+// in-memory keyring holding the caller's session under a registered session,
+// an identity that answers the accounts list and the exchange without a
+// network, a publisher that answers without a network and a version
+// derivation that needs no git repository. Nothing here touches the machine's
+// config directory, its keychain, the network, a repository — or a terminal:
+// since the 2026-10-11 ruling there is no confirmation to inject, and a test
+// that could answer a prompt would be a test for a prompt that must not
+// exist.
 func docsTestEnv(t *testing.T, pub *fakeDocsPublisher) docsDeps {
+	t.Helper()
+	deps := docsTestEnvWithIdentity(t, pub, fakeDocsIdentityFor())
+	return deps
+}
+
+// docsTestEnvWithIdentity is docsTestEnv with the identity fake supplied, for
+// the cases that plant a different accounts list or a different answer.
+func docsTestEnvWithIdentity(t *testing.T, pub *fakeDocsPublisher, identity *fakeDocsIdentity) docsDeps {
 	t.Helper()
 	dir := t.TempDir()
 	ring := newAgentTestRing()
 	deps := docsDeps{
 		dir:       dir,
 		ring:      ring,
+		identity:  identity,
 		publisher: pub,
 		tags:      func(string) (string, error) { return "v1.0.0", nil },
 	}
@@ -131,6 +202,21 @@ func docsTestEnv(t *testing.T, pub *fakeDocsPublisher) docsDeps {
 		t.Fatalf("put the token in the ring: %v", err)
 	}
 	return deps
+}
+
+// docsTestEnvWithoutSession is docsTestEnv with no registered session: the
+// keyring is empty and the config holds nothing, which is the machine that
+// has never logged in.
+func docsTestEnvWithoutSession(t *testing.T, pub *fakeDocsPublisher, identity *fakeDocsIdentity) docsDeps {
+	t.Helper()
+	dir := t.TempDir()
+	return docsDeps{
+		dir:       dir,
+		ring:      newAgentTestRing(),
+		identity:  identity,
+		publisher: pub,
+		tags:      func(string) (string, error) { return "v1.0.0", nil },
+	}
 }
 
 // runDocsPublishCLI drives ONE cafe docs publish invocation against injected
@@ -168,10 +254,12 @@ func decodeDocsReceipt(t *testing.T, stdout string) docs.Receipt {
 
 // A docs repository ships as docs: run in a public repository and the kind
 // is docs, the project is the manifest's name, the version is the derived
-// tag, the token is presented, and the receipt is JSON on stdout.
+// tag, the SESSION is exchanged for a press token and THAT token is presented
+// to press, and the receipt is JSON on stdout.
 func TestADocsRepoShipsAsDocs(t *testing.T) {
 	pub := &fakeDocsPublisher{receipt: docs.Receipt{ID: "ing_01", Kind: "docs", SHA256: "abc", Size: 12, State: "ready"}}
-	deps := docsTestEnv(t, pub)
+	identity := fakeDocsIdentityFor()
+	deps := docsTestEnvWithIdentity(t, pub, identity)
 	project := docsTestProject(t, docsPublicManifest, map[string]string{
 		"src/content/docs/index.md": docsTestPage,
 	})
@@ -194,8 +282,25 @@ func TestADocsRepoShipsAsDocs(t *testing.T) {
 	if ingest.Version != "v1.0.0" {
 		t.Errorf("version = %q, want the derived tag", ingest.Version)
 	}
-	if pub.token != docsCallerToken {
-		t.Error("the caller's token did not reach the ingest")
+	// The exchange is the whole point: the session goes to identity, and the
+	// token identity mints goes to press. A run that sent the session to press
+	// would pass every other assertion here.
+	if identity.accountsCalls != 1 || identity.exchangeCalls != 1 {
+		t.Errorf("identity calls = %d accounts, %d exchanges; want exactly one each",
+			identity.accountsCalls, identity.exchangeCalls)
+	}
+	if identity.gotSession != docsCallerToken {
+		t.Error("the session was not presented to identity")
+	}
+	if identity.gotAccount != "acct_0001" {
+		t.Errorf("identity was asked to mint for %q, want the session's one account", identity.gotAccount)
+	}
+	if identity.gotAudience != docs.PressAudience {
+		t.Errorf("audience = %q, want %q: the audience is the receiver's, not a preference",
+			identity.gotAudience, docs.PressAudience)
+	}
+	if pub.token != docsExchangedToken {
+		t.Error("the exchanged token did not reach the ingest: press must see the mint, never the session")
 	}
 	receipt := decodeDocsReceipt(t, stdout)
 	if receipt.ID != "ing_01" || receipt.State != "ready" {
@@ -427,9 +532,9 @@ func TestAnotherRefusalNamesTheServer(t *testing.T) {
 	}
 }
 
-// The courier rule, asserted over the whole run: the token reaches the
-// ingest and appears in NEITHER stream. A build that printed it would pass
-// every other assertion in this file.
+// The courier rule, asserted over the whole run: neither the session nor the
+// exchanged token appears in EITHER stream. A build that printed the session
+// or the mint would pass every other assertion in this file.
 func TestDocsTheTokenIsNeverPrinted(t *testing.T) {
 	pub := &fakeDocsPublisher{receipt: docs.Receipt{ID: "ing_01", State: "ready"}}
 	deps := docsTestEnv(t, pub)
@@ -439,8 +544,10 @@ func TestDocsTheTokenIsNeverPrinted(t *testing.T) {
 
 	_, stdout, stderr := runDocsPublishCLI(t, deps, project)
 
-	if strings.Contains(stdout, docsCallerToken) || strings.Contains(stderr, docsCallerToken) {
-		t.Error("the caller's token reached a stream")
+	for _, secret := range []string{docsCallerToken, docsExchangedToken} {
+		if strings.Contains(stdout, secret) || strings.Contains(stderr, secret) {
+			t.Errorf("a credential reached a stream: %s", secret[:8]+"…")
+		}
 	}
 }
 
@@ -506,6 +613,224 @@ func TestDocsNoProjectArgumentIsAUsageError(t *testing.T) {
 	}
 }
 
+// The account decision. A --account flag naming one of several accounts is
+// honored: the session is exchanged for THAT account's id, and the minted
+// token is what reaches press. The choice is never guessed, so the explicit
+// flag is the only way to publish from a session that belongs to more than
+// one account.
+func TestTheAccountFlagSelectsAmongMany(t *testing.T) {
+	pub := &fakeDocsPublisher{receipt: docs.Receipt{ID: "ing_multi", State: "ready"}}
+	identity := &fakeDocsIdentity{
+		accounts: []docs.Account{
+			{ID: "acct_aaaa", Name: "Noel", Slug: "noel", Personal: true, Role: "owner"},
+			{ID: "acct_bbbb", Name: "Acme", Slug: "acme", Role: "admin"},
+		},
+		exchange: docs.Exchange{Token: docsExchangedToken},
+	}
+	deps := docsTestEnvWithIdentity(t, pub, identity)
+	project := docsTestProject(t, docsPublicManifest, map[string]string{
+		"src/content/docs/index.md": docsTestPage,
+	})
+
+	code, _, stderr := runDocsPublishCLI(t, deps, "--account", "acme", project)
+
+	if code != exitSuccess {
+		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
+	}
+	if identity.gotAccount != "acct_bbbb" {
+		t.Errorf("identity minted for %q, want the slug's account id acct_bbbb", identity.gotAccount)
+	}
+	if pub.token != docsExchangedToken {
+		t.Error("the exchanged token did not reach the ingest")
+	}
+}
+
+// An id is accepted just as a slug is: --account names by either, because the
+// caller may have one and not the other.
+func TestTheAccountFlagAcceptsAnID(t *testing.T) {
+	pub := &fakeDocsPublisher{receipt: docs.Receipt{ID: "ing_multi", State: "ready"}}
+	identity := &fakeDocsIdentity{
+		accounts: []docs.Account{
+			{ID: "acct_aaaa", Name: "Noel", Slug: "noel", Personal: true, Role: "owner"},
+			{ID: "acct_bbbb", Name: "Acme", Slug: "acme", Role: "admin"},
+		},
+		exchange: docs.Exchange{Token: docsExchangedToken},
+	}
+	deps := docsTestEnvWithIdentity(t, pub, identity)
+	project := docsTestProject(t, docsPublicManifest, map[string]string{
+		"src/content/docs/index.md": docsTestPage,
+	})
+
+	code, _, stderr := runDocsPublishCLI(t, deps, "--account", "acct_bbbb", project)
+
+	if code != exitSuccess {
+		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
+	}
+	if identity.gotAccount != "acct_bbbb" {
+		t.Errorf("identity minted for %q, want acct_bbbb", identity.gotAccount)
+	}
+}
+
+// A session that belongs to several accounts and names none is refused, and
+// the refusal renders the list so the next invocation is one flag away. The
+// choice between two accounts is a guess about where these pages ship, so
+// nothing is exchanged and press hears nothing.
+func TestAnAmbiguousAccountIsRefusedAndPressHearsNothing(t *testing.T) {
+	pub := &fakeDocsPublisher{}
+	identity := &fakeDocsIdentity{
+		accounts: []docs.Account{
+			{ID: "acct_aaaa", Name: "Noel", Slug: "noel", Personal: true, Role: "owner"},
+			{ID: "acct_bbbb", Name: "Acme", Slug: "acme", Role: "admin"},
+		},
+		exchange: docs.Exchange{Token: docsExchangedToken},
+	}
+	deps := docsTestEnvWithIdentity(t, pub, identity)
+	project := docsTestProject(t, docsPublicManifest, map[string]string{
+		"src/content/docs/index.md": docsTestPage,
+	})
+
+	code, _, stderr := runDocsPublishCLI(t, deps, project)
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d", code, exitFailure)
+	}
+	for _, want := range []string{"noel", "acme", "--account"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("the refusal does not name %q\ngot:\n%s", want, stderr)
+		}
+	}
+	if identity.exchangeCalls != 0 {
+		t.Errorf("an ambiguous account still exchanged: %d mints", identity.exchangeCalls)
+	}
+	if pub.calls != 0 {
+		t.Errorf("an ambiguous account reached press: %d calls", pub.calls)
+	}
+}
+
+// A --account naming an account the session is not a member of is refused by
+// identity's own mint (404, indistinguishable from non-existent by design),
+// and cafe surfaces that refusal and adds the list. Press hears nothing: the
+// account was refused before any ingest.
+func TestANonMemberAccountIsRefusedWithIdentitysOwnWords(t *testing.T) {
+	pub := &fakeDocsPublisher{}
+	identity := &fakeDocsIdentity{
+		accounts: docsOneAccount(),
+		exchangeErr: &docs.IdentityError{
+			Status: 404,
+			Code:   "not_found",
+			Detail: "no such account",
+		},
+	}
+	deps := docsTestEnvWithIdentity(t, pub, identity)
+	project := docsTestProject(t, docsPublicManifest, map[string]string{
+		"src/content/docs/index.md": docsTestPage,
+	})
+
+	code, _, stderr := runDocsPublishCLI(t, deps, "--account", "acct_someone_else", project)
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d", code, exitFailure)
+	}
+	if !strings.Contains(stderr, "that account is not one of yours") {
+		t.Errorf("the refusal does not say the account is not the session's\ngot:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "noel") {
+		t.Errorf("the refusal does not render the accounts the session DOES own\ngot:\n%s", stderr)
+	}
+	if pub.calls != 0 {
+		t.Errorf("a refused account reached press: %d calls", pub.calls)
+	}
+}
+
+// A machine with no session is a refusal that names the way out: run cafe
+// login. Nothing is exchanged and press hears nothing — the fake identity and
+// the fake press are both asserted at zero calls.
+func TestAPublishWithNoSessionNamesCafeLogin(t *testing.T) {
+	pub := &fakeDocsPublisher{}
+	identity := fakeDocsIdentityFor()
+	deps := docsTestEnvWithoutSession(t, pub, identity)
+	project := docsTestProject(t, docsPublicManifest, map[string]string{
+		"src/content/docs/index.md": docsTestPage,
+	})
+
+	code, _, stderr := runDocsPublishCLI(t, deps, project)
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d", code, exitFailure)
+	}
+	if !strings.Contains(stderr, "cafe login") {
+		t.Errorf("the refusal does not say to run cafe login\ngot:\n%s", stderr)
+	}
+	if identity.accountsCalls != 0 || identity.exchangeCalls != 0 {
+		t.Errorf("a sessionless run called identity: %d accounts, %d exchanges",
+			identity.accountsCalls, identity.exchangeCalls)
+	}
+	if pub.calls != 0 {
+		t.Errorf("a sessionless run reached press: %d calls", pub.calls)
+	}
+}
+
+// An exchange that fails is a failed publish. The identity refusal is named
+// verbatim, no fallback session token is sent to press, and — the load-bearing
+// assertion — the fake press saw NOTHING.
+func TestAFailedExchangeNeverReachesPress(t *testing.T) {
+	pub := &fakeDocsPublisher{}
+	identity := &fakeDocsIdentity{
+		accounts: docsOneAccount(),
+		exchangeErr: &docs.IdentityError{
+			Status: 401,
+			Code:   "unauthorized",
+			Detail: "the session is no longer valid",
+		},
+	}
+	deps := docsTestEnvWithIdentity(t, pub, identity)
+	project := docsTestProject(t, docsPublicManifest, map[string]string{
+		"src/content/docs/index.md": docsTestPage,
+	})
+
+	code, _, stderr := runDocsPublishCLI(t, deps, project)
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d", code, exitFailure)
+	}
+	if !strings.Contains(stderr, "the session is no longer valid") {
+		t.Errorf("the refusal does not carry identity's own detail\ngot:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "cafe login") {
+		t.Errorf("a dead session does not name the login remedy\ngot:\n%s", stderr)
+	}
+	if pub.calls != 0 {
+		t.Errorf("a failed exchange reached press: %d calls — press must see nothing", pub.calls)
+	}
+}
+
+// A session whose accounts list is empty cannot act anywhere, and the refusal
+// says so rather than minting for an empty id. This is the shape a session
+// that outlived its tenancy answers.
+func TestASessionWithNoAccountsIsRefused(t *testing.T) {
+	pub := &fakeDocsPublisher{}
+	identity := &fakeDocsIdentity{accounts: nil, exchange: docs.Exchange{Token: docsExchangedToken}}
+	deps := docsTestEnvWithIdentity(t, pub, identity)
+	project := docsTestProject(t, docsPublicManifest, map[string]string{
+		"src/content/docs/index.md": docsTestPage,
+	})
+
+	code, _, stderr := runDocsPublishCLI(t, deps, project)
+
+	if code != exitFailure {
+		t.Errorf("exit code = %d, want %d", code, exitFailure)
+	}
+	if !strings.Contains(stderr, "cafe login") {
+		t.Errorf("the refusal does not name the remedy\ngot:\n%s", stderr)
+	}
+	if identity.exchangeCalls != 0 {
+		t.Errorf("an accountless session exchanged: %d mints", identity.exchangeCalls)
+	}
+	if pub.calls != 0 {
+		t.Errorf("an accountless session reached press: %d calls", pub.calls)
+	}
+}
+
 // The group: bare `cafe docs` is a question, not a mistake — it prints the
 // verbs and succeeds. An unknown verb is a usage error that names the one
 // that exists.
@@ -568,7 +893,7 @@ func TestDocsPublishHelpRenders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("--help: %v", err)
 	}
-	for _, want := range []string{"cafe docs publish", "--dry-run", "--visibility", "--version", "--press"} {
+	for _, want := range []string{"cafe docs publish", "--dry-run", "--visibility", "--version", "--press", "--account"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("help does not name %q\ngot:\n%s", want, out.String())
 		}
