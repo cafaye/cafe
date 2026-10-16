@@ -99,7 +99,6 @@ var boxInitRequiredWant = []string{
 	"KIT_SUBSTRATE_SMTP_HOST",
 	"KIT_SUBSTRATE_SMTP_USERNAME",
 	"KIT_SUBSTRATE_SMTP_PASSWORD",
-	"KIT_SUBSTRATE_COURIER_INBOUND_RESEND_SECRET",
 }
 
 // The required set the command emits is the set above — no more, no fewer. This
@@ -214,15 +213,22 @@ func TestBoxInitExamplesCarryNoSecret(t *testing.T) {
 			t.Errorf("box init printed %s: %q", s.name, loc)
 		}
 	}
-	// And the two secret values are explicitly placeholders, not fake values.
-	for _, name := range []string{"KIT_SUBSTRATE_SMTP_PASSWORD", "KIT_SUBSTRATE_COURIER_INBOUND_RESEND_SECRET"} {
-		line := liveExportLine(doc.InstallCommand, name)
+	// And secret values are explicitly placeholders, not fake values.
+	// KIT_SUBSTRATE_SMTP_PASSWORD stays required (live export); the
+	// cloudflare token and the inbound secret are optional (commented) —
+	// the installer reads them only on their branch — but all three must
+	// still be obvious placeholders.
+	for _, name := range []string{"KIT_SUBSTRATE_SMTP_PASSWORD", "KIT_SUBSTRATE_CLOUDFLARE_API_KEY", "KIT_SUBSTRATE_COURIER_INBOUND_RESEND_SECRET"} {
+		line := blockLine(doc.InstallCommand, name)
 		if line == "" {
-			t.Fatalf("no live export for %s", name)
+			t.Fatalf("no line for %s", name)
 		}
 		if !strings.Contains(line, "<") {
 			t.Errorf("%s's example %q is not an obvious placeholder", name, line)
 		}
+	}
+	if live := liveExportLine(doc.InstallCommand, "KIT_SUBSTRATE_SMTP_PASSWORD"); live == "" {
+		t.Fatalf("no live export for KIT_SUBSTRATE_SMTP_PASSWORD")
 	}
 }
 

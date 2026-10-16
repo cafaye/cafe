@@ -153,13 +153,11 @@ var boxInstallInputs = []installInput{
 		Value:   "<your-smtp-password>",
 		Replace: true,
 	},
-	{
-		Name:    "KIT_SUBSTRATE_COURIER_INBOUND_RESEND_SECRET",
-		Kind:    inputRequired,
-		Meaning: "the webhook signing secret from your mail provider's dashboard (Resend: the endpoint's Signing Secret) — a secret",
-		Value:   "<the signing secret from your provider>",
-		Replace: true,
-	},
+	// KIT_SUBSTRATE_COURIER_INBOUND_RESEND_SECRET is required for smtp/postmark
+	// and optional for cloudflare — see install.sh's cloudflare branch. A
+	// Cloudflare Email Sending operator has no webhook dashboard value to copy,
+	// and courier boots without it, so it lives here as optional so the block
+	// does not demand a value a cloudflare-only install cannot provide.
 
 	// --- step 12: identity's mail path and OIDC surface (all optional) ---
 	{
@@ -183,7 +181,27 @@ var boxInstallInputs = []installInput{
 		Value:   "https://app.example.com/sign-in/oidc",
 		Replace: true,
 	},
-
+	{
+		Name:    "KIT_SUBSTRATE_CLOUDFLARE_API_KEY",
+		Kind:    inputOptional,
+		Meaning: "Cloudflare API token with Email Sending:Edit — required when adapter is cloudflare; a secret; mint at dash.cloudflare.com → My Profile → API Tokens",
+		Value:   "<your-cloudflare-api-token>",
+		Replace: true,
+	},
+	{
+		Name:    "KIT_SUBSTRATE_CF_ACCOUNT_ID",
+		Kind:    inputOptional,
+		Meaning: "the Cloudflare account id the token belongs to — required when adapter is cloudflare",
+		Value:   "<your-cloudflare-account-id>",
+		Replace: true,
+	},
+	{
+		Name:    "KIT_SUBSTRATE_COURIER_INBOUND_RESEND_SECRET",
+		Kind:    inputOptional,
+		Meaning: "the webhook signing secret from your mail provider's dashboard (Resend: the endpoint's Signing Secret) — a secret; required for smtp/postmark, optional for cloudflare",
+		Value:   "<the signing secret from your provider>",
+		Replace: true,
+	},
 	// --- the other install shape: a cluster that already exists ---
 	{
 		Name:    "KIT_SUBSTRATE_KUBECONFIG",
@@ -209,7 +227,7 @@ var boxInstallInputs = []installInput{
 	{
 		Name:    "KIT_SUBSTRATE_SMTP_ADAPTER",
 		Kind:    inputDefault,
-		Meaning: "courier's mail adapter (smtp or postmark)",
+		Meaning: "courier's mail adapter (smtp, postmark, or cloudflare — cloudflare recommended)",
 		Default: "smtp",
 	},
 	{
