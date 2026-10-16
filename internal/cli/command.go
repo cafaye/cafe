@@ -121,6 +121,7 @@ func Commands() []*Command {
 		newCveCommand(cveDeps{}),
 		newDeployCommand(deployDeps{}),
 		newDevCommand(defaultDevDeps()),
+		newDocsCommand(docsDeps{}),
 		newDoctorCommand(),
 		newEnvCommand(),
 		newFailureCommand(failureDeps{}),
