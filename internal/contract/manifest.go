@@ -192,6 +192,15 @@ func (m Manifest) DocumentJSON() []byte { return m.documentJSON }
 // RepositoryURL is the SSH remote the service is developed in.
 func (m Manifest) RepositoryURL() string { return m.fields.Repository.URL }
 
+// RepositoryVisibility is `repository.visibility`: public or private. It is
+// the field the docs sync's anti-leak guard reads, and the field `cafe docs
+// publish` infers the ingest kind from — a public repository's pages are
+// public docs, a private one's are private notes. It has its own accessor
+// rather than being pattern-matched out of the document for the reason
+// RepositoryURL does: a caller that parsed the manifest itself would be
+// reading a field the schema owns.
+func (m Manifest) RepositoryVisibility() string { return m.fields.Repository.Visibility }
+
 // DefaultBranch is the git branch the service's repository opens on.
 func (m Manifest) DefaultBranch() string { return m.fields.Repository.DefaultBranch }
 

@@ -298,10 +298,21 @@ var semverTag = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
 // rather than guessing. cafe does not create tags: the tag is the publisher's
 // act, and a tag cafe minted would be a tag the publisher never made.
 func latestSemverTag(dir string) (string, error) {
+	return latestSemverTagIn(dir, "--tag")
+}
+
+// latestSemverTagIn is the derivation with the flag that overrides it named
+// by the caller: `cafe publish` derives a registry tag (--tag) and
+// `cafe docs publish` derives a content version (--version), and a refusal
+// that named the other command's flag would send the reader to the wrong
+// help. The derivation is one function because "the highest semver tag git
+// knows" is one question, and two copies of it is two places to disagree
+// about what a tag is.
+func latestSemverTagIn(dir, flag string) (string, error) {
 	out, err := gitOutput(dir, "tag", "--list", "--sort=-v:refname")
 	if err != nil {
 		return "", fmt.Errorf("read the git tags in %s: %w\n"+
-			"  Pass --tag with the tag to publish — cafe does not create tags", dir, err)
+			"  Pass %s with the version to ship — cafe does not create tags", dir, err, flag)
 	}
 	for _, line := range strings.Split(out, "\n") {
 		tag := strings.TrimSpace(line)
@@ -309,9 +320,9 @@ func latestSemverTag(dir string) (string, error) {
 			return tag, nil
 		}
 	}
-	return "", fmt.Errorf("no semver tag in %s — pass --tag with the tag to publish\n"+
+	return "", fmt.Errorf("no semver tag in %s — pass %s with the version to ship\n"+
 		"  The tag is stored verbatim, leading `v` included: `v1.2.3` and `1.2.3` are two real tags\n"+
-		"  and this registry does not guess that somebody meant the same thing", dir)
+		"  and this registry does not guess that somebody meant the same thing", dir, flag)
 }
 
 // gitOutput runs one git command in a directory and returns its stdout,
