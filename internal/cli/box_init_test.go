@@ -131,7 +131,25 @@ func TestBoxInitEmitsEveryKnownInput(t *testing.T) {
 		if !strings.Contains(stderr, in.Name) {
 			t.Errorf("stderr prose does not name %s", in.Name)
 		}
+		// Every non-default value is marked, so an operator can tell a
+		// placeholder from a working value — the brief's "mark clearly which
+		// are placeholders and which have working defaults".
+		if in.Kind != inputDefault {
+			if line := blockLine(doc.InstallCommand, in.Name); !strings.Contains(line, in.tag()) {
+				t.Errorf("%s's line is not marked %q: %q", in.Name, in.tag(), line)
+			}
+		}
 	}
+}
+
+// blockLine returns the first line of block that names the variable, trimmed.
+func blockLine(block, name string) string {
+	for _, line := range strings.Split(block, "\n") {
+		if strings.Contains(line, name) {
+			return strings.TrimSpace(line)
+		}
+	}
+	return ""
 }
 
 // A name inside a comment is not a value. Every required variable has to appear

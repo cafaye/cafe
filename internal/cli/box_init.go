@@ -75,6 +75,19 @@ type installInput struct {
 	Default string
 }
 
+// tag names how a value is meant to be used, and it is rendered into both the
+// block and the prose so the operator can tell a placeholder from a working value
+// at a glance. Empty for a default, which the section heading already labels.
+func (in installInput) tag() string {
+	if in.Kind == inputDefault {
+		return ""
+	}
+	if in.Replace {
+		return "[replace] "
+	}
+	return "[keep] "
+}
+
 // boxInstallInputs is every operator input the substrate installer reads, in the
 // order a run meets them, so the list is also the order a run is refused in.
 //
@@ -267,12 +280,12 @@ func renderInstallCommand() string {
 
 	b.WriteString("# Required — the installer refuses, one per run, without each of these:\n")
 	for _, in := range inputsOfKind(inputRequired) {
-		fmt.Fprintf(&b, "export %s='%s'   # %s\n", in.Name, in.Value, in.Meaning)
+		fmt.Fprintf(&b, "export %s='%s'   # %s%s\n", in.Name, in.Value, in.tag(), in.Meaning)
 	}
 
 	b.WriteString("# Optional — each may be left unset; set only what you need:\n")
 	for _, in := range inputsOfKind(inputOptional) {
-		fmt.Fprintf(&b, "# export %s='%s'   # %s\n", in.Name, in.Value, in.Meaning)
+		fmt.Fprintf(&b, "# export %s='%s'   # %s%s\n", in.Name, in.Value, in.tag(), in.Meaning)
 	}
 
 	b.WriteString("# Working defaults — do NOT set these unless you are changing the default:\n")
@@ -296,17 +309,17 @@ func renderInstallProse() string {
 
 	b.WriteString("Required inputs — the installer refuses without each one:\n")
 	for _, in := range inputsOfKind(inputRequired) {
-		fmt.Fprintf(&b, "  %s = %s   (%s)\n", in.Name, in.Value, in.Meaning)
+		fmt.Fprintf(&b, "  %s = %s   %s%s\n", in.Name, in.Value, in.tag(), in.Meaning)
 	}
 
 	b.WriteString("\nOptional inputs — leave any of these unset if you do not need it:\n")
 	for _, in := range inputsOfKind(inputOptional) {
-		fmt.Fprintf(&b, "  %s = %s   (%s)\n", in.Name, in.Value, in.Meaning)
+		fmt.Fprintf(&b, "  %s = %s   %s%s\n", in.Name, in.Value, in.tag(), in.Meaning)
 	}
 
 	b.WriteString("\nValues with working defaults — do not set these unless you are changing the default:\n")
 	for _, in := range inputsOfKind(inputDefault) {
-		fmt.Fprintf(&b, "  %s = %s   (%s)\n", in.Name, in.Default, in.Meaning)
+		fmt.Fprintf(&b, "  %s = %s   (working default) %s\n", in.Name, in.Default, in.Meaning)
 	}
 
 	b.WriteString("\nThe complete command, as one block to paste and edit:\n\n")
