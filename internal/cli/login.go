@@ -263,6 +263,14 @@ func newLoginCommand(deps loginDeps) *Command {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe login: store the token in the keyring: %v\n", err)
 			return errReported
 		}
+		// The email is the ring ACCOUNT the session is filed under
+		// (`human/<email>`); without it persisted, a later command knows a
+		// session exists and has no name to ask for. The file holds the
+		// email and never the token.
+		if err := writeHumanSubject(deps.dir, res.Email); err != nil {
+			_, _ = fmt.Fprintf(env.Stderr, "cafe login: record the logged-in subject: %v\n", err)
+			return errReported
+		}
 		sayLogin(env.Stderr, "logged in as %s at %s; token_stored: true (the OS keyring; the token itself is never printed)", res.Email, url)
 		doc := loginDoc{
 			Action:      "logged-in",
@@ -274,4 +282,49 @@ func newLoginCommand(deps loginDeps) *Command {
 		return writeJSONDoc(env.Stdout, doc)
 	}
 	return c
+}
+
+// humanSubjectFile is where the logged-in human's email is recorded: one
+// small JSON file in the config directory. It names the ring entry a later
+// command asks for; it never holds the token itself.
+const humanSubjectFile = "human.json"
+
+type humanSubject struct {
+	Email string `json:"email"`
+}
+
+func writeHumanSubject(dir, email string) error {
+	if dir == "" {
+		var err error
+		if dir, err = defaultConfigDir(); err != nil {
+			return err
+		}
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	body, err := json.Marshal(humanSubject{Email: email})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, humanSubjectFile), append(body, '\n'), 0o600)
+}
+
+// readHumanSubject returns the email a login recorded, or "" when none did.
+func readHumanSubject(dir string) string {
+	if dir == "" {
+		var err error
+		if dir, err = defaultConfigDir(); err != nil {
+			return ""
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(dir, humanSubjectFile))
+	if err != nil {
+		return ""
+	}
+	var s humanSubject
+	if json.Unmarshal(body, &s) != nil {
+		return ""
+	}
+	return s.Email
 }

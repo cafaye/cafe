@@ -297,7 +297,13 @@ func runDocsPublish(project string, opts *docsPublishOptions, deps docsDeps, env
 	// presented to press as a fallback, because press's verifier refuses a
 	// session token by design and a fallback would be this command guessing at
 	// a credential contract it does not own.
-	session := callerToken("cafe docs publish", deps.dir, deps.ring, env)
+	// A human's session first: `cafe login` is the flow this command is for,
+	// and the session it stores is the one the exchange takes. An agent's
+	// session is the fallback for a machine with no human logged in.
+	session := humanSessionToken("cafe docs publish", deps.dir, deps.ring, env)
+	if strings.TrimSpace(session) == "" {
+		session = callerToken("cafe docs publish", deps.dir, deps.ring, env)
+	}
 	if strings.TrimSpace(session) == "" {
 		sayDocs(env.Stderr, "no session token to exchange: run `cafe login` and try again")
 		return errReported

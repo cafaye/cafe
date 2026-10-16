@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // The one interactive thing cafe does, shared by the commands that ask.
@@ -71,6 +73,26 @@ func askOnStdin(command, prompt string) (bool, error) {
 // machine with no token is not a fact to hide. The server's named refusal is
 // the honest answer to a caller with no credential, and the warning says so
 // rather than leaving the reader to infer it from a 401 two steps later.
+// humanSessionToken resolves the session a `cafe login` stored: the ring
+// account is `human/<email>` and the email is recorded at login. It is the
+// credential a service command exchanges for an audience-scoped token.
+func humanSessionToken(command, dir string, ring agent.Keyring, env *Env) string {
+	email := readHumanSubject(dir)
+	if email == "" {
+		return ""
+	}
+	if ring == nil {
+		ring = box.FileRing{Dir: filepath.Join(dir, "keyring")}
+	}
+	token, err := ring.Get(agent.KeyringService, "human/"+strings.ToLower(strings.TrimSpace(email)))
+	if err != nil || strings.TrimSpace(token) == "" {
+		_, _ = fmt.Fprintf(errOrDiscard(env), "%s: no session in the keyring for %s, so the server will answer unauthorized; "+
+			"run `cafe login` again\n", command, email)
+		return ""
+	}
+	return token
+}
+
 func callerToken(command, dir string, ring agent.Keyring, env *Env) string {
 	cfg, err := agent.LoadConfig(dir)
 	if err != nil {
