@@ -44,6 +44,7 @@ internal/reclaim/   the sweep's container-runtime seam, scoped to one project
 internal/resolve/   cafe resolve: the tiered catalog's consumer — a manifest's dependencies through tiers 1/2/3, and the named failures
 internal/publish/   cafe publish: the write half of the same pantry client — the proposal, the three writes, the address a project registered under
 internal/secret/    cafe secret: the box's secret inventory, its three classes, and the rotation path for the rotatable one
+internal/docs/      cafe docs publish: press's ingest client — the kind inferred from the repository, the pages packed, and the session-to-press-token exchange before the ingest
 internal/stack/    the boxed stack: releases on disk, the current pointer, the history, and the flip-back
 internal/ryuk/      the reaper lease client, for testcontainers' Ryuk
 internal/ci/        no code; the tests that keep .github/workflows/ci.yml and bin/prime honest

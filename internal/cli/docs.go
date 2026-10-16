@@ -33,6 +33,10 @@ type docsDeps struct {
 	// ring holds the caller's cafe token. Nil means a file ring under the
 	// config directory, and a test always sets it.
 	ring agent.Keyring
+	// identity is identity's account surface: the accounts list and the
+	// session-to-token exchange. Nil means a real HTTP client, which is why a
+	// test always sets it: the whole point of the seam is the answer.
+	identity docs.Identity
 	// publisher is press's ingest surface. Nil means a real HTTP client,
 	// which is why a test always sets it: the whole point of the seam is the
 	// answer.
@@ -41,9 +45,17 @@ type docsDeps struct {
 	// means the real derivation, which is why a test always sets it: a test
 	// that shells out to git is a test that needs a repository to exist.
 	tags func(dir string) (string, error)
+	// identityURL is identity's origin. Empty means the CAF_IDENTITY_URL
+	// environment variable, the same rule `cafe login` and the agent verbs
+	// hold.
+	identityURL string
 	// pressURL is press's origin. Empty means the CAF_PRESS_URL environment
 	// variable, the same rule resolve holds.
 	pressURL string
+	// account is the --account flag: the id or slug of the account the
+	// publish acts in. Empty means the session's own resolution — one account
+	// is used, several are a refusal that names the list.
+	account string
 }
 
 func (d docsDeps) withDefaults() docsDeps {
@@ -58,6 +70,12 @@ func (d docsDeps) withDefaults() docsDeps {
 		// store, and a second implementation of "put a secret somewhere" is a
 		// second place for the mode bits to be wrong.
 		d.ring = box.FileRing{Dir: filepath.Join(d.dir, "keyring")}
+	}
+	if d.identityURL == "" {
+		d.identityURL = strings.TrimSpace(os.Getenv(identityURLEnv))
+	}
+	if d.identity == nil {
+		d.identity = docs.HTTPIdentity{BaseURL: d.identityURL}
 	}
 	if d.pressURL == "" {
 		d.pressURL = strings.TrimSpace(os.Getenv(docs.PressURLEnv))
@@ -81,6 +99,7 @@ type docsPublishOptions struct {
 	visibility string
 	version    string
 	press      string
+	account    string
 }
 
 // docsPublishLongHelp is the prose under `cafe docs publish`'s usage line.
@@ -104,15 +123,25 @@ is two helps to keep in sync.
   --version      the content version, verbatim; without it the repository's
                  latest semver tag is derived
   --press        press's origin; without it, CAF_PRESS_URL is used
+  --account      the id or slug of the account to publish in; without it the
+                 session's own account is used, and a session that belongs to
+                 several is refused with the list rather than guessed
 
 The content tarball is built from the repository's own tree: the pages under
 src/content/docs/ for docs, the page files at the root plus projects/ for
 notes — markdown and frontmatter only, no build output.
 
+THE SESSION IS EXCHANGED BEFORE PRESS IS CALLED. The caller's stored token is
+identity's session credential, which is user-scoped; press verifies a
+short-lived, account-scoped JWT off identity's JWKS. So cafe resolves the
+account, exchanges the session for a press-scoped token (POST
+/v1/session/tokens), and presents THAT to press. The exchanged token is minted
+per publish, presented for exactly one call, and never printed — the same rule
+the session token holds.
+
 STDOUT IS THE DOCUMENT, STDERR IS THE SENTENCE. The plan and the receipt are
-on stdout; the warnings and the outcome are plain lines on stderr. The
-caller's token is read from the keyring, presented to press, and never
-printed. A 401 names the server's message and says to run cafe login.`
+on stdout; the warnings and the outcome are plain lines on stderr. A 401 names
+the server's message and says to run cafe login.`
 
 // docsVerbs pairs the word a person types with the command that runs it,
 // the way contractVerbs does: the word is what the dispatcher looks up, and
@@ -183,7 +212,7 @@ func newDocsPublishCommand(deps docsDeps) *Command {
 	c := &Command{
 		Name:     "docs publish",
 		Summary:  "ship this repository's pages to press, inferring docs from a public repository and notes from a private one",
-		Usage:    "cafe docs publish [--dry-run] [--yes] [--visibility <public|private>] [--version <v>] [--press <url>] <project>",
+		Usage:    "cafe docs publish [--dry-run] [--yes] [--visibility <public|private>] [--version <v>] [--press <url>] [--account <id-or-slug>] <project>",
 		LongHelp: docsPublishLongHelp,
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.dryRun, "dry-run", false, "print the plan and send nothing")
@@ -191,6 +220,7 @@ func newDocsPublishCommand(deps docsDeps) *Command {
 			fs.StringVar(&opts.visibility, "visibility", "", "override the inference with public or private; without it the manifest decides")
 			fs.StringVar(&opts.version, "version", "", "the content version, verbatim; without it the repository's latest semver tag is derived")
 			fs.StringVar(&opts.press, "press", "", "press's origin; without it, "+docs.PressURLEnv+" is used")
+			fs.StringVar(&opts.account, "account", "", "the id or slug of the account to publish in; without it the session's own account is used, and several are a refusal that names the list")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -216,6 +246,9 @@ func runDocsPublish(project string, opts *docsPublishOptions, deps docsDeps, env
 	if opts.press != "" {
 		deps.pressURL = opts.press
 	}
+	// The account is the flag's, verbatim; the exchange resolves it against
+	// identity's list, and an empty one defers to the session's own choice.
+	deps.account = opts.account
 	deps = deps.withDefaults()
 
 	// The manifest is validated by the contract linter's own gate BEFORE
@@ -257,9 +290,33 @@ func runDocsPublish(project string, opts *docsPublishOptions, deps docsDeps, env
 		return nil
 	}
 
-	token := callerToken("cafe docs publish", deps.dir, deps.ring, env)
+	// The caller's stored token is identity's SESSION credential, which is
+	// user-scoped; press verifies an account-scoped JWT minted for its own
+	// audience. So the session is exchanged for a press token BEFORE press is
+	// called. A failed exchange is a failed publish: the session is never
+	// presented to press as a fallback, because press's verifier refuses a
+	// session token by design and a fallback would be this command guessing at
+	// a credential contract it does not own.
+	session := callerToken("cafe docs publish", deps.dir, deps.ring, env)
+	if strings.TrimSpace(session) == "" {
+		sayDocs(env.Stderr, "no session token to exchange: run `cafe login` and try again")
+		return errReported
+	}
 
-	receipt, err := deps.publisher.Publish(env.Context, token, docs.Ingest{
+	exchanged, err := docs.ExchangeSession(env.Context, deps.identity, session, deps.account)
+	if err != nil {
+		// The exchange names identity's own refusal verbatim. A session
+		// identity no longer accepts is the unauthenticated run, and the
+		// remedy is to log in again — not a stack trace.
+		var identityErr *docs.IdentityError
+		sayDocs(env.Stderr, "%s", err.Error())
+		if errors.As(err, &identityErr) && (identityErr.Status == 401 || identityErr.Status == 403) {
+			sayDocs(env.Stderr, "run `cafe login` and try again")
+		}
+		return errReported
+	}
+
+	receipt, err := deps.publisher.Publish(env.Context, exchanged.Token, docs.Ingest{
 		Project: plan.Project,
 		Version: plan.Version,
 		Kind:    plan.Kind,
