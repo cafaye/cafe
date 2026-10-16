@@ -298,7 +298,10 @@ func ListTar(tarball []byte) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read the content tarball: %w", err)
 	}
-	defer gz.Close()
+	// A Reader's Close reports nothing about the data — every read error
+	// surfaces through tr.Next below — so the error is explicitly ignored
+	// rather than deferred bare, which is what errcheck refuses.
+	defer func() { _ = gz.Close() }()
 	tr := tar.NewReader(gz)
 	for {
 		header, err := tr.Next()
