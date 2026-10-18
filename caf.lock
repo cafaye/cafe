@@ -3,9 +3,9 @@
   "tool": "cafe 0.0.0-dev",
   "hash": "sha256",
   "files": [
-    {"path": "cafaye.yml", "kind": "spec", "sha256": "69f21db40a77f98f02d11709cea3917e5f882fd1c47a37517a7a1a3abd8d11a9"},
+    {"path": "cafaye.yml", "kind": "spec", "sha256": "49c894acd2801103e83f270984c7120c99b35ef6507d38f463103756cf5cc575"},
     {"path": "gate.yml", "kind": "rule-bundle", "sha256": "ad3ff885cebe170db52a5b8633b7766584e11cc12f4615cf2ddf10e393a0160e"},
-    {"path": "internal/contract/schemas/manifest-0.2.json", "kind": "vendored-schema", "sha256": "9f90b3707d39da40b2416ac815ad9127681b65c8d87e5b50879e5f7af69ef0b9"},
+    {"path": "internal/contract/schemas/manifest-0.2.json", "kind": "vendored-schema", "sha256": "1b15bbe09d33149fffaf68390d86e2489bae3199881dd943392f31e7f61004c5"},
     {"path": "internal/contract/schemas/telemetry/logs.schema.json", "kind": "vendored-schema", "sha256": "816cb1066d17bc13cef82d095208bb895b75bb347bb897771bda7890b08f78e6"},
     {"path": "internal/contract/schemas/telemetry/metrics.schema.json", "kind": "vendored-schema", "sha256": "1f816b16b3962a1390d71a482466bf3b33aa67fbcb0023d06ebefb5d3699746a"},
     {"path": "internal/contract/schemas/telemetry/otel-endpoint.schema.json", "kind": "vendored-schema", "sha256": "ddd927d7e5d58e7b5996a81469ff67e14eadb6855bc8fcbb57dfd0d8211e1bf7"},

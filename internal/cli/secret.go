@@ -32,10 +32,18 @@ type secretVerb struct {
 }
 
 func secretVerbs(deps secretDeps) []secretVerb {
-	return []secretVerb{
+	verbs := []secretVerb{
 		{name: "inventory", cmd: newSecretInventoryCommand(deps)},
 		{name: "rotate", cmd: newSecretRotateCommand(deps)},
 	}
+	// Dev-secret verbs (list/get/set) use FileRing, not kubectl. They are
+	// always available — every box has a local keyring.
+	verbs = append(verbs,
+		secretVerb{name: "list", cmd: newSecretListCommand(deps.dev)},
+		secretVerb{name: "get", cmd: newSecretGetCommand(deps.dev)},
+		secretVerb{name: "set", cmd: newSecretSetCommand(deps.dev)},
+	)
+	return verbs
 }
 
 func newSecretCommand(deps secretDeps) *Command {
@@ -145,6 +153,8 @@ type secretDeps struct {
 	// boxID is the box the inventory is of, and it rides along in the document
 	// so a report about one box is never mistaken for one about another.
 	boxID string
+	// dev is the wiring for the dev-secret verbs (list/get/set).
+	dev secretDevDeps
 }
 
 func (d secretDeps) withDefaults(env *Env) secretDeps {

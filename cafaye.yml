@@ -16,6 +16,20 @@ description: The cafaye platform CLI. One binary, one manifest, one set of contr
 # written beside the command, so the image and the port cannot disagree.
 language: go
 
+# Environment variables this service needs at runtime. Secret values never
+# appear here — only names and metadata. cafe dev reads this to provision
+# dev secrets into the keyring and inject them into the stack.
+env:
+  - name: CAF_IDENTITY_URL
+    required: true
+    secret: false
+    default: "http://localhost:8080"
+    description: "Identity service URL for agent authentication."
+  - name: CAF_LEDGER_DIR
+    required: false
+    secret: false
+    description: "Directory for the env-up ledger; defaults to the user state directory."
+
 # The version of the core contract this was written against. `cafe contract
 # resolve` answers whether a given core version is inside it, and service CI
 # pins core to a release that is.

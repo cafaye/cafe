@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,6 +15,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/cafaye/cafe/internal/box"
+	"github.com/cafaye/cafe/internal/contract"
 	"github.com/cafaye/cafe/internal/dev"
 )
 
@@ -168,6 +172,12 @@ func (r devRun) run() error {
 	if err != nil {
 		return fmt.Errorf("cafe dev: %w", err)
 	}
+
+	// Inject dev secrets from the keyring into the process environment so the
+	// compose stack (and the app) can read them without a .env file. Secret
+	// values with dev_default "auto" are generated on first run and stored in
+	// the keyring; non-secret defaults are applied when unset.
+	injectDevSecrets(r.dir, project.Manifest)
 
 	registry, err := r.loadRegistry()
 	if err != nil {
@@ -492,4 +502,42 @@ func ctxOrBackground(env *Env) context.Context {
 		return context.Background()
 	}
 	return env.Context
+}
+
+// injectDevSecrets provisions and injects dev secrets into the process
+// environment. It reads the manifest's env block; for each secret with
+// dev_default "auto" it generates a value on first run and stores it in the
+// keyring. Non-secret defaults are applied when the variable is unset.
+// Nothing is written to a .env file.
+func injectDevSecrets(dir string, m contract.Manifest) {
+	ring := box.FileRing{Dir: filepath.Join(dir, "keyring")}
+	for _, ev := range m.EnvVars() {
+		if os.Getenv(ev.Name) != "" {
+			continue // already set in the environment; don't override
+		}
+		if ev.Secret {
+			if ev.DevDefault == "auto" {
+				// Look up existing; generate if missing.
+				val, err := ring.Get("cafe-dev", ev.Name)
+				if err != nil {
+					// Generate a dev secret (32 hex chars).
+					val = generateDevSecret()
+					_ = ring.Set("cafe-dev", ev.Name, val)
+				}
+				_ = os.Setenv(ev.Name, val)
+			} else if ev.DevDefault != "" {
+				_ = os.Setenv(ev.Name, ev.DevDefault)
+			}
+		} else if ev.Default != "" {
+			_ = os.Setenv(ev.Name, ev.Default)
+		}
+	}
+}
+
+// generateDevSecret returns a random 32-character hex string for dev use.
+func generateDevSecret() string {
+	b := make([]byte, 16)
+	// Use crypto/rand for safety even in dev.
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }

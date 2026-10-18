@@ -1069,3 +1069,6 @@ core publishes a new one:
 
 If a refresh makes a vendored example invalid, core broke backwards
 compatibility. That is a **major** core bump, and the fix belongs in core.
+
+## Secrets
+- No `.env` files with values. Use `cafe secret set/get/list` (dev) and `cafe dev` (injects). See `docs/secrets.md`.

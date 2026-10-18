@@ -32,6 +32,7 @@ type manifestFields struct {
 	Exposes      *exposes     `json:"exposes"`
 	Consumes     []string     `json:"consumes"`
 	Dependencies []dependency `json:"dependencies"`
+	Env          []envVar     `json:"env"`
 	Repository   struct {
 		URL           string `json:"url"`
 		DefaultBranch string `json:"defaultBranch"`
@@ -57,6 +58,27 @@ type dependency struct {
 	Name     string `json:"name"`
 	Version  string `json:"version"`
 	Required *bool  `json:"required"`
+}
+
+// envVar is the decoded form of one entry in `env`.
+type envVar struct {
+	Name        string `json:"name"`
+	Required    *bool  `json:"required"`
+	Secret      bool   `json:"secret"`
+	Default     string `json:"default"`
+	DevDefault  string `json:"dev_default"`
+	Description string `json:"description"`
+}
+
+// EnvVar is one environment variable a service needs at runtime, as a
+// consumer reads it. Required defaults to true.
+type EnvVar struct {
+	Name        string
+	Required    bool
+	Secret      bool
+	Default     string
+	DevDefault  string
+	Description string
 }
 
 // Dependency is one other cafaye service this service builds on, as a consumer
@@ -156,6 +178,31 @@ func (m Manifest) Dependencies() []Dependency {
 		})
 	}
 	return deps
+}
+
+// EnvVars returns the environment variables this service needs at runtime.
+// Required defaults to true, matching the schema's documented default.
+func (m Manifest) EnvVars() []EnvVar {
+	declared := m.fields.Env
+	if len(declared) == 0 {
+		return nil
+	}
+	out := make([]EnvVar, 0, len(declared))
+	for _, e := range declared {
+		required := true
+		if e.Required != nil {
+			required = *e.Required
+		}
+		out = append(out, EnvVar{
+			Name:        e.Name,
+			Required:    required,
+			Secret:      e.Secret,
+			Default:     e.Default,
+			DevDefault:  e.DevDefault,
+			Description: e.Description,
+		})
+	}
+	return out
 }
 
 // ServesHTTP reports whether the manifest points at an OpenAPI document.

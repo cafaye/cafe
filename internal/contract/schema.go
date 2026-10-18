@@ -25,7 +25,7 @@ var manifestSchemaJSON []byte
 // with a core bump attached, never a patch.
 //
 //go:generate sh -c "shasum -a 256 internal/contract/schemas/manifest-0.2.json"
-const manifestSchemaPin = "9f90b3707d39da40b2416ac815ad9127681b65c8d87e5b50879e5f7af69ef0b9"
+const manifestSchemaPin = "1b15bbe09d33149fffaf68390d86e2489bae3199881dd943392f31e7f61004c5"
 
 // The resource name the schema is compiled under. The schema's own $id is an
 // https URL, and nothing may be fetched to resolve it, so the document is

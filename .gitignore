@@ -35,3 +35,7 @@ secret-rotations.json
 .DS_Store
 .idea/
 .vscode/
+
+# Dev secrets (FileRing). Never committed.
+keyring/
+secrets/
