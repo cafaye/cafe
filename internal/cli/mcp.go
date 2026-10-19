@@ -182,6 +182,11 @@ func newMCPServer(env *Env, opts *mcpOptions) *mcp.Server {
 	mcp.Add(server, tools.devPlan())
 	mcp.Add(server, tools.devUp())
 	mcp.Add(server, tools.devDown())
+	mcp.Add(server, tools.errors())
+	mcp.Add(server, tools.errorDetail())
+	mcp.Add(server, tools.errorStatus())
+	mcp.Add(server, tools.loki())
+	mcp.Add(server, tools.metrics())
 	mcp.AddRemote(server, newMCPBoxWorld())
 	return server
 }

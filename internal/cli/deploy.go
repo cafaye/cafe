@@ -227,6 +227,14 @@ func (r deployRun) run() error {
 		Engine:  r.opts.engine,
 		Account: r.opts.account,
 	}, r.out(), r.errOut())
+	if err == nil {
+		ver := r.opts.version
+		if ver == "" {
+			ver = r.service
+		}
+		registerGlitchTipRelease(ver)
+	}
+
 	// A refusal and a failed deploy are told apart by the sentinel, and the
 	// difference is what the exit means to a script. Both exit 1; only one of
 	// them is fixed by editing a file.

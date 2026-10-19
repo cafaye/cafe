@@ -736,6 +736,7 @@ func TestEveryToolNameIsOneCafWouldShip(t *testing.T) {
 		"caf_dev_plan": true, "caf_dev_up": true, "caf_dev_down": true,
 		"caf_health": true, "caf_logs": true, "caf_rollout": true,
 		"caf_status": true, "caf_propose": true, "caf_apply": true,
+		"caf_errors": true, "caf_error": true, "caf_error_status": true, "caf_loki": true, "caf_metrics": true,
 	}
 	got := server.Names()
 	if len(got) != len(want) {
@@ -775,8 +776,8 @@ func TestTheRemoteHalfIsGatedAndTheLocalHalfIsNot(t *testing.T) {
 	if gated != 6 {
 		t.Errorf("%d tools are gated, want the six remote ones", gated)
 	}
-	if ungated != 6 {
-		t.Errorf("%d tools are ungated, want the six local ones", ungated)
+	if ungated != 11 {
+		t.Errorf("%d tools are ungated, want the eleven local ones", ungated)
 	}
 }
 

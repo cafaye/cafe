@@ -532,6 +532,11 @@ var servedTools = []string{
 	"caf_dev_plan",
 	"caf_dev_up",
 	"caf_doctor",
+	"caf_error",
+	"caf_error_status",
+	"caf_errors",
+	"caf_loki",
+	"caf_metrics",
 	"caf_manifest",
 	"caf_registry",
 	// the remote surface: a box, gated on the caller's scopes.
