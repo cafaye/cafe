@@ -1,57 +1,44 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
+	"net/url"
 )
 
-type taskDeps struct {
-	shipURL string
-	client  *http.Client
-}
+// `cafe task` is the work object on ship: units of work under a project.
+//
+// Every route it calls is a task route. The approve/reject/merge verbs it used
+// to carry are gone: ship has no task-scoped decision route, so they were a
+// 404 that reported success. The decisions that DO exist are landing
+// decisions, and `cafe landing` is where they live.
 
-func (d taskDeps) withDefaults() taskDeps {
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("CAFAYE_URL")
-	}
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("SHIP_URL")
-	}
-	if d.shipURL == "" {
-		d.shipURL = "https://cafaye.com"
-	}
-	if d.client == nil {
-		d.client = &http.Client{Timeout: 30 * time.Second}
-	}
-	return d
-}
+// The seam this command group talks through is shipDeps, in ship.go. There is
+// one of them on purpose: see that file.
 
 func newTaskCommand(deps taskDeps) *Command {
-	deps = deps.withDefaults()
+	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "task",
 		Summary: "manage tasks (units of work) on cafaye",
 		Usage:   "cafe task <subcommand> [args]",
 		LongHelp: "Manage tasks on cafaye ship.\n\n" +
 			"Subcommands:\n" +
-			"  create <project-id>   Create a new task\n" +
-			"  list <project-id>     List tasks\n" +
-			"  get <id>              Get task details\n" +
-			"  status <id> <status>  Update task status\n" +
-			"  stage <id> <stage>    Move task to a stage\n" +
-			"  approve <id>          Approve a task (landing)\n" +
-			"  reject <id>           Reject a task (landing)\n" +
-			"  merge <id>            Merge an approved task (landing)\n\n" +
+			"  create <project-id>                       Create a new task\n" +
+			"  list <project-id>                         List tasks\n" +
+			"  get <project-id> <task-id>                Get task details\n" +
+			"  status <project-id> <task-id> <status>    Update task status\n" +
+			"  stage <project-id> <task-id> <stage>      Move task to a stage\n" +
+			"  results <project-id> <task-id>            Record a result against a task\n\n" +
 			"Environment:\n" +
-			"  SHIP_URL  Base URL of the ship service\n",
+			"  SHIP_URL   Base URL of the ship service\n" +
+			"  SHIP_TOKEN Service token, sent as `Authorization: Bearer …`\n",
 	}
 	c.Run = func(args []string, env *Env) error {
+		if urlErr != nil {
+			return urlErr
+		}
 		if len(args) == 0 {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe task: missing subcommand (usage: %s)\n", c.Usage)
 			return errUsage
@@ -67,12 +54,8 @@ func newTaskCommand(deps taskDeps) *Command {
 			return taskStatus(deps, env, args[1:])
 		case "stage":
 			return taskStage(deps, env, args[1:])
-		case "approve":
-			return taskApprove(deps, env, args[1:])
-		case "reject":
-			return taskReject(deps, env, args[1:])
-		case "merge":
-			return taskMerge(deps, env, args[1:])
+		case "results":
+			return taskResults(deps, env, args[1:])
 		default:
 			_, _ = fmt.Fprintf(env.Stderr, "cafe task: unknown subcommand %q\n", args[0])
 			return errUsage
@@ -81,16 +64,20 @@ func newTaskCommand(deps taskDeps) *Command {
 	return c
 }
 
+// taskCreate creates a task under a project.
 func taskCreate(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task create: missing project ID\n")
-		return errUsage
+	projectID, err := shipProjectArg("task create", args)
+	if err != nil {
+		return err
 	}
 	fs := flag.NewFlagSet("task create", flag.ContinueOnError)
 	title := fs.String("title", "", "task title")
 	description := fs.String("description", "", "task description")
 	kind := fs.String("kind", "feature", "task kind: feature, bug, chore, change, issue, feedback, data, request")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := shipParse(fs, args[1:], "task", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
 	if *title == "" && len(fs.Args()) > 0 {
@@ -99,183 +86,171 @@ func taskCreate(deps taskDeps, env *Env, args []string) error {
 	if *title == "" {
 		*title = "untitled task"
 	}
-	body := map[string]any{
-		"title":       *title,
-		"description": *description,
-		"kind":        *kind,
-	}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/tasks",
+		map[string]any{
+			"title":       *title,
+			"description": *description,
+			"kind":        *kind,
+		})
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
-	return nil
-}
-
-func taskList(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task list: missing project ID\n")
-		return errUsage
-	}
-	fs := flag.NewFlagSet("task list", flag.ContinueOnError)
-	kind := fs.String("kind", "", "filter by kind")
-	status := fs.String("status", "", "filter by status")
-	if err := fs.Parse(args[1:]); err != nil {
-		return err
-	}
-	url := deps.shipURL + "/v1/projects/" + args[0] + "/tasks"
-	params := ""
-	if *kind != "" {
-		params = "?kind=" + *kind
-	}
-	if *status != "" {
-		if params == "" {
-			params = "?status=" + *status
-		} else {
-			params += "&status=" + *status
-		}
-	}
-	req, _ := http.NewRequest("GET", url+params, nil)
-	resp, err := deps.client.Do(req)
+	body, err := shipDo(deps.client, req)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// taskList lists the tasks of a project.
+func taskList(deps taskDeps, env *Env, args []string) error {
+	projectID, err := shipProjectArg("task list", args)
+	if err != nil {
+		return err
+	}
+	fs := flag.NewFlagSet("task list", flag.ContinueOnError)
+	kind := fs.String("kind", "", "filter by kind")
+	status := fs.String("status", "", "filter by status")
+	if err := shipParse(fs, args[1:], "task", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
+		return err
+	}
+	params := url.Values{}
+	if *kind != "" {
+		params.Set("kind", *kind)
+	}
+	if *status != "" {
+		params.Set("status", *status)
+	}
+	req, err := shipRequest("GET", deps.shipURL,
+		"/v1/projects/"+projectID+"/tasks"+shipQuery(params), nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
+	return nil
+}
+
+// taskGet fetches one task.
 func taskGet(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task get: missing task ID\n")
-		return errUsage
+	projectID, err := shipProjectArg("task get", args)
+	if err != nil {
+		return err
 	}
-	req, _ := http.NewRequest("GET", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[0], nil)
-	// Note: this needs project ID + task ID. For simplicity, args[0] is task ID.
-	// Actually, the route is /v1/projects/{projectId}/tasks/{taskId}
-	// So we need both. Let's use args[0] as task ID and find the project.
-	// For now, just use the task ID directly via a different approach.
-	_ = req
-	_, _ = fmt.Fprintf(env.Stderr, "cafe task get: use 'cafe task list <project-id>' to find task IDs\n")
-	return errUsage
+	taskID, err := shipArg("task get", "task ID", args, 1)
+	if err != nil {
+		return err
+	}
+	req, err := shipRequest("GET", deps.shipURL,
+		"/v1/projects/"+projectID+"/tasks/"+taskID, nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
+	return nil
 }
 
+// taskStatus moves a task to a status.
 func taskStatus(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task status: missing task ID and status\n")
-		return errUsage
-	}
-	// args[0] = project ID, args[1] = task ID, args[2] = status
-	// Simplified: args[0] = task ID, args[1] = status (need project ID from env or flag)
-	// For now, require project ID as first arg
-	if len(args) < 3 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task status: usage: cafe task status <project-id> <task-id> <status>\n")
-		return errUsage
-	}
-	body := map[string]any{"status": args[2]}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("PATCH", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/status", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("task status", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	taskID, err := shipArg("task status", "task ID", args, 1)
+	if err != nil {
+		return err
+	}
+	status, err := shipArg("task status", "status", args, 2)
+	if err != nil {
+		return err
+	}
+	req, err := shipJSONRequest("PATCH", deps.shipURL,
+		"/v1/projects/"+projectID+"/tasks/"+taskID+"/status",
+		map[string]any{"status": status})
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// taskStage moves a task to a stage.
 func taskStage(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 3 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task stage: usage: cafe task stage <project-id> <task-id> <stage>\n")
-		return errUsage
-	}
-	body := map[string]any{"stage": args[2]}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/stage", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("task stage", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	taskID, err := shipArg("task stage", "task ID", args, 1)
+	if err != nil {
+		return err
+	}
+	stage, err := shipArg("task stage", "stage", args, 2)
+	if err != nil {
+		return err
+	}
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/tasks/"+taskID+"/stage",
+		map[string]any{"stage": stage})
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
-func taskApprove(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task approve: usage: cafe task approve <project-id> <task-id> [--by <id>] [--note <text>]\n")
-		return errUsage
-	}
-	fs := flag.NewFlagSet("task approve", flag.ContinueOnError)
-	by := fs.String("by", "", "who is approving")
-	note := fs.String("note", "", "approval note")
-	fs.Parse(args[2:])
-	body := map[string]any{"decided_by": *by, "note": *note}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/approve", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+// taskResults records a result against a task: the evidence that the work
+// happened, which is what a gate later reads.
+func taskResults(deps taskDeps, env *Env, args []string) error {
+	projectID, err := shipProjectArg("task results", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
-	return nil
-}
-
-func taskReject(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task reject: usage: cafe task reject <project-id> <task-id> [--by <id>] [--note <text>]\n")
-		return errUsage
-	}
-	fs := flag.NewFlagSet("task reject", flag.ContinueOnError)
-	by := fs.String("by", "", "who is rejecting")
-	note := fs.String("note", "", "rejection note")
-	fs.Parse(args[2:])
-	body := map[string]any{"decided_by": *by, "note": *note}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/reject", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	taskID, err := shipArg("task results", "task ID", args, 1)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
-	return nil
-}
-
-func taskMerge(deps taskDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task merge: usage: cafe task merge <project-id> <task-id>\n")
-		return errUsage
-	}
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/merge", nil)
-	resp, err := deps.client.Do(req)
-	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe task: %v\n", err)
+	fs := flag.NewFlagSet("task results", flag.ContinueOnError)
+	resultType := fs.String("type", "info", "result type: success, failure or info")
+	message := fs.String("message", "", "what the result says")
+	if err := shipParse(fs, args[2:], "task", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/tasks/"+taskID+"/results",
+		map[string]any{
+			"type":    *resultType,
+			"message": *message,
+		})
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }

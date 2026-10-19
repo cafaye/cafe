@@ -9,6 +9,8 @@ Cafaye is the agentic stack: solve hard problems once, choose the right tools fo
 ## Defaults to assume
 
 - Base URL for cafaye: `https://cafaye.com` (or `CAFAYE_URL` env var, legacy: `SHIP_URL`)
+- Ship requires a service token on every /v1 route: `SHIP_TOKEN`, sent as
+  `Authorization: Bearer $SHIP_TOKEN`
 - Base URL for identity: derived from `CAFAYE_URL` (or `IDENTITY_URL` env var)
 - Dev boxes run on instabox (ephemeral, auto-suspend, pay-when-in-use)
 - Prod runs on the user's Cafaye box (Contabo or self-hosted)
@@ -60,10 +62,7 @@ instabox ssh my-saas -- 'git clone https://github.com/you/my-saas.git /data/work
 
 ```bash
 # Hosted (cafaye operates on Contabo)
-cafe project add-service <project-id> identity
-cafe project add-service <project-id> courier
-
-# Or via API
+# There is no project subcommand for adding a service: it is a ship route.
 curl -s -X POST $SHIP_URL/v1/projects/<id>/services -d '{"service":"identity"}'
 ```
 
@@ -74,7 +73,7 @@ curl -s -X POST $SHIP_URL/v1/projects/<id>/services -d '{"service":"identity"}'
 instabox vault set ANTHROPIC_API_KEY  # value from stdin
 instabox vault set DATABASE_URL
 
-# Or via cafe secret (local dev)
+# Or via the secret command (local dev)
 cafe secret set DATABASE_URL
 ```
 
@@ -139,7 +138,7 @@ Repeat from step 2. Each project gets its own dev box, services, and deploy targ
 - `cafe pipeline advance <project-id>` — Advance to the next stage
 - `cafe pipeline recipes` — List available pipeline recipes
 
-Recipes: `software` (Backlog → In Progress → Review → Done), `deploy` (Build → Test → Deploy → Verify), `contribution` (Backlog (open) → Implement → Verify → Review → Done), `default` (single Work stage)
+Recipes (as ship names them): `software` (Backlog → In Progress → Review (approval) → Done), `deploy` (Build (check) → Test (check) → Deploy (approval) → Verify (check)), `contribution` (Backlog (open door) → Implement → Verify (check) → Review (approval) → Done), `default` (single generic stage, no gates, no opinions)
 
 ### Gates
 - `cafe gate decide <project-id> <stage> --status passed|failed --by <id> --note <text>` — Decide a gate
@@ -150,17 +149,19 @@ Recipes: `software` (Backlog → In Progress → Review → Done), `deploy` (Bui
 - `cafe task get <project-id> <task-id>` — Get task details
 - `cafe task status <project-id> <task-id> <status>` — Update status
 - `cafe task stage <project-id> <task-id> <stage>` — Move to stage
-- `cafe task approve <project-id> <task-id> [--by] [--note]` — Approve a task
-- `cafe task reject <project-id> <task-id> [--by] [--note]` — Reject a task
-- `cafe task merge <project-id> <task-id>` — Merge a task
+- `cafe task results <project-id> <task-id> --type success|failure|info --message <text>` — Record a result
+
+There is no task-scoped approve/reject/merge: ship decides LANDINGS, not
+tasks, and `cafe landing` is where those verbs are.
 
 ### Landings (contributions)
-- `cafe landing create <project-id> --kind <kind> --title <title>` — Submit a landing
+- `cafe landing create <project-id> --kind <kind> --title <title> [--contributor <id>]` — Submit a landing
 - `cafe landing list <project-id> [--kind] [--status]` — List landings
 - `cafe landing get <project-id> <landing-id>` — Get landing details
 - `cafe landing approve <project-id> <landing-id> [--by] [--note]` — Approve
 - `cafe landing reject <project-id> <landing-id> [--by] [--note]` — Reject
 - `cafe landing merge <project-id> <landing-id>` — Merge
+- `cafe landing results <project-id> <landing-id> --type success|failure|info --message <text>` — Record a result
 
 ### Board
 - `cafe board view <project-id>` — Record that you viewed the board
@@ -269,6 +270,7 @@ cafe landing approve <project-id> <landing-id> --by <id> --note "looks good"
 8. **Sane defaults** — Single generic "Work" stage. Install a recipe when you want structure.
 9. **Evidence-backed** — Every gate transition carries proof (test results, build output, etc.).
 10. **Attention model** — "Finished while you were away" — the board shows what changed since you last looked.
+
 ## Private repos and packages
 
 Cafaye repos and packages are private. To build on instabox or deploy on Contabo:

@@ -1,41 +1,28 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
+	"net/url"
 	"os"
-	"time"
 
 	"github.com/google/uuid"
 )
 
-type projectDeps struct {
-	shipURL string
-	client  *http.Client
-}
+// `cafe project` is the project on ship: the thing tasks, landings and
+// pipelines live under.
+//
+// The owner is required and is parsed as a UUID before the call, because
+// ship's CreateProjectInput carries a uuid.UUID: a name in that field is a
+// 400, and a 400 that the CLI swallowed was a project list that came back
+// empty and looked like a project with no projects.
 
-func (d projectDeps) withDefaults() projectDeps {
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("CAFAYE_URL")
-	}
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("SHIP_URL")
-	}
-	if d.shipURL == "" {
-		d.shipURL = "https://cafaye.com"
-	}
-	if d.client == nil {
-		d.client = &http.Client{Timeout: 30 * time.Second}
-	}
-	return d
-}
+// The seam this command group talks through is shipDeps, in ship.go. There is
+// one of them on purpose: see that file.
 
 func newProjectCommand(deps projectDeps) *Command {
-	deps = deps.withDefaults()
+	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "project",
 		Summary: "manage projects on cafaye",
@@ -46,11 +33,14 @@ func newProjectCommand(deps projectDeps) *Command {
 			"  list            List your projects\n" +
 			"  get <id>        Get project details\n\n" +
 			"Environment:\n" +
-			"  CAFAYE_URL  Base URL of your cafaye instance (default: https://cafaye.com)\n" +
-			"  SHIP_URL    Legacy alias for CAFAYE_URL\n" +
-			"  SHIP_OWNER_ID  Default owner ID\n",
+			"  SHIP_URL        Base URL of the ship service (default: " + defaultShipURL + ")\n" +
+			"  SHIP_OWNER_ID   Default owner ID\n" +
+			"  SHIP_TOKEN      Service token, sent as `Authorization: Bearer …`\n",
 	}
 	c.Run = func(args []string, env *Env) error {
+		if urlErr != nil {
+			return urlErr
+		}
 		if len(args) == 0 {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe project: missing subcommand (usage: %s)\n", c.Usage)
 			return errUsage
@@ -70,95 +60,96 @@ func newProjectCommand(deps projectDeps) *Command {
 	return c
 }
 
+// projectCreate creates a project.
 func projectCreate(deps projectDeps, env *Env, args []string) error {
 	fs := flag.NewFlagSet("project create", flag.ContinueOnError)
 	name := fs.String("name", "", "project name")
 	owner := fs.String("owner", "", "owner ID (identity account)")
-	if err := fs.Parse(args); err != nil {
+	if err := shipParse(fs, args, "project", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
 	if *name == "" && len(fs.Args()) > 0 {
 		*name = fs.Args()[0]
 	}
 	if *name == "" {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project create: --name is required\n")
-		return errUsage
+		return fmt.Errorf("%w: cafe project create: --name is required", errUsage)
 	}
 	if *owner == "" {
 		*owner = os.Getenv("SHIP_OWNER_ID")
 	}
 	if *owner == "" {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project create: --owner is required\n")
-		return errUsage
+		return fmt.Errorf("%w: cafe project create: --owner is required", errUsage)
 	}
 	ownerID, err := uuid.Parse(*owner)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project create: invalid owner ID\n")
-		return err
+		return fmt.Errorf("%w: cafe project create: invalid owner ID %q", errUsage, *owner)
 	}
-	body, _ := json.Marshal(map[string]any{"name": *name, "owner_id": ownerID.String()})
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	if tok := os.Getenv("SHIP_TOKEN"); tok != "" {
-		req.Header.Set("Authorization", "Bearer "+tok)
-	}
-	resp, err := deps.client.Do(req)
+	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/projects/",
+		map[string]any{"name": *name, "owner_id": ownerID.String()})
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusCreated {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project: create failed (%d): %s\n", resp.StatusCode, string(respBody))
-		return fmt.Errorf("create failed")
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
 	}
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// projectList lists the projects of one owner.
+//
+// The owner is required: ship's list route refuses an empty owner_id, and the
+// old code sent it anyway and printed the 400 body as if it were the list.
 func projectList(deps projectDeps, env *Env, args []string) error {
 	fs := flag.NewFlagSet("project list", flag.ContinueOnError)
 	owner := fs.String("owner", "", "owner ID")
-	if err := fs.Parse(args); err != nil {
+	if err := shipParse(fs, args, "project", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
 	if *owner == "" {
 		*owner = os.Getenv("SHIP_OWNER_ID")
 	}
-	req, _ := http.NewRequest("GET", deps.shipURL+"/v1/projects/?owner_id="+*owner, nil)
-	if tok := os.Getenv("SHIP_TOKEN"); tok != "" {
-		req.Header.Set("Authorization", "Bearer "+tok)
+	if *owner == "" {
+		return fmt.Errorf("%w: cafe project list: --owner or SHIP_OWNER_ID is required", errUsage)
 	}
-	resp, err := deps.client.Do(req)
+	ownerID, err := uuid.Parse(*owner)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project: %v\n", err)
+		return fmt.Errorf("%w: cafe project list: invalid owner ID %q", errUsage, *owner)
+	}
+	params := url.Values{}
+	params.Set("owner_id", ownerID.String())
+	req, err := shipRequest("GET", deps.shipURL, "/v1/projects/"+shipQuery(params), nil)
+	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// projectGet fetches one project.
 func projectGet(deps projectDeps, env *Env, args []string) error {
 	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project get: missing project ID\n")
-		return errUsage
+		return fmt.Errorf("%w: cafe project get: missing project ID", errUsage)
 	}
-	req, _ := http.NewRequest("GET", deps.shipURL+"/v1/projects/"+args[0], nil)
-	if tok := os.Getenv("SHIP_TOKEN"); tok != "" {
-		req.Header.Set("Authorization", "Bearer "+tok)
-	}
-	resp, err := deps.client.Do(req)
+	req, err := shipRequest("GET", deps.shipURL, "/v1/projects/"+args[0], nil)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe project: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
-
-var _ = uuid.New

@@ -1,65 +1,59 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
 )
 
-type shipGateDeps struct {
-	shipURL string
-	client  *http.Client
-}
+// `cafe gate decide` is the ship half of the gate: the decision a stage's
+// gate records, with who decided it and why.
+//
+// `cafe gate floors` is the other half and it lives in gate.go: that one
+// derives cafe's own floors from the tree, this one decides a stage of a
+// project's pipeline.
 
-func (d shipGateDeps) withDefaults() shipGateDeps {
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("CAFAYE_URL")
-	}
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("SHIP_URL")
-	}
-	if d.shipURL == "" {
-		d.shipURL = "https://cafaye.com"
-	}
-	if d.client == nil {
-		d.client = &http.Client{Timeout: 30 * time.Second}
-	}
-	return d
-}
+// The seam this command talks through is shipDeps, in ship.go. There is one of
+// them on purpose: see that file.
 
+// gateDecide records the decision on one stage of a project's pipeline.
 func gateDecide(deps shipGateDeps, env *Env, args []string) error {
-	deps = deps.withDefaults()
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe gate decide: missing project ID and stage\n")
-		return errUsage
+	deps, urlErr := deps.withDefaults()
+	if urlErr != nil {
+		return urlErr
+	}
+	projectID, err := shipProjectArg("gate decide", args)
+	if err != nil {
+		return err
+	}
+	stage, err := shipArg("gate decide", "stage", args, 1)
+	if err != nil {
+		return err
 	}
 	fs := flag.NewFlagSet("gate decide", flag.ContinueOnError)
 	status := fs.String("status", "passed", "gate status: passed or failed")
 	by := fs.String("by", "", "who is deciding (user or agent ID)")
 	note := fs.String("note", "", "decision note")
-	if err := fs.Parse(args[2:]); err != nil {
+	if err := shipParse(fs, args[2:], "gate", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
-	body := map[string]any{
-		"status":     *status,
-		"decided_by": *by,
-		"note":       *note,
-	}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/gates/"+args[1]+"/decide", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/gates/"+stage+"/decide",
+		map[string]any{
+			"status":     *status,
+			"decided_by": *by,
+			"note":       *note,
+		})
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe gate: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
