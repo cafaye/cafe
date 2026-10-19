@@ -229,3 +229,29 @@ cafe landing approve <project-id> <landing-id> --by <id> --note "looks good"
 8. **Sane defaults** — Single generic "Work" stage. Install a recipe when you want structure.
 9. **Evidence-backed** — Every gate transition carries proof (test results, build output, etc.).
 10. **Attention model** — "Finished while you were away" — the board shows what changed since you last looked.
+## Private repos and packages
+
+Cafaye repos and packages are private. To build on instabox or deploy on Contabo:
+
+### Instabox (dev boxes)
+1. Set up GitHub auth on your laptop: `gh auth login`
+2. Put your GitHub token into the instabox Vault:
+   ```
+   instabox-basic-setup  # scans your machine, lets you pick tokens/files
+   ```
+   This puts `GH_TOKEN` into every box (current and future).
+3. Boxes can then clone private repos: `gh repo clone cafaye/<repo>`
+4. Boxes can pull private images: `docker login ghcr.io -u <user> -p $GH_TOKEN`
+
+### Contabo (prod)
+- Pull secrets (`ghcr-pull-secret`) exist in every namespace
+- They use a GitHub token with `write:packages` scope (implies `read:packages`)
+- ArgoCD pulls charts from `oci://ghcr.io/cafaye/charts` using `ghcr-charts-repo` secret
+- No changes needed — already configured for private packages
+
+### Forgejo (internal git host)
+- Forgejo runs on Contabo at `git.cafaye.com`
+- All cafaye code is pushed here as the canonical source
+- GitHub is an optional mirror
+- Instabox boxes can reach Forgejo (public URL)
+- Boxes need a Forgejo token to push: set via instabox Vault or `cafe secret`
