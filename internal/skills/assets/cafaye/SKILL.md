@@ -182,6 +182,46 @@ Recipes: `software` (Backlog → In Progress → Review → Done), `deploy` (Bui
 - `cafe skills install` — Install/update the cafaye agent skill file
 - `cafe skills install --root <path>` — Install to a specific root
 
+## Sandbox testing (cloud dev env)
+
+Cafaye supports developing entirely in the cloud. No local clone needed.
+
+### Setting up a sandbox
+
+1. Create an instabox box: `instabox create --name my-project --auto-suspend 30m`
+2. Run the setup script (or do manually):
+   - Install cafaye CLI: build from source or download
+   - `cafe skills install` — install this skill
+   - Install opencode: download from GitHub releases
+   - Install crush: `go install github.com/charmbracelet/crush@latest`
+   - Set up OPENCODE_API_KEY via instabox Vault
+   - Set up GH_TOKEN via instabox Vault (for private repos)
+   - Install cloudflared for nice URLs (optional)
+3. Move your repo: follow the instabox-move-repo skill
+4. Install deps: run the project's install command
+5. Start coding: `instabox ssh my-project` or use your agent
+
+### Nice URLs (Cloudflare)
+For production or persistent dev boxes, set up a Cloudflare tunnel:
+```bash
+cloudflared tunnel login  # opens browser
+cloudflared tunnel create my-project
+cloudflared tunnel route dns my-project dev.myproject.cafaye.com
+cloudflared tunnel run my-project
+```
+
+For quick testing, use instabox port publishing:
+```bash
+instabox port publish my-project 3000
+# Returns: https://3000-xxx.instabox.tech
+```
+
+### Testing workflow
+1. Create dev box → move repo → install deps → verify tests pass
+2. Make changes → run tests → if pass, deploy
+3. Deploy → verify /readyz → check monitoring
+4. Fix bugs → re-deploy → verify
+
 ## Common patterns
 
 ### Auto-advance on green
