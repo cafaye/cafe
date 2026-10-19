@@ -43,7 +43,7 @@ dependencies: []
 repository:
   url: git@github.com:cafaye/cafe.git
   defaultBranch: master
-  visibility: public
+  visibility: private
 
 owner:
   team: cafe
