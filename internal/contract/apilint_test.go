@@ -356,7 +356,7 @@ func TestACopyOfAnotherServicesManifestMayNameADocumentThatIsNotBesideIt(t *test
 	dir := t.TempDir()
 	// The registry's own manifest, at the root, with a document beside it.
 	write(t, filepath.Join(dir, "cafaye.yml"), manifestNaming(`  api: openapi/v1.yaml`))
-	write(t, filepath.Join(dir, "openapi", "v1.yaml"), pathsDoc("/v1/projects"))
+	write(t, filepath.Join(dir, "openapi", "v1.yaml"), pathsDoc("/v1/services"))
 
 	// A copy of identity's manifest, verbatim, with no document beside it.
 	write(t, filepath.Join(dir, "registry", "services", "identity", "cafaye.yml"),
@@ -427,7 +427,7 @@ dependencies:
 	write(t, filepath.Join(dir, "stable", "cafaye.yml"), strings.Replace(
 		strings.Replace(manifestNaming(`  api: openapi/v1.yaml`), "name: courier", "name: pantry", 1),
 		"language: elixir", "language: spec", 1))
-	write(t, filepath.Join(dir, "stable", "openapi", "v1.yaml"), pathsDoc("/v1/projects"))
+	write(t, filepath.Join(dir, "stable", "openapi", "v1.yaml"), pathsDoc("/v1/services"))
 
 	report, err := Lint(dir)
 	if err != nil {

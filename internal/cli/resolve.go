@@ -188,7 +188,7 @@ func runResolve(project string, opts *resolveOptions, deps resolveDeps, env *Env
 // addressOf answers whether an argument is a project address rather than a
 // directory: `owner/name` with exactly one slash, both halves in pantry's slug
 // grammar, and no cafaye.yml at the path. The grammar is pantry's own — the
-// same pattern both path segments of `GET /v1/projects/{owner}/{name}` are
+// same pattern both path segments of `GET /v1/services/{owner}/{name}` are
 // held to — so an argument that parses here is an argument pantry itself would
 // route. The manifest check is what keeps a real project directory whose path
 // happens to end in `owner/name` a directory: the address form is the fallback

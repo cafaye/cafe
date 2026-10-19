@@ -82,18 +82,18 @@ const DefaultPublishTimeout = 30 * time.Second
 // and held by nothing. A Publisher that stored the token would be a Publisher
 // that outlives the run the token was presented for.
 type Publisher interface {
-	// Register is POST /v1/projects: the project's own manifest, as JSON,
+	// Register is POST /v1/services: the project's own manifest, as JSON,
 	// stored verbatim so the recorded copy can be diffed against a checkout.
 	Register(ctx context.Context, token string, reg Registration) (Registered, error)
-	// PublishVersion is POST /v1/projects/{name}/versions: the publisher's
+	// PublishVersion is POST /v1/services/{name}/versions: the publisher's
 	// real git tag, verbatim, leading `v` included.
 	PublishVersion(ctx context.Context, token, name, tag string) (Published, error)
-	// DeclareRequirement is POST /v1/projects/{name}/requirements: one edge
+	// DeclareRequirement is POST /v1/services/{name}/requirements: one edge
 	// to a required project, which may belong to another publisher.
 	DeclareRequirement(ctx context.Context, token, name string, req Requirement) (Declared, error)
 }
 
-// Registration is the POST /v1/projects body: everything a publisher claims
+// Registration is the POST /v1/services body: everything a publisher claims
 // about a project they own. The shape is pantry's wire shape — a client that
 // invented flatter field names would be a second copy of the document, and the
 // second copy is the one that drifts.
@@ -479,33 +479,33 @@ func (c HTTPPublisher) client() *http.Client {
 	return &http.Client{Timeout: timeout}
 }
 
-// Register is POST /v1/projects.
+// Register is POST /v1/services.
 func (c HTTPPublisher) Register(ctx context.Context, token string, reg Registration) (Registered, error) {
 	var out Registered
-	if err := c.post(ctx, token, "/v1/projects", reg, &out); err != nil {
+	if err := c.post(ctx, token, "/v1/services", reg, &out); err != nil {
 		return Registered{}, err
 	}
 	return out, nil
 }
 
-// PublishVersion is POST /v1/projects/{name}/versions.
+// PublishVersion is POST /v1/services/{name}/versions.
 func (c HTTPPublisher) PublishVersion(ctx context.Context, token, name, tag string) (Published, error) {
 	var out Published
 	body := struct {
 		Tag string `json:"tag"`
 	}{Tag: tag}
-	if err := c.post(ctx, token, "/v1/projects/"+name+"/versions", body, &out); err != nil {
+	if err := c.post(ctx, token, "/v1/services/"+name+"/versions", body, &out); err != nil {
 		return Published{}, err
 	}
 	return out, nil
 }
 
-// DeclareRequirement is POST /v1/projects/{name}/requirements, one edge per
+// DeclareRequirement is POST /v1/services/{name}/requirements, one edge per
 // call: the route takes one declaration, and a batch would be a second route
 // nobody serves.
 func (c HTTPPublisher) DeclareRequirement(ctx context.Context, token, name string, req Requirement) (Declared, error) {
 	var out Declared
-	if err := c.post(ctx, token, "/v1/projects/"+name+"/requirements", req, &out); err != nil {
+	if err := c.post(ctx, token, "/v1/services/"+name+"/requirements", req, &out); err != nil {
 		return Declared{}, err
 	}
 	return out, nil

@@ -14,7 +14,7 @@ import (
 // is what is under test.
 func TestHTTPPantryTier1ServesTheListingEntry(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/projects/identity" {
+		if r.URL.Path != "/v1/services/identity" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		if r.Header.Get("Authorization") != "" {
@@ -47,7 +47,7 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official cafaye service is registered under that name","instance":"/v1/projects/nope","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official cafaye service is registered under that name","instance":"/v1/services/nope","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
@@ -81,7 +81,7 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 // coordinates.
 func TestHTTPPantryTier2ServesCoordinatesWithTheToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/projects/identity/coordinates" {
+		if r.URL.Path != "/v1/services/identity/coordinates" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		if got := r.Header.Get("Authorization"); got != "Bearer cafaye_x" {
@@ -113,13 +113,13 @@ func TestHTTPPantryTier2ServesCoordinatesWithTheToken(t *testing.T) {
 // is where that rule is pinned.
 func TestHTTPPantryTier2UnauthorizedIsNamed(t *testing.T) {
 	const noEntitlementYet = "this operation requires a cafe token and none was presented. A service's " +
-		"repository coordinates are tier 2: `GET /v1/projects` and `GET /v1/projects/{name}` publish what a " +
+		"repository coordinates are tier 2: `GET /v1/services` and `GET /v1/services/{name}` publish what a " +
 		"service is, and this operation alone publishes where its code lives. Present `Authorization: Bearer " +
 		"cafaye_…` with a live cafe token"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"` + noEntitlementYet + `","instance":"/v1/projects/identity/coordinates","code":"unauthorized","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"` + noEntitlementYet + `","instance":"/v1/services/identity/coordinates","code":"unauthorized","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
@@ -152,7 +152,7 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/unavailable","title":"Service unavailable","status":503,"detail":"the presented cafe token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/projects/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/unavailable","title":"Service unavailable","status":503,"detail":"the presented cafe token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/services/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
@@ -175,13 +175,13 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 
 // Tier 1's second route: one project by its full `owner/name` address, the
 // shape pantry 1.7.0 added. The path is asserted segment by segment because a
-// client that built `/v1/projects/alice-widget` — or `/v1/projects/alice%2Fwidget`
+// client that built `/v1/services/alice-widget` — or `/v1/services/alice%2Fwidget`
 // — would be asking the bare-name route a question it cannot answer, and the
 // 404 would name a name the caller never typed.
 func TestHTTPPantryProjectByAddressServesTheProject(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/projects/cafaye/identity" {
-			t.Errorf("path = %q, want /v1/projects/cafaye/identity", r.URL.Path)
+		if r.URL.Path != "/v1/services/cafaye/identity" {
+			t.Errorf("path = %q, want /v1/services/cafaye/identity", r.URL.Path)
 		}
 		if r.URL.RawQuery != "" {
 			t.Errorf("query = %q, want none — the address is the path", r.URL.RawQuery)
@@ -215,7 +215,7 @@ func TestHTTPPantryProjectByAddressNotFoundNamesTheAddress(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official cafaye project is registered under the address alice/widget","instance":"/v1/projects/alice/widget","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official cafaye project is registered under the address alice/widget","instance":"/v1/services/alice/widget","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 

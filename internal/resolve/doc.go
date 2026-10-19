@@ -5,8 +5,8 @@
 // THE THREE TIERS, AND WHAT EACH ONE IS FOR. A dependency is resolved through
 // the tiers in order, and the order is the semantics:
 //
-//	Tier 1  the listing	pantry  GET /v1/projects/{name}	         anonymous
-//	Tier 2  the metadata	pantry  GET /v1/projects/{name}/coordinates  cafe token
+//	Tier 1  the listing	pantry  GET /v1/services/{name}	         anonymous
+//	Tier 2  the metadata	pantry  GET /v1/services/{name}/coordinates  cafe token
 //	Tier 3  the artifact	box POST …/artifact_fetches → redeem	entitlement
 //
 // Tier 1 says the project exists and what it is (name, description, language,

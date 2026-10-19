@@ -363,7 +363,7 @@ func TestA409OnAnEdgeIsAReportLine(t *testing.T) {
 // published.
 func TestA409ThatIsNotIdempotentIsANamedFailure(t *testing.T) {
 	fake := &fakePublisher{declareErr: &resolve.PantryError{Status: 409, Code: "conflict",
-		Detail: `no published semver version of "gateway" satisfies "^0.1.0". Publish one first with POST /v1/projects/gateway/versions`}}
+		Detail: `no published semver version of "gateway" satisfies "^0.1.0". Publish one first with POST /v1/services/gateway/versions`}}
 	proposal, err := ProposalFor(publishTestManifest(t, publishFullManifest), "v1.0.0", "")
 	if err != nil {
 		t.Fatalf("ProposalFor: %v", err)
@@ -487,7 +487,7 @@ func TestTheHTTPPublisherPostsPantrysWireShape(t *testing.T) {
 
 	report := Run(context.Background(), publisher, "cafaye_token", proposal)
 
-	if strings.Join(paths, ",") != "/v1/projects,/v1/projects/app/versions,/v1/projects/app/requirements,/v1/projects/app/requirements" {
+	if strings.Join(paths, ",") != "/v1/services,/v1/services/app/versions,/v1/services/app/requirements,/v1/services/app/requirements" {
 		t.Errorf("paths = %v", paths)
 	}
 	if auth != "Bearer cafaye_token" {
@@ -532,7 +532,7 @@ func TestTheHTTPPublisherPostsPantrysWireShape(t *testing.T) {
 func TestTheHTTPPublisherDecodesTheProblemEnvelope(t *testing.T) {
 	handler := &fakeWriteServer{
 		onPost: func(path string, _ string, _ map[string]any) int {
-			if path == "/v1/projects" {
+			if path == "/v1/services" {
 				return http.StatusUnauthorized
 			}
 			return http.StatusCreated
@@ -598,7 +598,7 @@ func (f *fakeWriteServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func TestThe201BodyCarriesTheAddressTheProjectRegisteredUnder(t *testing.T) {
 	handler := &fakeWriteServer{
 		onPost: func(path, _ string, _ map[string]any) int {
-			if path == "/v1/projects" {
+			if path == "/v1/services" {
 				return http.StatusCreated
 			}
 			return http.StatusCreated

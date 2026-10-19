@@ -119,13 +119,13 @@ func (c HTTPPantry) client() *http.Client {
 // Project is tier 1: one project's listing entry, anonymous.
 func (c HTTPPantry) Project(ctx context.Context, name string) (*Project, error) {
 	var proj Project
-	if err := c.get(ctx, nil, "/v1/projects/"+name, &proj); err != nil {
+	if err := c.get(ctx, nil, "/v1/services/"+name, &proj); err != nil {
 		return nil, err
 	}
 	return &proj, nil
 }
 
-// ProjectByAddress is tier 1's ADDRESS read: `GET /v1/projects/{owner}/{name}`,
+// ProjectByAddress is tier 1's ADDRESS read: `GET /v1/services/{owner}/{name}`,
 // the route 1.7.0 added. It answers exactly when the row's bare name AND its
 // derived owner both match the two segments, and its 404 names the address that
 // was asked for — which is how a caller tells "no such project" from "no
@@ -146,7 +146,7 @@ func (c HTTPPantry) Project(ctx context.Context, name string) (*Project, error) 
 // name nobody typed.
 func (c HTTPPantry) ProjectByAddress(ctx context.Context, owner, name string) (*Project, error) {
 	var proj Project
-	path := "/v1/projects/" + url.PathEscape(owner) + "/" + url.PathEscape(name)
+	path := "/v1/services/" + url.PathEscape(owner) + "/" + url.PathEscape(name)
 	if err := c.get(ctx, nil, path, &proj); err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (c HTTPPantry) ProjectByAddress(ctx context.Context, owner, name string) (*
 // length of exactly this call.
 func (c HTTPPantry) Coordinates(ctx context.Context, name, token string) (*Coordinates, error) {
 	var coords Coordinates
-	if err := c.get(ctx, &token, "/v1/projects/"+name+"/coordinates", &coords); err != nil {
+	if err := c.get(ctx, &token, "/v1/services/"+name+"/coordinates", &coords); err != nil {
 		return nil, err
 	}
 	return &coords, nil

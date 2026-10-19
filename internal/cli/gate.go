@@ -60,10 +60,14 @@ func newGateCommand(deps gateDeps) *Command {
 			printHelp(env.Stdout, c)
 			return nil
 		}
-		if args[0] != "floors" {
-			return fmt.Errorf("%w: unknown gate subcommand %q (usage: cafe gate <floors>)", errUsage, args[0])
+		switch args[0] {
+		case "floors":
+			return floors.Execute(env, args[1:])
+		case "decide":
+			return gateDecide(shipGateDeps{}, env, args[1:])
+		default:
+			return fmt.Errorf("%w: unknown gate subcommand %q (usage: cafe gate <floors|decide>)", errUsage, args[0])
 		}
-		return floors.Execute(env, args[1:])
 	}
 	return c
 }

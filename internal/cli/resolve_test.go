@@ -570,10 +570,10 @@ func TestResolveFlagsNameTheOriginsEndToEnd(t *testing.T) {
 	pantry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pantryHits++
 		switch r.URL.Path {
-		case "/v1/projects/identity":
+		case "/v1/services/identity":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go"}`))
-		case "/v1/projects/identity/coordinates":
+		case "/v1/services/identity/coordinates":
 			if got := r.Header.Get("Authorization"); got != "Bearer "+resolveCallerToken {
 				t.Errorf("tier 2 bearer = %q, want the caller's token", got)
 			}
