@@ -20,7 +20,7 @@ func newGrafanaCommand() *Command {
 			if strings.TrimSpace(baseURL) == "" {
 				baseURL = "http://localhost:15000"
 			}
-			fmt.Fprintf(env.Stdout, "%s\n", strings.TrimRight(baseURL, "/"))
+			_, _ = fmt.Fprintf(env.Stdout, "%s\n", strings.TrimRight(baseURL, "/"))
 			return nil
 		},
 	}

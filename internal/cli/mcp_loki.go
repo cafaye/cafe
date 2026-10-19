@@ -37,7 +37,7 @@ func (t *mcpTools) loki() mcp.Tool[lokiArgs, []lokiLine] {
 	}
 }
 
-func (t *mcpTools) runLoki(_ context.Context, args lokiArgs) ([]lokiLine, error) {
+func (t *mcpTools) runLoki(ctx context.Context, args lokiArgs) ([]lokiLine, error) {
 	baseURL := strings.TrimSpace(os.Getenv("CAFAYE_LOKI_URL"))
 	if baseURL == "" {
 		baseURL = "http://localhost:15901"
@@ -68,7 +68,7 @@ func (t *mcpTools) runLoki(_ context.Context, args lokiArgs) ([]lokiLine, error)
 	}
 	url := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&start=%d&end=%d&limit=%d",
 		baseURL, urlEncode(query), start.UnixNano(), end.UnixNano(), limit)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (t *mcpTools) runLoki(_ context.Context, args lokiArgs) ([]lokiLine, error)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("cafe caf_loki: %s: %s", resp.Status, strings.TrimSpace(string(body)))
