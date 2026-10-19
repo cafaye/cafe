@@ -132,6 +132,7 @@ func Commands() []*Command {
 		newGenCommand(),
 		newGrafanaCommand(),
 		newInitCommand(),
+		newLandingCommand(landingDeps{}),
 		newLockCommand(),
 		newLoginCommand(loginDeps{}),
 		newLogsCommand(),

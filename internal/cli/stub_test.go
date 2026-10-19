@@ -30,7 +30,7 @@ var stubCommands = []stubCommand{}
 // this list, so `env` is here and `env up` is not, and `gen` is here while
 // `gen telemetry` is not.
 var workingCommands = []string{
-	"add", "agent", "backup", "board", "box", "boxd", "contract", "cve", "deploy", "dev", "devbox", "docs", "errors", "doctor", "env", "failure", "gate", "gen", "grafana", "init", "lock", "login", "logs", "mcp", "metrics", "new", "pipeline", "project", "provider", "publish", "reclaim", "report", "resolve", "secret", "task", "update", "version",
+	"add", "agent", "backup", "board", "box", "boxd", "contract", "cve", "deploy", "dev", "devbox", "docs", "errors", "doctor", "env", "failure", "gate", "gen", "grafana", "init", "landing", "lock", "login", "logs", "mcp", "metrics", "new", "pipeline", "project", "provider", "publish", "reclaim", "report", "resolve", "secret", "task", "update", "version",
 }
 
 // invocation builds a valid command line for a stub: its flags, then the
