@@ -31,7 +31,6 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 		"gen",
 		"grafana",
 		"init",
-		"landing",
 		"lock",
 		"login",
 		"logs",
@@ -46,6 +45,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 		"report",
 		"resolve",
 		"secret",
+		"task",
 		"update",
 		"version",
 	}
