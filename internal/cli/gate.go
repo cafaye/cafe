@@ -51,8 +51,8 @@ func newGateCommand(deps gateDeps) *Command {
 	floors := newGateFloorsCommand(deps)
 	c := &Command{
 		Name:     "gate",
-		Summary:  "derive cafe's own gate floors from the tree instead of hand-editing them",
-		Usage:    "cafe gate <floors> [flags] [path]",
+		Summary:  "derive cafe's own gate floors from the tree, and decide a project's gates",
+		Usage:    "cafe gate <floors|decide> [flags] [path]",
 		LongHelp: gateLongHelp,
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -74,6 +74,7 @@ func newGateCommand(deps gateDeps) *Command {
 
 const gateLongHelp = `Commands:
   floors   print the floors the tree implies, and with --write set them and re-pin caf.lock
+  decide   record the decision on a stage of a project's pipeline, on ship
 
 The floors in gate.yml are a function of the tree, and a function a human
 retypes goes stale. ` + "`cafe gate floors`" + ` runs the gate, derives the three countable
@@ -82,7 +83,11 @@ subtests 1248→1250" — so a floor that moves is visible without opening the f
 
 With ` + "`--write`" + ` it sets them in gate.yml, preserving every comment, and re-pins
 ` + "`caf.lock`" + ` over the new bytes in the same run. Running it twice on an unchanged
-tree changes nothing, which is what makes it safe to run at every merge.`
+tree changes nothing, which is what makes it safe to run at every merge.
+
+` + "`cafe gate decide`" + ` is the other gate, and it is a different one: it records
+the decision on a stage of a PROJECT's pipeline — who decided, and why — and
+it is the decision a project's gate is read back as.`
 
 // gateFloorsOptions is the parsed flag state.
 type gateFloorsOptions struct {

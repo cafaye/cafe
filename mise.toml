@@ -25,6 +25,22 @@ go = "1.25.0"
 description = "The gate: download, build, test"
 run = "./bin/prime"
 
+[tasks.build]
+description = "Build the cafe binary with the version stamped in"
+# The three -X are the build identity, and the third one is not the same
+# variable as the first: `main.version` is what `cafe version` prints, and
+# `internal/version.Current` is what the installed agent skill is stamped
+# with. A build that sets only the first produces a skill that says
+# "cli_version: dev" next to a binary that says "cafe 1.2.3", and the stamp
+# is exactly what tells a person the two match.
+run = """
+go build \
+  -ldflags "-X main.version=$(git describe --tags --always --dirty) \
+            -X main.commit=$(git rev-parse --short HEAD) \
+            -X github.com/cafaye/cafe/internal/version.Current=$(git describe --tags --always --dirty)" \
+  -o bin/cafe ./cmd/cafe
+"""
+
 [tasks.doctor]
 description = "Build cafe and report the local toolchains"
 run = "go run ./cmd/cafe doctor"

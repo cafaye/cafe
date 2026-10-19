@@ -25,12 +25,31 @@ type stubCommand struct {
 var stubCommands = []stubCommand{}
 
 // workingCommands are the subcommands that are not stubs because they already
-// work. They are pinned by their own behavior tests.
+// work.
+//
+// Most of them are pinned by a test that drives the command itself: the
+// ship-backed ones by ship_test.go, which runs them against a server that
+// mirrors ship's route table, and the rest by the test file that sits next to
+// the command it tests.
+//
+// The ones that are NOT are untestedCommands, and they are named rather than
+// quietly counted: a table that claims more than the tree proves is the same
+// drift this file exists to catch.
 // A verb that groups others is dispatched by its parent's Run and is never in
 // this list, so `env` is here and `env up` is not, and `gen` is here while
 // `gen telemetry` is not.
 var workingCommands = []string{
 	"add", "agent", "backup", "board", "box", "boxd", "contract", "cve", "deploy", "dev", "devbox", "docs", "errors", "doctor", "env", "failure", "gate", "gen", "grafana", "init", "landing", "lock", "login", "logs", "mcp", "metrics", "new", "pipeline", "project", "provider", "publish", "reclaim", "report", "resolve", "secret", "skills", "start", "task", "update", "version",
+}
+
+// untestedCommands are the working commands with no behavior test of their
+// own. Each one forwards to another program — instabox, the error store,
+// Grafana, Loki, Prometheus — and has nothing of its own to assert.
+//
+// They are listed so that the claim above stays true, and so that writing
+// the missing test is a deletion here rather than a contradiction.
+var untestedCommands = []string{
+	"devbox", "errors", "grafana", "logs", "metrics",
 }
 
 // invocation builds a valid command line for a stub: its flags, then the
@@ -164,6 +183,9 @@ func TestStubTableMatchesTheRegistry(t *testing.T) {
 
 	working := map[string]bool{}
 	for _, name := range workingCommands {
+		if working[name] {
+			t.Errorf("%q is listed twice in workingCommands", name)
+		}
 		working[name] = true
 	}
 
@@ -181,6 +203,38 @@ func TestStubTableMatchesTheRegistry(t *testing.T) {
 	for _, name := range workingCommands {
 		if _, found := lookupCommand(Commands(), name); !found {
 			t.Errorf("workingCommands lists %q, which is not in the registry", name)
+		}
+	}
+}
+
+// The commands with no behavior test are named, and the naming has to be
+// true: each one is a working command, none of them is a stub, and none of
+// them is listed twice. Otherwise the exception list grows into a place where
+// a command can hide.
+func TestUntestedCommandsAreWorkingCommands(t *testing.T) {
+	stubbed := map[string]bool{}
+	for _, stub := range stubCommands {
+		stubbed[stub.name] = true
+	}
+	working := map[string]bool{}
+	for _, name := range workingCommands {
+		working[name] = true
+	}
+
+	seen := map[string]bool{}
+	for _, name := range untestedCommands {
+		if seen[name] {
+			t.Errorf("%q is listed twice in untestedCommands", name)
+		}
+		seen[name] = true
+		if stubbed[name] {
+			t.Errorf("%q is a stub and untested; a stub is not a working command", name)
+		}
+		if !working[name] {
+			t.Errorf("%q is in untestedCommands but not in workingCommands", name)
+		}
+		if _, found := lookupCommand(Commands(), name); !found {
+			t.Errorf("untestedCommands lists %q, which is not in the registry", name)
 		}
 	}
 }

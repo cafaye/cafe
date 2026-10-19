@@ -1,35 +1,24 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
+	"net/url"
 )
 
-type boardDeps struct {
-	shipURL string
-	client  *http.Client
-}
+// `cafe board` is the attention model: "something changed while you were
+// away".
+//
+// The two verbs have to agree about WHO is asking. The view is recorded per
+// user, and the attention check reads the same record — so the view sends the
+// identity in the body and the attention check sends it in the query. The old
+// attention check sent nothing, so ship fell back to "anonymous" and asked a
+// user who had never looked at the board whether they had.
 
-func (d boardDeps) withDefaults() boardDeps {
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("SHIP_URL")
-		if d.shipURL == "" {
-			d.shipURL = "https://ship.cafaye.com"
-		}
-	}
-	if d.client == nil {
-		d.client = &http.Client{Timeout: 30 * time.Second}
-	}
-	return d
-}
+// The seam this command group talks through is shipDeps, in ship.go. There is
+// one of them on purpose: see that file.
 
 func newBoardCommand(deps boardDeps) *Command {
-	deps = deps.withDefaults()
+	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "board",
 		Summary: "board view and attention tracking",
@@ -39,9 +28,14 @@ func newBoardCommand(deps boardDeps) *Command {
 			"  view <project-id>       Record that you viewed the board\n" +
 			"  attention <project-id>  Check if attention is needed\n\n" +
 			"Environment:\n" +
-			"  SHIP_URL  Base URL of the ship service\n",
+			"  SHIP_URL     Base URL of the ship service\n" +
+			"  SHIP_TOKEN   Service token, sent as `Authorization: Bearer …`\n" +
+			"  SHIP_USER_ID Who is asking (default: anonymous)\n",
 	}
 	c.Run = func(args []string, env *Env) error {
+		if urlErr != nil {
+			return urlErr
+		}
 		if len(args) == 0 {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe board: missing subcommand (usage: %s)\n", c.Usage)
 			return errUsage
@@ -59,43 +53,43 @@ func newBoardCommand(deps boardDeps) *Command {
 	return c
 }
 
+// boardView records that the user looked at the board.
 func boardView(deps boardDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe board view: missing project ID\n")
-		return errUsage
-	}
-	userID := os.Getenv("SHIP_USER_ID")
-	if userID == "" {
-		userID = "anonymous"
-	}
-	body := map[string]any{"user_id": userID}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/board/view", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("board view", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe board: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/board/view",
+		map[string]any{"user_id": shipUserID()})
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// boardAttention asks whether anything changed since the user last looked.
 func boardAttention(deps boardDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe board attention: missing project ID\n")
-		return errUsage
-	}
-	req, _ := http.NewRequest("GET", deps.shipURL+"/v1/projects/"+args[0]+"/board/attention", nil)
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("board attention", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe board: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	params := url.Values{}
+	params.Set("user_id", shipUserID())
+	req, err := shipRequest("GET", deps.shipURL,
+		"/v1/projects/"+projectID+"/board/attention"+shipQuery(params), nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }

@@ -1,54 +1,47 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
+	"net/url"
 )
 
-// landingDeps delegates to the task API (a landing is a type of task).
-type landingDeps struct {
-	shipURL string
-	client  *http.Client
-}
+// `cafe landing` is a contribution: the thing that replaces a pull request.
+//
+// A landing is NOT a task, even though ship creates a linked task for every
+// one: it has its own routes, its own decisions and its own contributor. The
+// verbs here used to POST to the task routes, so a landing was never created,
+// never listed, and every approval was a 404 that reported success.
 
-func (d landingDeps) withDefaults() landingDeps {
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("SHIP_URL")
-		if d.shipURL == "" {
-			d.shipURL = "https://ship.cafaye.com"
-		}
-	}
-	if d.client == nil {
-		d.client = &http.Client{Timeout: 30 * time.Second}
-	}
-	return d
-}
+// The seam this command group talks through is shipDeps, in ship.go. There is
+// one of them on purpose: see that file.
 
 func newLandingCommand(deps landingDeps) *Command {
-	deps = deps.withDefaults()
+	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "landing",
 		Summary: "manage landings (contributions that replace PRs)",
 		Usage:   "cafe landing <subcommand> [args]",
-		LongHelp: "Manage landings on cafaye ship. A landing is a task with kind in " +
-			"{change, issue, feedback, data, request}. Delegates to the task API.\n\n" +
+		LongHelp: "Manage landings on cafaye ship. A landing is a contribution to a project,\n" +
+			"and ship keeps a linked task for its work lifecycle.\n\n" +
 			"Subcommands:\n" +
-			"  create <project-id>   Submit a new landing\n" +
-			"  list <project-id>     List landings\n" +
-			"  get <task-id>         Get landing details\n" +
-			"  approve <project-id> <task-id>   Approve a landing\n" +
-			"  reject <project-id> <task-id>    Reject a landing\n" +
-			"  merge <project-id> <task-id>     Merge an approved landing\n\n" +
+			"  create <project-id>                        Submit a new landing\n" +
+			"  list <project-id>                          List landings\n" +
+			"  get <project-id> <landing-id>               Get landing details\n" +
+			"  approve <project-id> <landing-id>           Approve a landing\n" +
+			"  reject <project-id> <landing-id>            Reject a landing\n" +
+			"  merge <project-id> <landing-id>             Merge an approved landing\n" +
+			"  results <project-id> <landing-id>           Record a result against a landing\n\n" +
 			"Environment:\n" +
-			"  SHIP_URL  Base URL of the ship service\n",
+			"  SHIP_URL     Base URL of the ship service\n" +
+			"  SHIP_TOKEN   Service token, sent as `Authorization: Bearer …`\n" +
+			"  SHIP_USER_ID Contributor recorded on a landing (default: anonymous)\n",
 	}
 	c.Run = func(args []string, env *Env) error {
+		if urlErr != nil {
+			return urlErr
+		}
 		if len(args) == 0 {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe landing: missing subcommand (usage: %s)\n", c.Usage)
 			return errUsage
@@ -61,11 +54,13 @@ func newLandingCommand(deps landingDeps) *Command {
 		case "get":
 			return landingGet(deps, env, args[1:])
 		case "approve":
-			return landingApprove(deps, env, args[1:])
+			return landingDecide(deps, env, args[1:], "approve")
 		case "reject":
-			return landingReject(deps, env, args[1:])
+			return landingDecide(deps, env, args[1:], "reject")
 		case "merge":
 			return landingMerge(deps, env, args[1:])
+		case "results":
+			return landingResults(deps, env, args[1:])
 		default:
 			_, _ = fmt.Fprintf(env.Stderr, "cafe landing: unknown subcommand %q\n", args[0])
 			return errUsage
@@ -74,18 +69,28 @@ func newLandingCommand(deps landingDeps) *Command {
 	return c
 }
 
+// landingCreate submits a landing.
+//
+// The contributor is sent, and it is not decoration: ship's idempotency key is
+// (project, contributor, external id), so a landing submitted without one
+// lands under the key "anonymous" and every later submission with the same
+// external id collides with it.
 func landingCreate(deps landingDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing create: missing project ID\n")
-		return errUsage
+	projectID, err := shipProjectArg("landing create", args)
+	if err != nil {
+		return err
 	}
 	fs := flag.NewFlagSet("landing create", flag.ContinueOnError)
 	kind := fs.String("kind", "change", "landing kind: change, issue, feedback, data, request")
 	title := fs.String("title", "", "landing title")
 	description := fs.String("description", "", "landing description")
-	externalID := fs.String("external-id", "", "external identifier")
+	contributor := fs.String("contributor", shipUserID(), "who is contributing")
+	externalID := fs.String("external-id", "", "external identifier (the idempotency key)")
 	sourceURL := fs.String("source-url", "", "source URL")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := shipParse(fs, args[1:], "landing", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
 	if *title == "" {
@@ -95,6 +100,7 @@ func landingCreate(deps landingDeps, env *Env, args []string) error {
 		"title":       *title,
 		"description": *description,
 		"kind":        *kind,
+		"contributor": *contributor,
 	}
 	if *externalID != "" {
 		body["external_id"] = *externalID
@@ -102,133 +108,178 @@ func landingCreate(deps landingDeps, env *Env, args []string) error {
 	if *sourceURL != "" {
 		body["source_url"] = *sourceURL
 	}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/landings", body)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
 	return nil
 }
 
+// landingList lists the landings of a project.
 func landingList(deps landingDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing list: missing project ID\n")
-		return errUsage
+	projectID, err := shipProjectArg("landing list", args)
+	if err != nil {
+		return err
 	}
 	fs := flag.NewFlagSet("landing list", flag.ContinueOnError)
 	kind := fs.String("kind", "", "filter by kind")
 	status := fs.String("status", "", "filter by status")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := shipParse(fs, args[1:], "landing", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
-	url := deps.shipURL + "/v1/projects/" + args[0] + "/tasks"
-	params := ""
+	params := url.Values{}
 	if *kind != "" {
-		params = "?kind=" + *kind
+		params.Set("kind", *kind)
 	}
 	if *status != "" {
-		if params == "" {
-			params = "?status=" + *status
-		} else {
-			params += "&status=" + *status
-		}
+		params.Set("status", *status)
 	}
-	req, _ := http.NewRequest("GET", url+params, nil)
-	resp, err := deps.client.Do(req)
+	req, err := shipRequest("GET", deps.shipURL,
+		"/v1/projects/"+projectID+"/landings"+shipQuery(params), nil)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// landingGet fetches one landing.
 func landingGet(deps landingDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing get: usage: cafe landing get <project-id> <task-id>\n")
-		return errUsage
-	}
-	req, _ := http.NewRequest("GET", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1], nil)
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("landing get", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	landingID, err := shipArg("landing get", "landing ID", args, 1)
+	if err != nil {
+		return err
+	}
+	req, err := shipRequest("GET", deps.shipURL,
+		"/v1/projects/"+projectID+"/landings/"+landingID, nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
-func landingApprove(deps landingDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing approve: usage: cafe landing approve <project-id> <task-id> [--by <id>] [--note <text>]\n")
-		return errUsage
-	}
-	fs := flag.NewFlagSet("landing approve", flag.ContinueOnError)
-	by := fs.String("by", "", "who is approving")
-	note := fs.String("note", "", "approval note")
-	fs.Parse(args[2:])
-	body := map[string]any{"decided_by": *by, "note": *note}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/approve", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+// landingDecide approves or rejects a landing.
+//
+// The two are one function because they are one route with one body: the
+// decision differs only in the word at the end of the path.
+//
+// `--by` is passed through as it was given, because ship's decided_by is a
+// string and not a UUID, and a name is a legitimate value for it. It is
+// recorded either way, so an approval with no `--by` is ship recording an
+// approval nobody claimed — which is the caller's choice to make, not a
+// reason for the CLI to invent one.
+func landingDecide(deps landingDeps, env *Env, args []string, decision string) error {
+	group := "landing " + decision
+	projectID, err := shipProjectArg(group, args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	landingID, err := shipArg(group, "landing ID", args, 1)
+	if err != nil {
+		return err
+	}
+	fs := flag.NewFlagSet(group, flag.ContinueOnError)
+	by := fs.String("by", "", "who is deciding")
+	note := fs.String("note", "", "decision note")
+	if err := shipParse(fs, args[2:], "landing", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
+		return err
+	}
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/landings/"+landingID+"/"+decision,
+		map[string]any{"decided_by": *by, "note": *note})
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
-func landingReject(deps landingDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing reject: usage: cafe landing reject <project-id> <task-id> [--by <id>] [--note <text>]\n")
-		return errUsage
-	}
-	fs := flag.NewFlagSet("landing reject", flag.ContinueOnError)
-	by := fs.String("by", "", "who is rejecting")
-	note := fs.String("note", "", "rejection note")
-	fs.Parse(args[2:])
-	body := map[string]any{"decided_by": *by, "note": *note}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/reject", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
-	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing: %v\n", err)
-		return err
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
-	return nil
-}
-
+// landingMerge merges an approved landing.
 func landingMerge(deps landingDeps, env *Env, args []string) error {
-	if len(args) < 2 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing merge: usage: cafe landing merge <project-id> <task-id>\n")
-		return errUsage
-	}
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/tasks/"+args[1]+"/merge", nil)
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("landing merge", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe landing: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	landingID, err := shipArg("landing merge", "landing ID", args, 1)
+	if err != nil {
+		return err
+	}
+	req, err := shipRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/landings/"+landingID+"/merge", nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
+	return nil
+}
+
+// landingResults records a result against a landing: the evidence that the
+// contribution was certified.
+func landingResults(deps landingDeps, env *Env, args []string) error {
+	projectID, err := shipProjectArg("landing results", args)
+	if err != nil {
+		return err
+	}
+	landingID, err := shipArg("landing results", "landing ID", args, 1)
+	if err != nil {
+		return err
+	}
+	fs := flag.NewFlagSet("landing results", flag.ContinueOnError)
+	stage := fs.String("stage", "", "stage the result belongs to")
+	resultType := fs.String("type", "info", "result type: success, failure or info")
+	message := fs.String("message", "", "what the result says")
+	if err := shipParse(fs, args[2:], "landing", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
+		return err
+	}
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/landings/"+landingID+"/results",
+		map[string]any{
+			"stage_name": *stage,
+			"type":       *resultType,
+			"message":    *message,
+		})
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }

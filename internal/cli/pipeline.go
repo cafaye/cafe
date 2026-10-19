@@ -1,38 +1,19 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
-
-	"github.com/google/uuid"
 )
 
-type pipelineDeps struct {
-	shipURL string
-	client  *http.Client
-}
+// `cafe pipeline` is the flow a project follows: the stages, the gates
+// between them, and the recipes that install a preset of both.
 
-func (d pipelineDeps) withDefaults() pipelineDeps {
-	if d.shipURL == "" {
-		d.shipURL = os.Getenv("SHIP_URL")
-		if d.shipURL == "" {
-			d.shipURL = "https://ship.cafaye.com"
-		}
-	}
-	if d.client == nil {
-		d.client = &http.Client{Timeout: 30 * time.Second}
-	}
-	return d
-}
+// The seam this command group talks through is shipDeps, in ship.go. There is
+// one of them on purpose: see that file.
 
 func newPipelineCommand(deps pipelineDeps) *Command {
-	deps = deps.withDefaults()
+	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "pipeline",
 		Summary: "manage project pipelines (stages, gates, recipes)",
@@ -44,9 +25,13 @@ func newPipelineCommand(deps pipelineDeps) *Command {
 			"  advance <project-id>          Advance to the next stage\n" +
 			"  recipes                       List available pipeline recipes\n\n" +
 			"Environment:\n" +
-			"  SHIP_URL  Base URL of the ship service (default: https://ship.cafaye.com)\n",
+			"  SHIP_URL   Base URL of the ship service (default: " + defaultShipURL + ")\n" +
+			"  SHIP_TOKEN Service token, sent as `Authorization: Bearer …`\n",
 	}
 	c.Run = func(args []string, env *Env) error {
+		if urlErr != nil {
+			return urlErr
+		}
 		if len(args) == 0 {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline: missing subcommand (usage: %s)\n", c.Usage)
 			return errUsage
@@ -68,79 +53,84 @@ func newPipelineCommand(deps pipelineDeps) *Command {
 	return c
 }
 
+// pipelineGet shows the project's pipeline.
 func pipelineGet(deps pipelineDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline get: missing project ID\n")
-		return errUsage
-	}
-	req, _ := http.NewRequest("GET", deps.shipURL+"/v1/projects/"+args[0]+"/pipeline", nil)
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("pipeline get", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	req, err := shipRequest("GET", deps.shipURL, "/v1/projects/"+projectID+"/pipeline", nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// pipelineUpdate installs a recipe, or writes a pipeline definition directly.
 func pipelineUpdate(deps pipelineDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline update: missing project ID\n")
-		return errUsage
+	projectID, err := shipProjectArg("pipeline update", args)
+	if err != nil {
+		return err
 	}
 	fs := flag.NewFlagSet("pipeline update", flag.ContinueOnError)
 	recipe := fs.String("recipe", "", "recipe to install (software, deploy, contribution, default)")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := shipParse(fs, args[1:], "pipeline", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
 		return err
 	}
 	body := map[string]any{}
 	if *recipe != "" {
 		body["recipe"] = *recipe
 	}
-	data, _ := json.Marshal(body)
-	req, _ := http.NewRequest("PUT", deps.shipURL+"/v1/projects/"+args[0]+"/pipeline", bytes.NewReader(data))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := deps.client.Do(req)
+	req, err := shipJSONRequest("PUT", deps.shipURL,
+		"/v1/projects/"+projectID+"/pipeline", body)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
 	return nil
 }
 
+// pipelineAdvance moves the project to the next stage of its pipeline.
 func pipelineAdvance(deps pipelineDeps, env *Env, args []string) error {
-	if len(args) < 1 {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline advance: missing project ID\n")
-		return errUsage
-	}
-	req, _ := http.NewRequest("POST", deps.shipURL+"/v1/projects/"+args[0]+"/pipeline/advance", nil)
-	resp, err := deps.client.Do(req)
+	projectID, err := shipProjectArg("pipeline advance", args)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	req, err := shipRequest("POST", deps.shipURL,
+		"/v1/projects/"+projectID+"/pipeline/advance", nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
 
+// pipelineRecipes lists the presets ship can install.
 func pipelineRecipes(deps pipelineDeps, env *Env, args []string) error {
-	req, _ := http.NewRequest("GET", deps.shipURL+"/v1/pipeline-recipes", nil)
-	resp, err := deps.client.Do(req)
+	req, err := shipRequest("GET", deps.shipURL, "/v1/pipeline-recipes", nil)
 	if err != nil {
-		_, _ = fmt.Fprintf(env.Stderr, "cafe pipeline: %v\n", err)
 		return err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
 	return nil
 }
-
-var _ = uuid.New

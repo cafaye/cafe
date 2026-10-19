@@ -89,7 +89,7 @@ gate:
       # How many packages `go list ./...` reports. A floor, so a package deleted
       # without a deliberate decision is caught here. DERIVED, never hand-edited:
       # `cafe gate floors --write` sets it and re-pins `caf.lock`.
-      minimum: 34
+      minimum: 36
     - id: suite
       match: '^cafe: ([0-9]+) packages, ([0-9]+) top-level passes, ([0-9]+) subtest passes, 0 failures, ([0-9]+) skips$'
       # How many top-level tests RAN — passed or failed, not skipped. The ratchet
@@ -108,14 +108,14 @@ gate:
       # moves is visible in the command's output and in the diff, and a floor
       # that moves DOWN still needs a human to have run the writer and read it.
       # internal/gate holds the argument in full.
-      minimum: 1541
+      minimum: 1572
     - id: subtests
       match: '^cafe: [0-9]+ packages, [0-9]+ top-level passes, ([0-9]+) subtest passes, 0 failures, [0-9]+ skips$'
       # How many subtests RAN, by the same derivation and the same writer. It is
       # a separate floor from the suite's because the two measure different
       # things: a test folded into a subtest keeps the "any-level" count and
       # loses the top-level one, and only the suite floor notices.
-      minimum: 1310
+      minimum: 1399
 
     - id: live-tier
       match: '^cafe: live tier: [0-9]+ of 7 executed'
