@@ -8,8 +8,8 @@ Cafaye is the agentic stack: solve hard problems once, choose the right tools fo
 
 ## Defaults to assume
 
-- Base URL for ship service: `https://ship.cafaye.com` (or `SHIP_URL` env var)
-- Base URL for identity: `https://auth.cafaye.com` (or `IDENTITY_URL` env var)
+- Base URL for cafaye: `https://cafaye.com` (or `CAFAYE_URL` env var, legacy: `SHIP_URL`)
+- Base URL for identity: derived from `CAFAYE_URL` (or `IDENTITY_URL` env var)
 - Dev boxes run on instabox (ephemeral, auto-suspend, pay-when-in-use)
 - Prod runs on the user's Cafaye box (Contabo or self-hosted)
 - All backends share one Postgres cluster

@@ -20,10 +20,13 @@ type projectDeps struct {
 
 func (d projectDeps) withDefaults() projectDeps {
 	if d.shipURL == "" {
+		d.shipURL = os.Getenv("CAFAYE_URL")
+	}
+	if d.shipURL == "" {
 		d.shipURL = os.Getenv("SHIP_URL")
-		if d.shipURL == "" {
-			d.shipURL = "https://ship.cafaye.com"
-		}
+	}
+	if d.shipURL == "" {
+		d.shipURL = "https://cafaye.com"
 	}
 	if d.client == nil {
 		d.client = &http.Client{Timeout: 30 * time.Second}
@@ -43,7 +46,8 @@ func newProjectCommand(deps projectDeps) *Command {
 			"  list            List your projects\n" +
 			"  get <id>        Get project details\n\n" +
 			"Environment:\n" +
-			"  SHIP_URL  Base URL of the ship service (default: https://ship.cafaye.com)\n" +
+			"  CAFAYE_URL  Base URL of your cafaye instance (default: https://cafaye.com)\n" +
+			"  SHIP_URL    Legacy alias for CAFAYE_URL\n" +
 			"  SHIP_OWNER_ID  Default owner ID\n",
 	}
 	c.Run = func(args []string, env *Env) error {

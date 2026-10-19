@@ -17,6 +17,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/cafaye/cafe/internal/emitter"
+	"github.com/cafaye/cafe/internal/skills"
 )
 
 // errUsage marks a mistake in how cafe was invoked, as opposed to a command
@@ -101,6 +102,13 @@ type Env struct {
 // vocabulary exists to make single.
 func Run(opts Options) int {
 	env := opts.env()
+	// Auto-install skills on first run (idempotent, silent on success).
+	if len(opts.Args) > 0 && opts.Args[0] != "skills" {
+		if _, err := skills.EnsureDefaultInstalled(); err != nil {
+			// Silent failure — skills are optional, don't block the command.
+			_ = err
+		}
+	}
 	session := installTelemetry(env)
 	ctx, endInvocation := session.StartInvocation(env.Context, opts.Args)
 

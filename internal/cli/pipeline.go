@@ -20,10 +20,13 @@ type pipelineDeps struct {
 
 func (d pipelineDeps) withDefaults() pipelineDeps {
 	if d.shipURL == "" {
+		d.shipURL = os.Getenv("CAFAYE_URL")
+	}
+	if d.shipURL == "" {
 		d.shipURL = os.Getenv("SHIP_URL")
-		if d.shipURL == "" {
-			d.shipURL = "https://ship.cafaye.com"
-		}
+	}
+	if d.shipURL == "" {
+		d.shipURL = "https://cafaye.com"
 	}
 	if d.client == nil {
 		d.client = &http.Client{Timeout: 30 * time.Second}
@@ -44,7 +47,8 @@ func newPipelineCommand(deps pipelineDeps) *Command {
 			"  advance <project-id>          Advance to the next stage\n" +
 			"  recipes                       List available pipeline recipes\n\n" +
 			"Environment:\n" +
-			"  SHIP_URL  Base URL of the ship service (default: https://ship.cafaye.com)\n",
+			"  CAFAYE_URL  Base URL of your cafaye instance (default: https://cafaye.com)\n" +
+			"  SHIP_URL    Legacy alias for CAFAYE_URL\n",
 	}
 	c.Run = func(args []string, env *Env) error {
 		if len(args) == 0 {

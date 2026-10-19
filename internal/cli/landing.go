@@ -19,10 +19,13 @@ type landingDeps struct {
 
 func (d landingDeps) withDefaults() landingDeps {
 	if d.shipURL == "" {
+		d.shipURL = os.Getenv("CAFAYE_URL")
+	}
+	if d.shipURL == "" {
 		d.shipURL = os.Getenv("SHIP_URL")
-		if d.shipURL == "" {
-			d.shipURL = "https://ship.cafaye.com"
-		}
+	}
+	if d.shipURL == "" {
+		d.shipURL = "https://cafaye.com"
 	}
 	if d.client == nil {
 		d.client = &http.Client{Timeout: 30 * time.Second}
