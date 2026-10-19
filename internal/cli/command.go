@@ -147,6 +147,8 @@ func Commands() []*Command {
 		newReportCommand(reportDeps{}),
 		newResolveCommand(resolveDeps{}),
 		newSecretCommand(secretDeps{}),
+		newSkillsCommand(),
+		newStartCommand(startDeps{}),
 		newTaskCommand(taskDeps{}),
 		newUpdateCommand(),
 		newVersionCommand(),
