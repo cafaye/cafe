@@ -1,17 +1,16 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"bytes"
-"io"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 )
-
-type errorsDeps struct{}
 
 func newErrorsCommand() *Command {
 	var (
@@ -48,7 +47,7 @@ func newErrorsCommand() *Command {
 				}
 				body := map[string]any{"version": version, "ref": version, "projects": []string{"cafaye"}}
 				b, _ := json.Marshal(body)
-				req, err := http.NewRequest("POST", baseURL2+"/api/0/organizations/"+org+"/releases/", bytes.NewReader(b))
+				req, err := http.NewRequestWithContext(context.Background(), "POST", baseURL2+"/api/0/organizations/"+org+"/releases/", bytes.NewReader(b))
 				if err != nil {
 					return err
 				}
@@ -58,12 +57,12 @@ func newErrorsCommand() *Command {
 				if err != nil {
 					return err
 				}
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 				rb, _ := io.ReadAll(resp.Body)
 				if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 					return fmt.Errorf("cafe errors: %s: %s", resp.Status, strings.TrimSpace(string(rb)))
 				}
-				fmt.Fprintf(env.Stdout, "registered release %s\n", version)
+				_, _ = fmt.Fprintf(env.Stdout, "registered release %s\n", version)
 				return nil
 			}
 			if len(args) > 0 && (args[0] == "show" || args[0] == "status") {
@@ -84,23 +83,23 @@ func newErrorsCommand() *Command {
 					token2 = token
 				}
 				var raw struct {
-					ID      string `json:"id"`
-					Title   string `json:"title"`
-					Level   string `json:"level"`
-					Status  string `json:"status"`
-					Count   string `json:"count"`
+					ID        string `json:"id"`
+					Title     string `json:"title"`
+					Level     string `json:"level"`
+					Status    string `json:"status"`
+					Count     string `json:"count"`
 					FirstSeen string `json:"firstSeen"`
 					LastSeen  string `json:"lastSeen"`
 					Permalink string `json:"permalink"`
 				}
-				if err := errorStoreGet(baseURL2, token2, "/api/0/issues/"+id+"/", &raw); err != nil {
+				if err := errorStoreGet(ctxOrBackground(env), baseURL2, token2, "/api/0/issues/"+id+"/", &raw); err != nil {
 					return err
 				}
 				if sub == "status" {
-					fmt.Fprintf(env.Stdout, "%s  %s\n", raw.ID, raw.Status)
+					_, _ = fmt.Fprintf(env.Stdout, "%s  %s\n", raw.ID, raw.Status)
 					return nil
 				}
-				fmt.Fprintf(env.Stdout, "id: %s\ntitle: %s\nlevel: %s\nstatus: %s\ncount: %s\nfirstSeen: %s\nlastSeen: %s\npermalink: %s\n", raw.ID, raw.Title, raw.Level, raw.Status, raw.Count, raw.FirstSeen, raw.LastSeen, raw.Permalink)
+				_, _ = fmt.Fprintf(env.Stdout, "id: %s\ntitle: %s\nlevel: %s\nstatus: %s\ncount: %s\nfirstSeen: %s\nlastSeen: %s\npermalink: %s\n", raw.ID, raw.Title, raw.Level, raw.Status, raw.Count, raw.FirstSeen, raw.LastSeen, raw.Permalink)
 				return nil
 			}
 			if strings.TrimSpace(baseURL) == "" {
@@ -137,11 +136,11 @@ func newErrorsCommand() *Command {
 			}
 
 			if len(issues) == 0 {
-				fmt.Fprintln(env.Stdout, "no issues")
+				_, _ = fmt.Fprintln(env.Stdout, "no issues")
 				return nil
 			}
 			for _, i := range issues {
-				fmt.Fprintf(env.Stdout, "%s  %-7s  %-10s  %s  (count=%s, lastSeen=%s)\n", i.ID, i.Level, i.Status, i.Title, i.Count, i.LastSeen)
+				_, _ = fmt.Fprintf(env.Stdout, "%s  %-7s  %-10s  %s  (count=%s, lastSeen=%s)\n", i.ID, i.Level, i.Status, i.Title, i.Count, i.LastSeen)
 			}
 			return nil
 		},
@@ -150,7 +149,7 @@ func newErrorsCommand() *Command {
 
 func fetchJSON[T any](baseURL, token, path string) (T, error) {
 	var zero T
-	req, err := http.NewRequest("GET", baseURL+path, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", baseURL+path, nil)
 	if err != nil {
 		return zero, err
 	}
@@ -159,7 +158,7 @@ func fetchJSON[T any](baseURL, token, path string) (T, error) {
 	if err != nil {
 		return zero, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return zero, fmt.Errorf("cafe errors: %s: %s", resp.Status, strings.TrimSpace(string(body)))
@@ -170,7 +169,6 @@ func fetchJSON[T any](baseURL, token, path string) (T, error) {
 	}
 	return out, nil
 }
-
 
 // registerGlitchTipRelease registers a release with the cafaye error store so
 // GlitchTip can auto-resolve issues fixed in it. It never fails the caller: a
@@ -195,7 +193,7 @@ func registerGlitchTipRelease(version string) {
 	}
 	body := map[string]any{"version": version, "ref": version, "projects": []string{"cafaye"}}
 	b, _ := json.Marshal(body)
-	req, err := http.NewRequest("POST", baseURL+"/api/0/organizations/"+org+"/releases/", bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(context.Background(), "POST", baseURL+"/api/0/organizations/"+org+"/releases/", bytes.NewReader(b))
 	if err != nil {
 		return
 	}
@@ -205,8 +203,11 @@ func registerGlitchTipRelease(version string) {
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		// success; no output to keep deploy output clean
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// The contract above says a store error is logged and swallowed, so
+		// it is logged here. A release that was not registered is worth
+		// seeing, and it is not worth failing a deploy that worked over.
+		_, _ = fmt.Fprintf(os.Stderr, "cafe: release %s was not registered: %s\n", version, resp.Status)
 	}
 }

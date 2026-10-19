@@ -8,10 +8,7 @@ import (
 
 type devboxDeps struct{}
 
-func (d devboxDeps) withDefaults() devboxDeps { return d }
-
 func newDevboxCommand(deps devboxDeps) *Command {
-	deps = deps.withDefaults()
 	c := &Command{
 		Name:    "devbox",
 		Summary: "manage dev boxes on instabox",
@@ -30,8 +27,10 @@ func newDevboxCommand(deps devboxDeps) *Command {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe devbox: missing subcommand (usage: %s)\n", c.Usage)
 			return errUsage
 		}
-		// Delegate to instabox CLI
-		cmd := exec.Command("instabox", args...)
+		// Delegate to instabox CLI. The command carries the
+		// invocation's context, so an interrupted run does not leave
+		// the child process behind.
+		cmd := exec.CommandContext(ctxOrBackground(env), "instabox", args...)
 		cmd.Stdout = env.Stdout
 		cmd.Stderr = env.Stderr
 		cmd.Stdin = os.Stdin

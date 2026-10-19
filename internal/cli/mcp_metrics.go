@@ -28,7 +28,7 @@ func (t *mcpTools) metrics() mcp.Tool[metricsArgs, string] {
 	}
 }
 
-func (t *mcpTools) runMetrics(_ context.Context, args metricsArgs) (string, error) {
+func (t *mcpTools) runMetrics(ctx context.Context, args metricsArgs) (string, error) {
 	baseURL := strings.TrimSpace(os.Getenv("CAFAYE_PROMETHEUS_URL"))
 	if baseURL == "" {
 		baseURL = "http://localhost:15902"
@@ -46,7 +46,7 @@ func (t *mcpTools) runMetrics(_ context.Context, args metricsArgs) (string, erro
 		tenant = "single-tenant"
 	}
 	url := fmt.Sprintf("%s/api/v1/query?query=%s", baseURL, urlEncode(query))
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", err
 	}
@@ -57,7 +57,7 @@ func (t *mcpTools) runMetrics(_ context.Context, args metricsArgs) (string, erro
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "", fmt.Errorf("cafe caf_metrics: %s: %s", resp.Status, strings.TrimSpace(string(body)))

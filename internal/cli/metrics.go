@@ -34,7 +34,7 @@ func newMetricsCommand() *Command {
 				tenant = "single-tenant"
 			}
 			url := fmt.Sprintf("%s/api/v1/query?query=%s", baseURL, urlEncode(query))
-			req, err := http.NewRequest("GET", url, nil)
+			req, err := http.NewRequestWithContext(ctxOrBackground(env), "GET", url, nil)
 			if err != nil {
 				return err
 			}
@@ -45,7 +45,7 @@ func newMetricsCommand() *Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			body, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 				return fmt.Errorf("cafe metrics: %s: %s", resp.Status, strings.TrimSpace(string(body)))
@@ -53,11 +53,11 @@ func newMetricsCommand() *Command {
 			// Pretty-print the raw JSON result for readability.
 			var pretty map[string]any
 			if err := json.Unmarshal(body, &pretty); err != nil {
-				fmt.Fprintln(env.Stdout, string(body))
+				_, _ = fmt.Fprintln(env.Stdout, string(body))
 				return nil
 			}
 			b, _ := json.MarshalIndent(pretty, "", "  ")
-			fmt.Fprintln(env.Stdout, string(b))
+			_, _ = fmt.Fprintln(env.Stdout, string(b))
 			return nil
 		},
 	}

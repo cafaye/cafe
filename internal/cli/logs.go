@@ -51,7 +51,7 @@ func newLogsCommand() *Command {
 			start := end.Add(-dur)
 			url := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&start=%d&end=%d&limit=%d",
 				baseURL, urlEncode(query), start.UnixNano(), end.UnixNano(), limit)
-			req, err := http.NewRequest("GET", url, nil)
+			req, err := http.NewRequestWithContext(ctxOrBackground(env), "GET", url, nil)
 			if err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ func newLogsCommand() *Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			body, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 				return fmt.Errorf("cafe logs: %s: %s", resp.Status, strings.TrimSpace(string(body)))
@@ -95,11 +95,11 @@ func newLogsCommand() *Command {
 			}
 			sort.Slice(lines, func(i, j int) bool { return lines[i].ts < lines[j].ts })
 			if len(lines) == 0 {
-				fmt.Fprintln(env.Stdout, "no log lines")
+				_, _ = fmt.Fprintln(env.Stdout, "no log lines")
 				return nil
 			}
 			for _, l := range lines {
-				fmt.Fprintf(env.Stdout, "%s  %s\n", l.ts, l.text)
+				_, _ = fmt.Fprintf(env.Stdout, "%s  %s\n", l.ts, l.text)
 			}
 			return nil
 		},

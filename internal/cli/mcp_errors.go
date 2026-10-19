@@ -30,14 +30,14 @@ type errorDetailArgs struct {
 }
 
 type errorDetailFacts struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Level       string `json:"level"`
-	Status      string `json:"status"`
-	Count       string `json:"count"`
-	FirstSeen   string `json:"first_seen"`
-	LastSeen    string `json:"last_seen"`
-	Permalink   string `json:"permalink,omitempty"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Level     string `json:"level"`
+	Status    string `json:"status"`
+	Count     string `json:"count"`
+	FirstSeen string `json:"first_seen"`
+	LastSeen  string `json:"last_seen"`
+	Permalink string `json:"permalink,omitempty"`
 }
 
 type errorStatusArgs struct {
@@ -60,7 +60,7 @@ func (t *mcpTools) errors() mcp.Tool[errorsArgs, []errorFacts] {
 	}
 }
 
-func (t *mcpTools) runErrors(_ context.Context, args errorsArgs) ([]errorFacts, error) {
+func (t *mcpTools) runErrors(ctx context.Context, args errorsArgs) ([]errorFacts, error) {
 	org, baseURL, token, err := errorStoreConfig()
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (t *mcpTools) runErrors(_ context.Context, args errorsArgs) ([]errorFacts, 
 		Count    string `json:"count"`
 		LastSeen string `json:"lastSeen"`
 	}
-	if err := errorStoreGet(baseURL, token, "/api/0/organizations/"+org+"/issues/?limit="+fmt.Sprint(limit), &raw); err != nil {
+	if err := errorStoreGet(ctx, baseURL, token, "/api/0/organizations/"+org+"/issues/?limit="+fmt.Sprint(limit), &raw); err != nil {
 		return nil, err
 	}
 	out := make([]errorFacts, 0, len(raw))
@@ -98,7 +98,7 @@ func (t *mcpTools) errorDetail() mcp.Tool[errorDetailArgs, errorDetailFacts] {
 	}
 }
 
-func (t *mcpTools) runErrorDetail(_ context.Context, args errorDetailArgs) (errorDetailFacts, error) {
+func (t *mcpTools) runErrorDetail(ctx context.Context, args errorDetailArgs) (errorDetailFacts, error) {
 	_, baseURL, token, err := errorStoreConfig()
 	if err != nil {
 		return errorDetailFacts{}, err
@@ -116,7 +116,7 @@ func (t *mcpTools) runErrorDetail(_ context.Context, args errorDetailArgs) (erro
 		LastSeen  string `json:"lastSeen"`
 		Permalink string `json:"permalink"`
 	}
-	if err := errorStoreGet(baseURL, token, "/api/0/issues/"+args.ID+"/", &raw); err != nil {
+	if err := errorStoreGet(ctx, baseURL, token, "/api/0/issues/"+args.ID+"/", &raw); err != nil {
 		return errorDetailFacts{}, err
 	}
 	return errorDetailFacts{ID: raw.ID, Title: raw.Title, Level: raw.Level, Status: raw.Status, Count: raw.Count, FirstSeen: raw.FirstSeen, LastSeen: raw.LastSeen, Permalink: raw.Permalink}, nil
@@ -133,7 +133,7 @@ func (t *mcpTools) errorStatus() mcp.Tool[errorStatusArgs, errorStatusFacts] {
 	}
 }
 
-func (t *mcpTools) runErrorStatus(_ context.Context, args errorStatusArgs) (errorStatusFacts, error) {
+func (t *mcpTools) runErrorStatus(ctx context.Context, args errorStatusArgs) (errorStatusFacts, error) {
 	_, baseURL, token, err := errorStoreConfig()
 	if err != nil {
 		return errorStatusFacts{}, err
@@ -145,7 +145,7 @@ func (t *mcpTools) runErrorStatus(_ context.Context, args errorStatusArgs) (erro
 		ID     string `json:"id"`
 		Status string `json:"status"`
 	}
-	if err := errorStoreGet(baseURL, token, "/api/0/issues/"+args.ID+"/", &raw); err != nil {
+	if err := errorStoreGet(ctx, baseURL, token, "/api/0/issues/"+args.ID+"/", &raw); err != nil {
 		return errorStatusFacts{}, err
 	}
 	return errorStatusFacts{ID: raw.ID, Status: raw.Status}, nil
@@ -171,8 +171,8 @@ func errorStoreConfig() (string, string, string, error) {
 	return org, baseURL, token, nil
 }
 
-func errorStoreGet(baseURL, token, path string, out any) error {
-	req, err := http.NewRequest("GET", baseURL+path, nil)
+func errorStoreGet(ctx context.Context, baseURL, token, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+path, nil)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func errorStoreGet(baseURL, token, path string, out any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("cafe: %s: %s", resp.Status, strings.TrimSpace(string(body)))
