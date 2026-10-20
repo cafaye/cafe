@@ -122,13 +122,13 @@ Description=Cafaye dev tunnel
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/cloudflared tunnel run --token %s
+ExecStart=/usr/local/bin/cloudflared tunnel run --token %s --url http://localhost:%d
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=default.target
-`, t.Token)
+`, t.Token, *port)
 	os.WriteFile(serviceFile, []byte(serviceContent), 0644)
 
 	// Reload and start
