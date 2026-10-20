@@ -293,7 +293,7 @@ Cafaye repos and packages are private. To build on instabox or deploy on Contabo
 - No changes needed — already configured for private packages
 
 ### Forgejo (internal git host)
-- Forgejo runs on Contabo at `git.cafaye.com`
+- Cafaye Git (Forgejo) runs on Contabo at `git.cafaye.com` — the canonical git host. GitHub is a legacy mirror being phased out.
 - All cafaye code is pushed here as the canonical source
 - GitHub is an optional mirror
 - Instabox boxes can reach Forgejo (public URL)
