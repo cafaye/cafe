@@ -151,6 +151,7 @@ func Commands() []*Command {
 		newSkillsCommand(),
 		newStartCommand(startDeps{}),
 		newTaskCommand(taskDeps{}),
+		newTunnelCommand(tunnelDeps{}),
 		newUpdateCommand(),
 		newVersionCommand(),
 	}

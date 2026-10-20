@@ -50,6 +50,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 		"skills",
 		"start",
 		"task",
+		"tunnel",
 		"update",
 		"version",
 	}
