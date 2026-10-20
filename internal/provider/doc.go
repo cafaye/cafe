@@ -1,5 +1,5 @@
 // Package provider is the client half of the sealed-connection model
-// (moon/AGENTS-FIRST.md, boundary 6 and the W3 table row "the agent hands over
+// (cafaye/notes/agents-first.md, boundary 6 and the W3 table row "the agent hands over
 // an envelope; it never sees the value").
 //
 // A provider credential is sealed to the BOX's public key and the resulting

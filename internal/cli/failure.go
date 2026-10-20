@@ -39,7 +39,7 @@ func (d failureDeps) withDefaults() failureDeps {
 // exit code derived from "anything holds" would be red on a healthy one.
 const failureLongHelp = `Checks a box against the cafaye failure-mode library — the documented
 conditions of our own stack that a generic monitor cannot see
-(moon/CAFAYE-OPS.md:731-748), evaluated against what the box daemon can
+(cafaye/notes/ops.md:731-748), evaluated against what the box daemon can
 observe.
 
 The observation is a JSON document: the facts the library's rules read, one

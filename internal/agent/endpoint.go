@@ -17,7 +17,7 @@ import (
 //
 // These are the routes identity actually mounts, read off identity's master
 // (internal/httpapi/agents.go, registerAgentPublicRoutes) and verified against
-// its own response shapes — NOT the shapes moon/AGENTS-FIRST.md documented
+// its own response shapes — NOT the shapes cafaye/notes/agents-first.md documented
 // before W1-P2 landed, which is how five of the six calls in the previous
 // version of this table came to 404 against a real server. The one exception
 // is the home route: REPAIR-C (identity adding GET /v1/agents/home) has not

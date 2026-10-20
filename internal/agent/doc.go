@@ -1,7 +1,7 @@
 // Package agent is the agent half of the CLI: the principal that registers
 // itself, becomes claimed by a human, and holds a token.
 //
-// The split is the command vocabulary in moon/AGENTS-FIRST.md: `cafe agent …`
+// The split is the command vocabulary in cafaye/notes/agents-first.md: `cafe agent …`
 // is a *principal* (an identity that exists, becomes claimed by a human
 // account, and holds a token) and `cafe box …` is a *machine* (it has a keypair,
 // it enrolls, it runs the substrate). A box does not log in; it presents a

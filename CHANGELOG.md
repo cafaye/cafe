@@ -13,7 +13,7 @@ All notable changes to cafe are recorded here. The format follows
   the substrate: kit owns one static `Application` per service — OCI-sourced
   (`oci://ghcr.io/cafaye/charts`), applied by `install.sh` — and a service
   repository commits none. The decision and its reason are recorded in
-  `moon/DEPLOYMENT.md`, "Who owns the Application": closed-source charts ride
+  `cafaye/notes/deployment.md`, "Who owns the Application": closed-source charts ride
   a pull-based system, so the source of truth for what runs is the OCI
   artifact with one read-only pull secret, not a git path the cluster would
   need read access to. A generated `Application` would have been a second one

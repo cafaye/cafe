@@ -27,7 +27,7 @@ import (
 // over the same connection, never one giant pipe write. This package carries
 // no dependency for a transport the operator's own `ssh` already speaks, so
 // the streaming is done with the same command tree: N bounded appends, one
-// hash gate, one rename. `moon/refs/sshkit` is the reference.
+// hash gate, one rename. `reference/sshkit` is the reference.
 //
 // 1 MiB is the bound because it is small enough that a cap anywhere between
 // 11 and 17 MB cannot swallow a chunk, and large enough that a 29 MB binary

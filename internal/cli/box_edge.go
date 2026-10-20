@@ -18,7 +18,7 @@ import (
 // than a mechanism: `edge` reads what the box serves, `publish` deploys a
 // release and flips `current` at it, `rollback` flips it back.
 //
-// THE WORDS ARE THE PLAN'S OWN. moon/PLAN-names-urls-rollout.md §4 lists what
+// THE WORDS ARE THE PLAN'S OWN. cafaye/notes/reference/names-urls-rollout-plan.md §4 lists what
 // box ships for its phase — boxd's embedded edge, host-based routing, automatic
 // TLS, release directories with an atomic symlink switch — and names no
 // ingress, no chart and no namespace. Neither does this file. A customer who

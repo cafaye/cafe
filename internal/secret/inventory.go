@@ -212,7 +212,7 @@ var (
 	srcOAuthReadme = cite("cafaye/identity/README.md", "OAUTH_ENCRYPTION_KEY")
 	srcPairTTL     = cite("cafaye/identity/README.md", "expires one hour")
 	srcMuseReadme  = cite("cafaye/muse/README.md", "Keys are read per request")
-	srcPacket      = cite("moon/CAFAYE-OPS.md", "The honest ceiling here depends on reach")
+	srcPacket      = cite("cafaye/notes/ops.md", "The honest ceiling here depends on reach")
 )
 
 // DefaultInterval is the schedule the rotatable class runs on. Ninety days is

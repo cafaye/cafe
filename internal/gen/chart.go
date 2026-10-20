@@ -72,7 +72,7 @@ const readyzPath = "/readyz"
 // service repository commits none. A generated Application would be a second
 // one of the same name in the same namespace with a different source, and
 // the later `kubectl apply` wins: a deploy whose target depends on apply
-// order is not a deploy. The decision is recorded in moon/DEPLOYMENT.md,
+// order is not a deploy. The decision is recorded in cafaye/notes/deployment.md,
 // "Who owns the Application".
 //
 // The Ingress is the one contract file that is gated on a value: it is
@@ -540,7 +540,7 @@ func renderChartReadme(manifest contract.Manifest) []byte {
 	w.text("\n")
 	w.text("The chart is deployed by ArgoCD, pull-only, and the Application is\n")
 	w.text("not this chart's: the substrate owns it — one static Application\n")
-	w.text("per service, OCI-sourced, applied by install.sh (moon/DEPLOYMENT.md,\n")
+	w.text("per service, OCI-sourced, applied by install.sh (cafaye/notes/deployment.md,\n")
 	w.text("\"Who owns the Application\"). A service repository commits none.\n")
 	w.text("The only thing that can change the cluster is a commit: push a\n")
 	w.text("values commit, Argo syncs, the box agrees with git. A hand edit\n")

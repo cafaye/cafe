@@ -30,7 +30,7 @@ const SpecVersion = 1
 // Mode is how the box terminates TLS.
 //
 // The three are the three states a box is actually in, and the plan's TLS note
-// (moon/PLAN-names-urls-rollout.md §4) names the first two: Let's Encrypt over
+// (cafaye/notes/reference/names-urls-rollout-plan.md §4) names the first two: Let's Encrypt over
 // HTTP-01 once the names are proxied, a Cloudflare origin certificate while
 // DNS is still grey-clouded. The third is not a compromise — `*.svc` names
 // never appear in public DNS (the plan's stability rule 4), so the names that

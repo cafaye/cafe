@@ -123,7 +123,7 @@ func TestTheChartFileSetIsStableAndSorted(t *testing.T) {
 // commits none. A generated Application would be a SECOND one of the same
 // name in the same namespace with a different source, and the later
 // `kubectl apply` wins: a deploy whose target depends on apply order is
-// not a deploy. The decision is recorded in moon/DEPLOYMENT.md, "Who owns
+// not a deploy. The decision is recorded in cafaye/notes/deployment.md, "Who owns
 // the Application".
 //
 // The assertion is over the real output rather than a hand-written list:
@@ -137,7 +137,7 @@ func TestTheGeneratorEmitsNoArgoApplication(t *testing.T) {
 	for _, file := range out.Files {
 		if file.Path == "chart/templates/application.yaml" {
 			t.Errorf("cafe gen chart emitted %s — the substrate owns the Application "+
-				"(moon/DEPLOYMENT.md, \"Who owns the Application\"): one static per service, "+
+				"(cafaye/notes/deployment.md, \"Who owns the Application\"): one static per service, "+
 				"OCI-sourced, applied by install.sh. A generated one is a second Application "+
 				"of the same name in the same namespace, and the later apply wins", file.Path)
 		}

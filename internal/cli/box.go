@@ -181,7 +181,7 @@ type boxVerb struct {
 // zero value and gets the real wiring.
 //
 // The three edge verbs are appended rather than interleaved: `edge`, `publish`
-// and `rollback` are the deploy path's own words (moon/PLAN-names-urls-rollout.md
+// and `rollback` are the deploy path's own words (cafaye/notes/reference/names-urls-rollout-plan.md
 // §4, "what box ships for this phase"), and a reader scanning the list should
 // see the lifecycle verbs together and the deploy verbs together.
 func boxVerbs(deps boxDeps) []boxVerb {
@@ -212,7 +212,7 @@ func boxVerbs(deps boxDeps) []boxVerb {
 // agent` is a principal — is the thing a newcomer gets wrong.
 const boxLongHelp = `The box is a MACHINE: it has a keypair, it enrolls, it runs the substrate.
 ` + "`cafe agent …`" + ` is a principal — an identity that becomes claimed. Two
-subjects, two verbs, and the split is the one moon/AGENTS-FIRST.md chose so
+subjects, two verbs, and the split is the one cafaye/notes/agents-first.md chose so
 that ` + "`cafe box register`" + ` never reads as "the agent is registering a box".
 
 ENROLL is the one command that spends anything. It generates the box's keypair,

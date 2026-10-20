@@ -1388,7 +1388,7 @@ deployed from — Chart.yaml, values.yaml, and a templates/ directory carrying
 the Deployment, the Service and the Ingress. The ArgoCD Application that
 deploys the chart is the substrate's, not the chart's: one static Application
 per service, OCI-sourced, applied by install.sh, and a service repository
-commits none (moon/DEPLOYMENT.md, "Who owns the Application") — a generated
+commits none (cafaye/notes/deployment.md, "Who owns the Application") — a generated
 one would be a second Application of the same name in the same namespace,
 and the later `kubectl apply` wins. The chart's contract is the fleet's: the
 readiness probe is `/readyz`

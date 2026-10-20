@@ -288,7 +288,7 @@ func TestEveryCitationPointsAtSomething(t *testing.T) {
 		for _, c := range cites {
 			path := filepath.Join(root, c.Path)
 			if !fileReadable(path) {
-				// A file this checkout does not carry (moon/CAFAYE-OPS.md, or a
+				// A file this checkout does not carry (cafaye/notes/ops.md, or a
 				// repository not checked out beside this one). Not a failure:
 				// the citation is checkable where that repository is.
 				t.Logf("%s: %s is not checked out under %s; not checked", e.Name, c.Path, root)

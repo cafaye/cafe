@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Conventions for `cafe`, the cafaye platform CLI. Read this before changing
-anything; the house rules in `moon/PLAN.md` §1 and §3 apply on top of it.
+anything; the house rules apply on top of it — SSH remotes for the repositories cafaye owns, and tests first: write the test, watch it fail, then implement.
 
 ## What this repository is
 
@@ -227,7 +227,7 @@ pin on it at all.
 `internal/agent` is `cafe agent`, split by the same rule, and it is the client
 half of the agents-first flow — the thing an agent actually runs. It is the
 mirror of `internal/box` across the subject split in
-moon/AGENTS-FIRST.md: a box is a MACHINE with a keypair that enrols, an agent
+cafaye/notes/agents-first.md: a box is a MACHINE with a keypair that enrols, an agent
 is a PRINCIPAL that registers, becomes claimed by a human, and holds a token:
 
 - `doc.go` — what the package is, its three seams, the output contract, and the
@@ -391,7 +391,7 @@ cannot have: a mismatch refuses naming BOTH hashes and BOTH byte counts, and
 takes the sibling with it.
 
 The shape is kamal's — sshkit ships with `ssh.scp.upload!`, net-scp over the
-same connection, never one giant write (`moon/refs/sshkit`) — and the reason
+same connection, never one giant write (`reference/sshkit`) — and the reason
 it is copied by hand rather than with a dependency is `internal/setup`'s
 stdlib-only rule: the walk runs on the path that reclaims after a failed
 bootstrap, and it imports nothing that could fail to be fetched. What the
