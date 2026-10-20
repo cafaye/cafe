@@ -56,7 +56,7 @@ The dev box is a Cafaye-managed cloud VM with the universal template (git, Node 
 # Follow the cafaye-move-repo skill
 
 # Or clone from GitHub/Forgejo
-cafe devbox ssh my-saas -- 'git clone https://github.com/you/my-saas.git /data/workspace/my-saas'
+cafe devbox exec my-saas -- 'git clone https://github.com/you/my-saas.git /data/workspace/my-saas'
 ```
 
 ### 5. Add cafaye services
@@ -82,7 +82,7 @@ cafe secret set DATABASE_URL
 
 ```bash
 # SSH into the dev box
-cafe devbox ssh my-saas
+cafe devbox exec my-saas
 
 # Inside the box:
 cd /data/workspace/my-saas
@@ -128,7 +128,7 @@ Repeat from step 2. Each project gets its own dev box, services, and deploy targ
 
 ### Dev boxes
 - `cafe devbox create --name <name>` — Create a dev box
-- `cafe devbox ssh <name>` — SSH into a dev box
+- `cafe devbox exec <name>` — SSH into a dev box
 - `cafe devbox exec <name> -- <cmd>` — Run a command on a dev box
 - `cafe devbox ls` — List dev boxes
 - `cafe devbox rm <name>` — Delete a dev box
@@ -201,7 +201,7 @@ Cafaye supports developing entirely in the cloud. No local clone needed.
    - Install cloudflared for nice URLs (optional)
 3. Move your repo: follow the cafaye-move-repo skill
 4. Install deps: run the project's install command
-5. Start coding: `cafe devbox ssh my-project` or use your agent
+5. Start coding: `cafe devbox exec my-project` or use your agent
 
 ### Nice URLs (Cloudflare)
 For production or persistent dev boxes, set up a Cloudflare tunnel:

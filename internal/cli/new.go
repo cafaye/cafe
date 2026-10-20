@@ -97,6 +97,53 @@ func newNewCommand(deps shipDeps) *Command {
 		} else {
 			_, _ = fmt.Fprintf(env.Stdout, "\n  (set CAFAYE_OWNER_ID to also create a cloud project)\n")
 		}
+
+		// Billing check: if user has a paid plan, provision dev box.
+		// Otherwise, print checkout URL.
+		if owner != "" {
+			_, _ = fmt.Fprintf(env.Stdout, "\nChecking billing status...\n")
+			billReq, err := shipRequest("GET", deps.shipURL, "/v1/subscriptions", nil)
+			hasPaid := false
+			if err == nil {
+				billBody, err := shipDo(deps.client, billReq)
+				if err == nil {
+					var subs []struct {
+						Status string `json:"status"`
+					}
+					if json.Unmarshal(billBody, &subs) == nil {
+						for _, sub := range subs {
+							if sub.Status == "active" {
+								hasPaid = true
+								break
+							}
+						}
+					}
+				}
+			}
+			if hasPaid {
+				_, _ = fmt.Fprintf(env.Stdout, "  Paid plan active. Provisioning dev box...\n")
+				boxReq, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/devboxes", map[string]any{"name": args[0]})
+				if err == nil {
+					boxBody, err := shipDo(deps.client, boxReq)
+					if err == nil {
+						var box struct {
+							ID    string `json:"id"`
+							State string `json:"state"`
+						}
+						json.Unmarshal(boxBody, &box)
+						if box.ID != "" {
+							_, _ = fmt.Fprintf(env.Stdout, "  Dev box: %s (%s)\n", box.ID, box.State)
+						}
+					} else {
+						_, _ = fmt.Fprintf(env.Stderr, "  Dev box provisioning failed: %v\n", err)
+					}
+				}
+			} else {
+				_, _ = fmt.Fprintf(env.Stdout, "  No active subscription.\n")
+				_, _ = fmt.Fprintf(env.Stdout, "  Subscribe: https://cafaye.com/v1/plans\n")
+				_, _ = fmt.Fprintf(env.Stdout, "  Then run: cafe new %s (again) to provision your dev box\n", args[0])
+			}
+		}
 		return nil
 	}
 	return c
