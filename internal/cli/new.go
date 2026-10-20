@@ -257,9 +257,15 @@ func newNewCommand(deps shipDeps) *Command {
 					}
 				}
 			} else {
-				_, _ = fmt.Fprintf(env.Stdout, "  No active subscription.\n")
-				_, _ = fmt.Fprintf(env.Stdout, "  Subscribe: https://cafaye.com/v1/plans\n")
-				_, _ = fmt.Fprintf(env.Stdout, "  Then run: cafe new %s (again) to provision your dev box\n", args[0])
+				_, _ = fmt.Fprintf(env.Stdout, "  No active subscription — two options:\n")
+				_, _ = fmt.Fprintf(env.Stdout, "\n")
+				_, _ = fmt.Fprintf(env.Stdout, "  [Cloud] Pay for a dev box: https://cafaye.com/v1/plans\n")
+				_, _ = fmt.Fprintf(env.Stdout, "          Then run: cafe new %s (again) to provision\n", args[0])
+				_, _ = fmt.Fprintf(env.Stdout, "\n")
+				_, _ = fmt.Fprintf(env.Stdout, "  [Local] Develop on your own machine:\n")
+				_, _ = fmt.Fprintf(env.Stdout, "          1. Clone: git clone https://git.cafaye.com/<you>/%s.git\n", args[0])
+				_, _ = fmt.Fprintf(env.Stdout, "          2. Install deps and run your dev server locally\n")
+				_, _ = fmt.Fprintf(env.Stdout, "          3. Expose via tunnel: cafe tunnel start <project-id> --port 3000\n")
 			}
 		}
 		return nil
