@@ -144,6 +144,7 @@ func Commands() []*Command {
 		newProviderCommand(providerDeps{}),
 		newPublishCommand(publishDeps{}),
 		newReclaimCommand(reclaimDeps{}),
+		newRepoCommand(repoDeps{}),
 		newReportCommand(reportDeps{}),
 		newResolveCommand(resolveDeps{}),
 		newSecretCommand(secretDeps{}),
