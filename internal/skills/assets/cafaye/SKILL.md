@@ -280,7 +280,7 @@ Cafaye repos and packages are private. To build on dev boxes or deploy on Contab
 1. Set up GitHub auth on your laptop: `gh auth login`
 2. Set your GitHub token via Cafaye secrets:
    ```
-   cafe setup  # scans your machine, lets you pick tokens/files
+   # scans your machine, lets you pick tokens/files
    ```
    This puts `GH_TOKEN` into every box (current and future).
 3. Boxes can then clone private repos: `gh repo clone cafaye/<repo>`

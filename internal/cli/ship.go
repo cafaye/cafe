@@ -11,8 +11,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
 )
 
 // This file is the ONE place the CLI talks to ship.
@@ -145,10 +149,23 @@ func shipDo(client *http.Client, req *http.Request) ([]byte, error) {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	// The token goes here rather than at each call site: ship requires it on
-	// every /v1 route, and a call site that forgets it fails with a 401 that
-	// looks like a credentials problem rather than a missing header.
-	if token := strings.TrimSpace(os.Getenv(shipTokenEnv)); token != "" {
+	// Resolve the bearer: prefer the logged-in human's session token (the
+	// same one `cafe login` stores), falling back to the service token in
+	// the environment. A user authenticates as themselves; the service token
+	// is only for deployments and CI. This keeps SHIP_TOKEN out of dev boxes.
+	token := strings.TrimSpace(os.Getenv(shipTokenEnv))
+	if token == "" {
+		// No service token: try the logged-in human's session token.
+		if dir, err := defaultConfigDir(); err == nil {
+			if email := readHumanSubject(dir); email != "" {
+				ring := box.FileRing{Dir: filepath.Join(dir, "keyring")}
+				if t, err := ring.Get(agent.KeyringService, humanAccount(email)); err == nil && strings.TrimSpace(t) != "" {
+					token = strings.TrimSpace(t)
+				}
+			}
+		}
+	}
+	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := client.Do(req)
