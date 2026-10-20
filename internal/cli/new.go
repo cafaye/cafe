@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 	"path/filepath"
 	"strings"
 
@@ -109,9 +110,63 @@ func newNewCommand(deps shipDeps) *Command {
 						_, _ = fmt.Fprintf(env.Stdout, "Agent registered: %s (status: %s)\n", reg.Agent.ID, reg.Agent.Status)
 						_, _ = fmt.Fprintf(env.Stdout, "Claim URL: %s\n", reg.Claim.URL)
 						_, _ = fmt.Fprintf(env.Stdout, "Open the claim URL in your browser to link this agent to your account.\n")
-						_, _ = fmt.Fprintf(env.Stdout, "After claiming, run: cafe login --email <you@example.com> --password-stdin\n")
-						_, _ = fmt.Fprintf(env.Stdout, "Then re-run: cafe new %s\n", args[0])
-						return nil
+						_, _ = fmt.Fprintf(env.Stdout, "Waiting for claim (up to 5 minutes)...\n")
+
+						// Poll for claim completion.
+						bootstrapToken := reg.APIKey.Token
+						claimed := false
+						for i := 0; i < 150; i++ {
+							time.Sleep(2 * time.Second)
+							homeReq, _ := http.NewRequest("GET", strings.TrimRight(identityURL, "/")+"/v1/agents/home", nil)
+							homeReq.Header.Set("Authorization", "Bearer "+bootstrapToken)
+							homeResp, err := deps.client.Do(homeReq)
+							if err != nil {
+								continue
+							}
+							homeRaw, _ := io.ReadAll(homeResp.Body)
+							homeResp.Body.Close()
+							var home struct {
+								Claimed bool `json:"claimed"`
+							}
+							json.Unmarshal(homeRaw, &home)
+							if home.Claimed {
+								claimed = true
+								break
+							}
+						}
+						if !claimed {
+							_, _ = fmt.Fprintf(env.Stderr, "  Timed out waiting for claim. Run 'cafe new %s' again after claiming.\n", args[0])
+							return nil
+						}
+						_, _ = fmt.Fprintf(env.Stdout, "  Agent claimed! Minting session token...\n")
+
+						// Mint a token for ship access.
+						mintBody, _ := json.Marshal(map[string]any{"name": "cafaye-cli"})
+						mintReq, _ := http.NewRequest("POST", strings.TrimRight(identityURL, "/")+"/v1/agents/tokens", strings.NewReader(string(mintBody)))
+						mintReq.Header.Set("Authorization", "Bearer "+bootstrapToken)
+						mintReq.Header.Set("Content-Type", "application/json")
+						mintResp, err := deps.client.Do(mintReq)
+						if err != nil {
+							_, _ = fmt.Fprintf(env.Stderr, "  Failed to mint token: %v\n", err)
+							return nil
+						}
+						mintRaw, _ := io.ReadAll(mintResp.Body)
+						mintResp.Body.Close()
+						var minted struct {
+							Token string `json:"token"`
+						}
+						json.Unmarshal(mintRaw, &minted)
+						if minted.Token == "" {
+							_, _ = fmt.Fprintf(env.Stderr, "  Failed to mint token. Run 'cafe login' to authenticate manually.\n")
+							return nil
+						}
+						// Store the token in the keyring.
+						if dir != "" {
+							ring := box.FileRing{Dir: filepath.Join(dir, "keyring")}
+							ring.Set(agent.KeyringService, "agent/"+reg.Agent.ID, minted.Token)
+							writeHumanSubject(dir, args[0]+"@cafaye")
+						}
+						_, _ = fmt.Fprintf(env.Stdout, "  Authenticated. Proceeding...\n")
 					}
 				}
 			}
