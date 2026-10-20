@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 // `cafe landing` is a contribution: the thing that replaces a pull request.
@@ -61,6 +62,8 @@ func newLandingCommand(deps landingDeps) *Command {
 			return landingMerge(deps, env, args[1:])
 		case "results":
 			return landingResults(deps, env, args[1:])
+		case "policy":
+			return landingPolicy(deps, env, args[1:])
 		default:
 			_, _ = fmt.Fprintf(env.Stderr, "cafe landing: unknown subcommand %q\n", args[0])
 			return errUsage
@@ -85,6 +88,7 @@ func landingCreate(deps landingDeps, env *Env, args []string) error {
 	title := fs.String("title", "", "landing title")
 	description := fs.String("description", "", "landing description")
 	contributor := fs.String("contributor", shipUserID(), "who is contributing")
+	contributorKind := fs.String("contributor-kind", "human", "contributor kind: human or agent")
 	externalID := fs.String("external-id", "", "external identifier (the idempotency key)")
 	sourceURL := fs.String("source-url", "", "source URL")
 	if err := shipParse(fs, args[1:], "landing", env); err != nil {
@@ -97,10 +101,11 @@ func landingCreate(deps landingDeps, env *Env, args []string) error {
 		*title = "landing: " + *kind
 	}
 	body := map[string]any{
-		"title":       *title,
-		"description": *description,
-		"kind":        *kind,
-		"contributor": *contributor,
+		"title":            *title,
+		"description":      *description,
+		"kind":             *kind,
+		"contributor":      *contributor,
+		"contributor_kind": *contributorKind,
 	}
 	if *externalID != "" {
 		body["external_id"] = *externalID
@@ -281,5 +286,69 @@ func landingResults(deps landingDeps, env *Env, args []string) error {
 		return err
 	}
 	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(body))
+	return nil
+}
+
+// landingPolicy gets or sets a project's landing policy.
+func landingPolicy(deps landingDeps, env *Env, args []string) error {
+	if len(args) == 0 {
+		_, _ = fmt.Fprintf(env.Stderr, "usage: cafe landing policy <project-id> | cafe landing policy set <project-id> [flags]\n")
+		return errUsage
+	}
+	if args[0] == "set" {
+		if len(args) < 2 {
+			_, _ = fmt.Fprintf(env.Stderr, "landing policy set: missing project id\n")
+			return errUsage
+		}
+		projectID := args[1]
+		fs := flag.NewFlagSet("landing policy set", flag.ContinueOnError)
+		allowedKinds := fs.String("allowed-kinds", "", "comma-separated landing kinds allowed (change,issue,feedback,data,request)")
+		allowedContribs := fs.String("allowed-contributors", "", "comma-separated cafaye user/team/org ids allowed")
+		requiredEvidence := fs.String("required-evidence", "", "comma-separated evidence types required before approval")
+		requireHuman := fs.Bool("require-human-approval", false, "require a human to approve")
+		requireChecks := fs.Bool("require-checks-green", false, "require linked task checks to pass before merge")
+		if err := shipParse(fs, args[2:], "landing", env); err != nil {
+			if errors.Is(err, errShipHelp) {
+				return nil
+			}
+			return err
+		}
+		body := map[string]any{}
+		if *allowedKinds != "" {
+			body["allowed_kinds"] = strings.Split(*allowedKinds, ",")
+		}
+		if *allowedContribs != "" {
+			body["allowed_contributors"] = strings.Split(*allowedContribs, ",")
+		}
+		if *requiredEvidence != "" {
+			body["required_evidence"] = strings.Split(*requiredEvidence, ",")
+		}
+		if *requireHuman {
+			body["require_human_approval"] = true
+		}
+		if *requireChecks {
+			body["require_checks_green"] = true
+		}
+		req, err := shipJSONRequest("PATCH", deps.shipURL, "/v1/projects/"+projectID+"/landing-policy", body)
+		if err != nil {
+			return err
+		}
+		respBody, err := shipDo(deps.client, req)
+		if err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+		return nil
+	}
+	projectID := args[0]
+	req, err := shipRequest("GET", deps.shipURL, "/v1/projects/"+projectID+"/landing-policy", nil)
+	if err != nil {
+		return err
+	}
+	respBody, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
 	return nil
 }

@@ -189,7 +189,7 @@ var shipCommandCases = []shipCommandCase{
 		args:      []string{"landing", "create", testProjectID, "--kind", "change", "--title", "add dark mode", "--external-id", "pr-7"},
 		method:    "POST",
 		path:      "/v1/ship/projects/" + testProjectID + "/landings",
-		body:      map[string]any{"title": "add dark mode", "description": "", "kind": "change", "contributor": "user-1", "external_id": "pr-7"},
+		body:      map[string]any{"title": "add dark mode", "description": "", "kind": "change", "contributor": "user-1", "contributor_kind": "human", "external_id": "pr-7"},
 		wantToken: true,
 	},
 	{
