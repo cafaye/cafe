@@ -125,11 +125,11 @@ fresh_copy() {
   local name="$1"
   local dst="$WORK/$name"
   rm -rf "$dst"
-  mkdir -p "$dst/.github/workflows" "$dst/bin"
+  mkdir -p "$dst/ci" "$dst/bin"
   cp "$ROOT/gate.yml" "$dst/gate.yml"
   cp "$ROOT/mise.toml" "$dst/mise.toml"
   cp "$ROOT/bin/prime" "$dst/bin/prime"
-  cp "$ROOT/.github/workflows/ci.yml" "$dst/.github/workflows/ci.yml"
+  cp "$ROOT/ci/ci.yml" "$dst/ci/ci.yml"
   chmod +x "$dst/bin/prime"
   printf '%s' "$dst"
 }
@@ -405,7 +405,7 @@ expect_red 'a mise task named in a repository that has no mise config' \
   "$b" 'gate.task-config-missing'
 
 b="$(fresh_copy ci-missing)"
-edit "$b/gate.yml" 'workflow: .github/workflows/ci.yml' 'workflow: .github/workflows/nope.yml'
+edit "$b/gate.yml" 'workflow: ci/ci.yml' 'workflow: .github/workflows/nope.yml'
 expect_red 'a declaration naming a CI workflow that is not in this repository' "$b" 'gate.ci-missing'
 
 # Also named in the brief. The mutation is not a deleted file — it is a
@@ -414,7 +414,7 @@ expect_red 'a declaration naming a CI workflow that is not in this repository' "
 # `run: ./bin/prime`, deliberately, because as of core 63fd319 that spelling is
 # visible to the checker and this breakage is what proves it.
 b="$(fresh_copy ci-disagrees)"
-edit "$b/.github/workflows/ci.yml" './bin/prime' 'echo "the tests passed"'
+edit "$b/ci/ci.yml" './bin/prime' 'echo "the tests passed"'
 expect_red 'a CI workflow that exists, runs, and never invokes the gate' "$b" 'gate.ci-disagrees'
 
 b="$(fresh_copy requirement-path-missing)"

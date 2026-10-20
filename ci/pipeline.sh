@@ -7,7 +7,7 @@
 # wiring that Actions used to hold, moved into the repository where it can be
 # run by hand, by a sandbox, or by a runner.
 #
-# WHERE THE FACTS COME FROM: `.github/workflows/ci.yml` IN THIS REPOSITORY.
+# WHERE THE FACTS COME FROM: `ci/ci.yml` IN THIS REPOSITORY.
 # That file is the source of truth, and this file follows it: the gate
 # entrypoint (`bin/prime`, the `gate` job's "the gate a developer runs" step),
 # the kit lint checkout beside the tree (the `kit (lint config)` step —
@@ -42,7 +42,7 @@ log() { printf '\n== %s\n' "$1"; }
 log "pipeline: $REPO_NAME at $REPO_DIR"
 
 # ===========================================================================
-# THE GATE. `bin/prime` — the entrypoint `.github/workflows/ci.yml`'s `gate`
+# THE GATE. `bin/prime` — the entrypoint `ci/ci.yml`'s `gate`
 # job names in its "the gate a developer runs" step. Not a CI-only variant of
 # it: kit's shared `go` job runs `go mod download`, `go build ./...` and
 # `go test ./...` as three steps of its own, and a CI-only variant of the gate
@@ -53,7 +53,7 @@ GATE=(./bin/prime)
 
 # ===========================================================================
 # PATHS THIS REPOSITORY'S CI ADDS. The one `echo … >> $GITHUB_PATH` line in
-# `.github/workflows/ci.yml`: the `golangci-lint` step installs the binary
+# `ci/ci.yml`: the `golangci-lint` step installs the binary
 # into `$HOME/.local/bin` because `bin/prime` exits 127 without it. The
 # pipeline installs the same binary the same way below, so the same directory
 # belongs on PATH here.
@@ -149,7 +149,7 @@ echo "pipeline: go.mod and go.sum unchanged by the gate"
 # ---------------------------------------------------------------------------
 # NO SHIP STEP, and that is the point. cafe is a CLI, not a service: there is
 # no chart/Chart.yaml in this tree, and releases go through
-# `.github/workflows/release.yml` (goreleaser, at mise.toml's pin) on a tag
+# `ci/release.yml` (goreleaser, at mise.toml's pin) on a tag
 # push — a path this backend does not run and this file does not reimplement.
 # The gate is the whole run. A service with a chart keeps the template's
 # publish block (`./bin/publish --service-dir .`) instead of this comment.

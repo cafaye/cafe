@@ -1,5 +1,5 @@
 // Package ci is the test that keeps this repository's CI honest. It holds no
-// code: `.github/workflows/ci.yml` is the artifact under test, and a workflow
+// code: `ci/ci.yml` is the artifact under test, and a workflow
 // file nobody has executed is a file nobody has tested — the same defect as a
 // test suite nobody runs, one level further out.
 //
@@ -38,7 +38,7 @@ import (
 // kitWorkflow is the one call this repository makes. It is written out in full
 // rather than assembled from parts because the value of comparing it is that a
 // reader can check it against kit's tree with one `ls`.
-const kitWorkflow = "cafaye/kit/.github/workflows/ci.reusable.yml@master"
+const kitWorkflow = "cafaye/kit/ci/ci.reusable.yml@master"
 
 // The gate and the lockfile, named once. `bin/prime` is what a developer runs
 // and what CI must run; `go.sum` is the lockfile it can move.
@@ -64,7 +64,7 @@ type workflow struct {
 	Jobs map[string]job `yaml:"jobs"`
 }
 
-// loadWorkflow reads `.github/workflows/ci.yml` from the repository root. The
+// loadWorkflow reads `ci/ci.yml` from the repository root. The
 // root comes from this file's own path and not from the working directory:
 // `go test` sets the working directory to the package, and a test that depends
 // on where it was invoked from is a test that passes for the wrong reason
@@ -72,7 +72,7 @@ type workflow struct {
 func loadWorkflow(t *testing.T) workflow {
 	t.Helper()
 
-	path := filepath.Join(repoRoot(t), ".github", "workflows", "ci.yml")
+	path := filepath.Join(repoRoot(t), "ci", "ci.yml")
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
@@ -174,7 +174,7 @@ func TestTheSharedJobCallsKitAtAPathThatResolves(t *testing.T) {
 
 // assertCallablePath checks the shape rather than the string, because the
 // shape is the rule: GitHub resolves a reusable workflow at
-// `{owner}/{repo}/.github/workflows/{file}@{ref}` and documents that
+// `{owner}/{repo}/ci/{file}@{ref}` and documents that
 // subdirectories of the workflows directory are not supported. A path with one
 // fewer directory in it is not a path that needs fixing later, it is a path
 // that cannot resolve at all.
@@ -189,7 +189,7 @@ func assertCallablePath(t *testing.T, uses string) {
 	if ref == "" {
 		t.Errorf("uses %q pins no ref", uses)
 	}
-	_, file, ok := strings.Cut(repo, "/.github/workflows/")
+	_, file, ok := strings.Cut(repo, "/ci/")
 	if !ok {
 		t.Errorf("uses %q is not under .github/workflows/, so it resolves to nothing", uses)
 		return
@@ -409,7 +409,7 @@ func kitLintVersion(t *testing.T, root string) (string, bool) {
 	t.Helper()
 
 	for _, dir := range []string{".kit", "../kit"} {
-		raw, err := os.ReadFile(filepath.Join(root, dir, ".github", "workflows", "ci.reusable.yml"))
+		raw, err := os.ReadFile(filepath.Join(root, dir, "ci", "ci.reusable.yml"))
 		if err != nil {
 			continue
 		}

@@ -16,7 +16,7 @@ import (
 // # Why it is here and not in a script
 //
 // It is an ordinary `go test`, so `bin/prime` runs it and
-// `.github/workflows/ci.yml` runs `bin/prime`. That is the only place a gate
+// `ci/ci.yml` runs `bin/prime`. That is the only place a gate
 // belongs in this repository, it is the argument `internal/gen`'s drift gate
 // already makes for itself, and putting it anywhere else would make it a
 // demonstration that rots — the failure this repository has paid for once

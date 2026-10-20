@@ -1,13 +1,13 @@
 # Toolchain pins for this repository: Go, the language cafe is written in,
 # golangci-lint, the linter bin/prime runs over kit's config, and goreleaser,
-# the release tool `.github/workflows/release.yml` runs on a tag push.
+# the release tool `ci/release.yml` runs on a tag push.
 #
 #   mise install    # install the pinned toolchain
 #   mise run prime  # the gate
 #
 # golangci-lint is the fleet's Go linter. Pinned here so `bin/prime` and CI
 # agree on the version that decides whether the tree is lint-clean. The pin
-# lives in one more place: `cafaye/kit/.github/workflows/ci.reusable.yml`'s
+# lives in one more place: `cafaye/kit/ci/ci.reusable.yml`'s
 # `golangci/golangci-lint-action` step, which pins the same version via its
 # `version:` input. A bump touches both, in the same commit — otherwise local
 # and CI disagree, which is the defect this packet exists to close.

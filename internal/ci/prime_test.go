@@ -500,7 +500,7 @@ func TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave(t *testing.T) {
 		//
 		// A `return` and not a `t.Skipf`, and that is deliberate. A
 		// conditional skip in this repository's gate is the exact thing
-		// `.github/workflows/ci.yml`'s `root-gated` job exists to complain
+		// `ci/ci.yml`'s `root-gated` job exists to complain
 		// about, and this file is one of the three that decide how many skips
 		// the gate may have: a skip added here would move the very number
 		// `expectedSkips` pins. The log line below is visible under

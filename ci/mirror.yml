@@ -1,0 +1,30 @@
+# THIS FILE IS NOT A GITHUB ACTIONS WORKFLOW ANY MORE, AND NOTHING RUNS IT.
+#
+# The fleet's CI runs in dev sandboxes: the same sandbox the work happens in,
+# on the machine the developer chose. This file is the SPECIFICATION those
+# checks read — the steps, the floors, the exemptions — kept where the
+# repository can hold it and read it.
+#
+# What executes is `ci/the pipeline` (named in this repository's `gate.yml`, under
+# `ci.workflow`), and the CI service reads that declaration and runs it.
+#
+# The GitHub Actions spelling is retired, not deleted, because the checks in
+# this repository read this file to hold the specification still: a gate that
+# checks a specification nobody executes is a gate checking a fiction, and a
+# gate that checks nothing is worse. The steps below are the specification
+# the executable CI is measured against, and the day this file stops being
+# that, the checks move with it.
+name: mirror to cafaye git
+on:
+  push:
+    branches: [master]
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          git remote add forgejo https://cafaye:${{ secrets.FORGEJO_TOKEN }}@git.cafaye.com/cafaye/cafe.git
+          git push forgejo master --force
