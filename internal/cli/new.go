@@ -4,8 +4,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/cafaye/cafe/internal/agent"
+	"github.com/cafaye/cafe/internal/box"
 	"github.com/cafaye/cafe/internal/scaffold"
 	"github.com/google/uuid"
 )
@@ -58,6 +64,63 @@ func newNewCommand(deps shipDeps) *Command {
 		if err := wantArgs(c.Name, c.Usage, 1, len(args)); err != nil {
 			return err
 		}
+
+		// Agent registration: if not logged in, register and ask human to claim.
+		dir, _ := defaultConfigDir()
+		email := readHumanSubject(dir)
+		sessionToken := ""
+		if dir != "" && email != "" {
+			ring := box.FileRing{Dir: filepath.Join(dir, "keyring")}
+			if t, err := ring.Get(agent.KeyringService, humanAccount(email)); err == nil {
+				sessionToken = strings.TrimSpace(t)
+			}
+		}
+		if sessionToken == "" {
+			identityURL := os.Getenv("IDENTITY_URL")
+			if identityURL == "" {
+				identityURL = "https://cafaye.com"
+			}
+			regBody, _ := json.Marshal(map[string]any{
+				"name":   args[0],
+				"device": map[string]string{"host": "cli"},
+			})
+			regURL := strings.TrimRight(identityURL, "/") + "/v1/agents"
+			regReq, err := http.NewRequest("POST", regURL, strings.NewReader(string(regBody)))
+			if err == nil {
+				regReq.Header.Set("Content-Type", "application/json")
+				resp, err := deps.client.Do(regReq)
+				if err == nil {
+					defer resp.Body.Close()
+					raw, _ := io.ReadAll(resp.Body)
+					if resp.StatusCode == 201 {
+						var reg struct {
+							Agent struct {
+								ID     string `json:"id"`
+								Status string `json:"status"`
+							} `json:"agent"`
+							APIKey struct {
+								Token string `json:"token"`
+							} `json:"api_key"`
+							Claim struct {
+								URL string `json:"url"`
+							} `json:"claim"`
+						}
+						json.Unmarshal(raw, &reg)
+						_, _ = fmt.Fprintf(env.Stdout, "Agent registered: %s (status: %s)\n", reg.Agent.ID, reg.Agent.Status)
+						_, _ = fmt.Fprintf(env.Stdout, "Claim URL: %s\n", reg.Claim.URL)
+						_, _ = fmt.Fprintf(env.Stdout, "Open the claim URL in your browser to link this agent to your account.\n")
+						_, _ = fmt.Fprintf(env.Stdout, "After claiming, run: cafe login --email <you@example.com> --password-stdin\n")
+						_, _ = fmt.Fprintf(env.Stdout, "Then re-run: cafe new %s\n", args[0])
+						return nil
+					}
+				}
+			}
+			_, _ = fmt.Fprintf(env.Stdout, "Not logged in. Log in first:\n")
+			_, _ = fmt.Fprintf(env.Stdout, "  cafe login --email <you@example.com> --password-stdin\n")
+			_, _ = fmt.Fprintf(env.Stdout, "Then re-run: cafe new %s\n", args[0])
+			return nil
+		}
+
 		out, err := scaffold.New(scaffold.Options{
 			Template: opts.template,
 			Name:     opts.name,
