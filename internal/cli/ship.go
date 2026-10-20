@@ -52,7 +52,7 @@ const shipTokenEnv = "SHIP_TOKEN"
 const (
 	cafayeURLEnv   = "CAFAYE_URL"
 	shipURLEnv     = "SHIP_URL"
-	defaultShipURL = "https://cafaye.com"
+	defaultShipURL = "https://ship.cafaye.com"
 )
 
 // shipDeps is what every ship-backed command needs: the base URL and the
@@ -87,9 +87,12 @@ type (
 // request is built rather than by a panic three lines into one.
 func (d shipDeps) withDefaults() (shipDeps, error) {
 	if d.shipURL == "" {
-		d.shipURL = os.Getenv(cafayeURLEnv)
+		// SHIP_URL points at the ship service directly; CAFAYE_URL is the
+		// website origin, which only proxies ship under /v1/ship and is not
+		// a substitute for a direct ship address. Prefer SHIP_URL.
+		d.shipURL = os.Getenv(shipURLEnv)
 		if d.shipURL == "" {
-			d.shipURL = os.Getenv(shipURLEnv)
+			d.shipURL = os.Getenv(cafayeURLEnv)
 		}
 		if d.shipURL == "" {
 			d.shipURL = defaultShipURL
