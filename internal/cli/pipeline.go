@@ -59,7 +59,7 @@ func pipelineGet(deps pipelineDeps, env *Env, args []string) error {
 	if err != nil {
 		return err
 	}
-	req, err := shipRequest("GET", deps.shipURL, "/v1/projects/"+projectID+"/pipeline", nil)
+	req, err := shipRequest("GET", deps.shipURL, "/v1/ship/projects/"+projectID+"/pipeline", nil)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func pipelineUpdate(deps pipelineDeps, env *Env, args []string) error {
 		body["recipe"] = *recipe
 	}
 	req, err := shipJSONRequest("PUT", deps.shipURL,
-		"/v1/projects/"+projectID+"/pipeline", body)
+		"/v1/ship/projects/"+projectID+"/pipeline", body)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func pipelineAdvance(deps pipelineDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/pipeline/advance", nil)
+		"/v1/ship/projects/"+projectID+"/pipeline/advance", nil)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func pipelineAdvance(deps pipelineDeps, env *Env, args []string) error {
 
 // pipelineRecipes lists the presets ship can install.
 func pipelineRecipes(deps pipelineDeps, env *Env, args []string) error {
-	req, err := shipRequest("GET", deps.shipURL, "/v1/pipeline-recipes", nil)
+	req, err := shipRequest("GET", deps.shipURL, "/v1/ship/pipeline-recipes", nil)
 	if err != nil {
 		return err
 	}

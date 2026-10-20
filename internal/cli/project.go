@@ -87,7 +87,7 @@ func projectCreate(deps projectDeps, env *Env, args []string) error {
 	if err != nil {
 		return fmt.Errorf("%w: cafe project create: invalid owner ID %q", errUsage, *owner)
 	}
-	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/projects/",
+	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/",
 		map[string]any{"name": *name, "owner_id": ownerID.String()})
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func projectList(deps projectDeps, env *Env, args []string) error {
 	}
 	params := url.Values{}
 	params.Set("owner_id", ownerID.String())
-	req, err := shipRequest("GET", deps.shipURL, "/v1/projects/"+shipQuery(params), nil)
+	req, err := shipRequest("GET", deps.shipURL, "/v1/ship/projects/"+shipQuery(params), nil)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func projectGet(deps projectDeps, env *Env, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("%w: cafe project get: missing project ID", errUsage)
 	}
-	req, err := shipRequest("GET", deps.shipURL, "/v1/projects/"+args[0], nil)
+	req, err := shipRequest("GET", deps.shipURL, "/v1/ship/projects/"+args[0], nil)
 	if err != nil {
 		return err
 	}

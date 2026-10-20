@@ -9,7 +9,7 @@ Cafaye is the agentic stack: solve hard problems once, choose the right tools fo
 ## Defaults to assume
 
 - Base URL for cafaye (website): `https://cafaye.com` (or `CAFAYE_URL` env var)
-- Base URL for ship service: `https://ship.cafaye.com` (or `SHIP_URL` env var)
+- Base URL for ship service: `https://cafaye.com` (or `SHIP_URL`/`CAFAYE_URL` env var; ship is proxied under /v1/ship)
 - Ship requires a service token on every /v1 route: `SHIP_TOKEN`, sent as
   `Authorization: Bearer $SHIP_TOKEN`
 - Base URL for identity: derived from `CAFAYE_URL` (or `IDENTITY_URL` env var)

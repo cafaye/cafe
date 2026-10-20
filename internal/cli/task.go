@@ -87,7 +87,7 @@ func taskCreate(deps taskDeps, env *Env, args []string) error {
 		*title = "untitled task"
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/tasks",
+		"/v1/ship/projects/"+projectID+"/tasks",
 		map[string]any{
 			"title":       *title,
 			"description": *description,
@@ -127,7 +127,7 @@ func taskList(deps taskDeps, env *Env, args []string) error {
 		params.Set("status", *status)
 	}
 	req, err := shipRequest("GET", deps.shipURL,
-		"/v1/projects/"+projectID+"/tasks"+shipQuery(params), nil)
+		"/v1/ship/projects/"+projectID+"/tasks"+shipQuery(params), nil)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func taskGet(deps taskDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipRequest("GET", deps.shipURL,
-		"/v1/projects/"+projectID+"/tasks/"+taskID, nil)
+		"/v1/ship/projects/"+projectID+"/tasks/"+taskID, nil)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func taskStatus(deps taskDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipJSONRequest("PATCH", deps.shipURL,
-		"/v1/projects/"+projectID+"/tasks/"+taskID+"/status",
+		"/v1/ship/projects/"+projectID+"/tasks/"+taskID+"/status",
 		map[string]any{"status": status})
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func taskStage(deps taskDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/tasks/"+taskID+"/stage",
+		"/v1/ship/projects/"+projectID+"/tasks/"+taskID+"/stage",
 		map[string]any{"stage": stage})
 	if err != nil {
 		return err
@@ -239,7 +239,7 @@ func taskResults(deps taskDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/tasks/"+taskID+"/results",
+		"/v1/ship/projects/"+projectID+"/tasks/"+taskID+"/results",
 		map[string]any{
 			"type":    *resultType,
 			"message": *message,

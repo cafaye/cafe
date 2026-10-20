@@ -65,7 +65,7 @@ func newStartCommand(deps startDeps) *Command {
 		}
 
 		_, _ = fmt.Fprintf(env.Stdout, "Creating project %q...\n", name)
-		req, err := shipJSONRequest("POST", deps.shipURL, "/v1/projects/",
+		req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/",
 			map[string]any{"name": name, "owner_id": ownerID.String()})
 		if err != nil {
 			return err

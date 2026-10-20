@@ -109,7 +109,7 @@ func landingCreate(deps landingDeps, env *Env, args []string) error {
 		body["source_url"] = *sourceURL
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/landings", body)
+		"/v1/ship/projects/"+projectID+"/landings", body)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func landingList(deps landingDeps, env *Env, args []string) error {
 		params.Set("status", *status)
 	}
 	req, err := shipRequest("GET", deps.shipURL,
-		"/v1/projects/"+projectID+"/landings"+shipQuery(params), nil)
+		"/v1/ship/projects/"+projectID+"/landings"+shipQuery(params), nil)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func landingGet(deps landingDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipRequest("GET", deps.shipURL,
-		"/v1/projects/"+projectID+"/landings/"+landingID, nil)
+		"/v1/ship/projects/"+projectID+"/landings/"+landingID, nil)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func landingDecide(deps landingDeps, env *Env, args []string, decision string) e
 		return err
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/landings/"+landingID+"/"+decision,
+		"/v1/ship/projects/"+projectID+"/landings/"+landingID+"/"+decision,
 		map[string]any{"decided_by": *by, "note": *note})
 	if err != nil {
 		return err
@@ -233,7 +233,7 @@ func landingMerge(deps landingDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/landings/"+landingID+"/merge", nil)
+		"/v1/ship/projects/"+projectID+"/landings/"+landingID+"/merge", nil)
 	if err != nil {
 		return err
 	}
@@ -267,7 +267,7 @@ func landingResults(deps landingDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/landings/"+landingID+"/results",
+		"/v1/ship/projects/"+projectID+"/landings/"+landingID+"/results",
 		map[string]any{
 			"stage_name": *stage,
 			"type":       *resultType,

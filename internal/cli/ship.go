@@ -52,7 +52,7 @@ const shipTokenEnv = "SHIP_TOKEN"
 const (
 	cafayeURLEnv   = "CAFAYE_URL"
 	shipURLEnv     = "SHIP_URL"
-	defaultShipURL = "https://ship.cafaye.com"
+	defaultShipURL = "https://cafaye.com"
 )
 
 // shipDeps is what every ship-backed command needs: the base URL and the

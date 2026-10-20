@@ -60,7 +60,7 @@ func boardView(deps boardDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/board/view",
+		"/v1/ship/projects/"+projectID+"/board/view",
 		map[string]any{"user_id": shipUserID()})
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func boardAttention(deps boardDeps, env *Env, args []string) error {
 	params := url.Values{}
 	params.Set("user_id", shipUserID())
 	req, err := shipRequest("GET", deps.shipURL,
-		"/v1/projects/"+projectID+"/board/attention"+shipQuery(params), nil)
+		"/v1/ship/projects/"+projectID+"/board/attention"+shipQuery(params), nil)
 	if err != nil {
 		return err
 	}

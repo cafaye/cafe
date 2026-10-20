@@ -41,7 +41,7 @@ func gateDecide(deps shipGateDeps, env *Env, args []string) error {
 		return err
 	}
 	req, err := shipJSONRequest("POST", deps.shipURL,
-		"/v1/projects/"+projectID+"/gates/"+stage+"/decide",
+		"/v1/ship/projects/"+projectID+"/gates/"+stage+"/decide",
 		map[string]any{
 			"status":     *status,
 			"decided_by": *by,
