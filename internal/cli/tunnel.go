@@ -87,6 +87,11 @@ func tunnelStart(deps shipDeps, env *Env, args []string) error {
 	}
 	projectID := fs.Args()[0]
 
+	// Delete any existing tunnel first (idempotent start)
+	delReq, _ := shipRequest("DELETE", deps.shipURL, "/v1/ship/projects/"+projectID+"/tunnel", nil)
+	if delReq != nil {
+		shipDo(deps.client, delReq)
+	}
 	// Create tunnel via ship
 	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/"+projectID+"/tunnel", map[string]any{"box_number": 1})
 	if err != nil {
