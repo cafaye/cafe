@@ -13,7 +13,7 @@ Cafaye is the agentic stack: solve hard problems once, choose the right tools fo
 - Ship requires a service token on every /v1 route: `SHIP_TOKEN`, sent as
   `Authorization: Bearer $SHIP_TOKEN`
 - Base URL for identity: derived from `CAFAYE_URL` (or `IDENTITY_URL` env var)
-- Dev boxes run on instabox (ephemeral, auto-suspend, pay-when-in-use)
+- Dev boxes are cloud sandboxes managed by Cafaye (ephemeral, auto-suspend, pay-when-in-use)
 - Prod runs on the user's Cafaye box (Contabo or self-hosted)
 - All backends share one Postgres cluster
 - The manifest is `cafaye.yml` (credential-free, committable)
@@ -44,19 +44,19 @@ curl -s -X POST $SHIP_URL/v1/projects/ -H "Content-Type: application/json" \
 
 ```bash
 cafe devbox create --name my-saas
-# Wraps: instabox create --name my-saas --auto-suspend 30m
+# Wraps: # Provisioned by Cafaye: cafe devbox create my-saas
 ```
 
-The dev box is an instabox Linux VM with the universal template (git, Node 22, Python, Go, Rust, Docker, Claude Code, Codex). It auto-suspends after 30 idle minutes.
+The dev box is a Cafaye-managed cloud VM with the universal template (git, Node 22, Python, Go, Rust, Docker, Claude Code, Codex). It auto-suspends after 30 idle minutes.
 
 ### 4. Connect your repo
 
 ```bash
 # Move your local repo to the dev box (with uncommitted work + history)
-# Follow the instabox-move-repo skill
+# Follow the cafaye-move-repo skill
 
 # Or clone from GitHub/Forgejo
-instabox ssh my-saas -- 'git clone https://github.com/you/my-saas.git /data/workspace/my-saas'
+cafe devbox ssh my-saas -- 'git clone https://github.com/you/my-saas.git /data/workspace/my-saas'
 ```
 
 ### 5. Add cafaye services
@@ -70,9 +70,9 @@ curl -s -X POST $SHIP_URL/v1/projects/<id>/services -d '{"service":"identity"}'
 ### 6. Set up secrets
 
 ```bash
-# Set secrets on the dev box (via instabox Vault)
-instabox vault set ANTHROPIC_API_KEY  # value from stdin
-instabox vault set DATABASE_URL
+# Set secrets on the dev box (via Cafaye secrets)
+cafe secret set ANTHROPIC_API_KEY  # value from stdin
+cafe secret set DATABASE_URL
 
 # Or via the secret command (local dev)
 cafe secret set DATABASE_URL
@@ -82,7 +82,7 @@ cafe secret set DATABASE_URL
 
 ```bash
 # SSH into the dev box
-instabox ssh my-saas
+cafe devbox ssh my-saas
 
 # Inside the box:
 cd /data/workspace/my-saas
@@ -92,7 +92,7 @@ npm test     # run tests
 
 Your agent (Claude Code, Codex, etc.) can SSH into the box and do the same:
 ```bash
-instabox exec my-saas -- 'cd /data/workspace/my-saas && npm test'
+cafe devbox exec my-saas -- 'cd /data/workspace/my-saas && npm test'
 ```
 
 ### 8. Deploy to prod
@@ -127,11 +127,11 @@ Repeat from step 2. Each project gets its own dev box, services, and deploy targ
 - `cafe project get <id>` — Get project details
 
 ### Dev boxes
-- `cafe devbox create --name <name>` — Create a dev box (wraps instabox)
-- `instabox ssh <name>` — SSH into a dev box
-- `instabox exec <name> -- <cmd>` — Run a command on a dev box
-- `instabox ls` — List dev boxes
-- `instabox rm <name>` — Delete a dev box
+- `cafe devbox create --name <name>` — Create a dev box
+- `cafe devbox ssh <name>` — SSH into a dev box
+- `cafe devbox exec <name> -- <cmd>` — Run a command on a dev box
+- `cafe devbox ls` — List dev boxes
+- `cafe devbox rm <name>` — Delete a dev box
 
 ### Pipeline
 - `cafe pipeline get <project-id>` — Show the project's pipeline
@@ -190,18 +190,18 @@ Cafaye supports developing entirely in the cloud. No local clone needed.
 
 ### Setting up a sandbox
 
-1. Create an instabox box: `instabox create --name my-project --auto-suspend 30m`
+1. Create a dev box: `cafe devbox create my-project`
 2. Run the setup script (or do manually):
    - Install cafaye CLI: build from source or download
    - `cafe skills install` — install this skill
    - Install opencode: download from GitHub releases
    - Install crush: `go install github.com/charmbracelet/crush@latest`
-   - Set up OPENCODE_API_KEY via instabox Vault
-   - Set up GH_TOKEN via instabox Vault (for private repos)
+   - Set up OPENCODE_API_KEY via Cafaye secrets
+   - Set up GH_TOKEN via Cafaye secrets (for private repos)
    - Install cloudflared for nice URLs (optional)
-3. Move your repo: follow the instabox-move-repo skill
+3. Move your repo: follow the cafaye-move-repo skill
 4. Install deps: run the project's install command
-5. Start coding: `instabox ssh my-project` or use your agent
+5. Start coding: `cafe devbox ssh my-project` or use your agent
 
 ### Nice URLs (Cloudflare)
 For production or persistent dev boxes, set up a Cloudflare tunnel:
@@ -212,10 +212,10 @@ cloudflared tunnel route dns my-project dev.myproject.cafaye.com
 cloudflared tunnel run my-project
 ```
 
-For quick testing, use instabox port publishing:
+For quick testing, use cafaye tunnels:
 ```bash
-instabox port publish my-project 3000
-# Returns: https://3000-xxx.instabox.tech
+cafe tunnel start <project-id> --port 3000
+# Returns: https://dev-<name>-<id>-1.cafaye.com
 ```
 
 ### Testing workflow
@@ -261,7 +261,7 @@ cafe landing approve <project-id> <landing-id> --by <id> --note "looks good"
 
 ## Key principles
 
-1. **No local clone required** — Everything happens on dev boxes (instabox) or prod boxes.
+1. **No local clone required** — Everything happens on dev boxes or prod boxes.
 2. **Agents do the editing** — Humans speak to agents; agents SSH into dev boxes and edit code.
 3. **Reversible prod** — Every deploy is a git commit. Revert = `git revert` + Argo sync.
 4. **Auto-suspend dev boxes** — Pay only when active. Near-zero cost when idle.
@@ -274,13 +274,13 @@ cafe landing approve <project-id> <landing-id> --by <id> --note "looks good"
 
 ## Private repos and packages
 
-Cafaye repos and packages are private. To build on instabox or deploy on Contabo:
+Cafaye repos and packages are private. To build on dev boxes or deploy on Contabo:
 
 ### Instabox (dev boxes)
 1. Set up GitHub auth on your laptop: `gh auth login`
-2. Put your GitHub token into the instabox Vault:
+2. Set your GitHub token via Cafaye secrets:
    ```
-   instabox-basic-setup  # scans your machine, lets you pick tokens/files
+   cafe setup  # scans your machine, lets you pick tokens/files
    ```
    This puts `GH_TOKEN` into every box (current and future).
 3. Boxes can then clone private repos: `gh repo clone cafaye/<repo>`
@@ -297,4 +297,4 @@ Cafaye repos and packages are private. To build on instabox or deploy on Contabo
 - All cafaye code is pushed here as the canonical source
 - GitHub is an optional mirror
 - Instabox boxes can reach Forgejo (public URL)
-- Boxes need a Forgejo token to push: set via instabox Vault or `cafe secret`
+- Boxes need a Cafaye Git token to push: set via `cafe secret` or the dashboard
