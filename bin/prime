@@ -39,7 +39,7 @@
 #    and the tree's env-gated tests stop being the same set.
 #
 # What is NOT in this gate, and why, is in AGENTS.md and in
-# REPORT-caf-07-gate.md: `go vet` and `gofmt -l .` are required before a commit
+# REPORT-caf-07-gate: `go vet` and `gofmt -l .` are required before a commit
 # and are not here, and the live tier is a demonstration rather than a check.
 # `golangci-lint run` IS here, since roll-c5-cafe-ci: it runs kit's
 # `lint/golangci.yml` at mise.toml's pinned version, because a gate that does
@@ -72,7 +72,7 @@ USAGE
 # container published onto a bound host port is refused there. So it can never
 # be a gate that runs on a GitHub-hosted runner. The ryuk one is portable in
 # principle and is currently RED on this machine -- see
-# REPORT-caf-07-gate.md. That is a reason to report it loudly, not a reason to
+# REPORT-caf-07-gate. That is a reason to report it loudly, not a reason to
 # leave it out of the count. The deploy one is the third: it builds an image,
 # pushes it, rolls it out behind kamal-proxy on a local Docker daemon reached
 # over SSH, and reads back what answered. It needs a container runtime and a
@@ -274,7 +274,7 @@ esac
 # this assertion the flag would be a suggestion, and a gate that ran the live
 # tier zero times while claiming to is the exact defect this packet exists to
 # refuse. It is a separate mode and not the declared gate because the tier is
-# machine-specific -- see the header, and REPORT-caf-07-gate.md.
+# machine-specific -- see the header, and REPORT-caf-07-gate.
 if [ "$live" -eq 1 ] && [ "$live_pass" -ne "$LIVE_TIER" ] && [ "$status" -eq 0 ]; then
   printf 'bin/prime --live: the live tier ran %s of %s tests, so this run proves nothing about it. A demonstration that did not happen is not a pass.\n' \
     "$live_pass" "$LIVE_TIER" >&2
