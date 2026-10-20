@@ -61,7 +61,7 @@ func tunnelCreate(deps shipDeps, env *Env, args []string) error {
 		return fmt.Errorf("%w: cafe tunnel create: missing project ID", errUsage)
 	}
 	projectID := args[0]
-	req2, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/"+projectID+"/tunnel", map[string]any{"box_number": 1})
+	req2, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/"+projectID+"/tunnel", map[string]any{"box_number": 1, "port": 3000})
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func tunnelStart(deps shipDeps, env *Env, args []string) error {
 		shipDo(deps.client, delReq)
 	}
 	// Create tunnel via ship
-	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/"+projectID+"/tunnel", map[string]any{"box_number": 1})
+	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/"+projectID+"/tunnel", map[string]any{"box_number": 1, "port": *port})
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ Description=Cafaye dev tunnel
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/cloudflared tunnel run --token %s --url http://localhost:%d
+ExecStart=/usr/local/bin/cloudflared tunnel run --token %s --url http://127.0.0.1:%d
 Restart=always
 RestartSec=5
 
