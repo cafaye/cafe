@@ -29,7 +29,7 @@ import (
 // stdin instead, piped to `kubectl apply -f -`, which is the discipline the kit
 // installer holds itself to — its own report says the redeemed credential
 // "reaches no disk, no argv and no stdout"
-// (cafaye/kit/REPORT-kit-w2p4-secret-input-surface.md).
+// (cafaye/kit/REPORT-kit-w2p4-secret-input-surface).
 //
 // Redacted is the document with the generated value replaced by a marker, and
 // it is the only one of the two a dry run or a failure report ever prints. That

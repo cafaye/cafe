@@ -1,5 +1,0 @@
-harness: up — kit-tenant-iso-56813 on host port 15513 (postgres:17), session 56813
-harness: preparing a throwaway copy of wt-m39-caf-adopt-isolation-01
-  identity's own migrations failed; tail of the log:
-  2026/10/03 18:46:31 goose run: migrations directory does not exist
-cross_tenant_harness: the service's own migrations did not apply to a real database. Exiting 2 — a harness that seeds into a schema nobody migrated proves nothing.

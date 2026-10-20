@@ -764,7 +764,7 @@ func connectionEnv(svc Service, kind, project string) (Environment, bool) {
 // contract" — a service-specific variable is what lets a self-hoster point one
 // service at their own backend and leave the rest on the collector. But a
 // variable only exists if something writes it, and the service that would write
-// it is a binary that reads it. pantry's `HANDOFF-otel-01.md` is the finding
+// it is a binary that reads it. pantry's `HANDOFF-otel-01` is the finding
 // that made this land: pantry holds no `docker-compose.yml` by design (its
 // `.gitignore` says in terms that it "is the registry rather than a service"),
 // so the compose half of the fleet convention is only closeable in the generator

@@ -179,7 +179,7 @@ All notable changes to cafe are recorded here. The format follows
 
   Three live tests prove the cycle, the broken-pair refusal and the gem's own
   production-name refusal against a real accessory over real SSH.
-  `REPORT-caf-22-backup.md` has the output, and §10 there lists what was NOT
+  `REPORT-caf-22-backup` has the output, and §10 there lists what was NOT
   done: no TLS, no multi-host, and **no real R2** — the rehearsal uses restic's
   local backend, which is a real repository and not an object store.
 
@@ -293,7 +293,7 @@ All notable changes to cafe are recorded here. The format follows
 - **`cafe dev` rendered no telemetry endpoint at all, so a service started by the
   CLI could not be told where the collector is.** `internal/dev` mentioned
   neither `<SERVICE>_OTEL_ENDPOINT` nor 4317/4318 anywhere, and pantry's
-  `HANDOFF-otel-01.md` names why that mattered: pantry holds no
+  `HANDOFF-otel-01` names why that mattered: pantry holds no
   `docker-compose.yml` by design, so the compose half of the fleet's endpoint
   convention is only closeable in the generator that renders the stack.
 
@@ -572,7 +572,7 @@ All notable changes to cafe are recorded here. The format follows
   whose whole-machine assertion cannot pass on a shared machine — are **reported
   and not fixed** here, because a fix belongs in a packet about `internal/ryuk`
   and not in a rider on the gate. cafe-09 is that packet and has since fixed the
-  settle window. See `REPORT-caf-07-gate.md` and `REPORT-caf-09-mcpwire.md`.
+  settle window. See `REPORT-caf-07-gate` and `REPORT-caf-09-mcpwire`.
 
 - **The reclamation ledger** (`internal/ledger`). Every stack cafe brings up is
   written to a ledger **before** the resource is created, so a cafe killed

@@ -22,7 +22,7 @@ import (
 // The seam is the same one the rest of this repository uses: a fake that records
 // argv. So every case below runs on a machine with no kamal, no registry, no SSH
 // and no container runtime, and the real deployment is proved by
-// REPORT-caf-21-deploy.md rather than by a test that needs a VPS.
+// REPORT-caf-21-deploy rather than by a test that needs a VPS.
 
 // deployResolvedConfig is real `kamal config` output — kamal 2.12.0, captured on
 // this machine — for a project with no accessory port published.
