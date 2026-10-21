@@ -72,6 +72,9 @@ func writeService(b *strings.Builder, svc Service) {
 	if svc.Published > 0 {
 		_, _ = fmt.Fprintf(b, "    ports:\n      - %q\n", fmt.Sprintf("%d:%d", svc.Published, svc.Port))
 	}
+	if svc.EnvFile != "" {
+		_, _ = fmt.Fprintf(b, "    env_file: %s\n", scalar(svc.EnvFile))
+	}
 	if len(svc.Environment) > 0 {
 		b.WriteString("    environment:\n")
 		for _, env := range svc.Environment.Sorted() {

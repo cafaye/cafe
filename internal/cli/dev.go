@@ -186,6 +186,7 @@ func (r devRun) run() error {
 
 	stack, err := dev.Plan(project.Manifest, registry, dev.Options{
 		Build:    project.Build,
+		Dir:      project.Dir,
 		HostPort: r.opts.port,
 		NoInfra:  r.opts.noInfra,
 	})
