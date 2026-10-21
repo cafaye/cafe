@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cafaye/cafe/internal/contract"
@@ -564,6 +565,27 @@ func (r *resolver) wire() {
 				if address, found := connectionEnv(svc, dep, r.service); found {
 					env = env.With(address)
 				}
+			}
+		}
+		// A project service that depends on another cafaye service reaches it by
+		// service name on the compose network. The manifest names the
+		// dependency; the registry names the port. Hand the project the URL it
+		// reads that address from, unless it already declared one, so a local
+		// stack boots without a localhost-inside-container fallback.
+		if svc.Origin == OriginProject {
+			for _, dep := range r.manifest.Dependencies() {
+				depSvc, ok := r.services[dep.Name]
+				if !ok || depSvc.Port <= 0 {
+					continue
+				}
+				varName := strings.ToUpper(strings.ReplaceAll(dep.Name, "-", "_")) + "_URL"
+				if _, present := env.Get(varName); present {
+					continue
+				}
+				if _, present := svc.Environment.Get(varName); present {
+					continue
+				}
+				env = env.With(Environment{{Name: varName, Value: "http://" + dep.Name + ":" + strconv.Itoa(depSvc.Port)}})
 			}
 		}
 		env = env.With(svc.Environment)
