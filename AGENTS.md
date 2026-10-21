@@ -177,7 +177,7 @@ trailing newline appended to it still compiles, vets, passes `gofmt -l` and
 passes its twelve tests. The failure was a client and a server disagreeing on the
 wire, found in production rather than in a gate.
 
-`caf.lock` at the repository root is one entry per file the tree DECLARES — four
+`cafe.lock` at the repository root is one entry per file the tree DECLARES — four
 kinds, `spec`, `vendored-schema`, `generated-client` and `rule-bundle` — each with
 the SHA-256 of its bytes, plus the `lockVersion` that invalidates the format
 wholesale and the `tool` that wrote it. Three rules hold it together:

@@ -414,18 +414,18 @@ func TestComposeCommandLine(t *testing.T) {
 	}{
 		{
 			name: "up",
-			call: composeCall{verb: "up", project: "stack-dev", file: "caf.dev.compose.yaml", flags: []string{"-d"}},
-			want: []string{"compose", "-p", "stack-dev", "-f", "caf.dev.compose.yaml", "up", "-d"},
+			call: composeCall{verb: "up", project: "stack-dev", file: "cafe.dev.compose.yaml", flags: []string{"-d"}},
+			want: []string{"compose", "-p", "stack-dev", "-f", "cafe.dev.compose.yaml", "up", "-d"},
 		},
 		{
 			name: "up removes the containers of a service that left the file",
-			call: composeCall{verb: "up", project: "stack-dev", file: "caf.dev.compose.yaml", flags: []string{"-d", "--remove-orphans"}},
-			want: []string{"compose", "-p", "stack-dev", "-f", "caf.dev.compose.yaml", "up", "-d", "--remove-orphans"},
+			call: composeCall{verb: "up", project: "stack-dev", file: "cafe.dev.compose.yaml", flags: []string{"-d", "--remove-orphans"}},
+			want: []string{"compose", "-p", "stack-dev", "-f", "cafe.dev.compose.yaml", "up", "-d", "--remove-orphans"},
 		},
 		{
 			name: "ps",
-			call: composeCall{verb: "ps", project: "stack-dev", file: "caf.dev.compose.yaml", flags: []string{"-a", "--format", "json"}},
-			want: []string{"compose", "-p", "stack-dev", "-f", "caf.dev.compose.yaml", "ps", "-a", "--format", "json"},
+			call: composeCall{verb: "ps", project: "stack-dev", file: "cafe.dev.compose.yaml", flags: []string{"-a", "--format", "json"}},
+			want: []string{"compose", "-p", "stack-dev", "-f", "cafe.dev.compose.yaml", "ps", "-a", "--format", "json"},
 		},
 		{
 			// The project remembers the file it was created from, so `down`
@@ -459,7 +459,7 @@ func TestComposeRuntimeUsesTheResolvedBinary(t *testing.T) {
 	ran := &recordedRunner{}
 	runtime := &ComposeRuntime{binary: "/opt/tools/docker", run: ran.run}
 
-	if err := runtime.Up(context.Background(), "stack-dev", "caf.dev.compose.yaml"); err != nil {
+	if err := runtime.Up(context.Background(), "stack-dev", "cafe.dev.compose.yaml"); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 	if ran.calls != 1 {

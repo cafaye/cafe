@@ -10,7 +10,7 @@ import (
 	"github.com/cafaye/cafe/internal/lock"
 )
 
-// `caf.lock` is this repository's own lock, and this file is the check that it
+// `cafe.lock` is this repository's own lock, and this file is the check that it
 // still describes this tree.
 //
 // # Why it is here and not in a script
@@ -35,7 +35,7 @@ import (
 //
 // A gate nobody has watched go red is a gate that might not work. So the second
 // test here is the self-test row: it takes this repository's own committed
-// `caf.lock`, rebuilds the tree it describes in a scratch directory, changes one
+// `cafe.lock`, rebuilds the tree it describes in a scratch directory, changes one
 // byte of one pinned file, and asserts the report goes RED and NAMES it. That
 // is the control over the control, and it is why the first test is trusted.
 
@@ -67,7 +67,7 @@ func TestTheTreeMatchesItsCommittedLock(t *testing.T) {
 	if report.OK() {
 		return
 	}
-	t.Errorf("caf.lock does not describe this tree:\n%s\n"+
+	t.Errorf("cafe.lock does not describe this tree:\n%s\n"+
 		"  Two things cause this, and they have opposite remedies:\n"+
 		"    * core moved, or cafe gen moved. Re-run `go run ./cmd/cafe lock .` after reading core's\n"+
 		"      CHANGELOG at the new commit — the drift gate in internal/gen is the check on that half.\n"+
@@ -213,7 +213,7 @@ func pickVendoredSchema(l lock.Lock) (lock.Entry, error) {
 			return entry, nil
 		}
 	}
-	return lock.Entry{}, errors.New("caf.lock pins no vendored-schema, so there is nothing for the " +
+	return lock.Entry{}, errors.New("cafe.lock pins no vendored-schema, so there is nothing for the " +
 		"self-test to change. A lock with no vendored schema is a lock over a tree that vendors none, and " +
 		"this test would then be demonstrating something other than what it is for")
 }
@@ -234,7 +234,7 @@ func TestTheCommittedLockOnlyUsesKindsCafKnows(t *testing.T) {
 	seen := map[lock.Kind]bool{}
 	for _, entry := range committed.Files {
 		if !lock.KnownKind(entry.Kind) {
-			t.Errorf("caf.lock pins %s as kind %q, which this cafe does not know", entry.Path, entry.Kind)
+			t.Errorf("cafe.lock pins %s as kind %q, which this cafe does not know", entry.Path, entry.Kind)
 		}
 		seen[entry.Kind] = true
 	}
@@ -244,7 +244,7 @@ func TestTheCommittedLockOnlyUsesKindsCafKnows(t *testing.T) {
 	// reference, and a kind with no instance in it is a kind nobody has run.
 	for _, kind := range lock.KnownKinds() {
 		if !seen[kind] {
-			t.Errorf("caf.lock pins no file of kind %q. Every kind the format declares should have an "+
+			t.Errorf("cafe.lock pins no file of kind %q. Every kind the format declares should have an "+
 				"instance in the repository that documents the format, or it is a kind nobody has run",
 				kind)
 		}

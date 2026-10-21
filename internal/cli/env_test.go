@@ -513,7 +513,7 @@ func TestTheReceiptRoundTrips(t *testing.T) {
 		Root:       "identity",
 		Ports:      []int{15020},
 		Databases:  []string{"identity-worker-identity-7_pgdata"},
-		Compose:    "/repo/identity/caf.dev.compose.yaml",
+		Compose:    "/repo/identity/cafe.dev.compose.yaml",
 		Ledger:     "/home/dev/.local/state/cafe/ledger",
 		Started:    true,
 		Policy:     tierPolicyOwed,

@@ -461,7 +461,7 @@ const suiteProofID = "suite"
 // lowering the assertion; raise the number, which is the point of it."
 //
 // In cafe the number is no longer raised by hand. `cafe gate floors --write`
-// derives it from the merged tree, sets it, re-pins `caf.lock`, and prints the
+// derives it from the merged tree, sets it, re-pins `cafe.lock`, and prints the
 // delta — the argument is in `internal/gate`. What has NOT changed is the
 // detector: this test still holds the identity exactly, so a floor below the
 // tree's count is red and a test deleted without the floor following it down is
@@ -515,7 +515,7 @@ func TestTheGateFloorIsNotBelowTheSuiteCafClaimsToHave(t *testing.T) {
 			"gate runs %d of them and skips %d. The skips are supposed to be exactly %d: the seven live "+
 			"tests and the re-exec'd child, all eight named at the constant.\n"+
 			"  If you ADDED tests, run `cafe gate floors --write`: it derives the floor from the merged tree, "+
-			"sets it, re-pins caf.lock, and prints the delta — %d is the number it will write.\n"+
+			"sets it, re-pins cafe.lock, and prints the delta — %d is the number it will write.\n"+
 			"  If tests now SKIP that did not, find out why before writing: a new skip is a new tier, and "+
 			"an unexplained one is the defect this whole format exists to catch.\n"+
 			"  Do not hand-edit minimum, do not fix this by editing the assertion, and do not fix it by editing "+

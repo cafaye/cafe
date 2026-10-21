@@ -22,7 +22,7 @@ type planArgs struct {
 	Project string `json:"project,omitempty" jsonschema:"project directory to plan; the server's working directory when omitted"`
 	// Out is where the rendered compose document is written, relative to the
 	// project unless absolute.
-	Out string `json:"out,omitempty" jsonschema:"file to write the compose document to, inside the project; caf.dev.compose.yaml by default"`
+	Out string `json:"out,omitempty" jsonschema:"file to write the compose document to, inside the project; cafe.dev.compose.yaml by default"`
 	// Port publishes the project's own service on this host port instead of the
 	// one its image listens on.
 	Port int `json:"port,omitempty" jsonschema:"host port to publish the project service on; 0 uses the service's own port"`

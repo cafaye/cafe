@@ -107,7 +107,7 @@ All notable changes to cafe are recorded here. The format follows
   and `cafaye-rb` did not, and nothing anywhere said "the generated output is
   exactly what the pinned spec produces".
 
-  `caf.lock` is one entry per file the tree **declares**, in four kinds:
+  `cafe.lock` is one entry per file the tree **declares**, in four kinds:
   `spec` (`cafaye.yml` and the OpenAPI document `exposes.api` names),
   `vendored-schema` (every `*.json` under `internal/contract/schemas`),
   `generated-client` (every path `cafe gen` writes for *this* manifest, read out
@@ -128,7 +128,7 @@ All notable changes to cafe are recorded here. The format follows
   twice is a sentence in two streams, one of which a CI log greps and the other
   of which nobody reads.
 
-  cafe pins its own tree in `caf.lock` and `internal/ci/lock_test.go` verifies it
+  cafe pins its own tree in `cafe.lock` and `internal/ci/lock_test.go` verifies it
   on every gate run, with a self-test row that copies the tree, moves one byte
   of one pinned schema, and asserts the report goes red and names it. **Adding
   tests to cafe now also means re-running `cafe lock`**, because `gate.yml` is a
@@ -461,7 +461,7 @@ All notable changes to cafe are recorded here. The format follows
   Measured, on `cafe dev` against a project whose image build fails:
 
   ```
-  $ cafe dev --registry caf.dev.json -wait 20s
+  $ cafe dev --registry cafe.dev.json -wait 20s
   starting 3 services in cafbreak-dev
 
   stopping cafbreak-dev

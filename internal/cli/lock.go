@@ -7,7 +7,7 @@ import (
 	"github.com/cafaye/cafe/internal/lock"
 )
 
-// `cafe lock <path>` writes `caf.lock` and `cafe lock --verify <path>` checks it.
+// `cafe lock <path>` writes `cafe.lock` and `cafe lock --verify <path>` checks it.
 //
 // One command with a flag rather than two commands, because they are the same
 // question asked at two moments — "what do this tree's declarations add up to?"

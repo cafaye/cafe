@@ -244,7 +244,7 @@ func TestDevWritesAndPrintsTheComposeFile(t *testing.T) {
 		}
 	}
 
-	document := readFile(t, filepath.Join(dir, "caf.dev.compose.yaml"))
+	document := readFile(t, filepath.Join(dir, "cafe.dev.compose.yaml"))
 	for _, want := range []string{"name: stack-dev", "services:", "  stack:"} {
 		if !strings.Contains(document, want) {
 			t.Errorf("the file on disk is missing %q\ngot:\n%s", want, document)
@@ -306,7 +306,7 @@ func TestDevIsIdempotent(t *testing.T) {
 	if first != second {
 		t.Errorf("two runs of one manifest produced different output\n--- first ---\n%s\n--- second ---\n%s", first, second)
 	}
-	document := readFile(t, filepath.Join(dir, "caf.dev.compose.yaml"))
+	document := readFile(t, filepath.Join(dir, "cafe.dev.compose.yaml"))
 	if !strings.Contains(document, "name: stack-dev") {
 		t.Errorf("the project name is not stable across runs:\n%s", document)
 	}
@@ -335,7 +335,7 @@ func TestDevBringsUpTheStackAndReportsIt(t *testing.T) {
 			snapshots: upEverything("stack"),
 			wantCode:  exitSuccess,
 			wantOut: []string{
-				"caf.dev.compose.yaml", "services:", "postgres", "redis", "stack",
+				"cafe.dev.compose.yaml", "services:", "postgres", "redis", "stack",
 				"healthy", "running", "stack is up",
 			},
 		},
@@ -384,7 +384,7 @@ func TestDevBringsUpTheStackAndReportsIt(t *testing.T) {
 			// It names the file it wrote, as an absolute path: the runtime
 			// resolves a relative one against its own working directory, and
 			// `cafe dev ../billing` must bring up the same stack.
-			if got := filepath.Base(runtime.upCalls[0].file); got != "caf.dev.compose.yaml" {
+			if got := filepath.Base(runtime.upCalls[0].file); got != "cafe.dev.compose.yaml" {
 				t.Errorf("brought up %q, want the file the command wrote", runtime.upCalls[0].file)
 			}
 			if !filepath.IsAbs(runtime.upCalls[0].file) {
@@ -672,7 +672,7 @@ func TestDevSaysWhereItWrote(t *testing.T) {
 
 	_, stdout, _ := runCLI(t, testVersion, "dev", "-dry-run", dir)
 
-	if !strings.Contains(stdout, "caf.dev.compose.yaml") {
+	if !strings.Contains(stdout, "cafe.dev.compose.yaml") {
 		t.Errorf("the report does not name the file that was written\ngot:\n%s", stdout)
 	}
 }
@@ -690,7 +690,7 @@ func TestDevWriteLocation(t *testing.T) {
 	}{
 		{
 			name:     "the default lands in the project",
-			contains: filepath.Join("caf.dev.compose.yaml"),
+			contains: filepath.Join("cafe.dev.compose.yaml"),
 		},
 		{
 			name:     "a relative -out is taken inside the project",

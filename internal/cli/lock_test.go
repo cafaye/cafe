@@ -74,7 +74,7 @@ func copyFileTo(t *testing.T, from, to string) {
 	}
 }
 
-// The write path: a tree gets a `caf.lock`, the file is on disk, and the summary
+// The write path: a tree gets a `cafe.lock`, the file is on disk, and the summary
 // says what was pinned and of what kinds.
 //
 // The breakdown is asserted rather than just the count, because "12 files" is
@@ -89,11 +89,11 @@ func TestLockWritesTheFileAndSaysWhatItPinned(t *testing.T) {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, "caf.lock")); err != nil {
-		t.Fatalf("cafe lock did not write caf.lock: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "cafe.lock")); err != nil {
+		t.Fatalf("cafe lock did not write cafe.lock: %v", err)
 	}
 	for _, want := range []string{
-		"caf.lock",
+		"cafe.lock",
 		"spec",
 		"vendored-schema",
 		"generated-client",
@@ -259,7 +259,7 @@ func TestVerifyWithNoLockSaysWhichCommandWritesOne(t *testing.T) {
 	if code != exitFailure {
 		t.Fatalf("exit code = %d, want %d", code, exitFailure)
 	}
-	for _, want := range []string{"caf.lock", "cafe lock"} {
+	for _, want := range []string{"cafe.lock", "cafe lock"} {
 		if !strings.Contains(stderr, want) {
 			t.Errorf("the refusal does not mention %q:\n%s", want, stderr)
 		}

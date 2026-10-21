@@ -585,7 +585,7 @@ func compareVersions(a, b string) int {
 }
 
 // sortedByName returns the components in a stable order, so two runs over one
-// box produce the same report. Same argument as caf.lock's no-timestamp rule:
+// box produce the same report. Same argument as cafe.lock's no-timestamp rule:
 // a diff between two reports has to be a diff between two boxes.
 func sortedByName(in []Component) []Component {
 	out := make([]Component, len(in))

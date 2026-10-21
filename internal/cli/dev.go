@@ -73,7 +73,7 @@ const defaultWait = 3 * time.Minute
 // defaultComposeFile is where the rendered document goes, inside the project.
 // A generated file belongs where a developer can find it, diff it, and add it
 // to .gitignore.
-const defaultComposeFile = "caf.dev.compose.yaml"
+const defaultComposeFile = "cafe.dev.compose.yaml"
 
 func newDevCommand(deps devDeps) *Command {
 	opts := &devOptions{}

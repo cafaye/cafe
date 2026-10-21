@@ -541,20 +541,29 @@ func TestQueryValuesAreEncoded(t *testing.T) {
 	}
 }
 
-// The owner is required to list projects: ship refuses an empty owner_id, and
-// the old code sent it anyway and printed the refusal as if it were the list.
-func TestProjectListRefusesToSendAnEmptyOwner(t *testing.T) {
+// The owner is NOT named when the caller has not named one.
+//
+// The owner used to be required, and the command refused without it. It is not
+// required any more, because ship resolves the account from the credential the
+// caller presented — a caller that had to name its tenancy could also name
+// somebody else's. So the request goes out with no owner at all and ship
+// decides.
+func TestProjectListDoesNotNameAnOwner(t *testing.T) {
 	srv := newShipServer(t)
 	shipTestEnv(t, srv)
 	t.Setenv("SHIP_OWNER_ID", "")
 
 	code, _, stderr := runCLI(t, testVersion, "project", "list")
 
-	if code != exitUsage {
-		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitUsage, stderr)
+	if code != exitSuccess {
+		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
-	if srv.count() != 0 {
-		t.Errorf("the CLI made %d requests, want none", srv.count())
+	if srv.count() != 1 {
+		t.Fatalf("the CLI made %d requests, want 1", srv.count())
+	}
+	req := srv.last(t)
+	if got := req.Query.Get("owner_id"); got != "" {
+		t.Errorf("owner_id = %q, want it left out", got)
 	}
 }
 

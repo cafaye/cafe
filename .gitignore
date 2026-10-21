@@ -7,7 +7,7 @@
 
 # The local stack `caf dev` renders. It is generated from cafaye.yml and
 # rewritten on every run, so a checked-in copy is a copy that drifts.
-caf.dev.compose.yaml
+cafe.dev.compose.yaml
 
 # Test and coverage output.
 coverage.txt

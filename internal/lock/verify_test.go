@@ -365,7 +365,7 @@ func TestTheGreenReportSaysHowMuchItChecked(t *testing.T) {
 // draft of this test expected an empty lock to verify clean, which would have
 // been the false green this package exists to refuse, in the very test meant to
 // prove it does not. It is worth writing down as a row of its own because the
-// empty lockfile is the shape a truncating write, a `git checkout caf.lock` of a
+// empty lockfile is the shape a truncating write, a `git checkout cafe.lock` of a
 // file that was never committed, and a hand-truncated JSON document all produce,
 // and each of them must be loud rather than vacuous.
 func TestAnEmptyLockReportsEveryDeclaredFileRatherThanPassing(t *testing.T) {

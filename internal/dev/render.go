@@ -22,7 +22,7 @@ func renderCompose(project string, services []Service, volumes []string) string 
 	var b strings.Builder
 
 	// The header says what the file is and what not to do with it, because a
-	// file called caf.dev.compose.yaml in a repository root is something a
+	// file called cafe.dev.compose.yaml in a repository root is something a
 	// developer will edit before reading it.
 	_, _ = fmt.Fprintf(&b, "# cafe dev — the local stack for %q, generated from cafaye.yml.\n", project)
 	b.WriteString("# Do not edit: every run rewrites this file. The manifest is the\n")

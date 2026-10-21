@@ -34,8 +34,11 @@ func newProjectCommand(deps projectDeps) *Command {
 			"  get <id>        Get project details\n\n" +
 			"Environment:\n" +
 			"  SHIP_URL        Base URL of the ship service (default: " + defaultShipURL + ")\n" +
-			"  SHIP_OWNER_ID   Default owner ID\n" +
-			"  SHIP_TOKEN      Service token, sent as `Authorization: Bearer …`\n",
+			"  SHIP_TOKEN      Service token, sent as `Authorization: Bearer …`\n" +
+			"\n" +
+			"The owner is the account your credential belongs to, so you do not have to\n" +
+			"name it: ship resolves it from the credential you present. --owner is for\n" +
+			"the deployment's own automation, which has no account of its own.\n",
 	}
 	c.Run = func(args []string, env *Env) error {
 		if urlErr != nil {
@@ -64,7 +67,7 @@ func newProjectCommand(deps projectDeps) *Command {
 func projectCreate(deps projectDeps, env *Env, args []string) error {
 	fs := flag.NewFlagSet("project create", flag.ContinueOnError)
 	name := fs.String("name", "", "project name")
-	owner := fs.String("owner", "", "owner ID (identity account)")
+	owner := fs.String("owner", "", "owner ID (identity account); defaults to the account your credential belongs to")
 	if err := shipParse(fs, args, "project", env); err != nil {
 		if errors.Is(err, errShipHelp) {
 			return nil
@@ -80,15 +83,20 @@ func projectCreate(deps projectDeps, env *Env, args []string) error {
 	if *owner == "" {
 		*owner = os.Getenv("SHIP_OWNER_ID")
 	}
-	if *owner == "" {
-		return fmt.Errorf("%w: cafe project create: --owner is required", errUsage)
+	// THE OWNER IS NOT SENT UNLESS IT WAS ASKED FOR. Ship resolves the account
+	// from the credential the caller presented, so a person never names the
+	// tenancy they are acting in — a caller that could name it could also
+	// name somebody else's. The flag is still here for the deployment's own
+	// automation, which has no account of its own to be resolved.
+	payload := map[string]any{"name": *name}
+	if *owner != "" {
+		ownerID, err := uuid.Parse(*owner)
+		if err != nil {
+			return fmt.Errorf("%w: cafe project create: invalid owner ID %q", errUsage, *owner)
+		}
+		payload["owner_id"] = ownerID.String()
 	}
-	ownerID, err := uuid.Parse(*owner)
-	if err != nil {
-		return fmt.Errorf("%w: cafe project create: invalid owner ID %q", errUsage, *owner)
-	}
-	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/",
-		map[string]any{"name": *name, "owner_id": ownerID.String()})
+	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/", payload)
 	if err != nil {
 		return err
 	}
@@ -102,11 +110,12 @@ func projectCreate(deps projectDeps, env *Env, args []string) error {
 
 // projectList lists the projects of one owner.
 //
-// The owner is required: ship's list route refuses an empty owner_id, and the
-// old code sent it anyway and printed the 400 body as if it were the list.
+// THE OWNER IS NOT SENT UNLESS IT WAS ASKED FOR, for the same reason
+// projectCreate does not send it: ship resolves the account from the
+// credential, and a person does not name the tenancy they act in.
 func projectList(deps projectDeps, env *Env, args []string) error {
 	fs := flag.NewFlagSet("project list", flag.ContinueOnError)
-	owner := fs.String("owner", "", "owner ID")
+	owner := fs.String("owner", "", "owner ID; defaults to the account your credential belongs to")
 	if err := shipParse(fs, args, "project", env); err != nil {
 		if errors.Is(err, errShipHelp) {
 			return nil
@@ -116,15 +125,14 @@ func projectList(deps projectDeps, env *Env, args []string) error {
 	if *owner == "" {
 		*owner = os.Getenv("SHIP_OWNER_ID")
 	}
-	if *owner == "" {
-		return fmt.Errorf("%w: cafe project list: --owner or SHIP_OWNER_ID is required", errUsage)
-	}
-	ownerID, err := uuid.Parse(*owner)
-	if err != nil {
-		return fmt.Errorf("%w: cafe project list: invalid owner ID %q", errUsage, *owner)
-	}
 	params := url.Values{}
-	params.Set("owner_id", ownerID.String())
+	if *owner != "" {
+		ownerID, err := uuid.Parse(*owner)
+		if err != nil {
+			return fmt.Errorf("%w: cafe project list: invalid owner ID %q", errUsage, *owner)
+		}
+		params.Set("owner_id", ownerID.String())
+	}
 	req, err := shipRequest("GET", deps.shipURL, "/v1/ship/projects/"+shipQuery(params), nil)
 	if err != nil {
 		return err

@@ -37,7 +37,7 @@ before:
     # not the ones in the tag. `download` only populates the cache and lets a
     # genuinely inconsistent tree fail the build loudly instead of being tidied
     # in silence — the same "a pin is of the bytes" rule the vendored schemas and
-    # `caf.lock` hold to. (The tree's own untidiness is real and is reported as a
+    # `cafe.lock` hold to. (The tree's own untidiness is real and is reported as a
     # follow-up; it is not this file's job to paper over it.)
     - go mod download
 

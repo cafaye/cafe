@@ -33,6 +33,9 @@ func newStartCommand(deps startDeps) *Command {
 			"Flags:\n" +
 			"  --name <name>    Project name (default: my-project)\n" +
 			"  --owner <id>     Owner ID (identity account, or SHIP_OWNER_ID env)\n\n" +
+			"The owner is the account your credential belongs to, so you do not have to\n" +
+			"name it: ship resolves it from the credential you present. --owner is for\n" +
+			"the deployment's own automation, which has no account of its own.\n\n" +
 			"Environment:\n" +
 			"  SHIP_URL         Base URL of the ship service\n" +
 			"  SHIP_OWNER_ID    Default owner ID\n" +
@@ -52,21 +55,26 @@ func newStartCommand(deps startDeps) *Command {
 		if owner == "" {
 			owner = os.Getenv("SHIP_OWNER_ID")
 		}
-		if owner == "" {
-			return fmt.Errorf("%w: cafe start: --owner or SHIP_OWNER_ID is required", errUsage)
-		}
-		// The owner is parsed before the call, not after it: ship's
-		// CreateProjectInput carries a uuid.UUID, so a name in that field is
-		// a 400, and a 400 the CLI hides is a project that was never created
-		// reported as one that was.
-		ownerID, err := uuid.Parse(owner)
-		if err != nil {
-			return fmt.Errorf("%w: cafe start: invalid owner ID %q", errUsage, owner)
+		// THE OWNER IS SENT ONLY WHEN IT WAS NAMED. Ship resolves the account
+		// from the credential the command presents, so a person never names
+		// the tenancy they act in — a caller that could name it could also
+		// name somebody else's. The flag is still here for the deployment's
+		// own automation, which has no account of its own to be resolved.
+		payload := map[string]any{"name": name}
+		if owner != "" {
+			// The owner is parsed before the call, not after it: ship's
+			// CreateProjectInput carries a uuid.UUID, so a name in that field is
+			// a 400, and a 400 the CLI hides is a project that was never created
+			// reported as one that was.
+			ownerID, err := uuid.Parse(owner)
+			if err != nil {
+				return fmt.Errorf("%w: cafe start: invalid owner ID %q", errUsage, owner)
+			}
+			payload["owner_id"] = ownerID.String()
 		}
 
 		_, _ = fmt.Fprintf(env.Stdout, "Creating project %q...\n", name)
-		req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/",
-			map[string]any{"name": name, "owner_id": ownerID.String()})
+		req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/", payload)
 		if err != nil {
 			return err
 		}

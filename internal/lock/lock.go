@@ -11,7 +11,7 @@ import (
 
 // FileName is where the lock lives in a tree, and the only name this package
 // writes.
-const FileName = "caf.lock"
+const FileName = "cafe.lock"
 
 // LockVersion is the format version, carried in the document so a cafe that
 // writes lockfiles this shape and a cafe that writes a different one can say so
@@ -124,7 +124,7 @@ func Build(root, tool string) (Lock, error) {
 	}, nil
 }
 
-// Write writes a lock to `<root>/caf.lock`, creating the file's directory only
+// Write writes a lock to `<root>/cafe.lock`, creating the file's directory only
 // if it is somehow missing (it is not: the root exists, or Build already said
 // so).
 func Write(root string, l Lock) (string, error) {
@@ -184,7 +184,7 @@ func Marshal(l Lock) ([]byte, error) {
 	return out, nil
 }
 
-// Read reads `<root>/caf.lock`.
+// Read reads `<root>/cafe.lock`.
 //
 // The two refusals it can make are both about the document rather than the
 // files: a lock whose `lockVersion` this cafe does not implement, and a lock

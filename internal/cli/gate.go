@@ -24,7 +24,7 @@ import (
 //
 // WHY IT IS A SUBCOMMAND OF `gate` AND NOT A SCRIPT. It has to read gate.yml's
 // bytes, derive three numbers, write them back without touching a comment, and
-// re-pin `caf.lock` over the new bytes — the same shape `cafe lock` already has,
+// re-pin `cafe.lock` over the new bytes — the same shape `cafe lock` already has,
 // and the same reason: a second implementation of "the lock is what this tree
 // hashes to" is a second answer to one question.
 //
@@ -73,7 +73,7 @@ func newGateCommand(deps gateDeps) *Command {
 }
 
 const gateLongHelp = `Commands:
-  floors   print the floors the tree implies, and with --write set them and re-pin caf.lock
+  floors   print the floors the tree implies, and with --write set them and re-pin cafe.lock
   decide   record the decision on a stage of a project's pipeline, on ship
 
 The floors in gate.yml are a function of the tree, and a function a human
@@ -82,7 +82,7 @@ floors from what it reported, and prints the DELTA — "floors moved 1370→1375
 subtests 1248→1250" — so a floor that moves is visible without opening the file.
 
 With ` + "`--write`" + ` it sets them in gate.yml, preserving every comment, and re-pins
-` + "`caf.lock`" + ` over the new bytes in the same run. Running it twice on an unchanged
+` + "`cafe.lock`" + ` over the new bytes in the same run. Running it twice on an unchanged
 tree changes nothing, which is what makes it safe to run at every merge.
 
 ` + "`cafe gate decide`" + ` is the other gate, and it is a different one: it records
@@ -98,18 +98,18 @@ func newGateFloorsCommand(deps gateDeps) *Command {
 	opts := &gateFloorsOptions{}
 	c := &Command{
 		Name:    "gate floors",
-		Summary: "print the floors the tree implies, and with --write set them and re-pin caf.lock",
+		Summary: "print the floors the tree implies, and with --write set them and re-pin cafe.lock",
 		Usage:   "cafe gate floors [--write] [path]",
 		LongHelp: `Reads the three countable floors out of gate.yml, runs ` + "`bin/prime`" + `, derives the
 floors the tree implies, and prints the delta. The floors are the number of
 tests that RAN, not the number that passed, so the writer is safe to run while
 the gate is red for exactly the stale floor it is about to fix.
 
-` + "`--write`" + ` sets them in gate.yml and re-pins caf.lock. The path defaults to the
+` + "`--write`" + ` sets them in gate.yml and re-pins cafe.lock. The path defaults to the
 current directory; pass the repository root when running from elsewhere.`,
 		Flags: func(fs *flag.FlagSet) {
 			fs.BoolVar(&opts.write, "write", false,
-				"set the derived floors in gate.yml and re-pin caf.lock (default: print the delta only)")
+				"set the derived floors in gate.yml and re-pin cafe.lock (default: print the delta only)")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -150,7 +150,7 @@ func runGateFloors(root string, write bool, deps gateDeps, env *Env) error {
 	_, _ = fmt.Fprintf(env.Stdout, "cafe gate floors: %s\n", delta)
 
 	if !write {
-		_, _ = fmt.Fprint(env.Stdout, "cafe gate floors: dry run; pass --write to set the floors and re-pin caf.lock\n")
+		_, _ = fmt.Fprint(env.Stdout, "cafe gate floors: dry run; pass --write to set the floors and re-pin cafe.lock\n")
 		return nil
 	}
 

@@ -7,14 +7,13 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cafaye/cafe/internal/agent"
 	"github.com/cafaye/cafe/internal/box"
 	"github.com/cafaye/cafe/internal/scaffold"
-	"github.com/google/uuid"
 )
 
 // newOptions is the parsed flag state for `cafe new`.
@@ -161,10 +160,19 @@ func newNewCommand(deps shipDeps) *Command {
 							return nil
 						}
 						// Store the token in the keyring.
+						//
+						// UNDER THE AGENT'S OWN NAME AND UNDER THE SUBJECT'S,
+						// and the second one is the one that matters: the
+						// subject is what every ship-backed command reads to
+						// find the credential it presents, and an agent that
+						// stored its token only under its id would be a CLI
+						// that could not talk to anything.
 						if dir != "" {
 							ring := box.FileRing{Dir: filepath.Join(dir, "keyring")}
 							ring.Set(agent.KeyringService, "agent/"+reg.Agent.ID, minted.Token)
-							writeHumanSubject(dir, args[0]+"@cafaye")
+							subject := args[0] + "@cafaye"
+							ring.Set(agent.KeyringService, humanAccount(subject), minted.Token)
+							writeHumanSubject(dir, subject)
 						}
 						_, _ = fmt.Fprintf(env.Stdout, "  Authenticated. Proceeding...\n")
 					}
@@ -187,38 +195,45 @@ func newNewCommand(deps shipDeps) *Command {
 		}
 		printScaffolded(env.Stdout, "new", out)
 
-		// Cloud bootstrap: create project on ship if configured.
-		owner := os.Getenv("CAFAYE_OWNER_ID")
-		if owner == "" {
-			owner = os.Getenv("SHIP_OWNER_ID")
-		}
-		if owner != "" {
-			ownerID, err := uuid.Parse(owner)
+		// Cloud bootstrap: create the project, and with it the repository that
+		// holds the code.
+		//
+		// THE OWNER IS NOT NAMED. Ship resolves the account from the
+		// credential the command presents, so there is no owner id to pass and
+		// no way for this command to act in somebody else's account. The
+		// credential is the one `cafe login` stored, or the agent's own.
+		_, _ = fmt.Fprintf(env.Stdout, "\nCreating cloud project...\n")
+		projectCreated := false
+		cloneURL := ""
+		req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/",
+			map[string]any{"name": args[0]})
+		if err == nil {
+			body, err := shipDo(deps.client, req)
 			if err == nil {
-				_, _ = fmt.Fprintf(env.Stdout, "\nCreating cloud project...\n")
-				req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/projects/",
-					map[string]any{"name": args[0], "owner_id": ownerID.String()})
-				if err == nil {
-					body, err := shipDo(deps.client, req)
-					if err == nil {
-						var proj struct {
-							ID string `json:"id"`
-						}
-						json.Unmarshal(body, &proj)
-						if proj.ID != "" {
-							_, _ = fmt.Fprintf(env.Stdout, "  Project created: %s\n", proj.ID)
-							_, _ = fmt.Fprintf(env.Stdout, "  Ship URL: %s\n", deps.shipURL)
-						}
-					}
+				var proj struct {
+					ID               string `json:"id"`
+					RepoFullName     string `json:"repo_full_name"`
+					CafayeGitRepoURL string `json:"cafaye_git_repo_url"`
 				}
+				json.Unmarshal(body, &proj)
+				if proj.ID != "" {
+					projectCreated = true
+					cloneURL = proj.CafayeGitRepoURL
+					_, _ = fmt.Fprintf(env.Stdout, "  Project created: %s\n", proj.ID)
+					if proj.RepoFullName != "" {
+						_, _ = fmt.Fprintf(env.Stdout, "  Repository: %s\n", proj.RepoFullName)
+						_, _ = fmt.Fprintf(env.Stdout, "  Clone:      %s\n", proj.CafayeGitRepoURL)
+					}
+					_, _ = fmt.Fprintf(env.Stdout, "  Ship URL: %s\n", deps.shipURL)
+				}
+			} else {
+				_, _ = fmt.Fprintf(env.Stderr, "  Cloud project was not created: %v\n", err)
 			}
-		} else {
-			_, _ = fmt.Fprintf(env.Stdout, "\n  (set CAFAYE_OWNER_ID to also create a cloud project)\n")
 		}
 
 		// Billing check: if user has a paid plan, provision dev box.
 		// Otherwise, print checkout URL.
-		if owner != "" {
+		if projectCreated {
 			_, _ = fmt.Fprintf(env.Stdout, "\nChecking billing status...\n")
 			billReq, err := shipRequest("GET", deps.shipURL, "/v1/subscriptions", nil)
 			hasPaid := false
@@ -263,7 +278,11 @@ func newNewCommand(deps shipDeps) *Command {
 				_, _ = fmt.Fprintf(env.Stdout, "          Then run: cafe new %s (again) to provision\n", args[0])
 				_, _ = fmt.Fprintf(env.Stdout, "\n")
 				_, _ = fmt.Fprintf(env.Stdout, "  [Local] Develop on your own machine:\n")
-				_, _ = fmt.Fprintf(env.Stdout, "          1. Clone: git clone https://git.cafaye.com/<you>/%s.git\n", args[0])
+				if cloneURL != "" {
+					_, _ = fmt.Fprintf(env.Stdout, "          1. Clone: git clone %s\n", cloneURL)
+				} else {
+					_, _ = fmt.Fprintf(env.Stdout, "          1. Clone: git clone https://git.cafaye.com/<your-account>/%s.git\n", args[0])
+				}
 				_, _ = fmt.Fprintf(env.Stdout, "          2. Install deps and run your dev server locally\n")
 				_, _ = fmt.Fprintf(env.Stdout, "          3. Expose via tunnel: cafe tunnel start <project-id> --port 3000\n")
 			}
