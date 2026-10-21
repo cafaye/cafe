@@ -200,6 +200,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      ALPHA_URL: http://alpha:8081
       DATABASE_URL: postgres://stack:stack@postgres:5432/stack
       REDIS_URL: redis://redis:6379/0
       STACK_OTEL_ENDPOINT: http://otel-collector:4317
