@@ -506,3 +506,26 @@ func TestProviderVerbsSplitProseFromTheDocument(t *testing.T) {
 		t.Errorf("the human document does not name the box:\n%s", stdout)
 	}
 }
+
+// boxTestRing is a fake keyring retained for provider tests after `cafe box`
+// command removal.
+type boxTestRing struct{ entries map[string]string }
+
+func newBoxTestRing() *boxTestRing { return &boxTestRing{entries: map[string]string{}} }
+
+func (r *boxTestRing) Get(service, account string) (string, error) {
+	if v, ok := r.entries[service+"/"+account]; ok {
+		return v, nil
+	}
+	return "", box.ErrNotFound
+}
+
+func (r *boxTestRing) Set(service, account, value string) error {
+	r.entries[service+"/"+account] = value
+	return nil
+}
+
+func (r *boxTestRing) Delete(service, account string) error {
+	delete(r.entries, service+"/"+account)
+	return nil
+}

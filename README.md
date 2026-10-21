@@ -125,25 +125,12 @@ into and a credential to hold, and none of those exists. GitHub Releases plus
 | `cafe deploy <service>` | deploy a service or app: `--engine kamal` (default), `--engine argo` or `--engine remote` (the operated platform, pinned off until TG-D1) | **works** |
 | `cafe backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
 | `cafe backup drill <service>` | the same cycle unattended, with the outcome recorded and `--json` for a machine | **works** |
-| `cafe box enroll --token <cap|->` | generate the box keypair, redeem the capability, store the box identity; safe to re-run. `--token -` reads the capability from stdin, which is the pipe `cafe box setup` gives it on the host — a token in argv is a token in `ps aux` | **works** |
-| `cafe box init` | print the complete, parameterized install command — every `KIT_SUBSTRATE_*` input the installer reads, marked required / optional / defaulted, as one copyable block — and the enroll step that follows. No network, no secret; the required set is the installer's own refusals, pinned by a test | **works** |
-| `cafe box setup <host>` | the one command: SSH in, bootstrap Docker the kamal way, install cafe, enroll the box ON THE HOST, write the daemon's identity and unit, start boxd and verify it answers an observe.report — safe to re-run, and the controller holds no keypair | **works** |
-| `cafe box wipe <host>` | the inverse of `setup`: stop and remove boxd, remove cafaye's state, uninstall k3s and Docker — as an ordered check-and-apply table so a second run is a no-op, asking once (`--yes` for a pipeline, `--dry-run` to see the plan), refusing a host cafe did not set up, and NEVER touching your SSH keys or `/var/lib/cafaye/releases` | **works** |
 | `cafe agent register --name "Noel"` | ask identity for an unclaimed agent, store its token in the OS keyring, print the claim URL on stderr | **works** |
 | `cafe agent login` / `whoami` | make one saved agent session active, and ask identity who this machine is | **works** |
 | `cafe agent token show [<name>]` | list the agent's tokens — or the one live token with a name; never the values | **works** |
 | `cafe agent token create [<name>]` | mint a fresh named token and store it in the OS keyring | **works** |
 | `cafe agent token rotate [<id>]` | replace a token with a fresh one; the session's own when no id is given | **works** |
 | `cafe agent token revoke --yes [<id>]` | destroy a token and remove it from the keyring; refused without `--yes` | **works** |
-| `cafe box status --json` | which box this is, which phase it is at, and what is next | **works** |
-| `cafe box plan --json` | the install, phase by phase, with this box's position marked | **works** |
-| `cafe box apply --phase N` | record that the box has reached a phase; refuses a phase that is not next | **works** |
-| `cafe box logs --json` | the box's own log: what happened, when, and to which phase | **works** |
-| `cafe box logs --release <id>` | one release's own log, followed by name | **works** |
-| `cafe box verify --json` | the box's report on itself: identity, key, journal and phase | **works** |
-| `cafe box deploy --build <name@sha256:…> --host <name>` | ship a pantry build to this box: stage it, switch traffic to it, roll back if it does not answer | **works** |
-| `cafe box rollback [<release-id>] [--service <name>]` | put the previous release back: one symlink, no rebuild, no control plane | **works** |
-| `cafe box verify --observe <observe.report.json> [--state-dir <dir>] [--mint <name>]` | the verifier the box runs under: which secrets are on it and where they are sealed for the control plane, the three signals the edge frets about (Disk/Health/Certificate per machine), and — when it says `health: degraded` — who reads the next line, where, and what changes it to `ok`; `--mint` records a value this box minted, read from stdin and kept only as a fingerprint, so an enclave build never mints a second `SECRET_KEY_BASE` | **works** |
 | `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to box — the agent never sees the value | **works** |
 | `cafe provider status --json` | which providers this box is connected to, as box reports it; opens no envelope | **works** |
 | `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the eleven documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
@@ -1634,7 +1621,6 @@ with it — a daemon whose core dump is a keyring would defeat the point.
 
 `cafe boxd -once` redeems at most one capability and returns, which is one
 round trip under an operator's eye rather than a signal they cannot see. The
-daemon needs the enrolled identity `cafe box enroll` writes; without it, it says
 so and names that command.
 
 The daemon reads its identity and its client certificate from the box-owned

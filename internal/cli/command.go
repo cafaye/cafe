@@ -116,7 +116,6 @@ func Commands() []*Command {
 		newAgentCommand(agentDeps{}),
 		newBackupCommand(backupDeps{}),
 		newBoardCommand(boardDeps{}),
-		newBoxCommand(boxDeps{}),
 		newBoxdCommand(boxdDeps{}),
 		newContractCommand(),
 		newCveCommand(cveDeps{}),
