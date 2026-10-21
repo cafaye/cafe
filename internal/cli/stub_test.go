@@ -39,7 +39,7 @@ var stubCommands = []stubCommand{}
 // this list, so `env` is here and `env up` is not, and `gen` is here while
 // `gen telemetry` is not.
 var workingCommands = []string{
-	"add", "agent", "backup", "board", "box", "boxd", "contract", "cve", "deploy", "dev", "devbox", "docs", "errors", "doctor", "env", "failure", "gate", "gen", "grafana", "init", "landing", "lock", "login", "logs", "mcp", "metrics", "new", "pipeline", "project", "provider", "publish", "reclaim", "repo", "report", "resolve", "secret", "skills", "start", "task", "tunnel", "update", "version",
+	"add", "agent", "backup", "board", "box", "boxd", "contract", "cve", "deploy", "dev", "devbox", "docs", "errors", "doctor", "env", "failure", "gate", "gen", "grafana", "init", "landing", "lock", "login", "logs", "mcp", "metrics", "new", "pipeline", "project", "provider", "reclaim", "repo", "report", "secret", "skills", "start", "task", "tunnel", "update", "version",
 }
 
 // untestedCommands are the working commands with no behavior test of their
