@@ -41,6 +41,8 @@ func newPipelineCommand(deps pipelineDeps) *Command {
 			return pipelineGet(deps, env, args[1:])
 		case "update":
 			return pipelineUpdate(deps, env, args[1:])
+		case "run":
+			return pipelineRun(deps, env, args[1:])
 		case "advance":
 			return pipelineAdvance(deps, env, args[1:])
 		case "recipes":
@@ -91,6 +93,39 @@ func pipelineUpdate(deps pipelineDeps, env *Env, args []string) error {
 	}
 	req, err := shipJSONRequest("PUT", deps.shipURL,
 		"/v1/ship/projects/"+projectID+"/pipeline", body)
+	if err != nil {
+		return err
+	}
+	respBody, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(env.Stdout, "%s\n", string(respBody))
+	return nil
+}
+
+
+// pipelineRun triggers a run-driven pipeline against the project's dev box.
+func pipelineRun(deps pipelineDeps, env *Env, args []string) error {
+	projectID, err := shipProjectArg("pipeline run", args)
+	if err != nil {
+		return err
+	}
+	fs := flag.NewFlagSet("pipeline run", flag.ContinueOnError)
+	pipelineName := fs.String("pipeline", "default", "pipeline name to run (default: default)")
+	triggeredBy := fs.String("triggered-by", "manual", "who triggered the run")
+	if err := shipParse(fs, args[1:], "pipeline", env); err != nil {
+		if errors.Is(err, errShipHelp) {
+			return nil
+		}
+		return err
+	}
+	body := map[string]any{
+		"pipeline_name": *pipelineName,
+		"triggered_by":  *triggeredBy,
+	}
+	req, err := shipJSONRequest("POST", deps.shipURL,
+		"/v1/ship/projects/"+projectID+"/run", body)
 	if err != nil {
 		return err
 	}
