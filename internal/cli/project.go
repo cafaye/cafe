@@ -4,10 +4,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"strings"
 	"net/url"
 	"os"
 
 	"github.com/google/uuid"
+
+	depdetect "github.com/cafaye/cafe/internal/deps"
 )
 
 // `cafe project` is the project on ship: the thing tasks, landings and
@@ -68,6 +71,8 @@ func projectCreate(deps projectDeps, env *Env, args []string) error {
 	fs := flag.NewFlagSet("project create", flag.ContinueOnError)
 	name := fs.String("name", "", "project name")
 	owner := fs.String("owner", "", "owner ID (identity account); defaults to the account your credential belongs to")
+	detect := fs.Bool("detect-dependencies", false, "scan the current directory for dependency manifests and auto-subscribe to publisher channels")
+	dependencies := fs.String("dependencies", "", "comma-separated dependency names to auto-subscribe to")
 	if err := shipParse(fs, args, "project", env); err != nil {
 		if errors.Is(err, errShipHelp) {
 			return nil
@@ -88,7 +93,32 @@ func projectCreate(deps projectDeps, env *Env, args []string) error {
 	// tenancy they are acting in — a caller that could name it could also
 	// name somebody else's. The flag is still here for the deployment's own
 	// automation, which has no account of its own to be resolved.
+	var depList []string
+	if *dependencies != "" {
+		for _, d := range strings.Split(*dependencies, ",") {
+			d = strings.TrimSpace(d)
+			if d != "" {
+				depList = append(depList, d)
+			}
+		}
+	}
+	if *detect {
+		detected := depdetect.Detect(".")
+		depList = append(depList, detected...)
+	}
+	// dedup
+	seen := map[string]bool{}
+	var unique []string
+	for _, d := range depList {
+		if !seen[d] {
+			seen[d] = true
+			unique = append(unique, d)
+		}
+	}
 	payload := map[string]any{"name": *name}
+	if len(unique) > 0 {
+		payload["dependencies"] = unique
+	}
 	if *owner != "" {
 		ownerID, err := uuid.Parse(*owner)
 		if err != nil {
