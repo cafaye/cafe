@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,6 +44,9 @@ type Options struct {
 	// working tree before planning. Nil means build nothing and run the
 	// registry's image.
 	Build *Build
+	// Dir is the project directory on the host, used to find a .env file beside
+	// the manifest.
+	Dir string
 	// HostPort overrides the host end of the project service's published port.
 	// The container port is a property of the image and is never rewritten.
 	HostPort int
@@ -102,6 +107,11 @@ type Service struct {
 	Port        int
 	Published   int
 	Environment Environment
+	// EnvFile is an optional .env file whose variables are injected into the
+	// container at runtime. It lets a project carry secrets and overrides
+	// (SHIP_URL, SHIP_TOKEN, ...) without baking them into the manifest or the
+	// compose file, and without an override file on every `caf dev` run.
+	EnvFile string
 	// Connections is what the service's catalog entry said about the names of
 	// the variables it reads each piece of infrastructure's address from. It is
 	// carried rather than applied here because it is per service and not per
@@ -475,6 +485,13 @@ func (r *resolver) addProject(name string) error {
 		}
 	} else {
 		svc.Build = r.opts.Build
+	}
+	// A .env file beside the manifest is the project's own, and it is the one
+	// place a secret or a local override (SHIP_URL, SHIP_TOKEN, ...) can live
+	// without being committed. Docker compose reads it automatically when it
+	// sits next to the compose file, so caf dev only has to name it here.
+	if _, err := os.Stat(filepath.Join(r.opts.Dir, ".env")); err == nil {
+		svc.EnvFile = ".env"
 	}
 	// A published port is a promise that something answers on it. A service
 	// that declares no OpenAPI document is a binary, a worker or a library, and
