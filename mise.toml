@@ -17,7 +17,7 @@
 # golangci-lint's — so a local `goreleaser release --snapshot --clean` exercises
 # the same config a tag push runs.
 [tools]
-go = "1.25.0"
+go = "1.26.0"
 "golangci-lint" = "2.14.0"
 "goreleaser" = "2.18.3"
 

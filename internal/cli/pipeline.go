@@ -104,7 +104,6 @@ func pipelineUpdate(deps pipelineDeps, env *Env, args []string) error {
 	return nil
 }
 
-
 // pipelineRun triggers a run-driven pipeline against the project's dev box.
 func pipelineRun(deps pipelineDeps, env *Env, args []string) error {
 	projectID, err := shipProjectArg("pipeline run", args)

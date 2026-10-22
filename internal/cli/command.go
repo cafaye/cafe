@@ -127,6 +127,7 @@ func Commands() []*Command {
 		newEnvCommand(),
 		newErrorsCommand(),
 		newFailureCommand(failureDeps{}),
+		newFeaturesCommand(),
 		newGateCommand(gateDeps{}),
 		newGenCommand(),
 		newGrafanaCommand(),

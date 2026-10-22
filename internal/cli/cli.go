@@ -17,6 +17,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/cafaye/cafe/internal/emitter"
+	"github.com/cafaye/cafe/internal/features"
 	"github.com/cafaye/cafe/internal/skills"
 )
 
@@ -64,6 +65,8 @@ type Options struct {
 	// Context is canceled when the process is interrupted. A nil context is a
 	// background one, so a caller that only wants an exit code passes nothing.
 	Context context.Context
+	// Features is the global feature flag service. Nil means "use defaults".
+	Features *features.Service
 }
 
 // Env is what a command is handed when it runs: the build identity and the two
@@ -86,6 +89,8 @@ type Env struct {
 	// it is there rather than read from a package-level variable so a test can
 	// cancel it without sending itself a signal.
 	Context context.Context
+	// Features is the global feature flag service.
+	Features *features.Service
 }
 
 // Run executes one invocation and returns the process exit code:
@@ -101,7 +106,11 @@ type Env struct {
 // exit code to failure lives — which is the mapping core's `error.type`
 // vocabulary exists to make single.
 func Run(opts Options) int {
+	if opts.Features == nil {
+		opts.Features = features.New(features.Config{})
+	}
 	env := opts.env()
+	env.Features = opts.Features
 	// Auto-install skills on first run (idempotent, silent on success).
 	if len(opts.Args) > 0 && opts.Args[0] != "skills" {
 		if _, err := skills.EnsureDefaultInstalled(); err != nil {
@@ -234,13 +243,12 @@ func (o Options) env() Env {
 		ctx = context.Background()
 	}
 	return Env{
-		Version: version,
-		Stdout:  writerOrDiscard(o.Stdout),
-		Stderr:  writerOrDiscard(o.Stderr),
-		// A nil Stdin is the process's own, which is what a command that reads
-		// one (`cafe box setup --token -`) needs and what a test overrides.
-		Stdin:   readerOrStdin(o.Stdin),
-		Context: ctx,
+		Version:  version,
+		Stdout:   writerOrDiscard(o.Stdout),
+		Stderr:   writerOrDiscard(o.Stderr),
+		Stdin:    readerOrStdin(o.Stdin),
+		Context:  ctx,
+		Features: o.Features,
 	}
 }
 
