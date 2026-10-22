@@ -39,7 +39,7 @@ var stubCommands = []stubCommand{}
 // this list, so `env` is here and `env up` is not, and `gen` is here while
 // `gen telemetry` is not.
 var workingCommands = []string{
-	"add", "agent", "backup", "board", "boxd", "contract", "cve", "deploy", "dev", "devbox", "docs", "errors", "doctor", "env", "failure", "gate", "gen", "grafana", "init", "landing", "lock", "login", "logs", "mcp", "metrics", "new", "pipeline", "project", "provider", "reclaim", "repo", "report", "secret", "skills", "start", "task", "tunnel", "update", "user-agent", "version",
+	"add", "agent", "backup", "board", "boxd", "contract", "cve", "deploy", "dev", "devbox", "docs", "errors", "doctor", "env", "failure", "features", "gate", "gen", "grafana", "init", "landing", "lock", "login", "logs", "mcp", "metrics", "new", "pipeline", "project", "provider", "reclaim", "repo", "report", "secret", "skills", "start", "task", "tunnel", "update", "user-agent", "version",
 }
 
 // untestedCommands are the working commands with no behavior test of their
@@ -49,7 +49,7 @@ var workingCommands = []string{
 // They are listed so that the claim above stays true, and so that writing
 // the missing test is a deletion here rather than a contradiction.
 var untestedCommands = []string{
-	"devbox", "errors", "grafana", "logs", "metrics",
+	"devbox", "errors", "features", "grafana", "logs", "metrics",
 }
 
 // invocation builds a valid command line for a stub: its flags, then the
