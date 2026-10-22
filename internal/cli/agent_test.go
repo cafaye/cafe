@@ -204,7 +204,7 @@ func runAgentCLI(t *testing.T, deps agentDeps, args ...string) (code int, stdout
 	t.Helper()
 	var out, errOut bytes.Buffer
 	env := &Env{Stdout: &out, Stderr: &errOut, Version: testVersion, Context: context.Background()}
-	err := newAgentCommand(deps).Execute(env, args)
+	err := newUserAgentCommand(deps).Execute(env, args)
 	return codeFor(*env, err), out.String(), errOut.String()
 }
 

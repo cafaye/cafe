@@ -1,498 +1,211 @@
 package cli
 
 import (
-	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/box"
 )
 
-// agentDeps is what `cafe agent` needs from the world, and it is a struct of
-// parameters rather than a set of package-level variables for the reason
-// boxDeps and envDeps are: a test can hand the command a keyring it owns and an
-// identity endpoint that answers without a network, which is the only way a
-// registration can be driven through the real router without a server, a
-// keychain or a token.
-type agentDeps struct {
-	// dir is where config.json and the keyring live. Empty means the resolved
-	// default, and a test always sets it.
-	dir string
-	// ring holds the token. Nil means the file ring under the config
-	// directory, and a test always sets it.
-	ring agent.Keyring
-	// dial opens the identity endpoint. Nil means the real HTTP one, which is
-	// why a test always sets it: the whole point of the seam is the answer.
-	dial agent.Dial
-	// baseURL is the identity origin. Empty means the CAF_IDENTITY_URL
-	// environment variable, and an empty environment variable is a refusal
-	// rather than a guess.
-	baseURL string
-}
+// aiDeps talks to ship's agent endpoints.
+type aiDeps = shipDeps
 
-// identityURLEnv is where the endpoint comes from when no flag names one. An
-// environment variable rather than a flag default, because a flag default baked
-// into the binary is a default that goes stale when identity moves and nobody
-// rebuilds cafe to find out. The same argument CAF_BOX_URL already makes
-// for the box.
-const identityURLEnv = "CAF_IDENTITY_URL"
-
-func (d agentDeps) withDefaults() agentDeps {
-	if d.dir == "" {
-		if dir, err := defaultConfigDir(); err == nil {
-			d.dir = dir
-		}
-	}
-	if d.baseURL == "" {
-		d.baseURL = strings.TrimSpace(os.Getenv(identityURLEnv))
-	}
-	if d.ring == nil {
-		// The one 0600 secret store in this tree, under the same keyring
-		// directory the box's private key is filed in: an agent's token and a
-		// box's key are two kinds of secret in one secret store, and a second
-		// implementation of "put a secret somewhere" is a second place for the
-		// mode bits to be wrong.
-		d.ring = box.FileRing{Dir: filepath.Join(d.dir, "keyring")}
-	}
-	if d.dial == nil {
-		d.dial = agent.DefaultDial()
-	}
-	return d
-}
-
-// store builds the store the verbs share. It is a method so every verb gets the
-// same defaults, and so a test that injects a ring sees it in every one of them.
-func (d agentDeps) store() *agent.Store {
-	d = d.withDefaults()
-	return agent.NewStore(d.dir, d.ring, d.dial)
-}
-
-// agentVerb is one word under `cafe agent`, paired with the command that runs it.
-// The same shape `cafe box` and `cafe contract` use: the word is what the
-// dispatcher looks up, and the command is named with its full invocation so its
-// help and its usage errors read as the words the person typed.
-type agentVerb struct {
-	name string
-	cmd  *Command
-}
-
-func agentVerbs(deps agentDeps) []agentVerb {
-	return []agentVerb{
-		{name: "login", cmd: newAgentLoginCommand(deps)},
-		{name: "register", cmd: newAgentRegisterCommand(deps)},
-		{name: "token", cmd: newAgentTokenCommand(deps)},
-		{name: "whoami", cmd: newAgentWhoAmICommand(deps)},
-	}
-}
-
-// agentLongHelp is the prose under `cafe agent`'s usage line. It is here because
-// a person reads it before running the one command in this tree that asks a
-// remote service to mint a credential on their behalf, and the two things it has
-// to say are the split with `cafe box` and the claim step.
-const agentLongHelp = `The agent is a PRINCIPAL: it has a username, it becomes
-claimed by a human account, and it holds a token. ` + "`cafe box …`" + ` is a
-MACHINE — it has a keypair and it enrolls. Two subjects, two verbs, and the split
-is the one cafaye/notes/agents-first.md chose so that ` + "`cafe agent register`" + ` never
-reads as "the agent is registering a box".
-
-REGISTER is the whole of it. It asks identity for an unclaimed agent, moves the
-token straight into the OS keyring, writes the non-secrets to
-~/.config/cafe/config.json, and prints the claim URL on STDERR. A human opens
-that URL and approves; until they do, identity answers every authenticated call
-with 403 agent_unclaimed and every command here says so with the remedy rather
-than with a status code.
-
-THE TOKEN IS NEVER PRINTED. Not on stdout, not on stderr, not in an error, not
-in a report, not in a JSON document. What the documents carry is whether a token
-is stored, and its non-secret metadata. If it ever appears in a transcript it is
-a bug in this file and not a feature of it.
-
-STDOUT IS THE DOCUMENT, STDERR IS THE SENTENCE. Every verb prints one JSON
-document on stdout — the thing an agent pipes into a parser — and one plain
-prose line on stderr, the thing a person reads. There is no --json flag to
-toggle between them: a flag that chooses which stream gets the document is a
-flag that guarantees one of the two is wrong in some script.
-
-THE ENDPOINT IS NEVER GUESSED. Pass --base-url <url> or set ` + identityURLEnv + `;
-an unset one is a refusal, because a default baked into a binary is a default
-that goes stale when identity moves.`
-
-func newAgentCommand(deps agentDeps) *Command {
-	verbs := agentVerbs(deps)
+func newAgentCommand(deps aiDeps) *Command {
+	deps, urlErr := deps.withDefaults()
 	c := &Command{
-		Name:     "agent",
-		Summary:  "the agent lifecycle: register, log in, and manage the token identity issued",
-		Usage:    "cafe agent <register|login|whoami|token> [flags] [arguments]",
-		LongHelp: agentLongHelp,
+		Name:    "agent",
+		Summary: "manage AI agents on cafaye ship",
+		Usage:   "cafe agent <subcommand> [args]",
+		LongHelp: "Manage AI agents on cafaye ship.\n\n" +
+			"Subcommands:\n" +
+			"  list                          List agents\n" +
+			"  create                        Create an agent\n" +
+			"  get <id>                      Get agent details\n" +
+			"  delete <id>                   Delete an agent\n" +
+			"  runs <agent-id>               List runs for an agent\n" +
+			"  tools                         List available tools\n\n" +
+			"Environment:\n" +
+			"  SHIP_URL   Base URL of the ship service\n" +
+			"  SHIP_TOKEN Service token, sent as `Authorization: Bearer …`\n",
 	}
 	c.Run = func(args []string, env *Env) error {
-		// Bare `cafe agent` is a question, not a mistake.
+		if urlErr != nil {
+			return urlErr
+		}
 		if len(args) == 0 {
-			printHelp(env.Stdout, c)
+			_, _ = fmt.Fprintf(env.Stderr, "cafe ai: missing subcommand (usage: %s)\n", c.Usage)
+			return errUsage
+		}
+		switch args[0] {
+		case "list":
+			return aiAgentList(deps, env, args[1:])
+		case "create":
+			return aiAgentCreate(deps, env, args[1:])
+		case "get":
+			return aiAgentGet(deps, env, args[1:])
+		case "delete":
+			return aiAgentDelete(deps, env, args[1:])
+		case "runs":
+			return aiAgentRuns(deps, env, args[1:])
+		case "tools":
+			return aiAgentTools(deps, env, args[1:])
+		default:
+			_, _ = fmt.Fprintf(env.Stderr, "cafe ai: unknown subcommand %q\n", args[0])
+			return errUsage
+		}
+	}
+	return c
+}
+
+func aiAgentList(deps aiDeps, env *Env, args []string) error {
+	req, err := shipJSONRequest("GET", deps.shipURL, "/v1/ship/agents", nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	var agents []map[string]any
+	if err := json.Unmarshal(body, &agents); err != nil {
+		return fmt.Errorf("parsing response: %w", err)
+	}
+	if len(agents) == 0 {
+		fmt.Fprintln(env.Stdout, "No agents.")
+		return nil
+	}
+	for _, a := range agents {
+		fmt.Fprintf(env.Stdout, "%s  %s  %s  tools=%v\n", a["id"], a["slug"], a["name"], a["tools"])
+	}
+	return nil
+}
+
+func aiAgentCreate(deps aiDeps, env *Env, args []string) error {
+	fs := flag.NewFlagSet("ai create", flag.ContinueOnError)
+	slug := fs.String("slug", "", "agent slug")
+	name := fs.String("name", "", "agent name")
+	description := fs.String("description", "", "agent description")
+	model := fs.String("model", "opencode-go/MiniMax-M3.1-Flash-Free", "muse model name")
+	systemPrompt := fs.String("system-prompt", "", "system prompt (instructions)")
+	maxTurns := fs.Int("max-turns", 10, "max turns per run")
+	if err := shipParse(fs, args, "ai", env); err != nil {
+		if errors.Is(err, errShipHelp) {
 			return nil
 		}
-		verb, found := lookupAgentVerb(verbs, args[0])
-		if !found {
-			return unknownAgentVerb(args[0], verbs)
+		return err
+	}
+	if *slug == "" {
+		return fmt.Errorf("slug is required")
+	}
+	if *name == "" {
+		*name = *slug
+	}
+	payload := map[string]any{
+		"slug":          *slug,
+		"name":          *name,
+		"description":   *description,
+		"model":         *model,
+		"system_prompt": *systemPrompt,
+		"tools":         []string{"list_files", "read_file", "write_file", "exec", "run_pipeline", "merge_landing", "notify_owner", "git_diff", "search_code"},
+		"max_turns":     *maxTurns,
+	}
+	req, err := shipJSONRequest("POST", deps.shipURL, "/v1/ship/agents", payload)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	var agent map[string]any
+	if err := json.Unmarshal(body, &agent); err != nil {
+		return fmt.Errorf("parsing response: %w", err)
+	}
+	fmt.Fprintf(env.Stdout, "Created agent %s (%s)\n", agent["slug"], agent["id"])
+	return nil
+}
+
+func aiAgentGet(deps aiDeps, env *Env, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: cafe ai get <id>")
+	}
+	req, err := shipJSONRequest("GET", deps.shipURL, "/v1/ship/agents/"+args[0], nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	var agent map[string]any
+	if err := json.Unmarshal(body, &agent); err != nil {
+		return fmt.Errorf("parsing response: %w", err)
+	}
+	out, _ := json.MarshalIndent(agent, "", "  ")
+	fmt.Fprintln(env.Stdout, string(out))
+	return nil
+}
+
+func aiAgentDelete(deps aiDeps, env *Env, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: cafe ai delete <id>")
+	}
+	req, err := shipJSONRequest("DELETE", deps.shipURL, "/v1/ship/agents/"+args[0], nil)
+	if err != nil {
+		return err
+	}
+	_, err = shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(env.Stdout, "Deleted agent %s\n", args[0])
+	return nil
+}
+
+func aiAgentRuns(deps aiDeps, env *Env, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: cafe ai runs <agent-id>")
+	}
+	req, err := shipJSONRequest("GET", deps.shipURL, "/v1/ship/agents/"+args[0]+"/runs", nil)
+	if err != nil {
+		return err
+	}
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
+	}
+	var runs []map[string]any
+	if err := json.Unmarshal(body, &runs); err != nil {
+		return fmt.Errorf("parsing response: %w", err)
+	}
+	if len(runs) == 0 {
+		fmt.Fprintln(env.Stdout, "No runs.")
+		return nil
+	}
+	for _, r := range runs {
+		fmt.Fprintf(env.Stdout, "%s  %s  %s\n", r["id"], r["status"], r["started_at"])
+		if r["result"] != nil && r["result"] != "" {
+			fmt.Fprintf(env.Stdout, "  %v\n", r["result"])
 		}
-		return verb.cmd.Execute(env, args[1:])
 	}
-	return c
+	return nil
 }
 
-func lookupAgentVerb(verbs []agentVerb, name string) (agentVerb, bool) {
-	for _, v := range verbs {
-		if v.name == name {
-			return v, true
-		}
+func aiAgentTools(deps aiDeps, env *Env, args []string) error {
+	req, err := shipJSONRequest("GET", deps.shipURL, "/v1/ship/agents/tools", nil)
+	if err != nil {
+		return err
 	}
-	return agentVerb{}, false
-}
-
-// unknownAgentVerb is a usage error: the person typed a word cafe does not have,
-// and the answer is the list rather than a stack trace.
-func unknownAgentVerb(name string, verbs []agentVerb) error {
-	names := make([]string, len(verbs))
-	for i, v := range verbs {
-		names[i] = v.name
+	body, err := shipDo(deps.client, req)
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("%w: cafe agent %q is not a command; the verbs are %s", errUsage, name, strings.Join(names, ", "))
-}
-
-// say is the stderr half of the split: one sentence, for a person.
-func sayAgent(w io.Writer, format string, args ...any) {
-	_, _ = fmt.Fprintf(w, "cafe agent: "+format+"\n", args...)
-}
-
-// agentBaseURL resolves the origin: the flag wins, the environment variable is
-// next, and neither is a refusal. The priority is the flag's because a person
-// who typed one meant that one.
-func agentBaseURL(deps agentDeps, flagURL string) (string, error) {
-	if url := strings.TrimSpace(flagURL); url != "" {
-		return url, nil
+	var tools []map[string]any
+	if err := json.Unmarshal(body, &tools); err != nil {
+		return fmt.Errorf("parsing response: %w", err)
 	}
-	if url := strings.TrimSpace(deps.baseURL); url != "" {
-		return url, nil
+	for _, t := range tools {
+		fmt.Fprintf(env.Stdout, "%s  %s\n", t["name"], t["description"])
 	}
-	return "", agent.ErrNoBaseURL
-}
-
-// agentError is how a command reports a failure it cannot act on. A StatusError
-// carries its own actionable half — the 403 agent_unclaimed answer is an
-// instruction, not a status — and both go to stderr beside the error, so the
-// sentence a person reads names the cause and the remedy.
-func agentError(env *Env, err error) error {
-	_, _ = fmt.Fprintf(env.Stderr, "cafe agent: %v\n", err)
-	var status *agent.StatusError
-	if errors.As(err, &status) {
-		if hint := status.Hint(); hint != "" {
-			_, _ = fmt.Fprintf(env.Stderr, "cafe agent: %s\n", hint)
-		}
-	}
-	return errReported
-}
-
-// --- register -------------------------------------------------------------
-
-type agentRegisterOptions struct {
-	name     string
-	username string
-	baseURL  string
-	logIn    bool
-}
-
-func newAgentRegisterCommand(deps agentDeps) *Command {
-	opts := &agentRegisterOptions{}
-	c := &Command{
-		Name:    "agent register",
-		Summary: "register a new agent with identity and store its token in the OS keyring",
-		Usage:   "cafe agent register --name <display-name> [--username <name>] [--base-url <url>] [--log-in]",
-		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.name, "name", "", "the agent's display name; required")
-			fs.StringVar(&opts.username, "username", "", "the agent's username; generated from the display name when omitted")
-			fs.StringVar(&opts.baseURL, "base-url", "", "identity's origin; without it, "+identityURLEnv+" is read and an unset variable is a refusal")
-			fs.BoolVar(&opts.logIn, "log-in", false, "make this the active agent session even when another one already is")
-		},
-	}
-	c.Run = func(args []string, env *Env) error {
-		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
-			return err
-		}
-		if strings.TrimSpace(opts.name) == "" {
-			return fmt.Errorf("%w: cafe agent register wants --name <display-name> (usage: %s)", errUsage, c.Usage)
-		}
-		url, err := agentBaseURL(deps, opts.baseURL)
-		if err != nil {
-			// A missing endpoint is a misconfigured MACHINE, not a mistyped
-			// command, so it is a failure and not a usage error — the same
-			// answer `cafe box enroll` gives for a missing CAF_BOX_URL.
-			// The remedy names both the flag and the variable.
-			return agentError(env, err)
-		}
-		res, err := deps.store().Register(env.Context, agent.RegisterOptions{
-			BaseURL:  url,
-			Name:     opts.name,
-			Username: opts.username,
-			LogIn:    opts.logIn,
-		})
-		if err != nil {
-			return agentError(env, err)
-		}
-		// The sentence, then the URL, then the document. The URL is on stderr
-		// because it is the one thing a person must act on, and it is NOT on
-		// stdout because a machine parsing this document has no use for a
-		// browser link and every extra field is a field a parser must ignore.
-		sayAgent(env.Stderr, "%s", res.Message)
-		if res.ClaimURL != "" {
-			sayAgent(env.Stderr, "claim this agent by opening this URL and approving it: %s", res.ClaimURL)
-			sayAgent(env.Stderr, "until a human claims it, identity answers every authenticated call with 403 agent_unclaimed")
-		}
-		sayAgent(env.Stderr, "token_stored: true (the OS keyring; the token itself is never printed)")
-		return writeJSONDoc(env.Stdout, res)
-	}
-	return c
-}
-
-// --- login ----------------------------------------------------------------
-
-type agentLoginOptions struct {
-	agent   string
-	baseURL string
-}
-
-func newAgentLoginCommand(deps agentDeps) *Command {
-	opts := &agentLoginOptions{}
-	c := &Command{
-		Name:    "agent login",
-		Summary: "make one saved agent session the active one",
-		Usage:   "cafe agent login [--agent <username>] [--base-url <url>]",
-		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.agent, "agent", "", "the agent username to activate; the active session by default")
-			fs.StringVar(&opts.baseURL, "base-url", "", "which saved session when one username has several")
-		},
-	}
-	c.Run = func(args []string, env *Env) error {
-		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
-			return err
-		}
-		res, err := deps.store().Login(opts.agent, opts.baseURL)
-		if err != nil {
-			return agentError(env, err)
-		}
-		sayAgent(env.Stderr, "%s", res.Message)
-		return writeJSONDoc(env.Stdout, res)
-	}
-	return c
-}
-
-// --- whoami ---------------------------------------------------------------
-
-type agentWhoAmIOptions struct {
-	agent   string
-	baseURL string
-}
-
-func newAgentWhoAmICommand(deps agentDeps) *Command {
-	opts := &agentWhoAmIOptions{}
-	c := &Command{
-		Name:    "agent whoami",
-		Summary: "who this machine is to identity: the session, the agent and the status",
-		Usage:   "cafe agent whoami [--agent <username>] [--base-url <url>]",
-		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&opts.agent, "agent", "", "the agent username to ask about; the active session by default")
-			fs.StringVar(&opts.baseURL, "base-url", "", "which saved session when one username has several")
-		},
-	}
-	c.Run = func(args []string, env *Env) error {
-		if err := wantArgs(c.Name, c.Usage, 0, len(args)); err != nil {
-			return err
-		}
-		res, err := deps.store().WhoAmI(env.Context, opts.agent, opts.baseURL)
-		if err != nil {
-			return agentError(env, err)
-		}
-		sayAgent(env.Stderr, "%s", res.Message)
-		// An unclaimed agent is not an error and not a success: the session is
-		// real, the token is real, and the one thing missing is a human click.
-		// The command says that on stderr and still prints the document, so a
-		// machine can read "unclaimed" rather than inferring it from an exit
-		// code.
-		if strings.EqualFold(res.Agent.Status, "unclaimed") {
-			sayAgent(env.Stderr, "this agent is unclaimed; run `cafe agent register` for a claim URL and have a human approve it")
-		}
-		return writeJSONDoc(env.Stdout, res)
-	}
-	return c
-}
-
-// --- token ----------------------------------------------------------------
-
-// agentTokenVerb is one word under `cafe agent token`, paired with the command
-// that runs it. The same shape `cafe box` uses, and the reason is the same: the
-// flags belong on the LEAF, because the standard flag package stops at the
-// first positional argument and a flag declared on the parent would have to be
-// typed before the verb that uses it.
-type agentTokenVerb struct {
-	name string
-	cmd  *Command
-}
-
-func agentTokenVerbs(deps agentDeps) []agentTokenVerb {
-	return []agentTokenVerb{
-		{name: "create", cmd: newAgentTokenCreateCommand(deps)},
-		{name: "revoke", cmd: newAgentTokenRevokeCommand(deps)},
-		{name: "rotate", cmd: newAgentTokenRotateCommand(deps)},
-		{name: "show", cmd: newAgentTokenShowCommand(deps)},
-	}
-}
-
-// agentTokenOptions is the flag state the four verbs share: one struct, because
-// it is one decision — which session to act on — and a fresh one per command, so
-// a parsed value can never leak from one verb into the next.
-type agentTokenOptions struct {
-	agent   string
-	baseURL string
-	yes     bool
-}
-
-func (o *agentTokenOptions) declare(fs *flag.FlagSet) {
-	fs.StringVar(&o.agent, "agent", "", "the agent username to act on; the active session by default")
-	fs.StringVar(&o.baseURL, "base-url", "", "which saved session when one username has several")
-	fs.BoolVar(&o.yes, "yes", false, "confirm revoke without a prompt; revoke is refused without it")
-}
-
-const agentTokenLongHelp = "Four verbs over the tokens identity issued for this agent. SHOW lists them —\n" +
-	"newest first, revoked included — or shows the one LIVE token with a name, because\n" +
-	"identity's one_live_name_per_agent index means a name identifies a live token.\n" +
-	"CREATE mints a fresh named token and stores it. ROTATE replaces one, which\n" +
-	"invalidates it. REVOKE destroys one and needs --yes.\n" +
-	"\n" +
-	"EVERY VERB CAN NAME ITS TOKEN: show and create take a name, rotate and revoke\n" +
-	"take the token's id, which " + "`cafe agent token show`" + " prints. With no argument, rotate and revoke act\n" +
-	"on the session's own token — the one in the keyring.\n" +
-	"\n" +
-	"NONE OF THEM PRINTS A TOKEN'S VALUE. They answer with the keys' metadata and\n" +
-	"with whether a token is stored, and the value goes to the OS keyring and\n" +
-	"nowhere else. That is invariant 1 in cafaye/notes/agents-first.md: an agent's\n" +
-	"transcript is a log, so nothing long-lived ever enters one."
-
-func newAgentTokenCommand(deps agentDeps) *Command {
-	verbs := agentTokenVerbs(deps)
-	c := &Command{
-		Name:     "agent token",
-		Summary:  "the token identity issued for this agent: show, create, rotate and revoke it",
-		Usage:    "cafe agent token <show|create|rotate|revoke> [flags]",
-		LongHelp: agentTokenLongHelp,
-	}
-	c.Run = func(args []string, env *Env) error {
-		// Bare `cafe agent token` is a question, not a mistake.
-		if len(args) == 0 {
-			printHelp(env.Stdout, c)
-			return nil
-		}
-		for _, v := range verbs {
-			if v.name == args[0] {
-				return v.cmd.Execute(env, args[1:])
-			}
-		}
-		return fmt.Errorf("%w: cafe agent token %q is not a command; the verbs are show, create, rotate, revoke", errUsage, args[0])
-	}
-	return c
-}
-
-// tokenVerb is one store method behind the token leaves: the two session
-// selectors plus the verb's own argument — a token name for show and create, a
-// token id for rotate and revoke. An empty argument is the verb's own default:
-// the whole list for show, the CLI's default name for create, the session's own
-// token for rotate and revoke.
-type tokenVerb func(ctx context.Context, agentUsername, baseURL, arg string) (*agent.TokenDoc, error)
-
-// newAgentTokenLeaf builds one of the token leaves that take at most one
-// positional argument: show, create and rotate. It is one constructor because
-// they are one command with one shape, and their names are passed in so each
-// command's help and its usage errors read as the words the person typed.
-// Revoke is separate because it is the only verb that destroys a credential.
-func newAgentTokenLeaf(name, summary string, verb tokenVerb) *Command {
-	opts := &agentTokenOptions{}
-	c := &Command{
-		Name:    name,
-		Summary: summary,
-		Usage:   "cafe " + name + " [--agent <username>] [--base-url <url>] [<name-or-token-id>]",
-		Flags:   func(fs *flag.FlagSet) { opts.declare(fs) },
-	}
-	c.Run = func(args []string, env *Env) error {
-		arg, err := optionalTokenArg(c.Name, c.Usage, args)
-		if err != nil {
-			return err
-		}
-		res, err := verb(env.Context, opts.agent, opts.baseURL, arg)
-		if err != nil {
-			return agentError(env, err)
-		}
-		sayAgent(env.Stderr, "%s", res.Message)
-		return writeJSONDoc(env.Stdout, res)
-	}
-	return c
-}
-
-// optionalTokenArg is the at-most-one positional argument the token leaves
-// take. Two arguments is a usage error: the second would be a second name or
-// id, and a verb that silently picked one would be a verb that guessed.
-func optionalTokenArg(name, usage string, args []string) (string, error) {
-	if len(args) > 1 {
-		return "", fmt.Errorf("%w: cafe %s wants at most 1 argument, got %d (usage: %s)", errUsage, name, len(args), usage)
-	}
-	if len(args) == 0 {
-		return "", nil
-	}
-	return strings.TrimSpace(args[0]), nil
-}
-
-func newAgentTokenShowCommand(deps agentDeps) *Command {
-	return newAgentTokenLeaf("agent token show", "list this agent's tokens, or show one live token by name; the values are never printed", deps.store().TokenShow)
-}
-
-func newAgentTokenCreateCommand(deps agentDeps) *Command {
-	return newAgentTokenLeaf("agent token create", "mint a fresh named token on identity and store it in the OS keyring", deps.store().TokenCreate)
-}
-
-func newAgentTokenRotateCommand(deps agentDeps) *Command {
-	return newAgentTokenLeaf("agent token rotate", "replace a token with a fresh one; the session's own when no id is given", deps.store().TokenRotate)
-}
-
-// newAgentTokenRevokeCommand is separate from the other three for one reason: it
-// is the only verb in this whole tree that destroys a credential, and it refuses
-// without an explicit --yes. That is invariant 5 — a human approves irreversible
-// things out of band — applied to the one thing this command group can make
-// irreversible.
-func newAgentTokenRevokeCommand(deps agentDeps) *Command {
-	opts := &agentTokenOptions{}
-	c := &Command{
-		Name:    "agent token revoke",
-		Summary: "destroy a token and remove it from the OS keyring; the session's own when no id is given",
-		Usage:   "cafe agent token revoke --yes [--agent <username>] [--base-url <url>] [<token-id>]",
-		Flags:   func(fs *flag.FlagSet) { opts.declare(fs) },
-	}
-	c.Run = func(args []string, env *Env) error {
-		tokenID, err := optionalTokenArg(c.Name, c.Usage, args)
-		if err != nil {
-			return err
-		}
-		if !opts.yes {
-			return fmt.Errorf("%w: cafe agent token revoke refuses to destroy a token without --yes; it cannot be undone from here (usage: %s)", errUsage, c.Usage)
-		}
-		res, err := deps.store().TokenRevoke(env.Context, opts.agent, opts.baseURL, tokenID)
-		if err != nil {
-			return agentError(env, err)
-		}
-		sayAgent(env.Stderr, "%s", res.Message)
-		return writeJSONDoc(env.Stdout, res)
-	}
-	return c
+	return nil
 }

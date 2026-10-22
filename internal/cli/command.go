@@ -113,7 +113,7 @@ func parseArgs(fs *flag.FlagSet, args []string, interspersed bool) ([]string, er
 func Commands() []*Command {
 	return []*Command{
 		newAddCommand(addDeps{}),
-		newAgentCommand(agentDeps{}),
+		newAgentCommand(aiDeps{}),
 		newBackupCommand(backupDeps{}),
 		newBoardCommand(boardDeps{}),
 		newBoxdCommand(boxdDeps{}),
@@ -150,6 +150,7 @@ func Commands() []*Command {
 		newTaskCommand(taskDeps{}),
 		newTunnelCommand(tunnelDeps{}),
 		newUpdateCommand(),
+		newUserAgentCommand(agentDeps{}),
 		newVersionCommand(),
 	}
 }

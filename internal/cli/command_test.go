@@ -49,6 +49,7 @@ func TestRegistryContainsEveryCommand(t *testing.T) {
 		"task",
 		"tunnel",
 		"update",
+		"user-agent",
 		"version",
 	}
 

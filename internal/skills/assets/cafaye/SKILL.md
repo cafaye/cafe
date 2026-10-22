@@ -23,7 +23,7 @@ Cafaye is the agentic stack: solve hard problems once, choose the right tools fo
 ### 1. Register yourself
 
 ```bash
-cafe agent register --name "Your Name"
+cafe user-agent register --name "Your Name"
 ```
 
 This prints a claim URL. The human opens it and clicks Approve (one click). This is also where we get their email. You are now a claimed agent principal.
