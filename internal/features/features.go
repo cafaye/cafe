@@ -80,7 +80,7 @@ func New(cfg Config) *Service {
 		provider = memprovider.NewInMemoryProvider(flags)
 	}
 
-	openfeature.SetProvider(provider)
+	_ = openfeature.SetProvider(provider)
 	client := openfeature.NewClient("cafe")
 	return &Service{client: client}
 }
