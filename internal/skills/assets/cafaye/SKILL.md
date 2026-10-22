@@ -177,6 +177,9 @@ tasks, and `cafe landing` is where those verbs are.
 - `cafe secret get <name>` — Get a secret
 - `cafe secret list` — List secrets
 
+### Feature flags
+- `cafe features` — List global feature flags and their on/off state
+
 ### Observability
 - `cafe mcp` — Serve read-only MCP tools (Argo status, pod logs, Loki queries)
 
