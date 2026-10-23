@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // `cafe init` is for a project that already exists, so it writes the manifest
@@ -30,7 +30,7 @@ func TestInitWritesOnlyTheManifest(t *testing.T) {
 	if code != exitSuccess {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
-	if !strings.Contains(stdout, "===== cafaye.yml =====") {
+	if !strings.Contains(stdout, "===== anywaye.yml =====") {
 		t.Errorf("the manifest was not printed:\n%s", stdout)
 	}
 	// Only the manifest was ADDED: the author's main.go stays untouched, and
@@ -40,8 +40,8 @@ func TestInitWritesOnlyTheManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if entry.Name() != "cafaye.yml" && entry.Name() != "main.go" {
-			t.Errorf("init wrote %s, want only cafaye.yml", entry.Name())
+		if entry.Name() != "anywaye.yml" && entry.Name() != "main.go" {
+			t.Errorf("init wrote %s, want only anywaye.yml", entry.Name())
 		}
 	}
 	after, err := os.ReadFile(filepath.Join("acme", "main.go"))
@@ -75,7 +75,7 @@ func TestInitDerivesTheNameFromTheDirectory(t *testing.T) {
 		if code != exitSuccess {
 			t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 		}
-		manifest, err := os.ReadFile(filepath.Join("acme", "cafaye.yml"))
+		manifest, err := os.ReadFile(filepath.Join("acme", "anywaye.yml"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -95,7 +95,7 @@ func TestInitDerivesTheNameFromTheDirectory(t *testing.T) {
 		if code != exitFailure {
 			t.Errorf("exit code = %d, want %d", code, exitFailure)
 		}
-		if !strings.Contains(stderr, "cafaye namespace name") {
+		if !strings.Contains(stderr, "anywaye namespace name") {
 			t.Errorf("the refusal does not name the rule: %s", stderr)
 		}
 	})
@@ -110,7 +110,7 @@ func TestInitRefusesAnExistingManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	handWritten := []byte("name: acme\n# written by a person\n")
-	if err := os.WriteFile(filepath.Join("acme", "cafaye.yml"), handWritten, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join("acme", "anywaye.yml"), handWritten, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -119,10 +119,10 @@ func TestInitRefusesAnExistingManifest(t *testing.T) {
 	if code != exitFailure {
 		t.Errorf("exit code = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "cafaye.yml") {
+	if !strings.Contains(stderr, "anywaye.yml") {
 		t.Errorf("the refusal does not name the file in the way: %s", stderr)
 	}
-	after, err := os.ReadFile(filepath.Join("acme", "cafaye.yml"))
+	after, err := os.ReadFile(filepath.Join("acme", "anywaye.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestInitRefusesAnExistingManifest(t *testing.T) {
 	if code, _, stderr := runCLI(t, testVersion, "init", "-force", "-dir", "acme"); code != exitSuccess {
 		t.Fatalf("init with -force exited %d (stderr: %s)", code, stderr)
 	}
-	forced, err := os.ReadFile(filepath.Join("acme", "cafaye.yml"))
+	forced, err := os.ReadFile(filepath.Join("acme", "anywaye.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}

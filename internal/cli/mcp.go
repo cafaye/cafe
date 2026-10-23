@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/mcp"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/mcp"
 
 	"github.com/goccy/go-yaml"
 )
@@ -32,7 +32,7 @@ func newMCPCommand() *Command {
 	opts := &mcpOptions{}
 	c := &Command{
 		Name:    "mcp",
-		Summary: "serve the cafaye tools over the Model Context Protocol",
+		Summary: "serve the anywaye tools over the Model Context Protocol",
 		Usage:   "cafe mcp [flags]",
 		LongHelp: "Serves cafe's tools to an agent over the Model Context Protocol.\n" +
 			"Most agent hosts spawn this as a child process and speak the stdio\n" +
@@ -40,11 +40,11 @@ func newMCPCommand() *Command {
 			"\n" +
 			"  cafe mcp\n" +
 			"\n" +
-			"The tools are the ones an agent operating a cafaye deployment needs,\n" +
+			"The tools are the ones an agent operating a anywaye deployment needs,\n" +
 			"and every one of them is a read over work cafe already does:\n" +
 			"\n" +
 			"  caf_doctor     the toolchain and project checks `cafe doctor` reports\n" +
-			"  caf_manifest   what a cafaye.yml declares, and its API document's version\n" +
+			"  caf_manifest   what a anywaye.yml declares, and its API document's version\n" +
 			"  caf_registry   what the service catalog says, and what the plan leaves out\n" +
 			"  caf_dev_plan   the stack `cafe dev` would build, without starting it\n" +
 			"  caf_dev_up     bring the local stack up\n" +
@@ -256,7 +256,7 @@ type doctorCheck struct {
 	Fix    string `json:"fix,omitempty"`
 }
 
-// manifestFacts is what a cafaye.yml declares, and what the API document it
+// manifestFacts is what a anywaye.yml declares, and what the API document it
 // points at says about itself.
 type manifestFacts struct {
 	Path         string             `json:"path"`
@@ -378,7 +378,7 @@ type devSvcState struct {
 func (t *mcpTools) doctor() mcp.Tool[doctorArgs, doctorFacts] {
 	return mcp.Tool[doctorArgs, doctorFacts]{
 		Name: "caf_doctor",
-		Description: "Report which cafaye toolchains this machine has, whether it can run a project, and whether it " +
+		Description: "Report which anywaye toolchains this machine has, whether it can run a project, and whether it " +
 			"has un-reclaimed local state. " +
 			"Needs nothing: every section works on any directory. Returns the toolchain rows, then one check per " +
 			"fact about the project and the machine, then one about the reclamation ledger. " +
@@ -454,16 +454,16 @@ func (t *mcpTools) runDoctor(_ context.Context, args doctorArgs) (doctorFacts, e
 	return report, nil
 }
 
-// manifest serves what a cafaye.yml declares, validated by the same linter the
+// manifest serves what a anywaye.yml declares, validated by the same linter the
 // `contract lint` command runs, and the version of the API document it points
 // at.
 func (t *mcpTools) manifest() mcp.Tool[projectArgs, manifestFacts] {
 	return mcp.Tool[projectArgs, manifestFacts]{
 		Name: "caf_manifest",
-		Description: "Report what a service's cafaye.yml declares: its name, language, core constraint, declared " +
+		Description: "Report what a service's anywaye.yml declares: its name, language, core constraint, declared " +
 			"dependencies, the events it publishes and consumes, and whether it serves HTTP with the API document's " +
 			"title and version. Validates against core's schema and reports every problem it finds. " +
-			"Needs a project directory, the current one by default; it is the directory holding cafaye.yml, not a " +
+			"Needs a project directory, the current one by default; it is the directory holding anywaye.yml, not a " +
 			"service name. " +
 			"Does not edit the manifest, does not generate code from it, and does not read anything other than the " +
 			"manifest and the API document it names.",

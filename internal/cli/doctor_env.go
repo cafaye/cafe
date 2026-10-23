@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/dev"
 )
 
 // This file is the machine side of `cafe doctor`: the facts that need something

@@ -66,7 +66,7 @@ func writeOne(root string, file File) error {
 // errRefusedExisting says what is in the way and what to do about it.
 //
 // It says more than "-force", because "-force" alone assumes the reader knows
-// the file is generated and it may not be: `<name>/cafaye.yml` could be a
+// the file is generated and it may not be: `<name>/anywaye.yml` could be a
 // manifest somebody wrote by hand under that name. Overwriting that would
 // destroy work, and a scaffolder that can do it silently is a scaffolder
 // nobody runs twice.

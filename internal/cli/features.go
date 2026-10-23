@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/cafaye/cafe/internal/features"
+	"github.com/anywaye/cafe/internal/features"
 )
 
 func newFeaturesCommand() *Command {

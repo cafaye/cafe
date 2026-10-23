@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cafaye/cafe/internal/deploy"
+	"github.com/anywaye/cafe/internal/deploy"
 )
 
 // deployDeps is what `cafe deploy` needs from the world: a way to run Kamal.
@@ -50,7 +50,7 @@ type deployOptions struct {
 	// engine the fleet runs) or deploy.EngineArgo (the launch substrate's,
 	// where there is no Kamal).
 	engine string
-	// account is the account on the cafaye-operated platform that --engine
+	// account is the account on the anywaye-operated platform that --engine
 	// remote serves. It is refused with the other two engines rather than
 	// hidden behind the gated one, so the flag's shape does not change when the
 	// tenancy decision lands — and an operator who says which account is
@@ -73,7 +73,7 @@ rolling deploy is a second opinion about what a deploy is. The one command cafe
 runs that changes anything is "kamal setup", because that is the one that also
 creates the database on a fresh host; "kamal deploy" is the last third of it
 alone. It needs config/deploy.yml, the Kamal configuration, copied from
-cafaye/kit, and the five KIT_* variables exported in the shell that runs it.
+anywaye/kit, and the five KIT_* variables exported in the shell that runs it.
 Credentials are NAMES in .kamal/secrets and never in the config. It refuses an
 accessory that publishes its port — a "port: 5432" line on the postgres
 accessory — because that puts the database on every interface the host has.
@@ -101,13 +101,13 @@ exact commit and the two files it would write — and executes nothing. Without
 --yes it asks first, and a machine with nobody to answer is told to pass --yes
 rather than left to guess.
 
-REMOTE, the cafaye-operated platform, and it is pinned off. --engine remote is
+REMOTE, the anywaye-operated platform, and it is pinned off. --engine remote is
 the third engine: it asks the operated platform which deployment serves the
 named --account, and hands it one deploy request — the service, the version and
 the commit it was built from. --account goes with it and with nothing else; the
 other two engines deploy somewhere you already pointed them at, so they have no
 account to name. The customer's app is built once and deployed once, and every
-client they serve is an account on the shared platform rather than a cafaye
+client they serve is an account on the shared platform rather than a anywaye
 deployment of its own, which is the point of the platform.
 
 It does not deploy anything today, and the refusal is deliberate rather than a
@@ -126,7 +126,7 @@ func newDeployCommand(deps deployDeps) *Command {
 	opts := &deployOptions{}
 	c := &Command{
 		Name:     "deploy",
-		Summary:  "deploy a service: kamal (build, push, roll out), argo (a values commit, then wait for sync) or remote (the cafaye-operated platform, pinned off)",
+		Summary:  "deploy a service: kamal (build, push, roll out), argo (a values commit, then wait for sync) or remote (the anywaye-operated platform, pinned off)",
 		Usage:    "cafe deploy [flags] <service>",
 		LongHelp: deployLongHelp,
 		Flags: func(fs *flag.FlagSet) {
@@ -134,8 +134,8 @@ func newDeployCommand(deps deployDeps) *Command {
 			fs.BoolVar(&opts.dryRun, "dry-run", false, "print every command that would run; changes nothing")
 			fs.BoolVar(&opts.yes, "yes", false, "deploy without asking; required where nobody can answer the prompt")
 			fs.StringVar(&opts.version, "version", "", "pin the release to this name; without it the engine decides")
-			fs.StringVar(&opts.engine, "engine", "", "deploy engine: kamal (the default, the engine the fleet runs), argo (the launch substrate's, where there is no Kamal) or remote (the cafaye-operated platform, pinned off until TG-D1)")
-			fs.StringVar(&opts.account, "account", "", "the cafaye account --engine remote serves; refused with the other two engines")
+			fs.StringVar(&opts.engine, "engine", "", "deploy engine: kamal (the default, the engine the fleet runs), argo (the launch substrate's, where there is no Kamal) or remote (the anywaye-operated platform, pinned off until TG-D1)")
+			fs.StringVar(&opts.account, "account", "", "the anywaye account --engine remote serves; refused with the other two engines")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -187,7 +187,7 @@ func (r deployRun) run() error {
 	// quietly dropped: an operator who typed --account meant to say which
 	// account, and the answer "ignored" is a destination nobody was given.
 	if r.opts.account != "" && r.opts.engine != deploy.EngineRemote {
-		return fmt.Errorf("%w: --account is the cafaye-operated platform's, so it goes with --engine %s: "+
+		return fmt.Errorf("%w: --account is the anywaye-operated platform's, so it goes with --engine %s: "+
 			"--engine %s has no account to name, because it deploys somewhere you already pointed it at",
 			errUsage, deploy.EngineRemote, engineName(r.opts.engine))
 	}

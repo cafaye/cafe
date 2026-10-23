@@ -3,7 +3,7 @@
 //
 // WHY IT IS HERE AND NOT IN A CHART. boxd owns the box
 // (internal/boxd/doc.go) and the edge is the one thing on that box a customer
-// has to look at. cafaye/notes/reference/names-urls-rollout-plan.md §4 is explicit that the box
+// has to look at. anywaye/notes/reference/names-urls-rollout-plan.md §4 is explicit that the box
 // answer to kamal's per-box proxy is "boxd's embedded edge": one small thing
 // on the box terminates TLS automatically, routes by hostname, and switches
 // traffic between releases with zero downtime. The alternative — Traefik with

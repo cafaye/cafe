@@ -58,7 +58,7 @@ func greet(ctx context.Context, in pingIn) (pingOut, error) {
 // everything the agent had learned is gone. This is the test that says which
 // one cafe chooses.
 func TestAToolThatFailsIsAToolErrorNotAProtocolError(t *testing.T) {
-	failure := errors.New("no cafaye.yml in /tmp/nothing")
+	failure := errors.New("no anywaye.yml in /tmp/nothing")
 	session := connected(t, Tool[pingIn, pingOut]{
 		Name:        "caf_ping",
 		Description: "Greet somebody. Does not greet anyone else.",

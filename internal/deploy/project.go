@@ -44,7 +44,7 @@ func Read(dir, service, env string) (Deployment, error) {
 
 	if !fileExists(dep.Config) {
 		return Deployment{}, fmt.Errorf("cafe deploy: %s has no %s, so there is nothing to deploy.\n"+
-			"  Copy it from cafaye/kit at the ref your kit.ref names: kit/templates/kamal/deploy.yml.erb -> config/deploy.yml\n"+
+			"  Copy it from anywaye/kit at the ref your kit.ref names: kit/templates/kamal/deploy.yml.erb -> config/deploy.yml\n"+
 			"  It is a Kamal configuration and needs the KIT_* variables in the shell that runs the deploy",
 			abs, filepath.Join("config", configName))
 	}

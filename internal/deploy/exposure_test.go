@@ -6,7 +6,7 @@ import (
 )
 
 // The fixtures below are REAL `kamal config` output, captured from kamal 2.12.0
-// on this machine against cafaye/kit's deploy.yml.erb, with the
+// on this machine against anywaye/kit's deploy.yml.erb, with the
 // `net/http` service named identity and the accessory's `port:` line present and
 // then deleted. They are literals rather than generated because the property
 // under test is a property of KAMAL's output format: a fixture assembled from
@@ -30,8 +30,8 @@ const resolvedWithPublishedPort = `---
 - 203.0.113.10
 :primary_host: 203.0.113.10
 :version: 3f9a1c2
-:repository: ghcr.io/cafaye/identity
-:absolute_image: ghcr.io/cafaye/identity:3f9a1c2
+:repository: ghcr.io/anywaye/identity
+:absolute_image: ghcr.io/anywaye/identity:3f9a1c2
 :service_with_version: identity-3f9a1c2
 :volume_args: []
 :ssh_options:
@@ -72,7 +72,7 @@ const resolvedWithoutPublishedPort = `---
 - 203.0.113.10
 :primary_host: 203.0.113.10
 :version: 3f9a1c2
-:repository: ghcr.io/cafaye/identity
+:repository: ghcr.io/anywaye/identity
 :service_with_version: identity-3f9a1c2
 :builder:
   arch: arm64

@@ -17,7 +17,7 @@ import (
 //
 // These are the routes identity actually mounts, read off identity's master
 // (internal/httpapi/agents.go, registerAgentPublicRoutes) and verified against
-// its own response shapes — NOT the shapes cafaye/notes/agents-first.md documented
+// its own response shapes — NOT the shapes anywaye/notes/agents-first.md documented
 // before W1-P2 landed, which is how five of the six calls in the previous
 // version of this table came to 404 against a real server. The one exception
 // is the home route: REPAIR-C (identity adding GET /v1/agents/home) has not
@@ -167,7 +167,7 @@ func DefaultDial() Dial {
 // HTTPEndpoint is the real Endpoint: one request against identity per method,
 // with the token as the bearer and nothing else carrying it.
 type HTTPEndpoint struct {
-	// BaseURL is identity's origin, e.g. https://cafaye.com. Empty is refused
+	// BaseURL is identity's origin, e.g. https://anywaye.com. Empty is refused
 	// rather than defaulted: a client with no endpoint is a client that would
 	// POST to a relative path and get a confusing answer.
 	BaseURL string

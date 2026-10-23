@@ -18,7 +18,7 @@
 # Deliberately NOT here yet: Homebrew, Scoop, a Docker image, or any package
 # manager. Each is a target with an owner, a place to publish into and a
 # credential to hold, and none of those exists yet. GitHub Releases and
-# `go install github.com/cafaye/cafe/cmd/cafe@latest` are the install paths
+# `go install github.com/anywaye/cafe/cmd/cafe@latest` are the install paths
 # until one does.
 version: 2
 
@@ -56,7 +56,7 @@ builds:
       # the skill on their disk matches the binary they are running. Without
       # this flag every installed skill says "cli_version: dev" — which is
       # true of no released binary and false of every one of them.
-      - -X github.com/cafaye/cafe/internal/version.Current={{ .Version }}
+      - -X github.com/anywaye/cafe/internal/version.Current={{ .Version }}
     goos:
       - darwin
       - linux

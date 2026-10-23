@@ -18,7 +18,7 @@ func newPipelineCommand(deps pipelineDeps) *Command {
 		Name:    "pipeline",
 		Summary: "manage project pipelines (stages, gates, recipes)",
 		Usage:   "cafe pipeline <subcommand> [args]",
-		LongHelp: "Manage project pipelines on cafaye ship.\n\n" +
+		LongHelp: "Manage project pipelines on anywaye ship.\n\n" +
 			"Subcommands:\n" +
 			"  get <project-id>              Show the project's pipeline\n" +
 			"  update <project-id>           Update pipeline (use --recipe to install a preset)\n" +

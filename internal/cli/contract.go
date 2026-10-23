@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // contractVerb pairs the word a person types with the command that runs it.
@@ -32,7 +32,7 @@ func newContractCommand() *Command {
 	verbs := contractVerbs()
 	c := &Command{
 		Name:     "contract",
-		Summary:  "validate cafaye manifests and resolve core version constraints",
+		Summary:  "validate anywaye manifests and resolve core version constraints",
 		Usage:    "cafe contract <breaking|lint|resolve> [flags] [arguments]",
 		LongHelp: contractVerbTable(verbs),
 	}
@@ -144,12 +144,12 @@ func newContractBreakingCommand() *Command {
 			"  --tiers all           every tier\n" +
 			"\n" +
 			"A property removed without a mark left behind is a break at every tier. Add\n" +
-			"the removed name to x-cafaye-reserved-properties on the schema to say the\n" +
+			"the removed name to x-anywaye-reserved-properties on the schema to say the\n" +
 			"removal was deliberate, the way Kubernetes leaves a tombstone comment and\n" +
 			"buf reserves a field name:\n" +
 			"\n" +
 			"  User:\n" +
-			"    x-cafaye-reserved-properties: [old_name]\n" +
+			"    x-anywaye-reserved-properties: [old_name]\n" +
 			"\n" +
 			"Exits 1 if anything selected is breaking, and 0 if nothing is. A document\n" +
 			"cafe cannot parse is exit 1 with the parse error on stderr: an unreadable\n" +
@@ -219,10 +219,10 @@ func parseAPIDocumentAt(path string) (*contract.APIDocument, error) {
 func newContractLintCommand() *Command {
 	c := &Command{
 		Name:    "contract lint",
-		Summary: "validate cafaye.yml manifests against the core schema",
+		Summary: "validate anywaye.yml manifests against the core schema",
 		Usage:   "cafe contract lint <path>",
-		LongHelp: "Validates every cafaye.yml under <path>, which is a file or a directory,\n" +
-			"against the manifest schema vendored from cafaye/core, plus the rules the\n" +
+		LongHelp: "Validates every anywaye.yml under <path>, which is a file or a directory,\n" +
+			"against the manifest schema vendored from anywaye/core, plus the rules the\n" +
 			"schema cannot state. One line per manifest:\n" +
 			"\n" +
 			"  OK <path>\n" +
@@ -269,7 +269,7 @@ func newContractResolveCommand() *Command {
 		Name:    "contract resolve",
 		Summary: "resolve a core version constraint against a version",
 		Usage:   "cafe contract resolve <constraint> <version>",
-		LongHelp: "Resolves a cafaye core constraint against a core version, and says why.\n" +
+		LongHelp: "Resolves a anywaye core constraint against a core version, and says why.\n" +
 			"The constraint is MAJOR.MINOR.PATCH, optionally prefixed by\n" +
 			"\n" +
 			"  1.2.3   exactly that version\n" +

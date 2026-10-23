@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/box"
 )
 
 // agentDeps is what `cafe agent` needs from the world, and it is a struct of
@@ -98,7 +98,7 @@ func agentVerbs(deps agentDeps) []agentVerb {
 const agentLongHelp = `The agent is a PRINCIPAL: it has a username, it becomes
 claimed by a human account, and it holds a token. ` + "`cafe box …`" + ` is a
 MACHINE — it has a keypair and it enrolls. Two subjects, two verbs, and the split
-is the one cafaye/notes/agents-first.md chose so that ` + "`cafe agent register`" + ` never
+is the one anywaye/notes/agents-first.md chose so that ` + "`cafe agent register`" + ` never
 reads as "the agent is registering a box".
 
 REGISTER is the whole of it. It asks identity for an unclaimed agent, moves the
@@ -379,7 +379,7 @@ const agentTokenLongHelp = "Four verbs over the tokens identity issued for this 
 	"\n" +
 	"NONE OF THEM PRINTS A TOKEN'S VALUE. They answer with the keys' metadata and\n" +
 	"with whether a token is stored, and the value goes to the OS keyring and\n" +
-	"nowhere else. That is invariant 1 in cafaye/notes/agents-first.md: an agent's\n" +
+	"nowhere else. That is invariant 1 in anywaye/notes/agents-first.md: an agent's\n" +
 	"transcript is a log, so nothing long-lived ever enters one."
 
 func newAgentTokenCommand(deps agentDeps) *Command {

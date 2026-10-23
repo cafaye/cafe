@@ -1,22 +1,22 @@
-# Cafaye Agent Skill
+# Anywaye Agent Skill
 
-Practical guide for building, deploying, and running projects on Cafaye.
+Practical guide for building, deploying, and running projects on Anywaye.
 
-## What Cafaye is
+## What Anywaye is
 
-Cafaye is the agentic stack: solve hard problems once, choose the right tools for the work, and share reliable solutions across projects. The `cafe` CLI is your hands — it manages projects, dev boxes, pipelines, deploys, and secrets. The agent is the primary interface; the human steers.
+Anywaye is the agentic stack: solve hard problems once, choose the right tools for the work, and share reliable solutions across projects. The `cafe` CLI is your hands — it manages projects, dev boxes, pipelines, deploys, and secrets. The agent is the primary interface; the human steers.
 
 ## Defaults to assume
 
-- Base URL for cafaye (website): `https://cafaye.com` (or `CAFAYE_URL` env var)
-- Base URL for ship service: `https://cafaye.com` (or `SHIP_URL`/`CAFAYE_URL` env var; ship is proxied under /v1/ship)
+- Base URL for anywaye (website): `https://anywaye.com` (or `ANYWAYE_URL` env var)
+- Base URL for ship service: `https://anywaye.com` (or `SHIP_URL`/`ANYWAYE_URL` env var; ship is proxied under /v1/ship)
 - Ship requires a service token on every /v1 route: `SHIP_TOKEN`, sent as
   `Authorization: Bearer $SHIP_TOKEN`
-- Base URL for identity: derived from `CAFAYE_URL` (or `IDENTITY_URL` env var)
-- Dev boxes are cloud sandboxes managed by Cafaye (ephemeral, auto-suspend, pay-when-in-use)
-- Prod runs on the user's Cafaye box (Contabo or self-hosted)
+- Base URL for identity: derived from `ANYWAYE_URL` (or `IDENTITY_URL` env var)
+- Dev boxes are cloud sandboxes managed by Anywaye (ephemeral, auto-suspend, pay-when-in-use)
+- Prod runs on the user's Anywaye box (Contabo or self-hosted)
 - All backends share one Postgres cluster
-- The manifest is `cafaye.yml` (credential-free, committable)
+- The manifest is `anywaye.yml` (credential-free, committable)
 
 ## Getting started (agent flow)
 
@@ -44,25 +44,25 @@ curl -s -X POST $SHIP_URL/v1/projects/ -H "Content-Type: application/json" \
 
 ```bash
 cafe devbox create --name my-saas
-# Wraps: # Provisioned by Cafaye: cafe devbox create my-saas
+# Wraps: # Provisioned by Anywaye: cafe devbox create my-saas
 ```
 
-The dev box is a Cafaye-managed cloud VM with the universal template (git, Node 22, Python, Go, Rust, Docker, Claude Code, Codex). It auto-suspends after 30 idle minutes.
+The dev box is a Anywaye-managed cloud VM with the universal template (git, Node 22, Python, Go, Rust, Docker, Claude Code, Codex). It auto-suspends after 30 idle minutes.
 
 ### 4. Connect your repo
 
 ```bash
 # Move your local repo to the dev box (with uncommitted work + history)
-# Follow the cafaye-move-repo skill
+# Follow the anywaye-move-repo skill
 
 # Or clone from GitHub/Forgejo
 cafe devbox exec my-saas -- 'git clone https://github.com/you/my-saas.git /data/workspace/my-saas'
 ```
 
-### 5. Add cafaye services
+### 5. Add anywaye services
 
 ```bash
-# Hosted (cafaye operates on Contabo)
+# Hosted (anywaye operates on Contabo)
 # There is no project subcommand for adding a service: it is a ship route.
 curl -s -X POST $SHIP_URL/v1/projects/<id>/services -d '{"service":"identity"}'
 ```
@@ -70,7 +70,7 @@ curl -s -X POST $SHIP_URL/v1/projects/<id>/services -d '{"service":"identity"}'
 ### 6. Set up secrets
 
 ```bash
-# Set secrets on the dev box (via Cafaye secrets)
+# Set secrets on the dev box (via Anywaye secrets)
 cafe secret set ANTHROPIC_API_KEY  # value from stdin
 cafe secret set DATABASE_URL
 
@@ -184,25 +184,25 @@ tasks, and `cafe landing` is where those verbs are.
 - `cafe mcp` — Serve read-only MCP tools (Argo status, pod logs, Loki queries)
 
 ### Skills
-- `cafe skills install` — Install/update the cafaye agent skill file
+- `cafe skills install` — Install/update the anywaye agent skill file
 - `cafe skills install --root <path>` — Install to a specific root
 
 ## Sandbox testing (cloud dev env)
 
-Cafaye supports developing entirely in the cloud. No local clone needed.
+Anywaye supports developing entirely in the cloud. No local clone needed.
 
 ### Setting up a sandbox
 
 1. Create a dev box: `cafe devbox create my-project`
 2. Run the setup script (or do manually):
-   - Install cafaye CLI: build from source or download
+   - Install anywaye CLI: build from source or download
    - `cafe skills install` — install this skill
    - Install opencode: download from GitHub releases
    - Install crush: `go install github.com/charmbracelet/crush@latest`
-   - Set up OPENCODE_API_KEY via Cafaye secrets
-   - Set up GH_TOKEN via Cafaye secrets (for private repos)
+   - Set up OPENCODE_API_KEY via Anywaye secrets
+   - Set up GH_TOKEN via Anywaye secrets (for private repos)
    - Install cloudflared for nice URLs (optional)
-3. Move your repo: follow the cafaye-move-repo skill
+3. Move your repo: follow the anywaye-move-repo skill
 4. Install deps: run the project's install command
 5. Start coding: `cafe devbox exec my-project` or use your agent
 
@@ -211,14 +211,14 @@ For production or persistent dev boxes, set up a Cloudflare tunnel:
 ```bash
 cloudflared tunnel login  # opens browser
 cloudflared tunnel create my-project
-cloudflared tunnel route dns my-project dev.myproject.cafaye.com
+cloudflared tunnel route dns my-project dev.myproject.anywaye.com
 cloudflared tunnel run my-project
 ```
 
-For quick testing, use cafaye tunnels:
+For quick testing, use anywaye tunnels:
 ```bash
 cafe tunnel start <project-id> --port 3000
-# Returns: https://dev-<name>-<id>-1.cafaye.com
+# Returns: https://dev-<name>-<id>-1.anywaye.com
 ```
 
 ### Testing workflow
@@ -277,27 +277,27 @@ cafe landing approve <project-id> <landing-id> --by <id> --note "looks good"
 
 ## Private repos and packages
 
-Cafaye repos and packages are private. To build on dev boxes or deploy on Contabo:
+Anywaye repos and packages are private. To build on dev boxes or deploy on Contabo:
 
 ### Instabox (dev boxes)
 1. Set up GitHub auth on your laptop: `gh auth login`
-2. Set your GitHub token via Cafaye secrets:
+2. Set your GitHub token via Anywaye secrets:
    ```
    # scans your machine, lets you pick tokens/files
    ```
    This puts `GH_TOKEN` into every box (current and future).
-3. Boxes can then clone private repos: `gh repo clone cafaye/<repo>`
+3. Boxes can then clone private repos: `gh repo clone anywaye/<repo>`
 4. Boxes can pull private images: `docker login ghcr.io -u <user> -p $GH_TOKEN`
 
 ### Contabo (prod)
 - Pull secrets (`ghcr-pull-secret`) exist in every namespace
 - They use a GitHub token with `write:packages` scope (implies `read:packages`)
-- ArgoCD pulls charts from `oci://ghcr.io/cafaye/charts` using `ghcr-charts-repo` secret
+- ArgoCD pulls charts from `oci://ghcr.io/anywaye/charts` using `ghcr-charts-repo` secret
 - No changes needed — already configured for private packages
 
 ### Forgejo (internal git host)
-- Cafaye Git (Forgejo) runs on Contabo at `git.cafaye.com` — the canonical git host. GitHub is a legacy mirror being phased out.
-- All cafaye code is pushed here as the canonical source
+- Anywaye Git (Forgejo) runs on Contabo at `git.anywaye.com` — the canonical git host. GitHub is a legacy mirror being phased out.
+- All anywaye code is pushed here as the canonical source
 - GitHub is an optional mirror
 - Instabox boxes can reach Forgejo (public URL)
-- Boxes need a Cafaye Git token to push: set via `cafe secret` or the dashboard
+- Boxes need a Anywaye Git token to push: set via `cafe secret` or the dashboard

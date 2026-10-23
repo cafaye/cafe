@@ -21,12 +21,12 @@ func newErrorsCommand() *Command {
 	)
 	return &Command{
 		Name:    "errors",
-		Summary: "List unresolved errors from the cafaye error store (GlitchTip)",
+		Summary: "List unresolved errors from the anywaye error store (GlitchTip)",
 		Usage:   "cafe errors [--url URL] [--token TOKEN] [--org ORG] [--limit N]",
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&baseURL, "url", os.Getenv("CAFAYE_GLITCHTIP_URL"), "GlitchTip base URL")
-			fs.StringVar(&token, "token", os.Getenv("CAFAYE_GLITCHTIP_TOKEN"), "GlitchTip API token")
-			fs.StringVar(&org, "org", os.Getenv("CAFAYE_GLITCHTIP_ORG"), "organization slug (default: first)")
+			fs.StringVar(&baseURL, "url", os.Getenv("ANYWAYE_GLITCHTIP_URL"), "GlitchTip base URL")
+			fs.StringVar(&token, "token", os.Getenv("ANYWAYE_GLITCHTIP_TOKEN"), "GlitchTip API token")
+			fs.StringVar(&org, "org", os.Getenv("ANYWAYE_GLITCHTIP_ORG"), "organization slug (default: first)")
 			fs.IntVar(&limit, "limit", 25, "max issues to list")
 		},
 		Run: func(args []string, env *Env) error {
@@ -45,7 +45,7 @@ func newErrorsCommand() *Command {
 				if strings.TrimSpace(token) != "" {
 					token2 = token
 				}
-				body := map[string]any{"version": version, "ref": version, "projects": []string{"cafaye"}}
+				body := map[string]any{"version": version, "ref": version, "projects": []string{"anywaye"}}
 				b, _ := json.Marshal(body)
 				req, err := http.NewRequestWithContext(context.Background(), "POST", baseURL2+"/api/0/organizations/"+org+"/releases/", bytes.NewReader(b))
 				if err != nil {
@@ -106,7 +106,7 @@ func newErrorsCommand() *Command {
 				baseURL = "http://169.58.108.209:8000"
 			}
 			if strings.TrimSpace(token) == "" {
-				return fmt.Errorf("%w: cafe errors: missing token (set CAFAYE_GLITCHTIP_TOKEN or --token)", errUsage)
+				return fmt.Errorf("%w: cafe errors: missing token (set ANYWAYE_GLITCHTIP_TOKEN or --token)", errUsage)
 			}
 			baseURL = strings.TrimRight(baseURL, "/")
 
@@ -170,28 +170,28 @@ func fetchJSON[T any](baseURL, token, path string) (T, error) {
 	return out, nil
 }
 
-// registerGlitchTipRelease registers a release with the cafaye error store so
+// registerGlitchTipRelease registers a release with the anywaye error store so
 // GlitchTip can auto-resolve issues fixed in it. It never fails the caller: a
 // missing token or a store error is logged to stderr and swallowed, because a
 // deploy that succeeded must not be reported as failed over observability.
 func registerGlitchTipRelease(version string) {
-	token := strings.TrimSpace(os.Getenv("CAFAYE_GLITCHTIP_TOKEN"))
+	token := strings.TrimSpace(os.Getenv("ANYWAYE_GLITCHTIP_TOKEN"))
 	if token == "" {
 		return
 	}
-	baseURL := strings.TrimSpace(os.Getenv("CAFAYE_GLITCHTIP_URL"))
+	baseURL := strings.TrimSpace(os.Getenv("ANYWAYE_GLITCHTIP_URL"))
 	if baseURL == "" {
 		baseURL = "http://169.58.108.209:8000"
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
-	org := strings.TrimSpace(os.Getenv("CAFAYE_GLITCHTIP_ORG"))
+	org := strings.TrimSpace(os.Getenv("ANYWAYE_GLITCHTIP_ORG"))
 	if org == "" {
-		org = "cafaye-jf"
+		org = "anywaye-jf"
 	}
 	if version == "" {
 		version = "latest"
 	}
-	body := map[string]any{"version": version, "ref": version, "projects": []string{"cafaye"}}
+	body := map[string]any{"version": version, "ref": version, "projects": []string{"anywaye"}}
 	b, _ := json.Marshal(body)
 	req, err := http.NewRequestWithContext(context.Background(), "POST", baseURL+"/api/0/organizations/"+org+"/releases/", bytes.NewReader(b))
 	if err != nil {

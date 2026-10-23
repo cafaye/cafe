@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // serviceNamePattern mirrors core's serviceName $defs
@@ -32,7 +32,7 @@ const (
 // reservedNames are the four names core's serviceName $defs reserves. They
 // pass the pattern — "cafe" and "core" are legal kebab-case — so only a check
 // here keeps a scaffolded app from taking the CLI's own namespace.
-var reservedNames = []string{"cafaye", "cafe", "kit", "core"}
+var reservedNames = []string{"anywaye", "cafe", "kit", "core"}
 
 // coreConstraint is the core contract version a scaffolded app is written
 // against. It tracks the schema this package validates against (manifest-0.2),
@@ -43,12 +43,12 @@ const coreConstraint = "^0.2.0"
 // manifestPath is the one file every template writes and the one file every
 // project is identified by. `cafe contract lint` looks for exactly this name at
 // the root of a repository, so the catalog cannot offer a project without it.
-const manifestPath = "cafaye.yml"
+const manifestPath = "anywaye.yml"
 
 // defaultRepositoryOrg is the organization a scaffolded app's repository URL
 // is guessed under. It is a starting point the manifest's own comment says to
 // edit, not a fact: cafe cannot know where a stranger's app will live.
-const defaultRepositoryOrg = "cafaye"
+const defaultRepositoryOrg = "anywaye"
 
 // templateData is what a template may substitute. It is small on purpose: a
 // template that read the whole manifest would be a second place the manifest's
@@ -74,16 +74,16 @@ func dataFor(name string) templateData {
 	}
 }
 
-// ValidateName reports whether a name is a cafaye namespace name: the schema's
+// ValidateName reports whether a name is a anywaye namespace name: the schema's
 // pattern, its length bounds, and the four reserved names. The error names
 // every rule, because a refusal that says only "invalid name" sends the reader
 // to the schema to find out what valid means.
 func ValidateName(name string) error {
 	switch {
 	case len(name) < serviceNameMin || len(name) > serviceNameMax:
-		return fmt.Errorf("%q is not a cafaye namespace name: it must be %d-%d characters", name, serviceNameMin, serviceNameMax)
+		return fmt.Errorf("%q is not a anywaye namespace name: it must be %d-%d characters", name, serviceNameMin, serviceNameMax)
 	case !serviceNamePattern.MatchString(name):
-		return fmt.Errorf("%q is not a cafaye namespace name: lowercase kebab-case, starting with a letter, no trailing separator", name)
+		return fmt.Errorf("%q is not a anywaye namespace name: lowercase kebab-case, starting with a letter, no trailing separator", name)
 	}
 	for _, reserved := range reservedNames {
 		if name == reserved {

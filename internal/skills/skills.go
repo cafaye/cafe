@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/version"
+	"github.com/anywaye/cafe/internal/version"
 )
 
 const (
-	skillRelativePath = ".agents/skills/cafaye/SKILL.md"
-	booksDirEnv       = "CAFAYE_BOOKS_DIR"
+	skillRelativePath = ".agents/skills/anywaye/SKILL.md"
+	booksDirEnv       = "ANYWAYE_BOOKS_DIR"
 )
 
-//go:embed assets/cafaye/SKILL.md
-var cafayeSkillBody string
+//go:embed assets/anywaye/SKILL.md
+var anywayeSkillBody string
 
 type InstallResult struct {
 	Path    string
@@ -43,7 +43,7 @@ func DefaultBooksDir() (string, error) {
 }
 
 func renderSkill() string {
-	return version.SkillHeader() + strings.TrimSpace(cafayeSkillBody) + "\n"
+	return version.SkillHeader() + strings.TrimSpace(anywayeSkillBody) + "\n"
 }
 
 // installAtRoot writes the skill under root.

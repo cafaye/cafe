@@ -9,20 +9,20 @@ import (
 	"testing"
 )
 
-// Lint walks a repository the way a developer expects: every `cafaye.yml` in
+// Lint walks a repository the way a developer expects: every `anywaye.yml` in
 // the tree, in a stable order, and nothing from the directories that hold
 // vendored copies of other projects' manifests.
 func TestLintWalksTheTree(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "cafaye.yml"), validManifest)
-	write(t, filepath.Join(dir, "services", "billing", "cafaye.yml"), validManifest)
-	write(t, filepath.Join(dir, "services", "identity", "cafaye.yml"), invalidManifest)
+	write(t, filepath.Join(dir, "anywaye.yml"), validManifest)
+	write(t, filepath.Join(dir, "services", "billing", "anywaye.yml"), validManifest)
+	write(t, filepath.Join(dir, "services", "identity", "anywaye.yml"), invalidManifest)
 	// Every skip directory, with a manifest inside it that must never be read.
 	for _, skipped := range skippedDirs {
-		write(t, filepath.Join(dir, "vendor", skipped, "cafaye.yml"), invalidManifest)
+		write(t, filepath.Join(dir, "vendor", skipped, "anywaye.yml"), invalidManifest)
 	}
-	// A near miss: a manifest-shaped file that is not named cafaye.yml.
-	write(t, filepath.Join(dir, "services", "identity", "cafaye.yml.bak"), invalidManifest)
+	// A near miss: a manifest-shaped file that is not named anywaye.yml.
+	write(t, filepath.Join(dir, "services", "identity", "anywaye.yml.bak"), invalidManifest)
 
 	report, err := Lint(dir)
 	if err != nil {
@@ -30,9 +30,9 @@ func TestLintWalksTheTree(t *testing.T) {
 	}
 
 	want := []string{
-		filepath.Join(dir, "cafaye.yml"),
-		filepath.Join(dir, "services", "billing", "cafaye.yml"),
-		filepath.Join(dir, "services", "identity", "cafaye.yml"),
+		filepath.Join(dir, "anywaye.yml"),
+		filepath.Join(dir, "services", "billing", "anywaye.yml"),
+		filepath.Join(dir, "services", "identity", "anywaye.yml"),
 	}
 	got := report.Paths()
 	if len(got) != len(want) {
@@ -52,15 +52,15 @@ func TestLintSkipsVendoredTrees(t *testing.T) {
 	for _, skipped := range skippedDirs {
 		t.Run(skipped, func(t *testing.T) {
 			dir := t.TempDir()
-			write(t, filepath.Join(dir, "cafaye.yml"), validManifest)
-			write(t, filepath.Join(dir, skipped, "cafaye.yml"), invalidManifest)
+			write(t, filepath.Join(dir, "anywaye.yml"), validManifest)
+			write(t, filepath.Join(dir, skipped, "anywaye.yml"), invalidManifest)
 
 			report, err := Lint(dir)
 			if err != nil {
 				t.Fatalf("Lint: %v", err)
 			}
 
-			want := []string{filepath.Join(dir, "cafaye.yml")}
+			want := []string{filepath.Join(dir, "anywaye.yml")}
 			got := report.Paths()
 			if len(got) != 1 || got[0] != want[0] {
 				t.Errorf("Lint found %v, want %v: %s holds other projects' manifests", got, want, skipped)
@@ -73,7 +73,7 @@ func TestLintSkipsVendoredTrees(t *testing.T) {
 }
 
 // A path that names a file is that file, whatever it is called: a person
-// pointing at a manifest wants it checked, not a "no cafaye.yml here" shrug.
+// pointing at a manifest wants it checked, not a "no anywaye.yml here" shrug.
 func TestLintAcceptsASingleFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "somewhere-else.yml")
@@ -93,7 +93,7 @@ func TestLintAcceptsASingleFile(t *testing.T) {
 }
 
 // A gate that finds nothing has told the user nothing. Treating "no manifest"
-// as success would let a repository drop its cafaye.yml and go green.
+// as success would let a repository drop its anywaye.yml and go green.
 func TestLintReportsATreeWithNoManifests(t *testing.T) {
 	dir := t.TempDir()
 	write(t, filepath.Join(dir, "README.md"), "# nothing here\n")
@@ -102,7 +102,7 @@ func TestLintReportsATreeWithNoManifests(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Lint = %v, want an error: a tree with no manifest is a finding, not a pass", report)
 	}
-	if !strings.Contains(err.Error(), "cafaye.yml") {
+	if !strings.Contains(err.Error(), "anywaye.yml") {
 		t.Errorf("error = %q, want it to name the file it looked for", err)
 	}
 }
@@ -131,21 +131,21 @@ func TestReportOKOnlyWhenEveryManifestIsValid(t *testing.T) {
 	}{
 		{
 			name:  "one valid manifest",
-			files: map[string]string{"cafaye.yml": validManifest},
+			files: map[string]string{"anywaye.yml": validManifest},
 			want:  true,
 		},
 		{
 			name: "one invalid manifest",
 			files: map[string]string{
-				"cafaye.yml": invalidManifest,
+				"anywaye.yml": invalidManifest,
 			},
 			want: false,
 		},
 		{
 			name: "a valid manifest beside an invalid one",
 			files: map[string]string{
-				"cafaye.yml":       validManifest,
-				"other/cafaye.yml": invalidManifest,
+				"anywaye.yml":       validManifest,
+				"other/anywaye.yml": invalidManifest,
 			},
 			want: false,
 		},
@@ -175,7 +175,7 @@ func TestReportOKOnlyWhenEveryManifestIsValid(t *testing.T) {
 // Everything else stays available for the tools that want it.
 func TestFindingFirstViolation(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "cafaye.yml"), invalidManifest)
+	write(t, filepath.Join(dir, "anywaye.yml"), invalidManifest)
 
 	report, err := Lint(dir)
 	if err != nil {
@@ -198,7 +198,7 @@ func TestLintReportsAnUnreadableManifest(t *testing.T) {
 		t.Skip("running as root: file permissions are not enforced")
 	}
 	dir := t.TempDir()
-	path := filepath.Join(dir, "cafaye.yml")
+	path := filepath.Join(dir, "anywaye.yml")
 	write(t, path, validManifest)
 	if err := os.Chmod(path, 0o000); err != nil {
 		t.Fatalf("chmod: %v", err)
@@ -209,7 +209,7 @@ func TestLintReportsAnUnreadableManifest(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Lint = %v, want an error for an unreadable manifest", report)
 	}
-	if !strings.Contains(err.Error(), "cafaye.yml") {
+	if !strings.Contains(err.Error(), "anywaye.yml") {
 		t.Errorf("error = %q, want it to name the manifest", err)
 	}
 }
@@ -228,13 +228,13 @@ consumes:
   - identity.member.invited
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com
 `
 
 // invalidManifest is core's negative example in miniature: a name, a language
@@ -244,7 +244,7 @@ language: python3
 core: ^0.1
 
 repository:
-  url: https://github.com/cafaye/courier-service
+  url: https://github.com/anywaye/courier-service
   defaultBranch: main
 
 owner:

@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/mcp"
+	"github.com/anywaye/cafe/internal/mcp"
 )
 
 type errorsArgs struct {
@@ -52,7 +52,7 @@ type errorStatusFacts struct {
 func (t *mcpTools) errors() mcp.Tool[errorsArgs, []errorFacts] {
 	return mcp.Tool[errorsArgs, []errorFacts]{
 		Name:        "caf_errors",
-		Description: "List unresolved issues from the cafaye error store (GlitchTip). Does not resolve or mutate any issue.",
+		Description: "List unresolved issues from the anywaye error store (GlitchTip). Does not resolve or mutate any issue.",
 		ReadOnly:    true,
 		Idempotent:  true,
 		Input:       errorsArgs{},
@@ -90,7 +90,7 @@ func (t *mcpTools) runErrors(ctx context.Context, args errorsArgs) ([]errorFacts
 func (t *mcpTools) errorDetail() mcp.Tool[errorDetailArgs, errorDetailFacts] {
 	return mcp.Tool[errorDetailArgs, errorDetailFacts]{
 		Name:        "caf_error",
-		Description: "Get full detail for one error issue from the cafaye error store. Does not resolve or mutate any issue.",
+		Description: "Get full detail for one error issue from the anywaye error store. Does not resolve or mutate any issue.",
 		ReadOnly:    true,
 		Idempotent:  true,
 		Input:       errorDetailArgs{},
@@ -152,21 +152,21 @@ func (t *mcpTools) runErrorStatus(ctx context.Context, args errorStatusArgs) (er
 }
 
 func errorStoreConfig() (string, string, string, error) {
-	baseURL := strings.TrimSpace(os.Getenv("CAFAYE_GLITCHTIP_URL"))
+	baseURL := strings.TrimSpace(os.Getenv("ANYWAYE_GLITCHTIP_URL"))
 	if baseURL == "" {
 		baseURL = "http://169.58.108.209:8000"
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
-	token := strings.TrimSpace(os.Getenv("CAFAYE_GLITCHTIP_TOKEN"))
+	token := strings.TrimSpace(os.Getenv("ANYWAYE_GLITCHTIP_TOKEN"))
 	if token == "" {
 		token = "5031e3a365ac7b8673eaab0f20b5919b8b3ce29200ea0a89a4e14922874e9d7d"
 	}
-	org := strings.TrimSpace(os.Getenv("CAFAYE_GLITCHTIP_ORG"))
+	org := strings.TrimSpace(os.Getenv("ANYWAYE_GLITCHTIP_ORG"))
 	if org == "" {
-		org = "cafaye-jf"
+		org = "anywaye-jf"
 	}
 	if token == "" {
-		return "", "", "", fmt.Errorf("cafe: missing CAFAYE_GLITCHTIP_TOKEN")
+		return "", "", "", fmt.Errorf("cafe: missing ANYWAYE_GLITCHTIP_TOKEN")
 	}
 	return org, baseURL, token, nil
 }

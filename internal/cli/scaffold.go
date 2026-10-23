@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cafaye/cafe/internal/scaffold"
+	"github.com/anywaye/cafe/internal/scaffold"
 )
 
 // printScaffolded prints every file in full, under a header naming the

@@ -6,8 +6,8 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"github.com/cafaye/cafe/internal/ledger"
-	"github.com/cafaye/cafe/internal/reclaim"
+	"github.com/anywaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/reclaim"
 )
 
 // reclaimDeps is what `cafe reclaim` needs from the world: a ledger to read and a

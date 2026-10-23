@@ -12,7 +12,7 @@ import (
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
 
-	"github.com/cafaye/cafe/internal/telemetry"
+	"github.com/anywaye/cafe/internal/telemetry"
 )
 
 // A real OTLP/gRPC collector, in-process, on a loopback port.

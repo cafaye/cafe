@@ -98,7 +98,7 @@ type Blast struct {
 //
 // # Why this is a copy and not a read
 //
-// cafaye/kit is a different repository. cafe cannot open
+// anywaye/kit is a different repository. cafe cannot open
 // templates/substrate/install.sh at run time, and a cafe that could would be a
 // cafe whose answer depended on a checkout being beside it. So the catalog
 // is transcribed here and every row carries the file:line it was read from,

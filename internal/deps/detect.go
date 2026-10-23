@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // Detect scans dir for known manifest files and returns the dependency names
@@ -28,8 +28,8 @@ func Detect(dir string) []string {
 		set[name] = true
 	}
 
-	// cafaye.yml — canonical source.
-	if m, err := readCafayeDeps(filepath.Join(dir, contract.ManifestFileName())); err == nil {
+	// anywaye.yml — canonical source.
+	if m, err := readAnywayeDeps(filepath.Join(dir, contract.ManifestFileName())); err == nil {
 		for _, d := range m {
 			add(d)
 		}
@@ -114,7 +114,7 @@ func Detect(dir string) []string {
 	return out
 }
 
-func readCafayeDeps(path string) ([]string, error) {
+func readAnywayeDeps(path string) ([]string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

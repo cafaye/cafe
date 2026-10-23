@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // `cafe dev` is run in a directory, and the first thing it has to establish is
@@ -22,7 +22,7 @@ func TestLoadWithoutAManifest(t *testing.T) {
 	if !errors.Is(err, ErrNoManifest) {
 		t.Fatalf("err = %v, want it to wrap ErrNoManifest", err)
 	}
-	want := `no manifest: no cafaye.yml in ` + dir +
+	want := `no manifest: no anywaye.yml in ` + dir +
 		`; a project declares its service in one (run "cafe init" to create it, or pass the project directory as the argument)`
 	if err.Error() != want {
 		t.Errorf("err = %q\nwant %q", err, want)
@@ -35,7 +35,7 @@ func TestLoadWithoutAManifest(t *testing.T) {
 // would be a CLI that says two different things about one file.
 func TestLoadWithAnInvalidManifestPropagatesTheContractFinding(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "cafaye.yml")
+	path := filepath.Join(dir, "anywaye.yml")
 	writeFile(t, path, "name: Stack\nlanguage: go\ncore: nope\n\nrepository:\n  url: https://example.com/x\nowner:\n  team: stack\n")
 
 	_, err := Load(dir)
@@ -66,7 +66,7 @@ func TestLoadWithAnInvalidManifestPropagatesTheContractFinding(t *testing.T) {
 // parse error, and no plan.
 func TestLoadWithAnUnparseableManifest(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "cafaye.yml"), "name: cafe\n\tnope")
+	writeFile(t, filepath.Join(dir, "anywaye.yml"), "name: cafe\n\tnope")
 
 	_, err := Load(dir)
 
@@ -159,7 +159,7 @@ func TestLoadResolvesTheDockerfile(t *testing.T) {
 // halfway through a build, which is the least useful moment to find out.
 func TestLoadWithAManifestThatIsADirectory(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "cafaye.yml"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "anywaye.yml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -190,7 +190,7 @@ func TestLoadReturnsTheManifestItResolved(t *testing.T) {
 	if project.Manifest.Language() != "ruby" {
 		t.Errorf("Language() = %q, want %q", project.Manifest.Language(), "ruby")
 	}
-	if got, want := project.ManifestPath, filepath.Join(dir, "cafaye.yml"); got != want {
+	if got, want := project.ManifestPath, filepath.Join(dir, "anywaye.yml"); got != want {
 		t.Errorf("ManifestPath = %q, want %q", got, want)
 	}
 	if project.Dir != dir {
@@ -209,9 +209,9 @@ func writeProject(t *testing.T, name, language string, files ...string) string {
 		"language: " + language + "\n" +
 		"core: ^0.2.0\n" +
 		"exposes:\n  api: openapi/openapi.yaml\n" +
-		"repository:\n  url: git@github.com:cafaye/" + name + ".git\n" +
+		"repository:\n  url: git@github.com:anywaye/" + name + ".git\n" +
 		"owner:\n  team: " + name + "\n"
-	writeFile(t, filepath.Join(dir, "cafaye.yml"), document)
+	writeFile(t, filepath.Join(dir, "anywaye.yml"), document)
 	for _, file := range files {
 		path := filepath.Join(dir, filepath.FromSlash(file))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

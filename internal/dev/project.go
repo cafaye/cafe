@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
-// ErrNoManifest is a directory that is not a project: no `cafaye.yml` in it.
+// ErrNoManifest is a directory that is not a project: no `anywaye.yml` in it.
 // It is a distinct sentinel from an invalid manifest because the fix is
 // different — one is "you are in the wrong place", the other is "this file is
 // wrong" — and a developer who is told the wrong one edits a file that was
@@ -20,7 +20,7 @@ var ErrNoManifest = errors.New("no manifest")
 // rather than exported from internal/contract because a caller that had to ask
 // the validator where to look is a caller that cannot report "there is nothing
 // here" on its own.
-const manifestFileName = "cafaye.yml"
+const manifestFileName = "anywaye.yml"
 
 // dockerfileLocation is where kit's templates say a service image is built from
 // ("copy to docker/Dockerfile"), and so the first place a Dockerfile is looked

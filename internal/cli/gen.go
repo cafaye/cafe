@@ -10,9 +10,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cafaye/cafe/internal/contract"
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/gen"
+	"github.com/anywaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/gen"
 )
 
 // `cafe gen` is a verb group, for the same reason `cafe contract` is: the words a
@@ -42,7 +42,7 @@ func newGenCommand() *Command {
 	verbs := genVerbs()
 	c := &Command{
 		Name:     "gen",
-		Summary:  "generate code and config from cafaye contracts",
+		Summary:  "generate code and config from anywaye contracts",
 		Usage:    "cafe gen <chart|telemetry> [flags]",
 		LongHelp: genVerbTable(verbs) + genFlagNote,
 	}
@@ -122,8 +122,8 @@ func newGenTelemetryCommand() *Command {
 		Name:    "gen telemetry",
 		Summary: "write the OpenTelemetry setup a service needs to honor core's telemetry contract",
 		Usage:   "cafe gen telemetry [flags]",
-		LongHelp: "Reads this project's cafaye.yml — the current directory by default — and\n" +
-			"writes three files derived from it and from the cafaye core telemetry\n" +
+		LongHelp: "Reads this project's anywaye.yml — the current directory by default — and\n" +
+			"writes three files derived from it and from the anywaye core telemetry\n" +
 			"contract vendored in this binary:\n" +
 			"\n" +
 			"  internal/telemetry/telemetry.go        the setup: the per-signal attribute\n" +
@@ -218,7 +218,7 @@ func newGenChartCommand() *Command {
 		Name:    "gen chart",
 		Summary: "write the Helm chart a service is deployed from",
 		Usage:   "cafe gen chart [flags]",
-		LongHelp: "Reads this project's cafaye.yml — the current directory by default — and\n" +
+		LongHelp: "Reads this project's anywaye.yml — the current directory by default — and\n" +
 			"writes the Helm chart the service is deployed from:\n" +
 			"\n" +
 			"  chart/Chart.yaml                    the chart's identity\n" +
@@ -389,7 +389,7 @@ func writeGenerated(root string, file gen.File) error {
 // nobody can diff. A path and a byte count would tell a reader that three files
 // exist and nothing about what is in them.
 func printGenerated(w io.Writer, out gen.Output) {
-	_, _ = fmt.Fprintf(w, "cafe gen %s wrote %d file(s) from this project's cafaye.yml:\n", out.Target, len(out.Files))
+	_, _ = fmt.Fprintf(w, "cafe gen %s wrote %d file(s) from this project's anywaye.yml:\n", out.Target, len(out.Files))
 	for _, file := range out.Files {
 		_, _ = fmt.Fprintf(w, "\n===== %s =====\n%s", file.Path, file.Content)
 	}

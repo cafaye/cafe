@@ -1,6 +1,6 @@
-# cafaye.yml — the cafaye project manifest.
+# anywaye.yml — the anywaye project manifest.
 #
-# The schema is owned by cafaye/core, not by this repository: this file is
+# The schema is owned by anywaye/core, not by this repository: this file is
 # validated against the copy vendored at internal/contract/schemas. Do not add
 # fields here that core does not define — `additionalProperties: false` means a
 # field core has not declared is an error, and `cafe contract lint` reports it.
@@ -9,7 +9,7 @@
 #
 #   go run ./cmd/cafe contract lint .
 name: cafe
-description: The cafaye platform CLI. One binary, one manifest, one set of contracts.
+description: The anywaye platform CLI. One binary, one manifest, one set of contracts.
 
 # The language decides the container port cafe publishes and the toolchain
 # `cafe doctor` checks for: both are read from this field rather than from a list
@@ -41,10 +41,10 @@ core: ^0.2.0
 dependencies: []
 
 repository:
-  url: git@github.com:cafaye/cafe.git
+  url: git@github.com:anywaye/cafe.git
   defaultBranch: master
   visibility: private
 
 owner:
   team: cafe
-  contact: cafe@cafaye.com
+  contact: cafe@anywaye.com

@@ -46,7 +46,7 @@
 // PG* variables — measured against that image — and libpq reads PG* from the
 // environment and nothing else. Every script this package builds starts by splitting
 // the URL into PGHOST/PGPORT/PGUSER/PGPASSWORD and exporting them, which is
-// cafaye/kit's `templates/kamal/drill.sh` §CONNECTION doing the same thing for the
+// anywaye/kit's `templates/kamal/drill.sh` §CONNECTION doing the same thing for the
 // same reason: `ps` shows arguments to every user on the machine, so a credential in
 // argv is a credential on the machine.
 //
@@ -68,7 +68,7 @@
 //     So a drill through the gem alone leaves a database behind, and cafe creates
 //     and drops it on every path including the failing one.
 //   - the assertion, because `psql -tAc "SELECT count(*) FROM t"` exits 0 whether
-//     the count is 4,000 or 0. This is cafaye/kit's
+//     the count is 4,000 or 0. This is anywaye/kit's
 //     `templates/kamal/drill.sh`'s reason for building a check whose exit status
 //     is the assertion, and it is the reason cafe builds one here too.
 //   - the production-name refusal, which cafe does NOT own. It is

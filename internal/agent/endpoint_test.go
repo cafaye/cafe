@@ -78,7 +78,7 @@ func (f *fakeIdentityServer) serve(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusCreated
 		body = `{"agent":{"id":"agent_01HZX","name":"Noel","username":"noel","status":"unclaimed"},` +
 			`"api_key":{"id":"tok_01BOOT","name":"bootstrap","expires_at":"2026-11-09T12:00:00Z","token":"caf_agent_boot"},` +
-			`"claim":{"url":"https://cafaye.test/agents/claim/abc","expires_at":"2026-10-09T13:00:00Z"}}`
+			`"claim":{"url":"https://anywaye.test/agents/claim/abc","expires_at":"2026-10-09T13:00:00Z"}}`
 
 	case r.Method == http.MethodGet && r.URL.Path == "/v1/agents/home":
 		// REPAIR-C's route, not yet on master; the shape its brief names —
@@ -162,7 +162,7 @@ func TestRegisterPostsToThePublicRouteWithNoBearer(t *testing.T) {
 	if res.Token != "caf_agent_boot" {
 		t.Errorf("token = %q, want the bootstrap credential", res.Token)
 	}
-	if res.ClaimURL != "https://cafaye.test/agents/claim/abc" {
+	if res.ClaimURL != "https://anywaye.test/agents/claim/abc" {
 		t.Errorf("claim URL = %q, want the one identity issued", res.ClaimURL)
 	}
 }

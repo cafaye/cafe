@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/ports"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/ports"
 )
 
 // The project section of `cafe doctor`.
@@ -279,9 +279,9 @@ func TestDoctorWithoutAManifest(t *testing.T) {
 	_, stdout, findings := reportFrom(t, dir, probes)
 
 	if got := findingFor(t, findings, "plan"); got.Severity != SeverityFail {
-		t.Errorf("plan = %s, want fail: a directory with no cafaye.yml is not a project", got.Severity)
+		t.Errorf("plan = %s, want fail: a directory with no anywaye.yml is not a project", got.Severity)
 	}
-	if !strings.Contains(stdout, "no cafaye.yml") {
+	if !strings.Contains(stdout, "no anywaye.yml") {
 		t.Errorf("the report does not say there is no project\n%s", stdout)
 	}
 	// The tool table is still there: it is useful with or without a project.
@@ -317,7 +317,7 @@ func TestDoctorWithAnInvalidManifest(t *testing.T) {
 func TestDoctorPlansAgainstTheSameCatalogCafDevUses(t *testing.T) {
 	dir := projectDir(t, map[string]string{
 		"docker/Dockerfile": "FROM scratch\n",
-		"cafaye.yml": `name: stack
+		"anywaye.yml": `name: stack
 description: Depends on alpha.
 language: go
 core: ^0.2.0
@@ -327,7 +327,7 @@ dependencies:
   - name: alpha
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `,
@@ -348,7 +348,7 @@ owner:
 
 	// With one, the dependency is planned and the report is about the machine.
 	catalogPath := filepath.Join(dir, "catalog.json")
-	writeTestFile(t, catalogPath, `{"alpha": {"name": "alpha", "image": "ghcr.io/cafaye/alpha:1.2.3", "port": 8081}}`)
+	writeTestFile(t, catalogPath, `{"alpha": {"name": "alpha", "image": "ghcr.io/anywaye/alpha:1.2.3", "port": 8081}}`)
 	probesWith := readyTriMachine(t)
 	probesWith.plan = plannerFor(catalogPath)
 
@@ -487,7 +487,7 @@ func TestTheBlockCheckOnlyLooksAtTheBlock(t *testing.T) {
 func doctorProject(t *testing.T, language string) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cafaye.yml"), []byte(manifestForLanguage(language)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "anywaye.yml"), []byte(manifestForLanguage(language)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "docker"), 0o755); err != nil {
@@ -512,7 +512,7 @@ func manifestForLanguage(language string) string {
 		"language: " + language + "\n" +
 		"core: ^0.2.0\n" +
 		exposes +
-		"repository:\n  url: git@github.com:cafaye/sample.git\n" +
+		"repository:\n  url: git@github.com:anywaye/sample.git\n" +
 		"owner:\n  team: sample\n"
 }
 

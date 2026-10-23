@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// wantTools is the toolchain a cafaye developer needs on the machine. Order is
+// wantTools is the toolchain a anywaye developer needs on the machine. Order is
 // the report order.
 var wantTools = []string{
 	"git",

@@ -27,7 +27,7 @@
 // The component catalog is a transcription of the substrate installer's own
 // pins — kit/templates/substrate/install.sh and the manifests it applies —
 // and every entry carries the file and line it was read from. It is a copy,
-// and a copy can drift; the answer to that is not a fetch (cafaye/kit is a
+// and a copy can drift; the answer to that is not a fetch (anywaye/kit is a
 // different repository, and a cafe that reached across to it at run time would
 // be a cafe whose answer changed with someone else's checkout) but a
 // comparison: the catalog is what a substrate box is EXPECTED to be

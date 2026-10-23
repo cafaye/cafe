@@ -2,7 +2,7 @@
 // against box and then runs the install, phase by phase, to a box that
 // serves an app.
 //
-// The split is the command vocabulary in cafaye/notes/agents-first.md: `cafe agent …`
+// The split is the command vocabulary in anywaye/notes/agents-first.md: `cafe agent …`
 // is a *principal* (an identity that becomes claimed), `cafe box …` is a
 // *machine* (it has a keypair, it enrolls, it runs the substrate). A box does
 // not log in; it presents a capability that was minted for it and for nobody

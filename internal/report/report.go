@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/backup"
-	"github.com/cafaye/cafe/internal/cve"
-	"github.com/cafaye/cafe/internal/failure"
-	"github.com/cafaye/cafe/internal/secret"
+	"github.com/anywaye/cafe/internal/backup"
+	"github.com/anywaye/cafe/internal/cve"
+	"github.com/anywaye/cafe/internal/failure"
+	"github.com/anywaye/cafe/internal/secret"
 )
 
 // Report is the one page: a value assembled once and rendered twice.

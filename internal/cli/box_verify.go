@@ -11,9 +11,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cafaye/cafe/internal/boxd"
-	"github.com/cafaye/cafe/internal/secret"
-	"github.com/cafaye/cafe/internal/verify"
+	"github.com/anywaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/secret"
+	"github.com/anywaye/cafe/internal/verify"
 )
 
 // The ops half of `cafe box verify`: what the box runs UNDER, as opposed to

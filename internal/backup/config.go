@@ -161,7 +161,7 @@ func ReadConfig(path string) (Config, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Config{}, fmt.Errorf("cafe backup: %s does not exist, so there is nothing to back up.\n"+
-				"  Copy it from cafaye/kit at the ref your kit.ref names: templates/kamal/kamal-backup.yml.erb -> %s\n"+
+				"  Copy it from anywaye/kit at the ref your kit.ref names: templates/kamal/kamal-backup.yml.erb -> %s\n"+
 				"  It is committed as a PAIR with config/deploy.yml, because deploy.yml's `backup` accessory is the "+
 				"only thing that reads it — a backup config nothing references is the same defect one layer down",
 				path, path)

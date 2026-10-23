@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // The paths this package owns on the host. They are constants rather than
@@ -402,7 +402,7 @@ func placeCertificateCommand(sudo string, id *identityRead) string {
 // with the check's hash.
 func unitDocument(o Options) []byte {
 	body := "[Unit]\n" +
-		"Description=cafaye box daemon (outbound-only mTLS to the control plane)\n" +
+		"Description=anywaye box daemon (outbound-only mTLS to the control plane)\n" +
 		"After=docker.service network-online.target\n" +
 		"Wants=network-online.target\n" +
 		"\n" +

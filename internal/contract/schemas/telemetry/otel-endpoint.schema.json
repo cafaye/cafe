@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://cafaye.com/schemas/telemetry/otel-endpoint.schema.json",
-  "title": "cafaye OTLP endpoint contract",
-  "description": "How a service is pointed at a telemetry backend, and what happens when it is pointed at nothing. PLAN.md §7b: `*_OTEL_ENDPOINT` is the contract, the shipped collector is only the default value of that variable, and unsetting it must be a genuinely free no-op — no buffering, no retry loop against a dead endpoint, no warning spam. This schema is that claim made checkable. It does not accept the word 'disabled'; it accepts a declaration of what does NOT happen, with `buffering`, `retry`, `warnings` and `startupCost` each pinned to `none`. A disabled exporter that buffers is an outage with extra steps, and one that retries against a dead endpoint is a background thread burning a core for the life of the process. The no-op is implemented by the OpenTelemetry SDK's own switch, `OTEL_SDK_DISABLED=true`, rather than by a cafaye mechanism invented here: re-implementing 'disabled' in six languages is how six services acquire six different definitions of it, and the difference between them is somebody's production incident. The per-signal `OTEL_TRACES_EXPORTER=none` family is the finer-grained half. A self-hoster who already runs Datadog, Honeycomb or Grafana Cloud sets the variable and the shipped stack goes quiet; that is a supported deployment, not a degraded mode, and it is why `required` is false and the collector address is a `default` rather than a constant. See docs/observability.md.",
+  "$id": "https://anywaye.com/schemas/telemetry/otel-endpoint.schema.json",
+  "title": "anywaye OTLP endpoint contract",
+  "description": "How a service is pointed at a telemetry backend, and what happens when it is pointed at nothing. PLAN.md §7b: `*_OTEL_ENDPOINT` is the contract, the shipped collector is only the default value of that variable, and unsetting it must be a genuinely free no-op — no buffering, no retry loop against a dead endpoint, no warning spam. This schema is that claim made checkable. It does not accept the word 'disabled'; it accepts a declaration of what does NOT happen, with `buffering`, `retry`, `warnings` and `startupCost` each pinned to `none`. A disabled exporter that buffers is an outage with extra steps, and one that retries against a dead endpoint is a background thread burning a core for the life of the process. The no-op is implemented by the OpenTelemetry SDK's own switch, `OTEL_SDK_DISABLED=true`, rather than by a anywaye mechanism invented here: re-implementing 'disabled' in six languages is how six services acquire six different definitions of it, and the difference between them is somebody's production incident. The per-signal `OTEL_TRACES_EXPORTER=none` family is the finer-grained half. A self-hoster who already runs Datadog, Honeycomb or Grafana Cloud sets the variable and the shipped stack goes quiet; that is a supported deployment, not a degraded mode, and it is why `required` is false and the collector address is a `default` rather than a constant. See docs/observability.md.",
   "type": "object",
   "additionalProperties": false,
   "required": ["service", "signals", "endpoint", "noOp", "disabledBy"],
@@ -12,7 +12,7 @@
       "minLength": 2,
       "maxLength": 40,
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
-      "description": "The service this declaration describes, equal to `name` in its cafaye.yml. The endpoint variable is derived from it, so two services cannot disagree about the name of the variable that points at them."
+      "description": "The service this declaration describes, equal to `name` in its anywaye.yml. The endpoint variable is derived from it, so two services cannot disagree about the name of the variable that points at them."
     },
     "signals": {
       "type": "array",
@@ -62,7 +62,7 @@
       "properties": {
         "implementedBy": {
           "const": "OTEL_SDK_DISABLED",
-          "description": "The OTel spec's own kill switch. `OTEL_SDK_DISABLED=true` means a no-op SDK for all signals. Using it is what makes the no-op genuinely free in six languages, and it means a service that sets it gets the spec's behaviour rather than a cafaye reimplementation of it."
+          "description": "The OTel spec's own kill switch. `OTEL_SDK_DISABLED=true` means a no-op SDK for all signals. Using it is what makes the no-op genuinely free in six languages, and it means a service that sets it gets the spec's behaviour rather than a anywaye reimplementation of it."
         },
         "buffering": {
           "const": "none",
@@ -86,7 +86,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["global", "traces", "metrics", "logs"],
-      "description": "The documented switches, one per signal plus the global one. Keyed by signal rather than a list, because the failing shape is a service that documents a switch for traces and forgets logs — a flat list cannot express which signal a switch turns off, and a no-op that only covers traces is a service that still phones home for metrics, which is the failure discovered by a customer's invoice rather than by a test. `required` on all four is the floor. Unsetting `<SERVICE>_OTEL_ENDPOINT` is the documented path; these are how the OTel SDKs themselves are told, and a service that honours the standard variables works with any standard OTel tooling and no cafaye-specific configuration.",
+      "description": "The documented switches, one per signal plus the global one. Keyed by signal rather than a list, because the failing shape is a service that documents a switch for traces and forgets logs — a flat list cannot express which signal a switch turns off, and a no-op that only covers traces is a service that still phones home for metrics, which is the failure discovered by a customer's invoice rather than by a test. `required` on all four is the floor. Unsetting `<SERVICE>_OTEL_ENDPOINT` is the documented path; these are how the OTel SDKs themselves are told, and a service that honours the standard variables works with any standard OTel tooling and no anywaye-specific configuration.",
       "properties": {
         "global": { "const": "OTEL_SDK_DISABLED", "description": "Turns off every signal at once. The OTel spec's own kill switch, and the one the no-op path is implemented with." },
         "traces": { "const": "OTEL_TRACES_EXPORTER", "description": "Set to `none` for this service." },
@@ -99,7 +99,7 @@
       "items": { "type": "string", "minLength": 1 },
       "minItems": 1,
       "uniqueItems": true,
-      "description": "The resource attributes the service attaches to every export. At minimum `service.name`, which is what makes a span attributable to a service in a backend that has never heard of cafaye."
+      "description": "The resource attributes the service attaches to every export. At minimum `service.name`, which is what makes a span attributable to a service in a backend that has never heard of anywaye."
     },
     "notes": {
       "type": "string",

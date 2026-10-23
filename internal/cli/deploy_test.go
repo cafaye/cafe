@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/deploy"
+	"github.com/anywaye/cafe/internal/deploy"
 )
 
 // `cafe deploy` is a working command now, so it has left stubCommands. Its
@@ -40,7 +40,7 @@ const deployResolvedConfig = `---
 - 203.0.113.10
 :primary_host: 203.0.113.10
 :version: 3f9a1c2
-:repository: ghcr.io/cafaye/identity
+:repository: ghcr.io/anywaye/identity
 :service_with_version: identity-3f9a1c2
 :builder:
   arch: arm64
@@ -56,7 +56,7 @@ const deployResolvedConfig = `---
 `
 
 // deployResolvedWithPublishedPort is the same document with the one line cafe
-// refuses, which is what cafaye/kit's deploy.yml.erb ships today.
+// refuses, which is what anywaye/kit's deploy.yml.erb ships today.
 const deployResolvedWithPublishedPort = `---
 :roles:
 - web
@@ -64,7 +64,7 @@ const deployResolvedWithPublishedPort = `---
 - 203.0.113.10
 :primary_host: 203.0.113.10
 :version: 3f9a1c2
-:repository: ghcr.io/cafaye/identity
+:repository: ghcr.io/anywaye/identity
 :service_with_version: identity-3f9a1c2
 :builder:
   arch: arm64
@@ -223,7 +223,7 @@ func runDeployAsking(t *testing.T, runner *recordingRunner, confirm func(string)
 }
 
 // A project with a config and nothing else is deployable. A deployment directory
-// need not be a cafaye project, and refusing it would be refusing on a
+// need not be a anywaye project, and refusing it would be refusing on a
 // technicality — but it must be a real Kamal config, and the report says which
 // file it read.
 func TestDeployRunsKamalForAProjectThatHasAConfig(t *testing.T) {
@@ -677,7 +677,7 @@ func TestAFailedDeploySaysWhatIsRunningAndWhatToDo(t *testing.T) {
 // error names the file and where to copy it from.
 func TestDeployRefusesADirectoryWithNoKamalConfig(t *testing.T) {
 	runner := newRecordingRunner()
-	dir := deployProject(t, map[string]string{"cafaye.yml": "name: identity\n"})
+	dir := deployProject(t, map[string]string{"anywaye.yml": "name: identity\n"})
 
 	code, _, stderr := runDeployIn(t, runner, dir, "identity")
 

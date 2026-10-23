@@ -11,11 +11,11 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// reservedPropertiesKey is the vendor extension a cafaye document uses to leave
+// reservedPropertiesKey is the vendor extension a anywaye document uses to leave
 // a mark where a property used to be.
 //
 // OpenAPI has no `reserved` statement — buf's is a protobuf keyword and the
-// format cafaye is on has no equivalent — so this is a cafaye extension and its
+// format anywaye is on has no equivalent — so this is a anywaye extension and its
 // name says so. It exists because two projects arrived at it independently and
 // neither invented the idea:
 //
@@ -32,7 +32,7 @@ import (
 // rather than for this spelling: the cost of getting it wrong is a name an old
 // consumer still sends being reused for something else, and the cost of a
 // tombstone is one line naming where it used to live.
-const reservedPropertiesKey = "x-cafaye-reserved-properties"
+const reservedPropertiesKey = "x-anywaye-reserved-properties"
 
 // httpMethods are the keys of a path item that are operations. Everything else
 // under a path — `parameters`, `summary`, `$ref`, an extension — is not one, and
@@ -101,7 +101,7 @@ type NamedSchema struct {
 	Name       string
 	Pointer    string
 	Properties []Property
-	// Reserved is `x-cafaye-reserved-properties`.
+	// Reserved is `x-anywaye-reserved-properties`.
 	Reserved []string
 	// Required is `required`.
 	Required []string

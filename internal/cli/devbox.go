@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// `cafe devbox` manages cloud dev boxes via cafaye (which provisions them
+// `cafe devbox` manages cloud dev boxes via anywaye (which provisions them
 // on the underlying sandbox provider — users never touch the provider directly).
 
 type devboxDeps = shipDeps
@@ -18,14 +18,14 @@ func newDevboxCommand(deps devboxDeps) *Command {
 		Name:    "devbox",
 		Summary: "manage cloud dev boxes",
 		Usage:   "cafe devbox <subcommand> [args]",
-		LongHelp: "Manage cloud dev boxes via Cafaye.\n\n" +
+		LongHelp: "Manage cloud dev boxes via Anywaye.\n\n" +
 			"Subcommands:\n" +
 			"  create <name>   Create a new dev box\n" +
 			"  ls              List dev boxes\n" +
 			"  rm <name>       Delete a dev box\n" +
 			"  exec <name>     Run a command on a dev box\n\n" +
 			"Environment:\n" +
-			"  CAFAYE_URL     Base URL (default: https://cafaye.com)\n" +
+			"  ANYWAYE_URL     Base URL (default: https://anywaye.com)\n" +
 			"  SHIP_TOKEN     Service token (or use cafe login)\n",
 	}
 	c.Run = func(args []string, env *Env) error {

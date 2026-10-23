@@ -14,9 +14,9 @@ func newAgentCommand(deps aiDeps) *Command {
 	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "agent",
-		Summary: "manage AI agents on cafaye ship",
+		Summary: "manage AI agents on anywaye ship",
 		Usage:   "cafe agent <subcommand> [args]",
-		LongHelp: "Manage AI agents on cafaye ship.\n\n" +
+		LongHelp: "Manage AI agents on anywaye ship.\n\n" +
 			"Subcommands:\n" +
 			"  list                          List agents\n" +
 			"  create                        Create an agent\n" +

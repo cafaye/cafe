@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/failure"
+	"github.com/anywaye/cafe/internal/failure"
 )
 
 // failureDeps is what `cafe failure check` needs from the world, and it is a
@@ -35,11 +35,11 @@ func (d failureDeps) withDefaults() failureDeps {
 // The exit code is stated in the help because it is the part a script gets
 // wrong. It is zero unless the observation itself could not be read: a
 // condition holding is a finding and not a command failure, and the
-// frozen-key entry holds on ANY box running muse (CAFAYE-OPS.md:748), so an
+// frozen-key entry holds on ANY box running muse (ANYWAYE-OPS.md:748), so an
 // exit code derived from "anything holds" would be red on a healthy one.
-const failureLongHelp = `Checks a box against the cafaye failure-mode library — the documented
+const failureLongHelp = `Checks a box against the anywaye failure-mode library — the documented
 conditions of our own stack that a generic monitor cannot see
-(cafaye/notes/ops.md:731-748), evaluated against what the box daemon can
+(anywaye/notes/ops.md:731-748), evaluated against what the box daemon can
 observe.
 
 The observation is a JSON document: the facts the library's rules read, one
@@ -81,7 +81,7 @@ func newFailureCommand(deps failureDeps) *Command {
 
 	c := &Command{
 		Name:     "failure",
-		Summary:  "check a box against the cafaye failure-mode library",
+		Summary:  "check a box against the anywaye failure-mode library",
 		Usage:    "cafe failure check [<observation.json>]",
 		LongHelp: failureLongHelp,
 	}

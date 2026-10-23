@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	depdetect "github.com/cafaye/cafe/internal/deps"
+	depdetect "github.com/anywaye/cafe/internal/deps"
 )
 
 // `cafe project` is the project on ship: the thing tasks, landings and
@@ -27,9 +27,9 @@ func newProjectCommand(deps projectDeps) *Command {
 	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "project",
-		Summary: "manage projects on cafaye",
+		Summary: "manage projects on anywaye",
 		Usage:   "cafe project <subcommand> [args]",
-		LongHelp: "Manage projects on cafaye ship.\n\n" +
+		LongHelp: "Manage projects on anywaye ship.\n\n" +
 			"Subcommands:\n" +
 			"  create <name>   Create a new project\n" +
 			"  list            List your projects\n" +

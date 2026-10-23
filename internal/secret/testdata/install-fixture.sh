@@ -1,5 +1,5 @@
 #!/bin/sh
-# A stand-in for cafaye/kit/templates/substrate/install.sh, carrying the exact
+# A stand-in for anywaye/kit/templates/substrate/install.sh, carrying the exact
 # statements internal/secret cites. It is a fixture so the citation guard can be
 # driven — survives a move, fails on a deletion — without editing kit, which
 # lives in another repository and moves under this test.

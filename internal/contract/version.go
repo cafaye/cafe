@@ -8,7 +8,7 @@ import (
 
 // Version is a core spec version: three non-negative integers and nothing
 // else. Prereleases and build metadata are out of scope for v0, because
-// cafaye/core does not ship any and a range that cannot express them cannot be
+// anywaye/core does not ship any and a range that cannot express them cannot be
 // checked against one.
 type Version struct {
 	Major int
@@ -47,7 +47,7 @@ func compareInts(left, right int) int {
 	}
 }
 
-// Operator is one of the four forms the cafaye constraint grammar has. There
+// Operator is one of the four forms the anywaye constraint grammar has. There
 // is no fifth: core's docs/manifest-conventions.md calls the grammar
 // "deliberately tiny" and a full npm-style semver "a dependency and a
 // footgun".
@@ -213,11 +213,11 @@ var versionPattern = regexp.MustCompile(`^([0-9]+)\.([0-9]+)\.([0-9]+)$`)
 func ParseConstraint(text string) (Constraint, error) {
 	match := constraintPattern.FindStringSubmatch(text)
 	if match == nil {
-		return Constraint{}, fmt.Errorf("%s is not a cafaye core constraint: want MAJOR.MINOR.PATCH, optionally prefixed by ^ (compatible), ~ (pin the minor) or >= (floor)", value(text))
+		return Constraint{}, fmt.Errorf("%s is not a anywaye core constraint: want MAJOR.MINOR.PATCH, optionally prefixed by ^ (compatible), ~ (pin the minor) or >= (floor)", value(text))
 	}
 	version, err := versionFromComponents(match[2], match[3], match[4])
 	if err != nil {
-		return Constraint{}, fmt.Errorf("%s is not a cafaye core constraint: %w", value(text), err)
+		return Constraint{}, fmt.Errorf("%s is not a anywaye core constraint: %w", value(text), err)
 	}
 	return Constraint{operator: operatorOf(match[1]), version: version}, nil
 }

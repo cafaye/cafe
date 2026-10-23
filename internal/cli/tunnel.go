@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-// `cafe tunnel` manages Cafaye-managed Cloudflare tunnels for a project's dev box.
+// `cafe tunnel` manages Anywaye-managed Cloudflare tunnels for a project's dev box.
 //
 // The tunnel is created via ship (which provisions it on Cloudflare and returns
 // a token). `start` then runs cloudflared as a systemd user service so the dev
@@ -24,7 +24,7 @@ func newTunnelCommand(deps tunnelDeps) *Command {
 		Name:    "tunnel",
 		Summary: "manage dev-box tunnels",
 		Usage:   "cafe tunnel <subcommand> [args]",
-		LongHelp: "Manage Cafaye-managed Cloudflare tunnels for a project.\n\n" +
+		LongHelp: "Manage Anywaye-managed Cloudflare tunnels for a project.\n\n" +
 			"Subcommands:\n" +
 			"  create <project-id>         Create a tunnel and print its token/URL\n" +
 			"  start <project-id>          Create (if needed) and start cloudflared as a service\n" +
@@ -113,7 +113,7 @@ func tunnelStart(deps shipDeps, env *Env, args []string) error {
 	}
 
 	// Write token to file
-	tokenDir := filepath.Join(os.Getenv("HOME"), ".config", "cafaye")
+	tokenDir := filepath.Join(os.Getenv("HOME"), ".config", "anywaye")
 	os.MkdirAll(tokenDir, 0700)
 	tokenFile := filepath.Join(tokenDir, "tunnel-token")
 	os.WriteFile(tokenFile, []byte(t.Token), 0600)
@@ -121,9 +121,9 @@ func tunnelStart(deps shipDeps, env *Env, args []string) error {
 	// Create systemd user service
 	serviceDir := filepath.Join(os.Getenv("HOME"), ".config", "systemd", "user")
 	os.MkdirAll(serviceDir, 0755)
-	serviceFile := filepath.Join(serviceDir, "cafaye-tunnel.service")
+	serviceFile := filepath.Join(serviceDir, "anywaye-tunnel.service")
 	serviceContent := fmt.Sprintf(`[Unit]
-Description=Cafaye dev tunnel
+Description=Anywaye dev tunnel
 After=network.target
 
 [Service]
@@ -138,18 +138,18 @@ WantedBy=default.target
 
 	// Reload and start
 	exec.Command("systemctl", "--user", "daemon-reload").Run()
-	exec.Command("systemctl", "--user", "enable", "cafaye-tunnel.service").Run()
-	out, err := exec.Command("systemctl", "--user", "restart", "cafaye-tunnel.service").CombinedOutput()
+	exec.Command("systemctl", "--user", "enable", "anywaye-tunnel.service").Run()
+	out, err := exec.Command("systemctl", "--user", "restart", "anywaye-tunnel.service").CombinedOutput()
 	if err != nil {
 		_, _ = fmt.Fprintf(env.Stderr, "systemctl: %s\n", string(out))
 	}
 
-	_, _ = fmt.Fprintf(env.Stdout, "tunnel started\n  url:  %s\n  port: %d (configure your app to listen here)\n  service: cafaye-tunnel.service\n", t.URL, *port)
+	_, _ = fmt.Fprintf(env.Stdout, "tunnel started\n  url:  %s\n  port: %d (configure your app to listen here)\n  service: anywaye-tunnel.service\n", t.URL, *port)
 	return nil
 }
 
 func tunnelStop(env *Env, args []string) error {
-	out, err := exec.Command("systemctl", "--user", "stop", "cafaye-tunnel.service").CombinedOutput()
+	out, err := exec.Command("systemctl", "--user", "stop", "anywaye-tunnel.service").CombinedOutput()
 	if err != nil {
 		_, _ = fmt.Fprintf(env.Stderr, "systemctl: %s\n", string(out))
 		return err
@@ -159,7 +159,7 @@ func tunnelStop(env *Env, args []string) error {
 }
 
 func tunnelStatus(env *Env, args []string) error {
-	out, err := exec.Command("systemctl", "--user", "status", "cafaye-tunnel.service").CombinedOutput()
+	out, err := exec.Command("systemctl", "--user", "status", "anywaye-tunnel.service").CombinedOutput()
 	_, _ = fmt.Fprint(env.Stdout, string(out))
 	if err != nil {
 		return nil // status returns non-zero when inactive

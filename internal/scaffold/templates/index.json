@@ -2,11 +2,11 @@
   "templates": [
     {
       "name": "app",
-      "summary": "a cafaye app: the manifest, a Go service on :8080, and the image cafe dev builds"
+      "summary": "a anywaye app: the manifest, a Go service on :8080, and the image cafe dev builds"
     },
     {
       "name": "platform",
-      "summary": "a cafaye platform app: identity, gateway, courier, and parlor composed into a starting product"
+      "summary": "a anywaye platform app: identity, gateway, courier, and parlor composed into a starting product"
     }
   ]
 }

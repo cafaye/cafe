@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/setup"
+	"github.com/anywaye/cafe/internal/setup"
 )
 
 // boxWipeDeps is what `cafe box wipe` needs from the world, as a parameter for
@@ -71,9 +71,9 @@ WHAT IT REMOVES, each as a check and an apply so a second run is a no-op:
   daemon-stopped        systemctl disable --now ` + setup.UnitName + `
   unit-removed          ` + setup.UnitPath + `
   cafe-binary-removed   ` + setup.CafeBinPath + `
-  cafaye-state-removed  ` + setup.EtcCafeDir + `, ` + setup.EnrolledDir + `,
-                        ` + setup.KitStatePath + `, ` + setup.CafayeBinDir + `,
-                        ` + setup.CafayeSubstrate + `, ` + setup.CafayeEdge + `
+  anywaye-state-removed  ` + setup.EtcCafeDir + `, ` + setup.EnrolledDir + `,
+                        ` + setup.KitStatePath + `, ` + setup.AnywayeBinDir + `,
+                        ` + setup.AnywayeSubstrate + `, ` + setup.AnywayeEdge + `
   k3s-removed           the installer's own uninstall scripts, then
                         /etc/rancher, /var/lib/rancher, /var/lib/kubelet,
                         /root/.kube and the k3s files in /usr/local/bin
@@ -81,19 +81,19 @@ WHAT IT REMOVES, each as a check and an apply so a second run is a no-op:
                         /var/lib/containerd and /etc/docker
 
 WHAT IT KEEPS. This is the command's whole safety argument, and it is a list of
-cafaye's own artifacts rather than an ` + "`rm -rf`" + ` over a directory somebody else
+anywaye's own artifacts rather than an ` + "`rm -rf`" + ` over a directory somebody else
 may share:
 
   ` + setup.SSHAuthorizedKeys + `            the operator's own access. Nothing here touches it,
                         because a wipe that can lock you out is worse than no
                         wipe.
-  ` + setup.CafayeReleases + `   the deploy path's releases: the artifacts the box was
-                        SERVING, not an installation fact. ` + "`/var/lib/cafaye`" + ` is
+  ` + setup.AnywayeReleases + `   the deploy path's releases: the artifacts the box was
+                        SERVING, not an installation fact. ` + "`/var/lib/anywaye`" + ` is
                         removed subdirectory by subdirectory, never wholesale.
-  everything else       any file cafaye did not create is left exactly as it
+  everything else       any file anywaye did not create is left exactly as it
                         was found.
 
-WHAT IT REFUSES. A host with no cafe binary, no cafaye state and no enrollment
+WHAT IT REFUSES. A host with no cafe binary, no anywaye state and no enrollment
 is not a box this command set up, and it is refused with that sentence BEFORE
 the confirmation and before a single removal — so a stray ` + "`cafe box wipe`" + `
 against a stranger's machine cannot uninstall a k3s it did not install. A host

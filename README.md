@@ -1,8 +1,8 @@
 # cafe
 
-**Current direction (2026-10-19):** Ship is the product. The cafaye stack is internal infrastructure; we are not selling or supporting it as a standalone product as of this date. We continue to develop and improve it, treating the founder as the primary customer and keeping "build once, run everywhere" true, with the expectation that it may be offered again later.
+**Current direction (2026-10-19):** Ship is the product. The anywaye stack is internal infrastructure; we are not selling or supporting it as a standalone product as of this date. We continue to develop and improve it, treating the founder as the primary customer and keeping "build once, run everywhere" true, with the expectation that it may be offered again later.
 
-The cafaye platform CLI. One binary, one manifest, one set of contracts: `cafe`
+The anywaye platform CLI. One binary, one manifest, one set of contracts: `cafe`
 is how a developer creates a project, runs it locally, deploys it, and exposes
 it to agents.
 
@@ -41,11 +41,11 @@ Deploy it for real with:
 ## Install
 
 ```sh
-go install github.com/cafaye/cafe/cmd/cafe@latest
+go install github.com/anywaye/cafe/cmd/cafe@latest
 ```
 
 `@latest` resolves to the newest tag. Prebuilt archives, their checksums and the
-release notes are on the [Releases page](https://github.com/cafaye/cafe/releases);
+release notes are on the [Releases page](https://github.com/anywaye/cafe/releases);
 see [Release](#release) for how one is cut.
 
 Or build from source:
@@ -58,7 +58,7 @@ go build ./cmd/cafe
 `bin/prime` is the gate, and it is declared rather than guessed: [`gate.yml`](gate.yml)
 at the repository root says what it is, what it needs from the machine, and what
 its own output must contain before the word "passed" means anything. The format,
-the checker and the reasoning are `cafaye/core`'s
+the checker and the reasoning are `anywaye/core`'s
 (`schemas/gate.schema.json`, `harness/gate_check.py`, `docs/gate.md`). Check it
 without running anything:
 
@@ -109,7 +109,7 @@ notes come from the commits that are in the tag and nowhere else, so a stranger
 can check them against `git log v0.1.0`, which is not true of a file edited after
 the fact.
 
-`go install github.com/cafaye/cafe/cmd/cafe@vX.Y.Z` installs one exact tag from
+`go install github.com/anywaye/cafe/cmd/cafe@vX.Y.Z` installs one exact tag from
 the module proxy; `@latest` is the newest. There is deliberately **no Homebrew,
 Scoop or Docker target yet** — each is a target with an owner, a place to publish
 into and a credential to hold, and none of those exists. GitHub Releases plus
@@ -119,8 +119,8 @@ into and a credential to hold, and none of those exists. GitHub Releases plus
 
 | Command | What it does | v0 |
 |---|---|---|
-| `cafe init` | write the `cafaye.yml` manifest for an existing project, validated against core's schema | **works** |
-| `cafe new <name>` | scaffold a new cafaye service or app from the template catalog | **works** |
+| `cafe init` | write the `anywaye.yml` manifest for an existing project, validated against core's schema | **works** |
+| `cafe new <name>` | scaffold a new anywaye service or app from the template catalog | **works** |
 | `cafe dev [project]` | run the local development stack | **works** |
 | `cafe deploy <service>` | deploy a service or app: `--engine kamal` (default), `--engine argo` or `--engine remote` (the operated platform, pinned off until TG-D1) | **works** |
 | `cafe backup <service>` | take one real backup and prove it restores, into a scratch database it then drops | **works** |
@@ -133,19 +133,19 @@ into and a credential to hold, and none of those exists. GitHub Releases plus
 | `cafe agent token revoke --yes [<id>]` | destroy a token and remove it from the keyring; refused without `--yes` | **works** |
 | `cafe provider connect <provider>` | seal a provider credential to the box's public key and post the envelope to box — the agent never sees the value | **works** |
 | `cafe provider status --json` | which providers this box is connected to, as box reports it; opens no envelope | **works** |
-| `cafe failure check [<observation.json>]` | check a box against the cafaye failure-mode library — the eleven documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
+| `cafe failure check [<observation.json>]` | check a box against the anywaye failure-mode library — the eleven documented conditions a generic monitor cannot see, each answered `holds` / `does not hold` / `unknown`, naming the fact it could not read; the observation carries setting names, never values | **works** |
 | `cafe gate floors [--write] [path]` | derive `gate.yml`'s countable floors from the tree — print the delta, or with `--write` set them and re-pin `cafe.lock` | **works** |
 | `cafe gen telemetry` | write the OpenTelemetry setup a service needs to honour core's telemetry contract | **works** |
 | `cafe gen chart` | write the Helm chart a service is deployed from — Deployment, Service, `/readyz` probe, secrets by reference (the Argo Application is the substrate's) | **works** |
 | `cafe lock <path>` | pin this tree's specs, vendored schemas and generated clients in `cafe.lock` | **works** |
 | `cafe lock --verify <path>` | recompute every pin and name every file that no longer matches | **works** |
-| `cafe contract lint <path>` | validate `cafaye.yml` against the core schema, and the OpenAPI document it names | **works** |
+| `cafe contract lint <path>` | validate `anywaye.yml` against the core schema, and the OpenAPI document it names | **works** |
 | `cafe contract breaking <a> <b>` | compare two OpenAPI revisions, reporting which tier each change breaks | **works** |
 | `cafe contract resolve <c> <v>` | resolve a core version constraint | **works** |
 | `cafe cve inventory` | every component on the box and its version, against what the substrate pins | **works** |
 | `cafe cve scan` | the box's CVE surface: the component, the advisory, the fixed version, and what applying it touches | **works** |
 | `cafe cve schedule` | print the cron line that puts the scan on a schedule | **works** |
-| `cafe mcp` | serve the cafaye tools over the Model Context Protocol | **works** |
+| `cafe mcp` | serve the anywaye tools over the Model Context Protocol | **works** |
 | `cafe boxd` | run the box daemon: outbound-only mTLS to box, redeeming whitelisted capabilities (invariant 4); its identity comes from the box-owned store, with `$CAF_BOX_IDENTITY` a deprecated fallback | **works** |
 | `cafe version` | print the cafe version | **works** |
 | `cafe doctor [path]` | report the toolchains, whether this machine can run this project, and what is unreclaimed | **works** |
@@ -199,7 +199,7 @@ releases). A plain `go build` or `go run` of the source tree reports
 
 ## `cafe dev`
 
-`cafe dev` reads a project's `cafaye.yml`, validates it against the same rules
+`cafe dev` reads a project's `anywaye.yml`, validates it against the same rules
 `cafe contract lint` applies, renders a compose file from it, **writes that file,
 prints it in full**, brings the stack up, waits for it, and reports what came up
 and what did not.
@@ -210,7 +210,7 @@ project hello-dev: hello (go)
 skipped legacy: optional dependency, and the local registry does not know how to run it
 wrote /work/hello/hello.compose.yaml
 
-# cafe dev — the local stack for "hello-dev", generated from cafaye.yml.
+# cafe dev — the local stack for "hello-dev", generated from anywaye.yml.
 # Do not edit: every run rewrites this file. The manifest is the
 # source of truth; this is what it turned into.
 name: hello-dev
@@ -341,7 +341,7 @@ project, the catalog, or cafe.
 
 | Situation | What happens |
 |---|---|
-| No `cafaye.yml` | refused in one sentence, with `cafe init` named as the fix |
+| No `anywaye.yml` | refused in one sentence, with `cafe init` named as the fix |
 | An invalid manifest | refused with `cafe contract lint`'s exact line, so the two cannot disagree |
 | A dependency cycle | refused **before anything starts**, with the loop in the message: `dependency cycle: alpha -> beta -> alpha` |
 | Two services on one published port | refused, naming both and the port, and pointing at `-port` |
@@ -356,7 +356,7 @@ its own address on the stack network — so only published host ports are checke
 
 ### Where the telemetry endpoint comes from
 
-Every cafaye service in the rendered document carries
+Every anywaye service in the rendered document carries
 `<SERVICE>_OTEL_ENDPOINT`, pointed at the collector core's endpoint contract
 documents as the default. That variable is the fleet's whole endpoint contract —
 core's `otel-endpoint.schema.json` calls it "the ONLY contract" — and a variable
@@ -370,7 +370,7 @@ left on the collector.
 ```
 "pantry": {
   "name": "pantry",
-  "image": "ghcr.io/cafaye/pantry:0.4.1",
+  "image": "ghcr.io/anywaye/pantry:0.4.1",
   "environment": {"PANTRY_OTEL_ENDPOINT": "https://otlp.example.com:4318"}
 }
 ```
@@ -380,7 +380,7 @@ otel-collector` — the collector is not in `internal/dev`'s infrastructure tabl
 because it needs kit's `otel-collector.yml`, which this repository does not own,
 and an edge to a container nothing starts is a stack that never comes up. And
 local infrastructure is handed no endpoint: postgres and redis are third-party
-images with no cafaye identity and a variable they do not read.
+images with no anywaye identity and a variable they do not read.
 
 ### The service catalog
 
@@ -388,14 +388,14 @@ A manifest says `dependencies: [{name: identity, version: ^0.1.0}]` and cannot
 say how `identity` is run: that is a fact about the service and it changes with
 it. So the answer comes from a registry, and `-registry` names one. The document
 is one JSON object keyed by service name, and it is the same document whether it
-is read from a file or served over HTTP — [pantry](https://github.com/cafaye/pantry)
+is read from a file or served over HTTP — [pantry](https://github.com/anywaye/pantry)
 serves the official one:
 
 ```json
 {
   "identity": {
     "name": "identity",
-    "image": "ghcr.io/cafaye/identity:0.4.2",
+    "image": "ghcr.io/anywaye/identity:0.4.2",
     "command": ["/app/identity", "serve"],
     "port": 8080,
     "publish": true,
@@ -505,7 +505,7 @@ has to be true after.
 ### What it needs
 
 A project with `config/deploy.yml`, copied from
-[`cafaye/kit`](https://github.com/cafaye/kit)'s `templates/kamal/deploy.yml.erb`.
+[`anywaye/kit`](https://github.com/anywaye/kit)'s `templates/kamal/deploy.yml.erb`.
 The `KIT_*` variables that template interpolates are **deployment facts, not
 secrets**, so they are exported in the shell that runs the deploy and the template
 refuses to render a blank one. Credentials are **names** in `.kamal/secrets.<env>`
@@ -578,8 +578,8 @@ kamal setup --destination staging failed: exit status 1
 what is running now (kamal app containers --destination staging):
 App Host: 10.0.0.4
 CONTAINER ID   IMAGE                    STATUS                     NAMES
-9586677b96f3   ghcr.io/cafaye/identity:9f2c  Exited (1) 4 seconds ago   identity-web-9f2c1a8
-6f3ce7867e8b   ghcr.io/cafaye/identity:1a4b  Up 43 seconds               identity-web-1a4b7d
+9586677b96f3   ghcr.io/anywaye/identity:9f2c  Exited (1) 4 seconds ago   identity-web-9f2c1a8
+6f3ce7867e8b   ghcr.io/anywaye/identity:1a4b  Up 43 seconds               identity-web-1a4b7d
 
 what to do:
   the database was not touched. kamal boots accessories separately from the app, so
@@ -611,9 +611,9 @@ name `kamal-docker-registry` that Kamal itself owns.
 
 ```sh
 $ cafe deploy --engine remote --account acct-1 --yes identity
-The remote engine deploys a service into the cafaye-operated platform, where
+The remote engine deploys a service into the anywaye-operated platform, where
 every client the account serves is an account on one shared deployment rather
-than a cafaye deployment of its own. ...
+than a anywaye deployment of its own. ...
 ```
 
 That is the third engine, and it deploys **nothing**. The refusal is the packet.
@@ -622,12 +622,12 @@ What it would do: ask the operated platform which deployment serves the named
 `--account`, and hand it one deploy request — the service, the version and the
 commit it was built from. The customer's app is built once and deployed once,
 and every client they serve is an account on the shared platform rather than a
-cafaye deployment of its own. That is the platform's reason to exist, and it is
+anywaye deployment of its own. That is the platform's reason to exist, and it is
 what `cafe deploy` could not name before: the other two engines both target
 something the operator runs themselves.
 
 Why it does not do that yet: **one deployment serving many accounts is only safe
-once one deployment is proven safe for strangers** — `cafaye/notes/tenancy-gate.md`, whose
+once one deployment is proven safe for strangers** — `anywaye/notes/tenancy-gate.md`, whose
 TG-D1 records the decision. `cafe` cannot make that decision and does not try.
 So the gate is a constant in the package that returns the refusal, and not a
 flag, an environment variable or a config key: a tenancy decision a CI job could
@@ -649,7 +649,7 @@ the refusal out would read as a deploy that works.
 `--account` goes with `--engine remote` and with nothing else. Passing it to
 `kamal` or `argo` is a usage error rather than a silent drop: the account is the
 destination, and an operator who typed it said which account, so they are
-answered — "the cafaye-operated platform's, and this engine deploys somewhere you
+answered — "the anywaye-operated platform's, and this engine deploys somewhere you
 already pointed it at" — rather than told nothing while the flag is discarded.
 
 The argv is the single copy of what a deploy asks, so the two defects the proofs
@@ -751,7 +751,7 @@ refusing production-looking restore target identity-postgres/caf_prod_drill; cho
 cafe keeps **no copy** of that rule. A second copy of a rule about which database gets
 dropped is a second opinion about the one thing that must not be in doubt — and in
 operator form the same rule already exists in
-[cafaye/kit](https://github.com/cafaye/kit)'s `templates/kamal/drill.sh`, which is
+[anywaye/kit](https://github.com/anywaye/kit)'s `templates/kamal/drill.sh`, which is
 also where this command's `env.secret` connection preamble and its "a check must be
 an assertion, not a count" rule come from. What cafe refuses itself is narrower: a name
 it cannot write down unquoted through two shells (`plainIdentifier`).
@@ -1064,7 +1064,7 @@ was `:failed`, so a script can tell a clean sweep from a broken one.
 **It never runs a blanket prune.** Every call is scoped by the compose project
 label, which carries the ledger's generation, and a resource whose name does not
 carry that generation is *refused and reported* rather than removed. `searxng-*`,
-the kamal buildkit volume, and any volume with no cafaye worker name are not
+the kamal buildkit volume, and any volume with no anywaye worker name are not
 reachable from here at all.
 
 A reservation whose holder is gone is reclaimed; one held by a live session is
@@ -1158,13 +1158,13 @@ arbitrates is how 21101 and 55432 happened.
 
 ```
 $ cafe contract lint .
-OK services/courier/cafaye.yml
-INVALID services/billing/cafaye.yml: name: "Billing_Service" does not match "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
-INVALID services/legacy/cafaye.yml: invalid YAML: [10:1] found character '	' that cannot start any token
+OK services/courier/anywaye.yml
+INVALID services/billing/anywaye.yml: name: "Billing_Service" does not match "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+INVALID services/legacy/anywaye.yml: invalid YAML: [10:1] found character '	' that cannot start any token
 ```
 
 `<path>` is a file or a directory. A directory is walked in lexical order and
-every `cafaye.yml` in it is checked; `.git`, `node_modules`, `deps`, `_build`
+every `anywaye.yml` in it is checked; `.git`, `node_modules`, `deps`, `_build`
 and `target` are skipped, because they hold other projects' manifests. One line
 per manifest — `OK <path>` or `INVALID <path>: <the first error>` — and nothing
 else, so the output is greppable and diffable.
@@ -1176,7 +1176,7 @@ Every manifest is checked against two things:
 
 1. **The core JSON Schema**, vendored at
    [`internal/contract/schemas/manifest-0.2.json`](internal/contract/schemas/manifest-0.2.json)
-   — a byte-identical copy of `cafaye/core`'s schema, pinned by sha256. `cafe`
+   — a byte-identical copy of `anywaye/core`'s schema, pinned by sha256. `cafe`
    never fetches it: see [schemas/README.md](internal/contract/schemas/README.md)
    for the provenance, what each spec bump changes, and the refresh procedure.
 2. **The three cross-field rules** from core's
@@ -1191,7 +1191,7 @@ Every manifest is checked against two things:
 
 core documents six such rules. The other three are not implemented, each for a
 stated reason: "serves or receives traffic" is not expressible from a manifest
-field, `dependencies` are already pinned to cafaye service names by the
+field, `dependencies` are already pinned to anywaye service names by the
 schema, and "every consumed type exists in the core catalog" needs a catalog
 that core ships as prose rather than as data.
 
@@ -1268,13 +1268,13 @@ the fleet ships a binary encoding derived from its OpenAPI document yet. Pass
 ### Leaving a mark where a property used to be
 
 OpenAPI has no `reserved` statement — buf's is a protobuf keyword and this format
-has no equivalent — so cafaye vendors an extension:
+has no equivalent — so anywaye vendors an extension:
 
 ```yaml
 components:
   schemas:
     User:
-      x-cafaye-reserved-properties: [old_name]
+      x-anywaye-reserved-properties: [old_name]
       properties:
         display_name: {type: string}
 ```
@@ -1373,7 +1373,7 @@ deployed from — Chart.yaml, values.yaml, and a templates/ directory carrying
 the Deployment, the Service and the Ingress. The ArgoCD Application that
 deploys the chart is the substrate's, not the chart's: one static Application
 per service, OCI-sourced, applied by install.sh, and a service repository
-commits none (cafaye/notes/deployment.md, "Who owns the Application") — a generated
+commits none (anywaye/notes/deployment.md, "Who owns the Application") — a generated
 one would be a second Application of the same name in the same namespace,
 and the later `kubectl apply` wins. The chart's contract is the fleet's: the
 readiness probe is `/readyz`
@@ -1383,7 +1383,7 @@ never an inlined value), the image tag is a value and is never `latest`, and
 resources are set.
 
 Every fact in what it writes is **read out of six schemas vendored from
-[cafaye/core](https://github.com/cafaye/core)** rather than typed into cafe — the
+[anywaye/core](https://github.com/anywaye/core)** rather than typed into cafe — the
 three per-signal attribute allowlists and their value vocabularies, the fourteen
 names core refuses as a measurement attribute, the ten resource attributes, the
 thirteen `error.type` values, the span-name grammar, and the `const`s that pin the
@@ -1393,7 +1393,7 @@ regenerated bytes against the committed copy to say so.
 
 Two things about that are worth reading before changing it. **`internal/telemetry/`
 is committed generated Go**, so `go build`, `go vet`, `gofmt -l .` and `go test`
-all reach it — cafe runs its own generator on its own `cafaye.yml` so the output has
+all reach it — cafe runs its own generator on its own `anywaye.yml` so the output has
 a first consumer whose compiler and test runner are this repository's gate.
 
 That last clause is a claim about the DRIFT GATE as much as about the files, and
@@ -1401,8 +1401,8 @@ it was false until this packet measured it. The gate generated from a test
 fixture — courier's manifest — and compared the result against files in a
 repository whose own manifest says `name: cafe`, so it was green because it was
 measuring courier against courier and `internal/telemetry` shipped declaring
-`ServiceName = "courier"` and reading `COURIER_OTEL_ENDPOINT` in the cafaye
-platform CLI. The gate now reads this repository's own `cafaye.yml`, which is
+`ServiceName = "courier"` and reading `COURIER_OTEL_ENDPOINT` in the anywaye
+platform CLI. The gate now reads this repository's own `anywaye.yml`, which is
 what makes it a check on what cafe ships rather than a check that the generator is
 deterministic — the thing `internal/gen/telemetry_test.go` already asserted. And the
 generated `telemetry_test.go` beside it is not decoration: it is twelve top-level
@@ -1507,7 +1507,7 @@ second implementation of any of them.
 | Tool | What it answers | Writes? |
 |---|---|---|
 | `caf_doctor` | which toolchains this machine has, and whether it can run this project | no |
-| `caf_manifest` | what a `cafaye.yml` declares, and its API document's title and version | no |
+| `caf_manifest` | what a `anywaye.yml` declares, and its API document's title and version | no |
 | `caf_registry` | what the service catalog says, and what the plan leaves out and why | no |
 | `caf_dev_plan` | the stack `cafe dev` would build, and where the compose document went | writes the document |
 | `caf_dev_up` | bring the local stack up and report what came up | starts containers |
@@ -1640,8 +1640,8 @@ Phase 0 (v0, now):
 - [x] CLI skeleton: every subcommand wired, flagged, tested
 - [x] `cafe version`, `cafe doctor`
 - [x] `cafe contract lint`, `cafe contract resolve`
-- [x] `cafaye.yml` manifest draft (the schema is owned by
-      [cafaye/core](https://github.com/cafaye/core))
+- [x] `anywaye.yml` manifest draft (the schema is owned by
+      [anywaye/core](https://github.com/anywaye/core))
 - [x] `cafe init` — write the manifest from the core schema
 - [x] `cafe new` — scaffold from the template catalog
 - [x] `cafe dev` — the local stack: compose from the manifest, health-gated, idempotent
@@ -1659,7 +1659,7 @@ Phase 0 (v0, now):
 - [x] `cafe backup` — a real kamal-backup snapshot, restored into a scratch database
       with the rows asserted and the scratch dropped, four contract refusals before
       any boot, and an honest `--dry-run`
-- [x] `cafe mcp` — serve the cafaye tools to agents
+- [x] `cafe mcp` — serve the anywaye tools to agents
 - [x] `cafe reclaim` — the reclamation ledger, containers before volumes, tri-state
 - [x] `cafe env up` — the only provisioning verb: reserve, run as the parent, reclaim
 - [ ] `cafe gate` — the tier policy (MD12), reading `env up`'s receipt. **Not
@@ -1675,7 +1675,7 @@ See [AGENTS.md](AGENTS.md) for the conventions this repository follows.
 
 MIT. See [LICENSE](LICENSE).
 
-cafe is meant to be consumed as a dependency of a cafaye service, and the whole
+cafe is meant to be consumed as a dependency of a anywaye service, and the whole
 point of the service-registry model is that adding a platform dependency does
 not change a consumer's own licensing situation. That is why this is MIT and not
 a copyleft licence, and it is the reason for it fleet-wide rather than a

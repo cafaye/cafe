@@ -200,14 +200,14 @@ func TestTheEdgeRoutesByHostnameOverRealTLS(t *testing.T) {
 	defer auth.Close()
 
 	box := newBoxState(t, "box-01", ModeOrigin)
-	box.upstream["api.cafaye.test"] = strings.TrimPrefix(api.URL, "http://")
-	box.upstream["auth.cafaye.test"] = strings.TrimPrefix(auth.URL, "http://")
-	box.deploy(t, "sample-stack-1", "api.cafaye.test", "auth.cafaye.test")
+	box.upstream["api.anywaye.test"] = strings.TrimPrefix(api.URL, "http://")
+	box.upstream["auth.anywaye.test"] = strings.TrimPrefix(auth.URL, "http://")
+	box.deploy(t, "sample-stack-1", "api.anywaye.test", "auth.anywaye.test")
 
-	certs := NewMinted("api.cafaye.test", "auth.cafaye.test")
+	certs := NewMinted("api.anywaye.test", "auth.anywaye.test")
 	_, addr := box.gateway(t, certs)
 
-	for _, host := range []string{"api.cafaye.test", "auth.cafaye.test"} {
+	for _, host := range []string{"api.anywaye.test", "auth.anywaye.test"} {
 		client := clientFor(addr, host)
 
 		code, body := get(t, client, addr, host, "/readyz")
@@ -257,7 +257,7 @@ func TestTheEdgeRoutesByHostnameOverRealTLS(t *testing.T) {
 }
 
 // The internal zone is served too, and over the same handshake: a wildcard
-// certificate covers `*.svc.cafaye.com` and the box routes it cluster-internally.
+// certificate covers `*.svc.anywaye.com` and the box routes it cluster-internally.
 // The plan's stability rule 4 says those names never appear in public DNS, so
 // the certificate is minted on the box and not issued for them at all.
 func TestTheInternalZoneIsServedOverTheSameHandshake(t *testing.T) {
@@ -265,16 +265,16 @@ func TestTheInternalZoneIsServedOverTheSameHandshake(t *testing.T) {
 	defer identity.Close()
 
 	box := newBoxState(t, "box-01", ModeInternal)
-	box.upstream["identity.svc.cafaye.com"] = strings.TrimPrefix(identity.URL, "http://")
-	box.deploy(t, "sample-stack-1", "identity.svc.cafaye.com")
+	box.upstream["identity.svc.anywaye.com"] = strings.TrimPrefix(identity.URL, "http://")
+	box.deploy(t, "sample-stack-1", "identity.svc.anywaye.com")
 
-	certs := NewMinted("*.svc.cafaye.com")
+	certs := NewMinted("*.svc.anywaye.com")
 	_, addr := box.gateway(t, certs)
 
-	client := clientFor(addr, "identity.svc.cafaye.com")
-	code, body := get(t, client, addr, "identity.svc.cafaye.com", "/readyz")
+	client := clientFor(addr, "identity.svc.anywaye.com")
+	code, body := get(t, client, addr, "identity.svc.anywaye.com", "/readyz")
 	if code != http.StatusOK {
-		t.Fatalf("GET https://identity.svc.cafaye.com/readyz = %d, want 200 (body: %s)", code, body)
+		t.Fatalf("GET https://identity.svc.anywaye.com/readyz = %d, want 200 (body: %s)", code, body)
 	}
 	if !strings.Contains(body, "v1 ready") {
 		t.Errorf("the .svc name answered %q, want the sample stack's readiness", body)
@@ -290,21 +290,21 @@ func TestAHostnameTheBoxDoesNotServeIsRefusedByName(t *testing.T) {
 	defer api.Close()
 
 	box := newBoxState(t, "box-01", ModeOrigin)
-	box.upstream["api.cafaye.test"] = strings.TrimPrefix(api.URL, "http://")
-	box.deploy(t, "sample-stack-1", "api.cafaye.test")
+	box.upstream["api.anywaye.test"] = strings.TrimPrefix(api.URL, "http://")
+	box.deploy(t, "sample-stack-1", "api.anywaye.test")
 
-	certs := NewMinted("api.cafaye.test", "api.cafaye.test.other")
+	certs := NewMinted("api.anywaye.test", "api.anywaye.test.other")
 	_, addr := box.gateway(t, certs)
 
-	client := clientFor(addr, "api.cafaye.test.other")
-	code, body := get(t, client, addr, "api.cafaye.test.other", "/")
+	client := clientFor(addr, "api.anywaye.test.other")
+	code, body := get(t, client, addr, "api.anywaye.test.other", "/")
 	if code != http.StatusNotFound {
 		t.Fatalf("GET a host the box does not serve = %d, want 404 (body: %s)", code, body)
 	}
-	if !strings.Contains(body, "api.cafaye.test.other") {
+	if !strings.Contains(body, "api.anywaye.test.other") {
 		t.Errorf("the refusal does not name the hostname: %s", body)
 	}
-	if !strings.Contains(body, "api.cafaye.test") {
+	if !strings.Contains(body, "api.anywaye.test") {
 		t.Errorf("the refusal does not say what the box does serve: %s", body)
 	}
 }
@@ -339,7 +339,7 @@ func TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane(t *testing.T) {
 	}))
 	defer stack.Close()
 
-	box := &boxState{dir: dir, upstream: map[string]string{"api.cafaye.test": strings.TrimPrefix(stack.URL, "http://")}}
+	box := &boxState{dir: dir, upstream: map[string]string{"api.anywaye.test": strings.TrimPrefix(stack.URL, "http://")}}
 	box.spec = New("box-01", ModeOrigin)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatalf("create the box state directory: %v", err)
@@ -347,7 +347,7 @@ func TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane(t *testing.T) {
 	if err := Save(dir, box.spec); err != nil {
 		t.Fatalf("write the spec: %v", err)
 	}
-	box.deploy(t, "sample-stack-1", "api.cafaye.test")
+	box.deploy(t, "sample-stack-1", "api.anywaye.test")
 
 	if got, err := Current(dir); err != nil || got != "sample-stack-1" {
 		t.Fatalf("current = %q, %v; want sample-stack-1", got, err)
@@ -363,8 +363,8 @@ func TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane(t *testing.T) {
 		t.Errorf("current points at %q, want the relative target %q", target, want)
 	}
 
-	_, addr := box.gateway(t, NewMinted("api.cafaye.test"))
-	client := clientFor(addr, "api.cafaye.test")
+	_, addr := box.gateway(t, NewMinted("api.anywaye.test"))
+	client := clientFor(addr, "api.anywaye.test")
 
 	// A second deploy moves current at the new release, and what the customer
 	// gets changes with it — through the edge, over the wire, with the routing
@@ -373,9 +373,9 @@ func TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read the spec: %v", err)
 	}
-	box.deploy(t, "sample-stack-2", "api.cafaye.test")
+	box.deploy(t, "sample-stack-2", "api.anywaye.test")
 
-	if _, body := get(t, client, addr, "api.cafaye.test", "/README"); !strings.Contains(body, "sample-stack-2") {
+	if _, body := get(t, client, addr, "api.anywaye.test", "/README"); !strings.Contains(body, "sample-stack-2") {
 		t.Errorf("after the second deploy the edge answered %q, want sample-stack-2", body)
 	}
 	after, err := Load(dir)
@@ -402,7 +402,7 @@ func TestTheSwitchIsARenameAndRollbackNeedsNoControlPlane(t *testing.T) {
 	if got, _ := Current(dir); got != "sample-stack-1" {
 		t.Errorf("current = %q after the rollback, want sample-stack-1", got)
 	}
-	if _, body := get(t, client, addr, "api.cafaye.test", "/README"); !strings.Contains(body, "sample-stack-1") {
+	if _, body := get(t, client, addr, "api.anywaye.test", "/README"); !strings.Contains(body, "sample-stack-1") {
 		t.Errorf("after the rollback the edge answered %q, want sample-stack-1", body)
 	}
 
@@ -428,8 +428,8 @@ func TestTheProbeLoopPersistsTheHealthItObserved(t *testing.T) {
 	defer up.Close()
 
 	b := newBoxState(t, "box-01", ModeInternal)
-	b.upstream["api.cafaye.test"] = strings.TrimPrefix(up.URL, "http://")
-	b.deploy(t, "sample-stack-1", "api.cafaye.test")
+	b.upstream["api.anywaye.test"] = strings.TrimPrefix(up.URL, "http://")
+	b.deploy(t, "sample-stack-1", "api.anywaye.test")
 
 	g := &Gateway{
 		Spec:     func() (Spec, error) { return Load(b.dir) },
@@ -442,7 +442,7 @@ func TestTheProbeLoopPersistsTheHealthItObserved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read the record after the probe: %v", err)
 	}
-	row, ok := got.Host("api.cafaye.test")
+	row, ok := got.Host("api.anywaye.test")
 	if !ok {
 		t.Fatal("the record lost its host row")
 	}
@@ -471,14 +471,14 @@ func TestAnUnhealthyUpstreamIsAnsweredByTheEdgeNotTheApp(t *testing.T) {
 	defer up.Close()
 
 	box := newBoxState(t, "box-01", ModeInternal)
-	box.upstream["api.cafaye.test"] = strings.TrimPrefix(up.URL, "http://")
-	box.deploy(t, "sample-stack-1", "api.cafaye.test")
+	box.upstream["api.anywaye.test"] = strings.TrimPrefix(up.URL, "http://")
+	box.deploy(t, "sample-stack-1", "api.anywaye.test")
 
-	g, addr := box.gateway(t, NewMinted("api.cafaye.test"))
+	g, addr := box.gateway(t, NewMinted("api.anywaye.test"))
 	g.probeAll(context.Background())
 
-	client := clientFor(addr, "api.cafaye.test")
-	code, body := get(t, client, addr, "api.cafaye.test", "/")
+	client := clientFor(addr, "api.anywaye.test")
+	code, body := get(t, client, addr, "api.anywaye.test", "/")
 	if code != http.StatusServiceUnavailable {
 		t.Fatalf("GET through an unhealthy upstream = %d, want 503 (body: %s)", code, body)
 	}
@@ -492,7 +492,7 @@ func TestAnUnhealthyUpstreamIsAnsweredByTheEdgeNotTheApp(t *testing.T) {
 	// The edge's own health path still answers, and says so: an edge that
 	// cannot report because one upstream is down is an edge that hides the
 	// rest of the box.
-	if code, body := get(t, client, addr, "api.cafaye.test", HealthPath); code != http.StatusOK {
+	if code, body := get(t, client, addr, "api.anywaye.test", HealthPath); code != http.StatusOK {
 		t.Errorf("GET %s with an unhealthy upstream = %d, want 200 (body: %s)", HealthPath, code, body)
 	} else if !strings.Contains(body, "unhealthy") {
 		t.Errorf("the edge's health answer does not carry the health it observed: %s", body)
@@ -532,25 +532,25 @@ func TestTheSwitchIsAtomicForARequestInFlight(t *testing.T) {
 		w.Write(body)
 	}))
 	defer slow.Close()
-	b.upstream["api.cafaye.test"] = strings.TrimPrefix(slow.URL, "http://")
+	b.upstream["api.anywaye.test"] = strings.TrimPrefix(slow.URL, "http://")
 
 	rel, err := Publish(dir, "sample-stack-1", map[string][]byte{"README": []byte("one\n")})
 	if err != nil {
 		t.Fatalf("publish: %v", err)
 	}
-	b.spec = b.spec.WithHost(Host{Name: "api.cafaye.test", Upstream: b.upstream["api.cafaye.test"]})
+	b.spec = b.spec.WithHost(Host{Name: "api.anywaye.test", Upstream: b.upstream["api.anywaye.test"]})
 	b.spec.Current = rel.ID
 	if err := Save(dir, b.spec); err != nil {
 		t.Fatalf("write the spec: %v", err)
 	}
 
-	_, addr := b.gateway(t, NewMinted("api.cafaye.test"))
-	client := clientFor(addr, "api.cafaye.test")
+	_, addr := b.gateway(t, NewMinted("api.anywaye.test"))
+	client := clientFor(addr, "api.anywaye.test")
 
 	// The request begins, and while it is in flight a whole deploy happens.
 	done := make(chan string, 1)
 	go func() {
-		_, body := get(t, client, addr, "api.cafaye.test", "/slow")
+		_, body := get(t, client, addr, "api.anywaye.test", "/slow")
 		done <- body
 	}()
 	time.Sleep(30 * time.Millisecond)
@@ -577,8 +577,8 @@ func TestARetiredHostIsRefusedAndTheControlProvesIt(t *testing.T) {
 	defer api.Close()
 
 	box := newBoxState(t, "box-01", ModeOrigin)
-	box.upstream["api.cafaye.test"] = strings.TrimPrefix(api.URL, "http://")
-	box.deploy(t, "sample-stack-1", "api.cafaye.test")
+	box.upstream["api.anywaye.test"] = strings.TrimPrefix(api.URL, "http://")
+	box.deploy(t, "sample-stack-1", "api.anywaye.test")
 
 	// The row is dropped from the record — the deploy that retired a hostname
 	// — and the file is re-written as a real retire would leave it.
@@ -591,10 +591,10 @@ func TestARetiredHostIsRefusedAndTheControlProvesIt(t *testing.T) {
 		t.Fatalf("write the retired spec: %v", err)
 	}
 
-	_, addr := box.gateway(t, NewMinted("api.cafaye.test"))
-	client := clientFor(addr, "api.cafaye.test")
+	_, addr := box.gateway(t, NewMinted("api.anywaye.test"))
+	client := clientFor(addr, "api.anywaye.test")
 
-	code, body := get(t, client, addr, "api.cafaye.test", "/")
+	code, body := get(t, client, addr, "api.anywaye.test", "/")
 	if code != http.StatusNotFound {
 		t.Fatalf("a retired host answered %d, want 404 (body: %s)", code, body)
 	}
@@ -607,11 +607,11 @@ func TestARetiredHostIsRefusedAndTheControlProvesIt(t *testing.T) {
 	// refused everything.
 	if err := Save(box.dir, func() Spec {
 		s, _ := Load(box.dir)
-		return s.WithHost(Host{Name: "api.cafaye.test", Upstream: box.upstream["api.cafaye.test"]})
+		return s.WithHost(Host{Name: "api.anywaye.test", Upstream: box.upstream["api.anywaye.test"]})
 	}()); err != nil {
 		t.Fatalf("restore the row: %v", err)
 	}
-	if code, body = get(t, client, addr, "api.cafaye.test", "/"); code != http.StatusOK {
+	if code, body = get(t, client, addr, "api.anywaye.test", "/"); code != http.StatusOK {
 		t.Errorf("with the row restored the edge answered %d, want 200 (body: %s)", code, body)
 	}
 }

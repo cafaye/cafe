@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/setup"
+	"github.com/anywaye/cafe/internal/setup"
 )
 
 // boxSetupDeps is what `cafe box setup` needs from the world, as a parameter for

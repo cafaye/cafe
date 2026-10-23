@@ -36,7 +36,7 @@ import (
 // carried the whole schema would be a second copy of it.
 //
 // THE ONE EXCEPTION IS owner_slug, AND IT IS DERIVED. Every project's address
-// is `<owner_slug>/<name>` — `cafaye` for the fleet, a publisher's immutable
+// is `<owner_slug>/<name>` — `anywaye` for the fleet, a publisher's immutable
 // slug otherwise — and the slug is what makes a name addressable rather than
 // merely findable. It is decoded here for one reason: it is the field that
 // tells a caller who asked for `alice/widget` and received a row from the
@@ -63,7 +63,7 @@ type PublicRepo struct {
 
 // PantryError is one non-2xx answer from pantry. It carries the problem's own
 // code and detail, because the detail is the actionable half: "no official
-// cafaye service is registered under that name" is a sentence a reader can act
+// anywaye service is registered under that name" is a sentence a reader can act
 // on, and a bare 404 is not.
 type PantryError struct {
 	// Status is the HTTP status.
@@ -91,7 +91,7 @@ func (e *PantryError) Error() string {
 // HTTPPantry is the real Pantry: one GET against pantry per method, tier 1
 // anonymous and tier 2 behind the caller's cafe token.
 type HTTPPantry struct {
-	// BaseURL is pantry's origin, e.g. https://pantry.cafaye.com. Empty is
+	// BaseURL is pantry's origin, e.g. https://pantry.anywaye.com. Empty is
 	// refused rather than defaulted: a client with no endpoint is a client
 	// that would GET a relative path and get a confusing answer.
 	BaseURL string

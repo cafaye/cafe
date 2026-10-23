@@ -8,7 +8,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/cafaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/dev"
 	"github.com/goccy/go-yaml"
 )
 
@@ -29,11 +29,11 @@ import (
 // agrees: `helm template` and `helm lint` stay in the packet's report, and
 // the in-process render is the half that runs everywhere.
 
-// chartManifest is a minimal cafaye.yml with an HTTP surface, which is the
+// chartManifest is a minimal anywaye.yml with an HTTP surface, which is the
 // kind of project `cafe gen chart` generates for.
 //
 // Written as a literal rather than read from this repository's own manifest so
-// a change to cafe's `cafaye.yml` cannot quietly move every table in this file.
+// a change to cafe's `anywaye.yml` cannot quietly move every table in this file.
 // cafe's own manifest declares no `exposes` at all — it is a binary, not a
 // service — which is itself one of the refusal cases below.
 const chartManifest = `name: courier
@@ -47,13 +47,13 @@ exposes:
     - courier.email.queued
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com
 `
 
 // generateChart runs the chart target over one manifest, because a table that
@@ -123,7 +123,7 @@ func TestTheChartFileSetIsStableAndSorted(t *testing.T) {
 // commits none. A generated Application would be a SECOND one of the same
 // name in the same namespace with a different source, and the later
 // `kubectl apply` wins: a deploy whose target depends on apply order is
-// not a deploy. The decision is recorded in cafaye/notes/deployment.md, "Who owns
+// not a deploy. The decision is recorded in anywaye/notes/deployment.md, "Who owns
 // the Application".
 //
 // The assertion is over the real output rather than a hand-written list:
@@ -137,7 +137,7 @@ func TestTheGeneratorEmitsNoArgoApplication(t *testing.T) {
 	for _, file := range out.Files {
 		if file.Path == "chart/templates/application.yaml" {
 			t.Errorf("cafe gen chart emitted %s — the substrate owns the Application "+
-				"(cafaye/notes/deployment.md, \"Who owns the Application\"): one static per service, "+
+				"(anywaye/notes/deployment.md, \"Who owns the Application\"): one static per service, "+
 				"OCI-sourced, applied by install.sh. A generated one is a second Application "+
 				"of the same name in the same namespace, and the later apply wins", file.Path)
 		}
@@ -155,7 +155,7 @@ func TestTheGeneratorEmitsNoArgoApplication(t *testing.T) {
 }
 
 // The readiness probe is /readyz, and that is the fleet's contract: every
-// cafaye service serves it and the substrate's rollout waits on it.
+// anywaye service serves it and the substrate's rollout waits on it.
 //
 // The test asserts the path is /readyz AND that the two wrong answers are
 // absent, because the defect this target exists to prevent is a probe pointed
@@ -366,13 +366,13 @@ language: spec
 core: ^0.2.0
 
 repository:
-  url: git@github.com:cafaye/specs.git
+  url: git@github.com:anywaye/specs.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: specs
-  contact: specs@cafaye.com
+  contact: specs@anywaye.com
 `,
 			sentinel: ErrUnsupportedLanguage,
 			want:     []string{"cafe gen chart", "spec"},
@@ -385,13 +385,13 @@ language: go
 core: ^0.2.0
 
 repository:
-  url: git@github.com:cafaye/core.git
+  url: git@github.com:anywaye/core.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: core
-  contact: core@cafaye.com
+  contact: core@anywaye.com
 `,
 			sentinel: ErrNoHTTPSurface,
 			want:     []string{"cafe gen chart", "exposes"},

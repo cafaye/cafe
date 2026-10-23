@@ -37,7 +37,7 @@ import (
 // ObservationSchemaVersion is the version of the observation document. It is a
 // field rather than implied by the wire so a consumer reading one in a year
 // can tell which shape it is holding without knowing which cafe build produced
-// it — the same reason every cafaye artifact carries its own version.
+// it — the same reason every anywaye artifact carries its own version.
 const ObservationSchemaVersion = 1
 
 // Observation is one box's report on itself: the deployed facts, the facts in

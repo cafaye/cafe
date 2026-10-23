@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/cafaye/cafe/internal/lock"
+	"github.com/anywaye/cafe/internal/lock"
 )
 
 // `cafe lock <path>` writes `cafe.lock` and `cafe lock --verify <path>` checks it.
@@ -36,7 +36,7 @@ func newLockCommand() *Command {
 		LongHelp: `Writes ` + lock.FileName + ` at the root of the tree: one entry per file the tree
 DECLARES, with its kind and the SHA-256 of its bytes.
 
-  spec             ` + "`cafaye.yml`" + `, and the OpenAPI document ` + "`exposes.api`" + ` names
+  spec             ` + "`anywaye.yml`" + `, and the OpenAPI document ` + "`exposes.api`" + ` names
   vendored-schema  every *.json under ` + "`internal/contract/schemas`" + `
   generated-client every path ` + "`cafe gen`" + ` writes for THIS manifest
   rule-bundle      ` + "`gate.yml`" + `, when the tree has one

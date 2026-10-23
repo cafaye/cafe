@@ -69,7 +69,7 @@ type Deployment struct {
 	// it and writes the bumped copy, for the same reason.
 	ChartContent string
 	// Image is the image reference in values.yaml, repository and tag, as the
-	// chart ships it — e.g. "ghcr.io/cafaye/identity:0.1.0". The tag is the
+	// chart ships it — e.g. "ghcr.io/anywaye/identity:0.1.0". The tag is the
 	// release: a deploy bumps it.
 	Image string
 	// ChartVersion is the version in Chart.yaml, e.g. "0.1.0". It is the OCI tag

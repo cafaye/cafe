@@ -15,7 +15,7 @@ import (
 // Every row was read out of buf's own table rather than reasoned to. The table
 // is `bufcheckserver.go`'s `BreakingXRuleSpecBuilder.Build(true, []string{...})`
 // calls, where each rule names the categories it belongs to; those categories are
-// what this test's three tiers are made of. Where cafaye's answer differs from
+// what this test's three tiers are made of. Where anywaye's answer differs from
 // buf's the row says so in a comment, because the packet's rule is that buf wins
 // and a disagreement that is not written down is a disagreement nobody reviews.
 func TestEveryRuleLandsInTheTiersBufPutsItIn(t *testing.T) {
@@ -33,7 +33,7 @@ func TestEveryRuleLandsInTheTiersBufPutsItIn(t *testing.T) {
 		// buf splits this one action across two rules in two category sets:
 		// FIELD_NO_DELETE is FILE, PACKAGE (source) and
 		// FIELD_NO_DELETE_UNLESS_NAME_RESERVED is WIRE_JSON (json), with its
-		// number-reserved sibling in WIRE_JSON and WIRE. cafaye has a single
+		// number-reserved sibling in WIRE_JSON and WIRE. anywaye has a single
 		// tombstone rather than a pair of them, so the rule is one and the tiers
 		// are the union of both of buf's. Which is also why this row is the only
 		// one where a deletion reaches WIRE: tombstoning the name is exactly what
@@ -42,9 +42,9 @@ func TestEveryRuleLandsInTheTiersBufPutsItIn(t *testing.T) {
 		{"property-no-delete", TierSource | TierJSON | TierWire},
 
 		// buf: RESERVED_MESSAGE_NO_DELETE is FILE, PACKAGE, WIRE_JSON and WIRE.
-		// cafaye says SOURCE+JSON and this is a deliberate divergence rather than
+		// anywaye says SOURCE+JSON and this is a deliberate divergence rather than
 		// an oversight: buf's reservation covers field NUMBERS as well as names,
-		// and the number is the half that protects a binary encoding. The cafaye
+		// and the number is the half that protects a binary encoding. The anywaye
 		// extension has no analog of a number — OpenAPI properties have names
 		// and no ordinal — so it reserves the half that is a label and there is
 		// no wire half left to reserve. buf's WIRE here is protecting something
@@ -75,7 +75,7 @@ func TestEveryRuleLandsInTheTiersBufPutsItIn(t *testing.T) {
 		// buf: RPC_SAME_REQUEST_TYPE is in all four.
 		{"operation-same-request", TierSource | TierJSON | TierWire},
 
-		// cafaye has no buf analog for "an operation stopped answering with
+		// anywaye has no buf analog for "an operation stopped answering with
 		// this status", so the tier is argued rather than copied: a status is a
 		// label on an answer, and identity's own document removed a 409 from
 		// POST /v1/email-verifications in 1.6.0 without any encoding moving. The
@@ -126,11 +126,11 @@ func TestEveryRuleLandsInTheTiersBufPutsItIn(t *testing.T) {
 // source break. If a row ever breaks the nesting, the model is wrong rather than
 // the row, and this test says which.
 //
-// One honest note, because the nesting is cafaye's and not buf's: buf has rules
+// One honest note, because the nesting is anywaye's and not buf's: buf has rules
 // in WIRE that are not in FILE — FIELD_NO_DELETE_UNLESS_NUMBER_RESERVED is the
-// one — so buf itself is not nested in this direction. cafaye's is, because
+// one — so buf itself is not nested in this direction. anywaye's is, because
 // every rule here reads a document and generating code from a document is how
-// every cafaye consumer sees it: there is no OpenAPI consumer for whom an
+// every anywaye consumer sees it: there is no OpenAPI consumer for whom an
 // encoding moved and the source still compiled.
 func TestTheTiersAreNestedTheWayBufNestsItsCategories(t *testing.T) {
 	for _, rule := range breakingRules() {
@@ -163,10 +163,10 @@ func TestEveryRuleNamesTheBufRuleItCopies(t *testing.T) {
 // Every rule's ID has to be one of ours and not buf's, in the other direction:
 // a rule that carries buf's spelling invites a reader to look it up in buf and
 // find a definition that is about protobuf rather than OpenAPI.
-func TestEveryRuleIsNamedInCafayesOwnSpelling(t *testing.T) {
+func TestEveryRuleIsNamedInAnywayesOwnSpelling(t *testing.T) {
 	for _, rule := range breakingRules() {
 		if strings.ToUpper(rule.ID) == rule.ID {
-			t.Errorf("rule %q is spelled in buf's upper-case idiom; cafaye's rule names are kebab-case so a reader can tell the two vocabularies apart", rule.ID)
+			t.Errorf("rule %q is spelled in buf's upper-case idiom; anywaye's rule names are kebab-case so a reader can tell the two vocabularies apart", rule.ID)
 		}
 	}
 }
@@ -226,7 +226,7 @@ func TestTheDefaultSelectionIsSourceAndJSON(t *testing.T) {
 		t.Errorf("DefaultTiers = %s, want %s", DefaultTiers, want)
 	}
 	if DefaultTiers.Has(TierWire) {
-		t.Error("DefaultTiers includes WIRE, and cafaye ships no binary encoding for a WIRE break to be about")
+		t.Error("DefaultTiers includes WIRE, and anywaye ships no binary encoding for a WIRE break to be about")
 	}
 }
 

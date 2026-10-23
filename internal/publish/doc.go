@@ -3,9 +3,9 @@
 // public catalog.
 //
 // The design was the approval-card pattern (PLAN-pantry-registry.md Phase 5):
-// the tool PROPOSES — a registration built from the local cafaye.yml, a version
+// the tool PROPOSES — a registration built from the local anywaye.yml, a version
 // tag, the dependency edges — and somebody confirmed before any write ran. The
-// user's ruling of 2026-10-11 ("for cafaye i think we should make everything
+// user's ruling of 2026-10-11 ("for anywaye i think we should make everything
 // non interactive by default as it shall mostly be used by agents") flipped
 // that second half: the agent path is THE path, so the default run publishes
 // without asking. `--dry-run` remains the proposal mode — print the proposal,

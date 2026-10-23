@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 	"github.com/goccy/go-yaml"
 )
 
@@ -32,9 +32,9 @@ var serviceNamePat = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
 func newAddCommand(deps addDeps) *Command {
 	c := &Command{
 		Name:    "add",
-		Summary: "add a pantry service dependency to the current project's cafaye.yml",
+		Summary: "add a pantry service dependency to the current project's anywaye.yml",
 		Usage:   "cafe add pantry/<name> [--dir <path>]",
-		LongHelp: "Adds a pantry service dependency to the current project's cafaye.yml.\n\n" +
+		LongHelp: "Adds a pantry service dependency to the current project's anywaye.yml.\n\n" +
 			"The manifest's `dependencies` field is validated against the schema core\n" +
 			"owns, vendored at internal/contract/schemas — the dependency entry's exact\n" +
 			"shape is that schema's `serviceRef`: `name` (required, serviceName),\n" +
@@ -65,7 +65,7 @@ func newAddCommand(deps addDeps) *Command {
 		data, err := os.ReadFile(manifestPath)
 		if err != nil {
 			_, _ = fmt.Fprintf(env.Stderr, "cafe add: no %s at %s: %v\n", contract.ManifestFileName(), manifestPath, err)
-			_, _ = fmt.Fprintf(env.Stderr, "cafe add: run `cafe init` or `cafe new` first, or pass a directory that holds a cafaye.yml\n")
+			_, _ = fmt.Fprintf(env.Stderr, "cafe add: run `cafe init` or `cafe new` first, or pass a directory that holds a anywaye.yml\n")
 			return errReported
 		}
 		manifest, finding := contract.CheckData(manifestPath, data)
@@ -139,16 +139,16 @@ func parsePantryRef(ref string) (string, error) {
 			if name == "" {
 				return "", fmt.Errorf("cafe add: pantry/<name> is missing the name: got %q; try pantry/billing", ref)
 			}
-			return "", fmt.Errorf("cafe add: %q is not a cafaye namespace name: lowercase kebab-case, 2-40 chars, start with letter (got %q)", name, name)
+			return "", fmt.Errorf("cafe add: %q is not a anywaye namespace name: lowercase kebab-case, 2-40 chars, start with letter (got %q)", name, name)
 		}
 		return "", fmt.Errorf("cafe add: a pantry dependency is written as pantry/<name> (e.g. pantry/billing), got %q", ref)
 	}
 	name := m[1]
 	if len(name) < 2 || len(name) > 40 {
-		return "", fmt.Errorf("cafe add: %q is not a cafaye namespace name: must be 2-40 characters", name)
+		return "", fmt.Errorf("cafe add: %q is not a anywaye namespace name: must be 2-40 characters", name)
 	}
 	if !serviceNamePat.MatchString(name) {
-		return "", fmt.Errorf("cafe add: %q is not a cafaye namespace name: lowercase kebab-case", name)
+		return "", fmt.Errorf("cafe add: %q is not a anywaye namespace name: lowercase kebab-case", name)
 	}
 	return name, nil
 }

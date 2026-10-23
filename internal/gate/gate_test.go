@@ -157,7 +157,7 @@ func TestTheFloorIsWhatRanNotWhatPassed(t *testing.T) {
 // writer that silently derives nothing.
 func TestParseOutputReadsTheGatesOwnLine(t *testing.T) {
 	out := strings.Join([]string{
-		"ok  \tgithub.com/cafaye/cafe/internal/example\t0.1s",
+		"ok  \tgithub.com/anywaye/cafe/internal/example\t0.1s",
 		"--- PASS: TestA (0.00s)",
 		"    --- PASS: TestA/sub (0.00s)",
 		"--- FAIL: TestB (0.00s)",
@@ -185,7 +185,7 @@ func TestParseOutputReadsTheGatesOwnLine(t *testing.T) {
 // line is a run whose numbers cannot be derived from, and it must be an error
 // rather than a Measured of zeros that would write a floor of zero.
 func TestParseOutputRefusesARunWithNoSummary(t *testing.T) {
-	if _, err := ParseOutput([]byte("ok  \tgithub.com/cafaye/cafe/internal/example\t0.1s\n")); err == nil {
+	if _, err := ParseOutput([]byte("ok  \tgithub.com/anywaye/cafe/internal/example\t0.1s\n")); err == nil {
 		t.Fatal("ParseOutput accepted output with no summary line; a floor derived from it would be zero")
 	}
 }

@@ -24,7 +24,7 @@ func newLandingCommand(deps landingDeps) *Command {
 		Name:    "landing",
 		Summary: "manage landings (contributions that replace PRs)",
 		Usage:   "cafe landing <subcommand> [args]",
-		LongHelp: "Manage landings on cafaye ship. A landing is a contribution to a project,\n" +
+		LongHelp: "Manage landings on anywaye ship. A landing is a contribution to a project,\n" +
 			"and ship keeps a linked task for its work lifecycle.\n\n" +
 			"Subcommands:\n" +
 			"  create <project-id>                        Submit a new landing\n" +
@@ -303,7 +303,7 @@ func landingPolicy(deps landingDeps, env *Env, args []string) error {
 		projectID := args[1]
 		fs := flag.NewFlagSet("landing policy set", flag.ContinueOnError)
 		allowedKinds := fs.String("allowed-kinds", "", "comma-separated landing kinds allowed (change,issue,feedback,data,request)")
-		allowedContribs := fs.String("allowed-contributors", "", "comma-separated cafaye user/team/org ids allowed")
+		allowedContribs := fs.String("allowed-contributors", "", "comma-separated anywaye user/team/org ids allowed")
 		requiredEvidence := fs.String("required-evidence", "", "comma-separated evidence types required before approval")
 		requireHuman := fs.Bool("require-human-approval", false, "require a human to approve")
 		requireChecks := fs.Bool("require-checks-green", false, "require linked task checks to pass before merge")

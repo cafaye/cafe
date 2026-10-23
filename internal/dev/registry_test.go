@@ -23,7 +23,7 @@ func TestCatalogResolvesTheServicesItHolds(t *testing.T) {
 	if !found {
 		t.Fatal("Resolve(alpha) not found, want the entry the catalog holds")
 	}
-	if entry.Image != "ghcr.io/cafaye/alpha:1.2.3" {
+	if entry.Image != "ghcr.io/anywaye/alpha:1.2.3" {
 		t.Errorf("Image = %q, want the catalog's", entry.Image)
 	}
 	if _, found := registry.Resolve("nowhere"); found {
@@ -40,7 +40,7 @@ func TestCatalogRoundTripsThroughJSON(t *testing.T) {
 	want["alpha"] = withDeps(want["alpha"], "cache")
 	want["cache"] = Entry{
 		Name:        "cache",
-		Image:       "ghcr.io/cafaye/cache:0.4.0",
+		Image:       "ghcr.io/anywaye/cache:0.4.0",
 		Port:        6379,
 		Publish:     true,
 		Command:     []string{"redis-server", "--appendonly", "no"},
@@ -79,7 +79,7 @@ func TestCatalogWireShape(t *testing.T) {
 	document := `{
 	  "identity": {
 	    "name": "identity",
-	    "image": "ghcr.io/cafaye/identity:0.4.2",
+	    "image": "ghcr.io/anywaye/identity:0.4.2",
 	    "command": ["/app/identity", "serve"],
 	    "port": 8080,
 	    "publish": true,
@@ -181,7 +181,7 @@ func TestReadCatalogRejectsAnEntryThatNamesAnotherService(t *testing.T) {
 func TestReadCatalogFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "catalog.json")
-	writeFile(t, path, `{"alpha": {"name": "alpha", "image": "ghcr.io/cafaye/alpha:1.2.3"}}`)
+	writeFile(t, path, `{"alpha": {"name": "alpha", "image": "ghcr.io/anywaye/alpha:1.2.3"}}`)
 
 	catalog, err := ReadCatalogFile(path)
 	if err != nil {
@@ -247,7 +247,7 @@ func writeFile(t *testing.T, path, contents string) {
 // image in it and the document is misspelled. Sent to edit a file that was
 // already correct.
 func TestReadCatalogRefusesAMisspelledKey(t *testing.T) {
-	_, err := ReadCatalog(strings.NewReader(`{"identity": {"name": "identity", "imag": "cafaye/identity:dev", "port": 8080}}`))
+	_, err := ReadCatalog(strings.NewReader(`{"identity": {"name": "identity", "imag": "anywaye/identity:dev", "port": 8080}}`))
 
 	if !errors.Is(err, ErrBadCatalog) {
 		t.Fatalf("err = %v, want it to wrap ErrBadCatalog", err)
@@ -266,8 +266,8 @@ func TestReadCatalogRefusesAMisspelledKey(t *testing.T) {
 // first two sends them to edit.
 func TestReadCatalogNamesTheServiceAndTheKeysThatWouldHaveWorked(t *testing.T) {
 	_, err := ReadCatalog(strings.NewReader(`{
-		"courier": {"name": "courier", "image": "cafaye/courier:dev"},
-		"identity": {"name": "identity", "imagee": "cafaye/identity:dev"}
+		"courier": {"name": "courier", "image": "anywaye/courier:dev"},
+		"identity": {"name": "identity", "imagee": "anywaye/identity:dev"}
 	}`))
 
 	if err == nil {
@@ -329,7 +329,7 @@ func TestReadCatalogRefusesAMisspelledHealthcheckKey(t *testing.T) {
 // difference between that and a typo is one prefix a human chose to type.
 func TestReadCatalogDropsAnExtensionKey(t *testing.T) {
 	catalog, err := ReadCatalog(strings.NewReader(
-		`{"identity": {"name": "identity", "image": "cafaye/identity:dev", "x-maintainer": "cafe"}}`))
+		`{"identity": {"name": "identity", "image": "anywaye/identity:dev", "x-maintainer": "cafe"}}`))
 
 	if err != nil {
 		t.Fatalf("ReadCatalog: %v", err)
@@ -338,7 +338,7 @@ func TestReadCatalogDropsAnExtensionKey(t *testing.T) {
 	if !found {
 		t.Fatal("the catalog does not hold identity")
 	}
-	if entry.Image != "cafaye/identity:dev" {
+	if entry.Image != "anywaye/identity:dev" {
 		t.Errorf("Image = %q, want the image to survive the extension key", entry.Image)
 	}
 }

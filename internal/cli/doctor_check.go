@@ -9,9 +9,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/ledger"
-	"github.com/cafaye/cafe/internal/ports"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/ports"
 )
 
 // Severity is the tri-state a check reports in.

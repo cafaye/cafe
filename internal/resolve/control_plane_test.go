@@ -20,7 +20,7 @@ func TestHTTPControlPlaneMintsAndRedeems(t *testing.T) {
 			if r.Method != http.MethodPost {
 				t.Errorf("mint method = %q", r.Method)
 			}
-			if got := r.Header.Get("Authorization"); got != "Bearer cafaye_caller" {
+			if got := r.Header.Get("Authorization"); got != "Bearer anywaye_caller" {
 				t.Errorf("mint bearer = %q, want the caller's token", got)
 			}
 			w.WriteHeader(http.StatusCreated)
@@ -41,7 +41,7 @@ func TestHTTPControlPlaneMintsAndRedeems(t *testing.T) {
 	defer srv.Close()
 
 	c := HTTPControlPlane{BaseURL: srv.URL}
-	grant, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	grant, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err != nil {
 		t.Fatalf("artifact fetch: %v", err)
 	}
@@ -62,12 +62,12 @@ func TestHTTPControlPlaneEntitlementRequiredIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`{"error":{"code":"entitlement_required","message":"product ` + "`identity`" + ` needs an entitlement — start one at https://cafaye.com"}}`))
+		_, _ = w.Write([]byte(`{"error":{"code":"entitlement_required","message":"product ` + "`identity`" + ` needs an entitlement — start one at https://anywaye.com"}}`))
 	}))
 	defer srv.Close()
 
 	c := HTTPControlPlane{BaseURL: srv.URL}
-	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err == nil {
 		t.Fatalf("a 403 resolved without an error")
 	}
@@ -89,7 +89,7 @@ func TestHTTPControlPlaneVersionNotGrantedIsNamed(t *testing.T) {
 	defer srv.Close()
 
 	c := HTTPControlPlane{BaseURL: srv.URL}
-	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err == nil {
 		t.Fatalf("a 403 resolved without an error")
 	}
@@ -113,7 +113,7 @@ func TestHTTPControlPlaneNotFoundIsNamed(t *testing.T) {
 	defer srv.Close()
 
 	c := HTTPControlPlane{BaseURL: srv.URL}
-	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
@@ -140,7 +140,7 @@ func TestHTTPControlPlaneMintNotFoundCarriesTheRemedy(t *testing.T) {
 	defer srv.Close()
 
 	c := HTTPControlPlane{BaseURL: srv.URL}
-	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err == nil {
 		t.Fatalf("a 404 resolved without an error")
 	}
@@ -176,7 +176,7 @@ func TestHTTPControlPlaneNamesWhichTier3CallWasRefused(t *testing.T) {
 	defer srv.Close()
 
 	c := HTTPControlPlane{BaseURL: srv.URL}
-	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err == nil {
 		t.Fatalf("the mint was refused without an error")
 	}
@@ -208,7 +208,7 @@ func TestHTTPControlPlaneRedeemConflictIsNamed(t *testing.T) {
 	defer srv.Close()
 
 	c := HTTPControlPlane{BaseURL: srv.URL}
-	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err == nil {
 		t.Fatalf("a redeemed capability resolved without an error")
 	}
@@ -227,7 +227,7 @@ func TestHTTPControlPlaneRedeemConflictIsNamed(t *testing.T) {
 // A client with no endpoint refuses rather than POSTing to a relative path.
 func TestHTTPControlPlaneWithoutBaseURLRefuses(t *testing.T) {
 	c := HTTPControlPlane{}
-	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "cafaye_caller")
+	_, err := c.ArtifactFetch(context.Background(), "11111111-1111-4111-8111-111111111111", "identity", "^0.1.0", "anywaye_caller")
 	if err == nil {
 		t.Fatalf("a client with no endpoint resolved without an error")
 	}

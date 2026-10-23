@@ -34,7 +34,7 @@ type Options struct {
 	// ALLOWED is not cafe's decision, and PlanFor only checks that it can be
 	// written down without a shell quoting it. The production-name rule belongs
 	// to kamal-backup (Config#production_like_target?) and to
-	// cafaye/kit's templates/kamal/drill.sh, and both of them say so when it
+	// anywaye/kit's templates/kamal/drill.sh, and both of them say so when it
 	// fires. See the package doc for why cafe keeps no copy of it.
 	Scratch string
 	// Tables are the tables that must hold rows after the restore. At least one:
@@ -257,7 +257,7 @@ func PlanFor(cover Cover, backupDoc Config, o Options) (Plan, error) {
 		return Plan{}, fmt.Errorf("%w: no --table, so a restore would have nothing to assert.\n"+
 			"  A restore whose only proof is that a command exited zero passes on an empty database, and an\n"+
 			"  empty database is the shape a broken restore produces. Name at least one table that must hold rows.\n"+
-			"  The assertion itself is cafaye/kit's templates/kamal/drill.sh's reason for requiring --table too", ErrUsage)
+			"  The assertion itself is anywaye/kit's templates/kamal/drill.sh's reason for requiring --table too", ErrUsage)
 	}
 	for _, table := range o.Tables {
 		if err := plainIdentifier("table", table); err != nil {

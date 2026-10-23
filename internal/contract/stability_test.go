@@ -4,7 +4,7 @@ import "testing"
 
 // buf derives a package's stability from the version component of its name and
 // nothing else: `foo.v1beta1` is a package version, `v1beta1` alone is not one,
-// because a version is a component of a name rather than a name. cafaye's
+// because a version is a component of a name rather than a name. anywaye's
 // version component is the last element of the document path with its extension
 // removed, so the same grammar and the same "at least two components" rule
 // apply: `openapi/v1beta1.yaml` carries one, `v1beta1.yaml` does not.

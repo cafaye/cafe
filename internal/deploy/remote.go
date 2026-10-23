@@ -11,20 +11,20 @@ import (
 )
 
 // The operated remote is the third engine, and the only one whose target is a
-// cafaye deployment rather than one the operator owns.
+// anywaye deployment rather than one the operator owns.
 //
 //	kamal    the operator's own box: build, push, roll out behind kamal-proxy
 //	argo     the launch substrate's cluster, by a values commit and a sync
-//	remote   the cafaye-operated platform: build once, deploy once, serve many
+//	remote   the anywaye-operated platform: build once, deploy once, serve many
 //
-// The engine exists so `cafe deploy` can name a cafaye-operated target at all.
+// The engine exists so `cafe deploy` can name a anywaye-operated target at all.
 // Before it, the command had two engines and both pointed at something the
-// operator runs themselves, which is the "nowhere cafaye-operated to deploy to"
+// operator runs themselves, which is the "nowhere anywaye-operated to deploy to"
 // gap AGENTS-FIRST.md named as knowingly not done.
 
 // EngineRemote is the operated remote: the customer's app is built once and
 // deployed once, and every client they serve is an account on the shared
-// platform rather than a cafaye deployment of its own.
+// platform rather than a anywaye deployment of its own.
 //
 // It is not the default and it does not deploy anything today. See
 // ErrTenancyUndecided: the plan is refused until the tenancy decision is
@@ -49,9 +49,9 @@ var ErrTenancyUndecided = errors.New("the operated remote is not enabled")
 // the reader can do today — the same shape as the 403 agent_unclaimed sentence
 // in internal/agent: an instruction, not a status code.
 const tenancyUndecidedRefusal = `
-The remote engine deploys a service into the cafaye-operated platform, where
+The remote engine deploys a service into the anywaye-operated platform, where
 every client the account serves is an account on one shared deployment rather
-than a cafaye deployment of its own. That is only safe once one deployment is
+than a anywaye deployment of its own. That is only safe once one deployment is
 proven safe for strangers, and that proof is TENANCY-GATE.md.
 
 The decision that records it is TG-D1: shared multi-tenant platform as the

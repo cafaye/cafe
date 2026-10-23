@@ -34,7 +34,7 @@ type Kind string
 // cafe does not, and treating it as a plain file would silently drop the one
 // fact that made it worth pinning.
 const (
-	// KindSpec is the project's own declaration: `cafaye.yml`, and the OpenAPI
+	// KindSpec is the project's own declaration: `anywaye.yml`, and the OpenAPI
 	// document `exposes.api` names when the manifest declares one.
 	KindSpec Kind = "spec"
 	// KindVendoredSchema is a byte-for-byte copy of a core schema, under the

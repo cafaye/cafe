@@ -21,9 +21,9 @@ func newTaskCommand(deps taskDeps) *Command {
 	deps, urlErr := deps.withDefaults()
 	c := &Command{
 		Name:    "task",
-		Summary: "manage tasks (units of work) on cafaye",
+		Summary: "manage tasks (units of work) on anywaye",
 		Usage:   "cafe task <subcommand> [args]",
-		LongHelp: "Manage tasks on cafaye ship.\n\n" +
+		LongHelp: "Manage tasks on anywaye ship.\n\n" +
 			"Subcommands:\n" +
 			"  create <project-id>                       Create a new task\n" +
 			"  list <project-id>                         List tasks\n" +

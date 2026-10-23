@@ -3,7 +3,7 @@ package emitter
 import (
 	"strings"
 
-	"github.com/cafaye/cafe/internal/telemetry"
+	"github.com/anywaye/cafe/internal/telemetry"
 )
 
 // This file is the seam between cafe's own wiring and the generated contract.
@@ -61,7 +61,7 @@ func EndpointFor(lookup func(string) string) string {
 
 // otlpEndpointVariable is the OTel specification's own variable, which every
 // SDK reads and which is therefore the fallback that makes cafe work with
-// tooling that knows nothing about cafaye.
+// tooling that knows nothing about anywaye.
 const otlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT"
 
 // NoOpReasonFor is the generated NoOpReason(), over an injected lookup, and "" means telemetry is on.
@@ -71,7 +71,7 @@ const otlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT"
 //
 //   - OTEL_SDK_DISABLED=true is the global switch and wins over everything,
 //     because core's endpoint contract names it as the mechanism the no-op path
-//     is implemented with rather than a cafaye reimplementation of "disabled".
+//     is implemented with rather than a anywaye reimplementation of "disabled".
 //
 //   - all three per-signal exporters set to `none` is the finer-grained half, and
 //     naming all three is the point: "a no-op that only covers traces is a

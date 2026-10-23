@@ -1,14 +1,14 @@
 # AGENTS.md
 
-Conventions for `cafe`, the cafaye platform CLI. Read this before changing
-anything; the house rules apply on top of it — SSH remotes for the repositories cafaye owns, and tests first: write the test, watch it fail, then implement.
+Conventions for `cafe`, the anywaye platform CLI. Read this before changing
+anything; the house rules apply on top of it — SSH remotes for the repositories anywaye owns, and tests first: write the test, watch it fail, then implement.
 
 ## What this repository is
 
-`module github.com/cafaye/cafe`, Go >= 1.25, one binary. It is the client side of
+`module github.com/anywaye/cafe`, Go >= 1.25, one binary. It is the client side of
 the platform: the manifest, the local stack, the generator, the deploy path and
-the MCP server. The contracts themselves are owned by `cafaye/core`, and the
-shared CI and lint configuration comes from `cafaye/kit` — neither lives here.
+the MCP server. The contracts themselves are owned by `anywaye/core`, and the
+shared CI and lint configuration comes from `anywaye/kit` — neither lives here.
 
 ## Layout
 
@@ -139,7 +139,7 @@ the rest of this file leans on:
 
 **A generated artifact is written, printed, and compiled — and the compilation
 is the rule this packet added.** `cafe gen telemetry` writes three files; two of
-them are Go. cafe runs its own generator on its own `cafaye.yml`, so
+them are Go. cafe runs its own generator on its own `anywaye.yml`, so
 `internal/telemetry/` is a committed copy of generated Go that `go build ./...`,
 `go vet ./...`, `gofmt -l .` and `go test ./...` all reach, and
 `telemetry/otel-endpoint.json` is validated against core's own vendored schema
@@ -227,7 +227,7 @@ pin on it at all.
 `internal/agent` is `cafe agent`, split by the same rule, and it is the client
 half of the agents-first flow — the thing an agent actually runs. It is the
 mirror of `internal/box` across the subject split in
-cafaye/notes/agents-first.md: a box is a MACHINE with a keypair that enrols, an agent
+anywaye/notes/agents-first.md: a box is a MACHINE with a keypair that enrols, an agent
 is a PRINCIPAL that registers, becomes claimed by a human, and holds a token:
 
 - `doc.go` — what the package is, its three seams, the output contract, and the
@@ -337,7 +337,7 @@ test pins them:
   on.
 - `setup.go` — the three phases: probe, walk, verify.
 - `wipe.go` — the mirror: `cafe box wipe`'s ordered check-and-apply table
-  (boxd, its unit, the binary, cafaye's state, k3s, Docker), the read-only
+  (boxd, its unit, the binary, anywaye's state, k3s, Docker), the read-only
   fingerprint that refuses a host setup did not install, the KEPT list the help
   and the document both read, and the one confirmation seam — asked after the
   probes and before the first removal, so a stranger's machine is refused rather
@@ -467,7 +467,7 @@ and it holds three rules:
   edge probes and records, and the one path the edge answers itself.
 
 **Three TLS modes exist because a box is in three states, and the third is not
-a compromise.** `*.svc.cafaye.com` never appears in public DNS (the plan's
+a compromise.** `*.svc.anywaye.com` never appears in public DNS (the plan's
 stability rule 4 makes a leak a five-alarm fire), so the names that are only
 ever reached cluster-internally are terminated with a certificate the box
 issued itself and no ACME account is involved at all. A box that had to reach
@@ -492,8 +492,8 @@ broken the control plane is the last thing an operator wants to depend on.
 
 **The proof is the gateway over a real listener, not a unit stub of it.** Seven
 tests in `internal/edge` dial a real loopback TLS listener with real SNI, so
-`api.cafaye.test` and `auth.cafaye.test` answer `/healthz` (the edge's own
-path) and `/readyz` (the app's) and `identity.svc.cafaye.com` answers over a
+`api.anywaye.test` and `auth.anywaye.test` answer `/healthz` (the edge's own
+path) and `/readyz` (the app's) and `identity.svc.anywaye.com` answers over a
 minted wildcard; the switch test serves the release directory through the
 `current` symlink and asserts a publish and a rollback change what the customer
 gets with the routing record untouched. `TestARetiredHostIsRefusedAndTheControl
@@ -603,7 +603,7 @@ customer reads rather than a file a machine writes:
   rules that hold them together: a condition is DATA, a rule the observation
   cannot answer reports UNKNOWN rather than a pass, and no configured value is
   ever a fact.
-- `rule.go` — the library itself: the ten rows `cafaye/notes/ops.md:742-753`
+- `rule.go` — the library itself: the ten rows `anywaye/notes/ops.md:742-753`
   records, each with the doc's condition, what a generic monitor sees, what
   we know, the remedy derived from it, and the core contract it cites.
 - `condition.go` — the twelve-predicate vocabulary and the evaluator that
@@ -667,8 +667,8 @@ record the stack wrote, with the control half asserting the name IS there.
 **Nothing here needs a container runtime to prove anything.** The `Box` seam
 is three methods; a test drives a fake that counts, and the e2e test serves
 the release directory through a real loopback HTTP edge that routes on the
-Host header — so a service change through `api.cafaye.test` and
-`auth.cafaye.test`, and a broken deploy flipping back on purpose, are
+Host header — so a service change through `api.anywaye.test` and
+`auth.anywaye.test`, and a broken deploy flipping back on purpose, are
 assertions in the gate rather than a screenshot in a report.
 
 `internal/stack` is stdlib only, and it holds to it for the same reason
@@ -859,7 +859,7 @@ it is why there is no allowlist transcribed anywhere in this tree.
 
 Four of core's ten telemetry schemas are deliberately absent, and which four is a
 decision rather than an oversight: `probes.schema.json` needs a service's runtime
-dependency list and no field in `cafaye.yml` records one — and a `readyz` that
+dependency list and no field in `anywaye.yml` records one — and a `readyz` that
 checked nothing is the failure that schema exists to prevent — and the three `slo*`
 schemas are about budgets a person decides per service. Emitting either would be
 emitting a guess, and a guess in a file something else is written against is the
@@ -909,7 +909,7 @@ All three are required before a commit lands. `go vet` and `gofmt` are not in
 `bin/prime`; run all three.
 
 **`gate.yml` at the repository root is the declaration of all this.** The format
-is `cafaye/core`'s `schemas/gate.schema.json`, the checker is its
+is `anywaye/core`'s `schemas/gate.schema.json`, the checker is its
 `harness/gate_check.py`, and the reasoning is its `docs/gate.md` — including the
 two alternatives that were measured and rejected. Three consequences for this
 repository, and they are rules rather than notes:
@@ -943,7 +943,7 @@ To check the declaration from core, without running anything:
 ```
 
 `bin/prime` is **not** kit's Go template and does not claim to be. It is
-cafaye's own, and it is the gate CI runs, because a CI-only variant of
+anywaye's own, and it is the gate CI runs, because a CI-only variant of
 a gate is worse than no gate: two commands that can disagree, one of them
 nobody runs locally, and a green badge that means the one nobody runs. Adopting
 kit's template is a decision, not a chore — it would add `go vet`, `-count=1`
@@ -1055,7 +1055,7 @@ which nothing compiles, and the gate's own test-count floor caught it.
 
 ## Changing the contract
 
-The schema, the event types and the conventions belong to `cafaye/core`. When
+The schema, the event types and the conventions belong to `anywaye/core`. When
 core publishes a new one:
 
 1. Copy it over `internal/contract/schemas/manifest-<version>.json` and update
@@ -1063,7 +1063,7 @@ core publishes a new one:
 2. Update `manifestSchemaPin` in `internal/contract/schema_test.go` to the new
    sha256, and `TestVendoredSchemaPinsTheEventTypePattern` if the patterns
    moved. Both fail loudly otherwise, which is the point.
-3. Re-copy the fixtures from core's `examples/` and `cafaye.yml` — see
+3. Re-copy the fixtures from core's `examples/` and `anywaye.yml` — see
    `internal/contract/testdata/README.md`.
 4. `bin/prime`, and lint the tree: `go run ./cmd/cafe contract lint .`
 

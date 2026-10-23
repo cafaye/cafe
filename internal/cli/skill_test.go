@@ -26,7 +26,7 @@ import (
 var skillCommandToken = regexp.MustCompile("(?m)(?:^|`)\\s*cafe\\s+([a-z][a-z0-9-]*)(?:\\s+([a-z][a-z0-9-]*))?")
 
 // skillFilePath is the embedded skill, read from where the embed reads it.
-const skillFilePath = "../skills/assets/cafaye/SKILL.md"
+const skillFilePath = "../skills/assets/anywaye/SKILL.md"
 
 // Every command the skill file names has to exist.
 func TestTheSkillFileOnlyNamesCommandsThatExist(t *testing.T) {

@@ -109,7 +109,7 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) 
 // dialTarget turns the identity's control-plane fact into what the network
 // needs: the host:port to dial and the hostname to verify the server against.
 //
-// The identity stores the URL form — `https://box.svc.cafaye.com`, the
+// The identity stores the URL form — `https://box.svc.anywaye.com`, the
 // spelling `--box` and CAF_BOX_URL accept and the form already on every
 // enrolled box — because that is what a human typed, what `cafe boxd
 // --report` shows, and what the enrollment HTTP client needs. The dial needs
@@ -121,7 +121,7 @@ func (d tlsDialer) Dial(ctx context.Context, id Identity) (ControlPlane, error) 
 // the channel is always TLS over TCP — so they are stripped.
 //
 // A URL with NO port is the deployed form, not a mistake: the control plane
-// is `https://box.svc.cafaye.com`, exactly what `cafe box enroll --box` is
+// is `https://box.svc.anywaye.com`, exactly what `cafe box enroll --box` is
 // documented to take and stores verbatim, and a dialer that refused it meant
 // a box enrolled exactly as documented could never report. So a portless URL
 // dials the scheme's default — 443 for https, 80 for http. Those are the

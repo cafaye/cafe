@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // `cafe new` scaffolds into ./<name>, so every case here runs in a directory
@@ -27,14 +27,14 @@ func TestNewScaffoldsAProjectThatLints(t *testing.T) {
 	if code != exitSuccess {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
-	for _, want := range []string{"cafaye.yml", "main.go", "README.md", "docker/Dockerfile"} {
+	for _, want := range []string{"anywaye.yml", "main.go", "README.md", "docker/Dockerfile"} {
 		if _, err := os.Stat(filepath.Join("acme", filepath.FromSlash(want))); err != nil {
 			t.Errorf("%s was not written: %v", want, err)
 		}
 	}
 	// Every file is printed in full: a scaffold nobody can inspect is a
 	// scaffold nobody can debug.
-	if !strings.Contains(stdout, "===== cafaye.yml =====") || !strings.Contains(stdout, "name: acme") {
+	if !strings.Contains(stdout, "===== anywaye.yml =====") || !strings.Contains(stdout, "name: acme") {
 		t.Errorf("the scaffold was not printed in full:\n%s", stdout)
 	}
 
@@ -55,7 +55,7 @@ func TestNewRefusesToClobberAnExistingProject(t *testing.T) {
 		t.Fatalf("first scaffold exited %d (stderr: %s)", code, stderr)
 	}
 	edited := []byte("# hand-edited by a person\n")
-	if err := os.WriteFile(filepath.Join("acme", "cafaye.yml"), edited, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join("acme", "anywaye.yml"), edited, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,10 +64,10 @@ func TestNewRefusesToClobberAnExistingProject(t *testing.T) {
 	if code != exitFailure {
 		t.Errorf("exit code = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "cafaye.yml") {
+	if !strings.Contains(stderr, "anywaye.yml") {
 		t.Errorf("the refusal does not name the file in the way: %s", stderr)
 	}
-	after, err := os.ReadFile(filepath.Join("acme", "cafaye.yml"))
+	after, err := os.ReadFile(filepath.Join("acme", "anywaye.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestNewRefusesToClobberAnExistingProject(t *testing.T) {
 	if code, _, stderr := runCLI(t, testVersion, "new", "-force", "acme"); code != exitSuccess {
 		t.Fatalf("scaffold with -force exited %d (stderr: %s)", code, stderr)
 	}
-	forced, err := os.ReadFile(filepath.Join("acme", "cafaye.yml"))
+	forced, err := os.ReadFile(filepath.Join("acme", "anywaye.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,9 +98,9 @@ func TestNewRefusesAnIllegalName(t *testing.T) {
 		name string
 		want string
 	}{
-		{name: "My_App", want: "cafaye namespace name"},
-		{name: "cafaye", want: "reserved by the platform"},
-		{name: strings.Repeat("x", 41), want: "cafaye namespace name"},
+		{name: "My_App", want: "anywaye namespace name"},
+		{name: "anywaye", want: "reserved by the platform"},
+		{name: strings.Repeat("x", 41), want: "anywaye namespace name"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestNewHonoursTheNameOverride(t *testing.T) {
 	if code != exitSuccess {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
-	manifest, err := os.ReadFile(filepath.Join("acme-worktree", "cafaye.yml"))
+	manifest, err := os.ReadFile(filepath.Join("acme-worktree", "anywaye.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}

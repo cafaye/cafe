@@ -54,7 +54,7 @@ components:
   schemas:
     User:
       type: object
-      x-cafaye-reserved-properties: [name]
+      x-anywaye-reserved-properties: [name]
       properties:
         display_name: {type: string}
 `)
@@ -232,7 +232,7 @@ func TestTheBreakingVerbNamesItsTiersInItsHelp(t *testing.T) {
 		"cafe contract breaking",
 		"--tiers",
 		"SOURCE", "JSON", "WIRE",
-		"x-cafaye-reserved-properties",
+		"x-anywaye-reserved-properties",
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("help missing %q\ngot:\n%s", want, stdout)

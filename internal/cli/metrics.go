@@ -18,12 +18,12 @@ func newMetricsCommand() *Command {
 	)
 	return &Command{
 		Name:    "metrics",
-		Summary: "Query the cafaye metrics store (Prometheus/Mimir) for a PromQL result",
+		Summary: "Query the anywaye metrics store (Prometheus/Mimir) for a PromQL result",
 		Usage:   "cafe metrics [--url URL] [--query PROMQL] [--tenant TENANT]",
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&baseURL, "url", os.Getenv("CAFAYE_PROMETHEUS_URL"), "Prometheus/Mimir base URL")
+			fs.StringVar(&baseURL, "url", os.Getenv("ANYWAYE_PROMETHEUS_URL"), "Prometheus/Mimir base URL")
 			fs.StringVar(&query, "query", "up", "PromQL query")
-			fs.StringVar(&tenant, "tenant", os.Getenv("CAFAYE_PROMETHEUS_TENANT"), "tenant id (Mimir)")
+			fs.StringVar(&tenant, "tenant", os.Getenv("ANYWAYE_PROMETHEUS_TENANT"), "tenant id (Mimir)")
 		},
 		Run: func(args []string, env *Env) error {
 			if strings.TrimSpace(baseURL) == "" {

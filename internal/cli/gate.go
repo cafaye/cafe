@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cafaye/cafe/internal/gate"
-	"github.com/cafaye/cafe/internal/lock"
+	"github.com/anywaye/cafe/internal/gate"
+	"github.com/anywaye/cafe/internal/lock"
 )
 
 // `cafe gate floors` regenerates the countable floors in `gate.yml` from the

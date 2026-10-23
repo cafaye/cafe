@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/box"
 )
 
 // Dev secrets live in a FileRing under the project's keyring directory, filed

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/mcp"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/mcp"
 )
 
 // The wire-level tests in mcp_wire_test.go drive a real process and prove the
@@ -102,7 +102,7 @@ func TestTheManifestToolReportsWhatTheManifestDeclares(t *testing.T) {
 	if facts.APITitle != "Stack" {
 		t.Errorf("api title = %q, want Stack", facts.APITitle)
 	}
-	if facts.Repository != "git@github.com:cafaye/stack.git" {
+	if facts.Repository != "git@github.com:anywaye/stack.git" {
 		t.Errorf("repository = %q", facts.Repository)
 	}
 }
@@ -114,7 +114,7 @@ func TestTheManifestToolReportsWhatTheManifestDeclares(t *testing.T) {
 func TestTheManifestToolReportsAnInvalidManifestAsAnAnswer(t *testing.T) {
 	dir := projectDir(t, map[string]string{
 		"docker/Dockerfile": "FROM scratch\n",
-		"cafaye.yml":        "name: Stack\nlanguage: go\ncore: nope\n\nrepository:\n  url: https://example.com/x\nowner:\n  team: stack\n",
+		"anywaye.yml":        "name: Stack\nlanguage: go\ncore: nope\n\nrepository:\n  url: https://example.com/x\nowner:\n  team: stack\n",
 	})
 	tools, _ := mcpTestTools(t, "")
 
@@ -158,7 +158,7 @@ func TestTheRegistryToolReportsEnvironmentNamesAndNeverValues(t *testing.T) {
 	catalog := `{
   "alpha": {
     "name": "alpha",
-    "image": "ghcr.io/cafaye/alpha:1.2.3",
+    "image": "ghcr.io/anywaye/alpha:1.2.3",
     "port": 8080,
     "environment": {"SECRET_TOKEN": "` + secret + `", "LOG_LEVEL": "debug"},
     "dependencies": ["postgres"]
@@ -176,8 +176,8 @@ func TestTheRegistryToolReportsEnvironmentNamesAndNeverValues(t *testing.T) {
 		t.Fatalf("the catalog holds one service, the answer has %d", len(facts.Services))
 	}
 	entry := facts.Services[0]
-	if entry.Name != "alpha" || entry.Image != "ghcr.io/cafaye/alpha:1.2.3" || entry.Port != 8080 {
-		t.Errorf("entry = %+v, want alpha at ghcr.io/cafaye/alpha:1.2.3 on 8080", entry)
+	if entry.Name != "alpha" || entry.Image != "ghcr.io/anywaye/alpha:1.2.3" || entry.Port != 8080 {
+		t.Errorf("entry = %+v, want alpha at ghcr.io/anywaye/alpha:1.2.3 on 8080", entry)
 	}
 	if len(entry.Dependencies) != 1 || entry.Dependencies[0] != "postgres" {
 		t.Errorf("dependencies = %v, want [postgres]", entry.Dependencies)
@@ -347,7 +347,7 @@ func TestTheDoctorToolReportsAProjectItCannotRead(t *testing.T) {
 	if report.PlanError == "" {
 		t.Fatal("a directory with no manifest reported no error")
 	}
-	if !strings.Contains(report.PlanError, "cafaye.yml") {
+	if !strings.Contains(report.PlanError, "anywaye.yml") {
 		t.Errorf("plan error = %q, want it to name the manifest that is missing", report.PlanError)
 	}
 	// The machine facts are still gathered: a runtime that is not answering is a
@@ -610,7 +610,7 @@ func TestTheManifestToolReportsWhatTheRegistryAddsForThisService(t *testing.T) {
 		"catalog.json": `{
   "stack": {
     "name": "stack",
-    "image": "ghcr.io/cafaye/stack:0.5.0",
+    "image": "ghcr.io/anywaye/stack:0.5.0",
     "port": 8080,
     "environment": {"LOG_LEVEL": "info"},
     "dependencies": ["postgres"]
@@ -628,7 +628,7 @@ func TestTheManifestToolReportsWhatTheRegistryAddsForThisService(t *testing.T) {
 		t.Fatalf("registry_writes = %+v, want one entry for this service", facts.Registry)
 	}
 	entry := facts.Registry[0]
-	if entry.Image != "ghcr.io/cafaye/stack:0.5.0" {
+	if entry.Image != "ghcr.io/anywaye/stack:0.5.0" {
 		t.Errorf("image = %q", entry.Image)
 	}
 	if len(entry.Environment) != 1 || entry.Environment[0] != "LOG_LEVEL" {
@@ -661,7 +661,7 @@ dependencies:
     version: ^0.1.0
     required: false
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `,
@@ -673,7 +673,7 @@ owner:
 		t.Run(tt.name, func(t *testing.T) {
 			dir := projectDir(t, map[string]string{
 				"docker/Dockerfile": "FROM scratch\n",
-				"cafaye.yml":        tt.manifest,
+				"anywaye.yml":        tt.manifest,
 			})
 			tools, _ := mcpTestTools(t, "")
 

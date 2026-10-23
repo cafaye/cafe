@@ -28,7 +28,7 @@ import (
 // produce.
 const (
 	argoValues = `image:
-  repository: ghcr.io/cafaye/identity
+  repository: ghcr.io/anywaye/identity
   tag: "0.1.0"
 `
 	argoChart = `apiVersion: v2
@@ -49,7 +49,7 @@ func argoDep() Deployment {
 		Chart:         "/srv/identity/Chart.yaml",
 		ValuesContent: argoValues,
 		ChartContent:  argoChart,
-		Image:         "ghcr.io/cafaye/identity:0.1.0",
+		Image:         "ghcr.io/anywaye/identity:0.1.0",
 		ChartVersion:  "0.1.0",
 		Commit:        "3f9a1c2",
 	}
@@ -195,7 +195,7 @@ func TestTheArgoCommitStepCarriesTheTwoFilesItWrites(t *testing.T) {
 	if strings.Contains(values.Content, `tag: "0.1.0"`) {
 		t.Errorf("the bumped values still carry the old tag:\n%s", values.Content)
 	}
-	if !strings.Contains(values.Content, "repository: ghcr.io/cafaye/identity") {
+	if !strings.Contains(values.Content, "repository: ghcr.io/anywaye/identity") {
 		t.Errorf("the bumped values lost the repository — a deploy must not change where the image comes from:\n%s", values.Content)
 	}
 
@@ -353,7 +353,7 @@ func TestReadChartRefusesWhenTheChartCannotBeRead(t *testing.T) {
 		{
 			name: "values without an image reference",
 			files: map[string]string{
-				"chart/values.yaml": "image:\n  repository: ghcr.io/cafaye/identity\n",
+				"chart/values.yaml": "image:\n  repository: ghcr.io/anywaye/identity\n",
 				"Chart.yaml":        argoChart,
 			},
 			gitInit: true,
@@ -840,7 +840,7 @@ func newArgoRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	git(t, dir, "init")
-	git(t, dir, "config", "user.email", "cafe@cafaye.test")
+	git(t, dir, "config", "user.email", "cafe@anywaye.test")
 	git(t, dir, "config", "user.name", "cafe")
 	writeFiles(t, dir, map[string]string{
 		"chart/values.yaml": argoValues,

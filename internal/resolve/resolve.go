@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // Products is the vocabulary box's entitlement check accepts
@@ -39,7 +39,7 @@ var accountUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]
 // flattened it into `repository_url` would be a second copy of the document
 // that could drift from the one pantry serves.
 type Coordinates struct {
-	// Name is the cafaye namespace name, echoed from the path.
+	// Name is the anywaye namespace name, echoed from the path.
 	Name string `json:"name"`
 	// Repository is the project's repository — the one thing tier 2 reveals
 	// that tier 1 does not.
@@ -47,7 +47,7 @@ type Coordinates struct {
 }
 
 // Repository is where a service's code lives. core's schema rejects an HTTPS
-// remote for a cafaye repository, so `url` is an SSH remote or not a cafaye
+// remote for a anywaye repository, so `url` is an SSH remote or not a anywaye
 // repository.
 type Repository struct {
 	// URL is the SSH remote.
@@ -77,7 +77,7 @@ type FetchGrant struct {
 	AccountID string `json:"account_id"`
 	// Artifact is the product the grant covers.
 	Artifact string `json:"artifact"`
-	// VersionRange is the cafaye semver constraint the grant is scoped to.
+	// VersionRange is the anywaye semver constraint the grant is scoped to.
 	VersionRange string `json:"version_range"`
 	// ExpiresAt is RFC3339, the capability's minutes-lived expiry.
 	ExpiresAt string `json:"expires_at"`
@@ -86,7 +86,7 @@ type FetchGrant struct {
 // Failure is one named, actionable resolution failure. It carries the server's
 // own code and detail rather than a paraphrase, because the detail is the
 // actionable half: "product `identity` needs an entitlement — start one at
-// https://cafaye.com" is a sentence a reader can act on, and "forbidden" is a
+// https://anywaye.com" is a sentence a reader can act on, and "forbidden" is a
 // sentence that sends them to a log.
 //
 // Tier says which tier failed (1 listing, 2 metadata, 3 artifact), so a
@@ -119,7 +119,7 @@ type Failure struct {
 // paid service that resolves has all three. A dependency that fails has a
 // Failure and whatever the tiers before the failure produced.
 type Resolution struct {
-	// Name is the dependency's cafaye namespace name.
+	// Name is the dependency's anywaye namespace name.
 	Name string `json:"name"`
 	// Owner is the derived namespace the dependency was ADDRESSED under, and
 	// empty when it was named by bare name alone. It is carried because the

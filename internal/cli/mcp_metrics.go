@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/mcp"
+	"github.com/anywaye/cafe/internal/mcp"
 )
 
 type metricsArgs struct {
@@ -20,7 +20,7 @@ type metricsArgs struct {
 func (t *mcpTools) metrics() mcp.Tool[metricsArgs, string] {
 	return mcp.Tool[metricsArgs, string]{
 		Name:        "caf_metrics",
-		Description: "Query the cafaye metrics store (Prometheus/Mimir) with a PromQL expression. Returns the raw result. Does not mutate anything.",
+		Description: "Query the anywaye metrics store (Prometheus/Mimir) with a PromQL expression. Returns the raw result. Does not mutate anything.",
 		ReadOnly:    true,
 		Idempotent:  true,
 		Input:       metricsArgs{},
@@ -29,7 +29,7 @@ func (t *mcpTools) metrics() mcp.Tool[metricsArgs, string] {
 }
 
 func (t *mcpTools) runMetrics(ctx context.Context, args metricsArgs) (string, error) {
-	baseURL := strings.TrimSpace(os.Getenv("CAFAYE_PROMETHEUS_URL"))
+	baseURL := strings.TrimSpace(os.Getenv("ANYWAYE_PROMETHEUS_URL"))
 	if baseURL == "" {
 		baseURL = "http://localhost:15902"
 	}
@@ -40,7 +40,7 @@ func (t *mcpTools) runMetrics(ctx context.Context, args metricsArgs) (string, er
 	}
 	tenant := strings.TrimSpace(args.Tenant)
 	if tenant == "" {
-		tenant = strings.TrimSpace(os.Getenv("CAFAYE_PROMETHEUS_TENANT"))
+		tenant = strings.TrimSpace(os.Getenv("ANYWAYE_PROMETHEUS_TENANT"))
 	}
 	if tenant == "" {
 		tenant = "single-tenant"

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/contract"
-	"github.com/cafaye/cafe/internal/resolve"
+	"github.com/anywaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/resolve"
 )
 
 // The kinds a project can be registered as. They are pantry's ProjectKind
@@ -122,7 +122,7 @@ type Exposes struct {
 
 // Repository is what the publisher states about their repository on write: the
 // coordinates tier 1 does not publish. url is required and SSH — core's schema
-// rejects an HTTPS remote for a cafaye repository, so the manifest's value is
+// rejects an HTTPS remote for a anywaye repository, so the manifest's value is
 // the only one there can be.
 type Repository struct {
 	URL           string `json:"url"`
@@ -253,7 +253,7 @@ func ProposalFor(manifest contract.Manifest, tag, kind string) (Proposal, error)
 	language := manifest.Language()
 	if language == "spec" {
 		return Proposal{}, fmt.Errorf("language `spec` is for specification-only repositories, which are not projects " +
-			"and cannot be registered; a cafaye.yml that declares no contract surface of its own is a specification")
+			"and cannot be registered; a anywaye.yml that declares no contract surface of its own is a specification")
 	}
 
 	derived, ok := deriveKind(manifest)
@@ -284,7 +284,7 @@ func ProposalFor(manifest contract.Manifest, tag, kind string) (Proposal, error)
 		if strings.TrimSpace(dep.Version) == "" {
 			return Proposal{}, fmt.Errorf("dependency `%s` declares no version: a compatibility edge needs a range, "+
 				"and the registry resolves it against the target's releases at write time — add `version: ^X.Y.Z` "+
-				"to the dependency in cafaye.yml", dep.Name)
+				"to the dependency in anywaye.yml", dep.Name)
 		}
 		class := DepRequired
 		if !dep.Required {
@@ -458,7 +458,7 @@ func idempotent(err error, phrase string) bool {
 // origin, same bearer, same problem envelope — because a registry client that
 // had two ideas about pantry's wire shape would eventually have two shapes.
 type HTTPPublisher struct {
-	// BaseURL is pantry's origin, e.g. https://pantry.cafaye.com. Empty is
+	// BaseURL is pantry's origin, e.g. https://pantry.anywaye.com. Empty is
 	// refused rather than defaulted, for the reason HTTPPantry refuses it: a
 	// client with no endpoint is a client that would POST a relative path.
 	BaseURL string

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/report"
+	"github.com/anywaye/cafe/internal/report"
 )
 
 // runReport drives the whole path: a document a test writes, the verb over it,
@@ -50,8 +50,8 @@ const fixtureDocument = `{
     {"started_at": "2026-09-04T00:00:00Z", "severity": "sev2", "summary": "courier's mail queue backed up"}
   ],
   "upstream": [
-    {"name": "cafaye", "version": "1.14.0", "decision": "applied"},
-    {"name": "cafaye", "version": "1.15.0", "decision": "held", "held_reason": "identity's signing key cutover needs a window the customer picks"}
+    {"name": "anywaye", "version": "1.14.0", "decision": "applied"},
+    {"name": "anywaye", "version": "1.15.0", "decision": "held", "held_reason": "identity's signing key cutover needs a window the customer picks"}
   ],
   "backup_drills": [
     {"service": "courier", "engine": "kamal", "outcome": "passed", "reason": "caf-backup/drill-passed",
@@ -98,7 +98,7 @@ func TestReportRenderWritesTheWholePage(t *testing.T) {
 		"## Capacity",
 		"disk: rising",
 		"## Upstream releases",
-		"**held** cafaye 1.15.0",
+		"**held** anywaye 1.15.0",
 		"identity's signing key cutover needs a window the customer picks",
 		"## Security scan",
 		"17 components checked against 42 advisories",

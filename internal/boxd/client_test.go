@@ -16,7 +16,7 @@ import (
 // identity connects and a bare host:port keeps working.
 //
 // The portless half of the same regression: the deployed control plane is
-// `https://box.svc.cafaye.com` — no port, the form every doc and the CLI
+// `https://box.svc.anywaye.com` — no port, the form every doc and the CLI
 // accept and store — so a URL with no port dials the scheme's default (443
 // for https, 80 for http). What stays refused is a scheme with no known
 // default and a bare host with neither scheme nor port: those are
@@ -36,7 +36,7 @@ func TestDialTargetNormalisesAURLToHostPort(t *testing.T) {
 		{name: "URL with path", in: "http://127.0.0.1:4003/v1/capabilities", wantAddr: "127.0.0.1:4003", wantHost: "127.0.0.1"},
 		{name: "URL with IPv6 host", in: "http://[::1]:4003", wantAddr: "[::1]:4003", wantHost: "::1"},
 		{name: "bare IPv6 host:port", in: "[::1]:4003", wantAddr: "[::1]:4003", wantHost: "::1"},
-		{name: "https URL with no port dials the deployed form's default", in: "https://box.svc.cafaye.com", wantAddr: "box.svc.cafaye.com:443", wantHost: "box.svc.cafaye.com"},
+		{name: "https URL with no port dials the deployed form's default", in: "https://box.svc.anywaye.com", wantAddr: "box.svc.anywaye.com:443", wantHost: "box.svc.anywaye.com"},
 		{name: "http URL with no port defaults to 80", in: "http://127.0.0.1", wantAddr: "127.0.0.1:80", wantHost: "127.0.0.1"},
 		{name: "https URL with path ignores the path", in: "https://box.test/v1/capabilities", wantAddr: "box.test:443", wantHost: "box.test"},
 		{name: "an unknown scheme with no port is refused — only http and https have a default worth guessing", in: "ftp://box.test", wantError: "is not host:port"},

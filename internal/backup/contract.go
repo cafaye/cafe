@@ -299,7 +299,7 @@ func (v Violation) explanation() string {
 				"is never taken — and nothing will ever validate it either, because the container that would "+
 				"have validated it is the thing that is missing.\n"+
 				"  Fix it in %s, one of:\n"+
-				"    add the accessory, copied from cafaye/kit: templates/kamal/deploy.yml.erb\n"+
+				"    add the accessory, copied from anywaye/kit: templates/kamal/deploy.yml.erb\n"+
 				"    or change `accessory:` in the backup configuration to a name that already exists\n"+
 				"  This is the whole `accessories:` block kamal resolved:\n%s",
 			v.Subject, v.configFile, v.configFile, indentAccessories(v.Present))

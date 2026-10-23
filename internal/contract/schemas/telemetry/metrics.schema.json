@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://cafaye.com/schemas/telemetry/metrics.schema.json",
-  "title": "cafaye metric signal",
-  "description": "What a cafaye metric is permitted to carry, and the hard prohibition this schema exists to enforce. OpenTelemetry caps aggregation at 2000 distinct attribute combinations per metric stream; on overflow the SDK folds everything into a single point carrying otel.metric.overflow=true and DROPS ALL MEASUREMENT ATTRIBUTES. Totals remain correct and every per-dimension breakdown silently undercounts. That is the worst shape a bug can have: the dashboard still renders, the total still looks right, and the breakdown is wrong, with no error anywhere. So `tenant_id`, `user_id`, `account_id`, `request_id`, `trace_id` and every other unbounded identifier are prohibited here and required on `resourceAttributes` instead, which are attached once per process, are exempt from the cap, and stay queryable on the overflow point. The two attribute maps are disjoint by construction: a name on the resource list cannot be used as a measurement attribute even if someone adds it to the allowlist, and `additionalProperties: false` means a name on neither list is a failure rather than a silent new dimension. See docs/observability.md.",
+  "$id": "https://anywaye.com/schemas/telemetry/metrics.schema.json",
+  "title": "anywaye metric signal",
+  "description": "What a anywaye metric is permitted to carry, and the hard prohibition this schema exists to enforce. OpenTelemetry caps aggregation at 2000 distinct attribute combinations per metric stream; on overflow the SDK folds everything into a single point carrying otel.metric.overflow=true and DROPS ALL MEASUREMENT ATTRIBUTES. Totals remain correct and every per-dimension breakdown silently undercounts. That is the worst shape a bug can have: the dashboard still renders, the total still looks right, and the breakdown is wrong, with no error anywhere. So `tenant_id`, `user_id`, `account_id`, `request_id`, `trace_id` and every other unbounded identifier are prohibited here and required on `resourceAttributes` instead, which are attached once per process, are exempt from the cap, and stay queryable on the overflow point. The two attribute maps are disjoint by construction: a name on the resource list cannot be used as a measurement attribute even if someone adds it to the allowlist, and `additionalProperties: false` means a name on neither list is a failure rather than a silent new dimension. See docs/observability.md.",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "unit", "measurementAttributes"],
@@ -17,7 +17,7 @@
     "unit": {
       "type": "string",
       "enum": ["1", "s", "ms", "By", "percent"],
-      "description": "The UCUM unit, from a closed list. cafaye's money is integer minor units and never a metric, so there is no currency unit here on purpose."
+      "description": "The UCUM unit, from a closed list. anywaye's money is integer minor units and never a metric, so there is no currency unit here on purpose."
     },
     "description": {
       "type": "string",
@@ -38,7 +38,7 @@
     "measurementAttributes": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The complete set of measurement dimensions a cafaye metric may carry. Every entry is bounded — an enum, a length cap, or a small range — because an unbounded dimension is a stream per value, and 2000 combinations is where the SDK starts folding. `error.type` is the sharpest case: it is the one dimension that sounds like a classification and behaves like an identifier if it is left free. Unbounded identifiers are excluded twice over: they are not on this list, and `not` refuses them by name so that adding one to the list later does not quietly succeed.",
+      "description": "The complete set of measurement dimensions a anywaye metric may carry. Every entry is bounded — an enum, a length cap, or a small range — because an unbounded dimension is a stream per value, and 2000 combinations is where the SDK starts folding. `error.type` is the sharpest case: it is the one dimension that sounds like a classification and behaves like an identifier if it is left free. Unbounded identifiers are excluded twice over: they are not on this list, and `not` refuses them by name so that adding one to the list later does not quietly succeed.",
       "properties": {
         "http.request.method": {
           "type": "string",
@@ -120,7 +120,7 @@
         "service.name": { "type": "string", "minLength": 2, "maxLength": 40, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
         "service.version": { "type": "string", "maxLength": 64 },
         "service.instance.id": { "type": "string", "maxLength": 128 },
-        "service.namespace": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", "description": "The grouping this service belongs to — `cafaye` for every one of them. Stable in the OTel semantic conventions and the documented companion to `service.name`: it is what lets one collector group the fleet under a parent instead of showing seven unrelated services. muse sets it by hand (`src/muse/telemetry.py:390`) and is the only publisher that does, which is why it was missing here and why the list being closed cost a real span a validation it should have passed." },
+        "service.namespace": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", "description": "The grouping this service belongs to — `anywaye` for every one of them. Stable in the OTel semantic conventions and the documented companion to `service.name`: it is what lets one collector group the fleet under a parent instead of showing seven unrelated services. muse sets it by hand (`src/muse/telemetry.py:390`) and is the only publisher that does, which is why it was missing here and why the list being closed cost a real span a validation it should have passed." },
         "deployment.environment": { "type": "string", "enum": ["development", "test", "staging", "production"] },
         "telemetry.sdk.name": { "type": "string", "minLength": 1, "maxLength": 64, "description": "Which SDK built this process's metrics — `opentelemetry` in every language here. Stable semconv, and **not** an optional embellishment: billing sets it by hand at `lib/kit/telemetry.rb:183`, and the Python SDK's `Resource.create/1` merges it from its own default resource whether or not the caller asked. A service cannot suppress it without opting out of the SDK's defaults, so a resource allowlist without it does not describe a metric — it describes the publishers whose resource is built without one." },
         "telemetry.sdk.language": { "type": "string", "minLength": 1, "maxLength": 32, "description": "The implementation language, from the same two places as `telemetry.sdk.name`, and load-bearing for the same reason: a metric that says which runtime produced it is what tells an operator that a fleet with four languages has four resource shapes. identity — the only service in the fleet that exports metrics, and one that builds its resource with Go's schemaless `resource.NewWithAttributes` — reports none of these three." },

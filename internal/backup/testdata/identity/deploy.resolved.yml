@@ -5,8 +5,8 @@
 - 203.0.113.10
 :primary_host: 203.0.113.10
 :version: 483d5ce576a371e9cbad9aa6d4c8d55efdf99d7d
-:repository: ghcr.io/cafaye/identity
-:absolute_image: ghcr.io/cafaye/identity:483d5ce576a371e9cbad9aa6d4c8d55efdf99d7d
+:repository: ghcr.io/anywaye/identity
+:absolute_image: ghcr.io/anywaye/identity:483d5ce576a371e9cbad9aa6d4c8d55efdf99d7d
 :service_with_version: identity-483d5ce576a371e9cbad9aa6d4c8d55efdf99d7d
 :volume_args: []
 :ssh_options:

@@ -1,8 +1,8 @@
 # gate.yml — how cafe is gated, declared rather than guessed.
 #
-# WHY THIS FILE EXISTS. cafaye/core owns the format
+# WHY THIS FILE EXISTS. anywaye/core owns the format
 # (`schemas/gate.schema.json`), the checker (`harness/gate_check.py`) and the
-# reasoning (`docs/gate.md`). Across the fifteen repositories in the cafaye
+# reasoning (`docs/gate.md`). Across the fifteen repositories in the anywaye
 # workspace "run the gate" had five different spellings, and every one of them
 # was found by a human getting it wrong. This is cafe's, and every number in it
 # was measured on this tree at de25e37 + caf-07 — not copied from core's, not

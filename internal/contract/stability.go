@@ -9,7 +9,7 @@ import (
 // Stability is how settled a contract says it is, in buf's four levels.
 //
 // The levels, their names and their order are buf's
-// (private/pkg/protoversion/protoversion.go:23-40), not a cafaye invention, and
+// (private/pkg/protoversion/protoversion.go:23-40), not a anywaye invention, and
 // the reason to copy them rather than invent two of our own is that the rule
 // below is worth having only because the vocabulary is already the industry's.
 // A fleet whose contracts are versioned `v1alpha1` means the same thing to a
@@ -31,9 +31,9 @@ const (
 )
 
 // stabilityPattern is buf's package-version grammar, minus the major and minor
-// numbers cafaye does not use: a version component is `v1`, `v1alpha`,
+// numbers anywaye does not use: a version component is `v1`, `v1alpha`,
 // `v1alpha1`, `v1beta2` or `v1test3`. buf also accepts a patch component
-// (`v1p1alpha1`), which no cafaye document has ever been named, so it is not
+// (`v1p1alpha1`), which no anywaye document has ever been named, so it is not
 // matched rather than matched and ignored.
 var stabilityPattern = regexp.MustCompile(`^v([0-9]+)(?:(alpha|beta)([0-9]*)|(test)(.*))?$`)
 

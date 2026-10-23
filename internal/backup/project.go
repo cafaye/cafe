@@ -83,7 +83,7 @@ func Read(dir, service, env string) (Cover, error) {
 
 	if !isFile(cover.Config) {
 		return Cover{}, fmt.Errorf("cafe backup: %s has no %s, so there is no deployment to back up.\n"+
-			"  Copy it from cafaye/kit: templates/kamal/deploy.yml.erb -> config/deploy.yml\n"+
+			"  Copy it from anywaye/kit: templates/kamal/deploy.yml.erb -> config/deploy.yml\n"+
 			"  Deploy the service with `cafe deploy` first. A backup accessory is an accessory: with no deploy config "+
 			"there is nothing for it to be an accessory of, and config/kamal-backup.yml would be a file nothing reads",
 			abs, filepath.Join("config", configName))

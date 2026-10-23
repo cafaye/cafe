@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // THE DRIFT GATE.
@@ -292,7 +292,7 @@ func generatedNames(t *testing.T) []string {
 	return out.Paths()
 }
 
-// ownManifest is THIS repository's `cafaye.yml`, read from the tree rather than
+// ownManifest is THIS repository's `anywaye.yml`, read from the tree rather than
 // assembled from the fixture above.
 //
 // The first version of this gate generated from `manifestFor` — courier's
@@ -300,12 +300,12 @@ func generatedNames(t *testing.T) []string {
 // manifest says `name: cafe`. It was green, and it was green because it was
 // comparing courier's output with courier's output. So the committed copy was
 // courier's: `internal/telemetry/telemetry.go` declared `ServiceName = "courier"`
-// and read `COURIER_OTEL_ENDPOINT`, in the cafaye platform CLI, and the drift
+// and read `COURIER_OTEL_ENDPOINT`, in the anywaye platform CLI, and the drift
 // gate could not see it.
 //
 // The failure mode is worth naming, because it is the one this whole file exists
 // to prevent. `AGENTS.md` says "cafe runs its own generator on its own
-// `cafaye.yml`, so `internal/telemetry/` is a committed copy of generated Go" —
+// `anywaye.yml`, so `internal/telemetry/` is a committed copy of generated Go" —
 // and the sentence was true of the intent and false of the bytes. A gate whose
 // input is a fixture is a gate that proves the generator is deterministic, which
 // `telemetry_test.go` already asserts, and says nothing whatever about the files
@@ -313,12 +313,12 @@ func generatedNames(t *testing.T) []string {
 // a fixture.
 //
 // Reading the real manifest also makes this the check it claims to be: rename
-// `cafe` in `cafaye.yml` and this test is red until somebody regenerates, which is
+// `cafe` in `anywaye.yml` and this test is red until somebody regenerates, which is
 // the whole contract between a manifest and the telemetry setup derived from it.
 func ownManifest(t *testing.T) string {
 	t.Helper()
 
-	path := filepath.Join("..", "..", "cafaye.yml")
+	path := filepath.Join("..", "..", "anywaye.yml")
 	body, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read this repository's own manifest %s: %v\n"+

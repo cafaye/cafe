@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/version"
+	"github.com/anywaye/cafe/internal/version"
 )
 
 // The skill file is the PERSON'S file: it lives in their agent's directory

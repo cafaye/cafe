@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/ledger"
-	"github.com/cafaye/cafe/internal/ports"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/ports"
 )
 
 // Severity is the tri-state, and everything in this file is about the two
@@ -544,7 +544,7 @@ func TestEveryNonOkFindingCarriesARemediationCommand(t *testing.T) {
 func brokenProject(t *testing.T) string {
 	t.Helper()
 	dir := doctorProject(t, "go")
-	if err := os.WriteFile(dir+"/cafaye.yml",
+	if err := os.WriteFile(dir+"/anywaye.yml",
 		[]byte("name: Stack\nlanguage: go\ncore: nope\n\nrepository:\n  url: https://example.com/x\nowner:\n  team: stack\n"),
 		0o644); err != nil {
 		t.Fatal(err)

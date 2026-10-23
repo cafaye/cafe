@@ -60,7 +60,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # --------------------------------------------------------------------------
 # Locate core's checker. There is no copy in this repository on purpose:
-# `gate_check.py` travels with core's `harness/cafaye_contract.py`, and a
+# `gate_check.py` travels with core's `harness/anywaye_contract.py`, and a
 # vendored copy of one without the other would be a second YAML dialect.
 #
 # A checker that could not be found exits 2 and never 0. A missing checkout is
@@ -68,7 +68,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # breakages caught" because it proved nothing is the exact failure mode this
 # packet exists to remove.
 # --------------------------------------------------------------------------
-CHECKER="${CAFAYE_GATE_CHECK:-}"
+CHECKER="${ANYWAYE_GATE_CHECK:-}"
 if [ -z "$CHECKER" ]; then
   for candidate in "$ROOT/../core/harness/gate_check.py" "$ROOT/../../core/harness/gate_check.py"; do
     if [ -r "$candidate" ]; then CHECKER="$candidate"; break; fi
@@ -78,14 +78,14 @@ fi
 if [ -z "$CHECKER" ] || [ ! -r "$CHECKER" ]; then
   echo "gate-declaration-self-test: core's harness/gate_check.py was not found." >&2
   echo "  This script proves that gate.yml can fail, and that is impossible" >&2
-  echo "  without the checker. Point CAFAYE_GATE_CHECK at the file, or check" >&2
-  echo "  out cafaye/core next to this repository. Exiting 2: the check could" >&2
+  echo "  without the checker. Point ANYWAYE_GATE_CHECK at the file, or check" >&2
+  echo "  out anywaye/core next to this repository. Exiting 2: the check could" >&2
   echo "  not happen, which is not the same as having passed." >&2
   exit 2
 fi
 
 # core's checker reads mise.toml with tomllib, which is stdlib from 3.11 (D31).
-PY="${CAFAYE_GATE_PYTHON:-}"
+PY="${ANYWAYE_GATE_PYTHON:-}"
 if [ -z "$PY" ]; then
   for candidate in python3 python3.14 python3.13 python3.12 python3.11 python; do
     command -v "$candidate" >/dev/null 2>&1 || continue
@@ -95,7 +95,7 @@ if [ -z "$PY" ]; then
 fi
 if [ -z "$PY" ] || ! "$PY" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)'; then
   echo "gate-declaration-self-test: gate_check.py needs python >= 3.11 (tomllib); none found." >&2
-  echo "  Set CAFAYE_GATE_PYTHON. Exiting 2, for the same reason as above." >&2
+  echo "  Set ANYWAYE_GATE_PYTHON. Exiting 2, for the same reason as above." >&2
   exit 2
 fi
 
@@ -241,7 +241,7 @@ install_standin() {
 # breakage costs a second instead of a full suite run. It is NOT evidence that
 # the real gate works: the first control runs the real bin/prime.
 set -euo pipefail
-echo "ok  \tgithub.com/cafaye/cafe/internal/example\t0.001s"
+echo "ok  \tgithub.com/anywaye/cafe/internal/example\t0.001s"
 echo 'cafe: ${packages} packages, ${passes} top-level passes, ${subtests} subtest passes, 0 failures, 3 skips'
 echo 'cafe: live tier: 0 of ${tier} executed; not enabled, so the live tests skipped rather than ran. Set CAF_LIVE_DOCKER=1, CAF_LIVE_RYUK=1 and CAF_LIVE_KAMAL=1, or run bin/prime --live'
 STUB

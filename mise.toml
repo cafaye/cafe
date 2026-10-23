@@ -7,7 +7,7 @@
 #
 # golangci-lint is the fleet's Go linter. Pinned here so `bin/prime` and CI
 # agree on the version that decides whether the tree is lint-clean. The pin
-# lives in one more place: `cafaye/kit/ci/ci.reusable.yml`'s
+# lives in one more place: `anywaye/kit/ci/ci.reusable.yml`'s
 # `golangci/golangci-lint-action` step, which pins the same version via its
 # `version:` input. A bump touches both, in the same commit — otherwise local
 # and CI disagree, which is the defect this packet exists to close.
@@ -37,7 +37,7 @@ run = """
 go build \
   -ldflags "-X main.version=$(git describe --tags --always --dirty) \
             -X main.commit=$(git rev-parse --short HEAD) \
-            -X github.com/cafaye/cafe/internal/version.Current=$(git describe --tags --always --dirty)" \
+            -X github.com/anywaye/cafe/internal/version.Current=$(git describe --tags --always --dirty)" \
   -o bin/cafe ./cmd/cafe
 """
 

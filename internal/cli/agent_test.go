@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/agent"
 )
 
 // agentRegisterAttemptsForTest is the retry budget the store is allowed to
@@ -137,7 +137,7 @@ func agentTestEnv(t *testing.T) (deps agentDeps, id *fakeIdentity, ring *agentTe
 			Agent:    agent.Agent{ID: "agent_01HZX", Username: "noel", Status: "unclaimed"},
 			KeyID:    "tok_01BOOT",
 			Token:    agentTestToken,
-			ClaimURL: "https://cafaye.test/agents/claim/abcdef0123456789",
+			ClaimURL: "https://anywaye.test/agents/claim/abcdef0123456789",
 		},
 		home: &agent.Home{
 			"agent":  map[string]any{"id": "agent_01HZX", "username": "noel", "status": "unclaimed"},
@@ -151,7 +151,7 @@ func agentTestEnv(t *testing.T) (deps agentDeps, id *fakeIdentity, ring *agentTe
 		rotate: &agent.NewKey{KeyInfo: agent.KeyInfo{ID: "tok_01ROT", Name: "cli-issued", ExpiresAt: "2026-11-09T12:00:00Z"}, Token: agentRotatedToken},
 	}
 	ring = newAgentTestRing()
-	deps = agentDeps{dir: t.TempDir(), ring: ring, baseURL: "https://cafaye.test"}
+	deps = agentDeps{dir: t.TempDir(), ring: ring, baseURL: "https://anywaye.test"}
 	deps.dial = func(baseURL, token string) agent.Endpoint {
 		// The dial is where the token is proven to be per-call: it is recorded
 		// so a case can assert what was sent without the value being kept
@@ -256,7 +256,7 @@ func TestAgentRegisterSplitsTheStreamsAndStoresTheToken(t *testing.T) {
 
 	// The token is in the keyring, under the service and account this package
 	// names — and that is the only place in the tree it exists.
-	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentTestToken {
+	if got := ring.entries["cafe/agent/noel-anywaye-test"]; got != agentTestToken {
 		t.Errorf("keyring holds %q, want the token identity minted", got)
 	}
 	// The config file on disk holds the non-secrets and no credential.
@@ -307,7 +307,7 @@ func TestNoTokenEverReachesEitherStream(t *testing.T) {
 				}
 			}
 			// The keyring, not the streams, is where a credential lives.
-			if got := ring.entries["cafe/agent/noel-cafaye-test"]; got == "" {
+			if got := ring.entries["cafe/agent/noel-anywaye-test"]; got == "" {
 				t.Errorf("%v left the keyring empty", args)
 			}
 		})
@@ -324,7 +324,7 @@ func TestNoTokenEverReachesEitherStream(t *testing.T) {
 	}
 
 	// And the ring ends up holding the NEWEST token, not the first.
-	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentRotatedToken {
+	if got := ring.entries["cafe/agent/noel-anywaye-test"]; got != agentRotatedToken {
 		t.Errorf("keyring holds the pre-rotation token; rotate did not replace it")
 	}
 
@@ -334,7 +334,7 @@ func TestNoTokenEverReachesEitherStream(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("revoke exited %d (stderr: %s)", code, stderr)
 	}
-	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != "" {
+	if got := ring.entries["cafe/agent/noel-anywaye-test"]; got != "" {
 		t.Errorf("revoke left a token in the keyring")
 	}
 	for _, token := range tokens {
@@ -469,7 +469,7 @@ func TestAgentLoginRefusesASessionWithNoToken(t *testing.T) {
 	if code, _, _ := runAgentCLI(t, deps, "register", "--name", "Noel"); code != 0 {
 		t.Fatal("register did not seed a session")
 	}
-	deps.ring.(*agentTestRing).entries["cafe/agent/noel-cafaye-test"] = ""
+	deps.ring.(*agentTestRing).entries["cafe/agent/noel-anywaye-test"] = ""
 
 	code, _, stderr := runAgentCLI(t, deps, "login", "--agent", "noel")
 	if code != exitFailure {
@@ -586,7 +586,7 @@ func TestAgentTokenRotateAndRevokeByIdLeaveTheSessionsTokenAlone(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("token rotate tok_01CLI exited %d (stderr: %s)", code, stderr)
 	}
-	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentTestToken {
+	if got := ring.entries["cafe/agent/noel-anywaye-test"]; got != agentTestToken {
 		t.Errorf("rotating another token overwrote the session's keyring entry: holds %q", got)
 	}
 	if id.rotateID != "tok_01CLI" {
@@ -600,7 +600,7 @@ func TestAgentTokenRotateAndRevokeByIdLeaveTheSessionsTokenAlone(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("token revoke tok_01CLI exited %d (stderr: %s)", code, stderr)
 	}
-	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentTestToken {
+	if got := ring.entries["cafe/agent/noel-anywaye-test"]; got != agentTestToken {
 		t.Errorf("revoking another token disturbed the session's keyring entry: holds %q", got)
 	}
 	if id.revokeID != "tok_01CLI" {
@@ -627,7 +627,7 @@ func TestAgentTokenRotateAndRevokeWithNoIdActOnTheSessionsOwnToken(t *testing.T)
 	if id.rotateID != "tok_01BOOT" {
 		t.Errorf("bare rotate asked for %q, want the session's own tok_01BOOT", id.rotateID)
 	}
-	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != agentRotatedToken {
+	if got := ring.entries["cafe/agent/noel-anywaye-test"]; got != agentRotatedToken {
 		t.Errorf("the rotated token was not stored: keyring holds %q", got)
 	}
 
@@ -638,7 +638,7 @@ func TestAgentTokenRotateAndRevokeWithNoIdActOnTheSessionsOwnToken(t *testing.T)
 	if id.revokeID != "tok_01ROT" {
 		t.Errorf("bare revoke asked for %q, want the post-rotation tok_01ROT", id.revokeID)
 	}
-	if got := ring.entries["cafe/agent/noel-cafaye-test"]; got != "" {
+	if got := ring.entries["cafe/agent/noel-anywaye-test"]; got != "" {
 		t.Errorf("revoke left a token in the keyring")
 	}
 }

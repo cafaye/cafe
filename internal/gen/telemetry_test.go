@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // Tests for the generator itself.
@@ -23,10 +23,10 @@ import (
 // same generated files, so `go vet ./...`, `gofmt -l .` and `go test ./...` all
 // reach them.
 
-// manifestFor is a minimal cafaye.yml for the cases that need one.
+// manifestFor is a minimal anywaye.yml for the cases that need one.
 //
 // Written as a literal rather than read from this repository's own manifest so a
-// change to cafe's `cafaye.yml` cannot quietly move every table in this file.
+// change to cafe's `anywaye.yml` cannot quietly move every table in this file.
 const manifestFor = `name: courier
 description: Transactional email and push delivery.
 language: go
@@ -37,13 +37,13 @@ exposes:
     - courier.email.queued
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com
 `
 
 // loadManifest parses and validates a manifest, failing the test if the contract
@@ -55,7 +55,7 @@ owner:
 func loadManifest(t *testing.T, document string) contract.Manifest {
 	t.Helper()
 
-	manifest, finding := contract.CheckData("cafaye.yml", []byte(document))
+	manifest, finding := contract.CheckData("anywaye.yml", []byte(document))
 	if !finding.OK() {
 		t.Fatalf("the fixture manifest is invalid, so every table built on it is testing a document that "+
 			"cannot exist:\n%s", finding)

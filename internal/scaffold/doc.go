@@ -31,7 +31,7 @@
 //
 // What this package is not: it does not patch the platform's own services.
 // Templates scaffold a customer's app; the agent's editable surface is the
-// customer's repository, never cafaye's service source. The `platform`
+// customer's repository, never anywaye's service source. The `platform`
 // template composes identity + gateway + courier + parlor as dependencies —
 // it references them through the manifest, it does not fork them.
 package scaffold

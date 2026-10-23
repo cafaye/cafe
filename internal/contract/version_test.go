@@ -99,7 +99,7 @@ func TestResolveMatrix(t *testing.T) {
 		{name: "floor rejects below", constraint: ">=1.2.3", version: "1.2.2", want: false},
 		{name: "floor on 0.x is still a floor, not a minor range", constraint: ">=0.1.0", version: "0.2.0", want: true},
 
-		// the versions a cafaye service is actually pinned to
+		// the versions a anywaye service is actually pinned to
 		{name: "identity's range takes core 0.1.0", constraint: "^0.1.0", version: "0.1.0", want: true},
 		{name: "identity's range rejects core 0.2.0", constraint: "^0.1.0", version: "0.2.0", want: false},
 	}

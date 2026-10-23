@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 func writeMinimalManifest(t *testing.T, dir string) {
@@ -18,10 +18,10 @@ func writeMinimalManifest(t *testing.T, dir string) {
 		"description: demo service\n" +
 		"language: go\n" +
 		"core: ^0.2.0\n" +
-		"repository:\n  url: git@github.com:cafaye/demo.git\n" +
+		"repository:\n  url: git@github.com:anywaye/demo.git\n" +
 		"owner:\n  team: demo\n" +
-		"  contact: demo@cafaye.com\n"
-	if err := os.WriteFile(filepath.Join(dir, "cafaye.yml"), []byte(content), 0o644); err != nil {
+		"  contact: demo@anywaye.com\n"
+	if err := os.WriteFile(filepath.Join(dir, "anywaye.yml"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -44,14 +44,14 @@ func TestAddRoundTripAndLint(t *testing.T) {
 	if !json.Valid([]byte(stdout)) {
 		t.Fatalf("stdout not JSON: %s", stdout)
 	}
-	if !strings.Contains(stderr, "billing") || !strings.Contains(stderr, "cafaye.yml") {
+	if !strings.Contains(stderr, "billing") || !strings.Contains(stderr, "anywaye.yml") {
 		t.Errorf("stderr missing file or dependency: %s", stderr)
 	}
-	data, _ := os.ReadFile(filepath.Join(dir, "cafaye.yml"))
-	_, finding := contract.CheckData("cafaye.yml", mustYAMLToJSON(data))
+	data, _ := os.ReadFile(filepath.Join(dir, "anywaye.yml"))
+	_, finding := contract.CheckData("anywaye.yml", mustYAMLToJSON(data))
 	// CheckData expects JSON via YAMLToJSON path? but we wrote YAML, need CheckData with raw YAML
 	// So use contract.Parse path: CheckData handles YAML->JSON internally, so pass raw YAML.
-	_, finding2 := contract.CheckData("cafaye.yml", data)
+	_, finding2 := contract.CheckData("anywaye.yml", data)
 	if !finding2.OK() {
 		t.Fatalf("result fails lint: %v", finding2)
 	}
@@ -64,7 +64,7 @@ func TestAddIdempotent(t *testing.T) {
 	if code, _, _ := runAddCLI(t, dir, "pantry/billing"); code != 0 {
 		t.Fatal("first add failed")
 	}
-	secondData, _ := os.ReadFile(filepath.Join(dir, "cafaye.yml"))
+	secondData, _ := os.ReadFile(filepath.Join(dir, "anywaye.yml"))
 	code, stdout, _ := runAddCLI(t, dir, "pantry/billing")
 	if code != 0 {
 		t.Fatalf("second add exit %d", code)
@@ -74,7 +74,7 @@ func TestAddIdempotent(t *testing.T) {
 	if doc["action"] != "already-present" {
 		t.Errorf("action %v want already-present", doc["action"])
 	}
-	afterData, _ := os.ReadFile(filepath.Join(dir, "cafaye.yml"))
+	afterData, _ := os.ReadFile(filepath.Join(dir, "anywaye.yml"))
 	if string(secondData) != string(afterData) {
 		t.Error("idempotent add changed file")
 	}
@@ -93,7 +93,7 @@ func TestAddRefusesBadRef(t *testing.T) {
 		}
 	}
 	// ensure file unchanged
-	data, _ := os.ReadFile(filepath.Join(dir, "cafaye.yml"))
+	data, _ := os.ReadFile(filepath.Join(dir, "anywaye.yml"))
 	if strings.Contains(string(data), "billing") {
 		t.Error("bad ref wrote file")
 	}

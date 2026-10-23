@@ -10,7 +10,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// Manifest is a parsed cafaye.yml: the document core's schema validates, the
+// Manifest is a parsed anywaye.yml: the document core's schema validates, the
 // JSON it was decoded from, plus the handful of facts the cross-field rules
 // compare. The typed fields are private because they are only trustworthy
 // once the schema has passed, and only the rules that need them should be
@@ -81,7 +81,7 @@ type EnvVar struct {
 	Description string
 }
 
-// Dependency is one other cafaye service this service builds on, as a consumer
+// Dependency is one other anywaye service this service builds on, as a consumer
 // reads it: a name, a constraint on that dependency's own contract version,
 // and whether the service runs without it.
 //
@@ -136,7 +136,7 @@ func Parse(data []byte) (Manifest, error) {
 	return manifest, nil
 }
 
-// ServiceName is the cafaye namespace name, which is also the repository
+// ServiceName is the anywaye namespace name, which is also the repository
 // name, the event envelope `source` and the gateway routing prefix.
 func (m Manifest) ServiceName() string { return m.fields.Name }
 
@@ -161,7 +161,7 @@ func (m Manifest) Language() string { return m.fields.Language }
 // as the compose project description.
 func (m Manifest) Description() string { return m.fields.Description }
 
-// Dependencies are the other cafaye services this one builds on, in the order
+// Dependencies are the other anywaye services this one builds on, in the order
 // the manifest declares them. `cafe dev` turns them into a running stack, so
 // this is the list the local closure is walked from.
 func (m Manifest) Dependencies() []Dependency {

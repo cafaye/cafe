@@ -1,9 +1,9 @@
-// Package contract validates cafaye manifests, the OpenAPI documents they name,
+// Package contract validates anywaye manifests, the OpenAPI documents they name,
 // and core version constraints: the things every other cafe command will need and
 // must not re-implement per caller.
 //
-// A manifest (`cafaye.yml`) is YAML, but the contract it is written against is
-// a JSON Schema owned by cafaye/core. So this package is these layers:
+// A manifest (`anywaye.yml`) is YAML, but the contract it is written against is
+// a JSON Schema owned by anywaye/core. So this package is these layers:
 //
 //	schemas/manifest-0.2.json   a pinned copy of core's schema
 //	Parse + Check               the manifest, and every rule it breaks
@@ -52,7 +52,7 @@
 //     sigs.k8s.io/yaml reports "yaml: line 7: could not find expected ':'".
 //     It also has zero dependencies, so the whole cost of a YAML parser is one
 //     module in go.mod instead of four, and it is YAML 1.2, which is the
-//     subset `cafe init` and every cafaye service actually writes.
+//     subset `cafe init` and every anywaye service actually writes.
 //
 //   - github.com/santhosh-tekuri/jsonschema/v6 for validation. It implements
 //     draft 2020-12 (which core's schema declares), asserts `format` when
@@ -67,7 +67,7 @@
 // # The vendored schema
 //
 // `schemas/manifest-0.2.json` is a byte-for-byte copy of
-// `schemas/cafaye.manifest.schema.json` from cafaye/core at commit
+// `schemas/anywaye.manifest.schema.json` from anywaye/core at commit
 // 3340e0f3171e09750f43e9f2974a3efb00f0ed82, the sha256 of the copy is pinned in
 // schema_test.go, and schemas/README.md holds the refresh procedure. cafe never
 // fetches it: a validator that downloads the schema it validates against gives
@@ -97,7 +97,7 @@
 //     exposes) and courier (publishes events, no exposes.api). The decidable
 //     half is `convention.declares-surface`.
 //   - "dependencies are services, not packages" — the schema already pins
-//     every dependency to a cafaye service name; the rule is about intent, and
+//     every dependency to a anywaye service name; the rule is about intent, and
 //     nothing in the document expresses it.
 //   - "every consumed type exists in the core catalog" — needs the catalog,
 //     which core ships as a table in docs/event-naming.md, not as data. Until
@@ -139,7 +139,7 @@
 //     marker, so `dependencies[].version` cannot say "alpha" even if a service
 //     wants to. `convention.stable-depends-on-alpha` therefore only decides a
 //     dependency whose own manifest is in the same `Lint` run; making it decide
-//     per repository is a schema change, not a cafaye one.
+//     per repository is a schema change, not a anywaye one.
 //   - **buf has an `ENUM_VALUE_SAME_NUMBER` rule and this format has nothing for
 //     it.** An OpenAPI enum member is a literal with no name and no ordinal, so
 //     both halves of buf's rule — the name moving, the number moving — are the

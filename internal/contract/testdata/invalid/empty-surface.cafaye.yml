@@ -16,10 +16,10 @@ exposes:
   events: []
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com

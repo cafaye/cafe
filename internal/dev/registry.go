@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // ErrBadCatalog is a registry document cafe cannot believe: malformed JSON, a
@@ -37,7 +37,7 @@ type Registry interface {
 // Entry is how one service is run locally: everything a compose service needs
 // that is a fact about the service rather than about the machine it runs on.
 type Entry struct {
-	// Name is the cafaye service name. It must equal the key the entry is
+	// Name is the anywaye service name. It must equal the key the entry is
 	// filed under, so a document cannot run billing's image as identity.
 	Name string `json:"name"`
 	// Image is the container image, pinned by tag. A registry entry with no
@@ -569,9 +569,9 @@ func ReadCatalogFile(path string) (Catalog, error) {
 	return ReadCatalog(file)
 }
 
-// infraNames are the local services cafe adds itself. They are not cafaye
+// infraNames are the local services cafe adds itself. They are not anywaye
 // services, so they are not in any registry: postgres and redis are third-party
-// images, and a registry of cafaye services has nothing to say about them.
+// images, and a registry of anywaye services has nothing to say about them.
 // A registry entry may still depend on them by name, which is why the planner
 // knows the names whether or not they end up in the stack.
 func infraNames() []string {
@@ -604,7 +604,7 @@ var languageToolchains = map[string]string{
 }
 
 // languagePorts is the port a service's container listens on, taken from the
-// `EXPOSE` line of the matching base image in cafaye/kit's docker templates —
+// `EXPOSE` line of the matching base image in anywaye/kit's docker templates —
 // one source for both, so an image and the port cafe publishes cannot disagree.
 // `spec` is a repository of documents: it has no process and no port.
 var languagePorts = map[string]int{
@@ -770,7 +770,7 @@ func connectionEnv(svc Service, kind, project string) (Environment, bool) {
 // so the compose half of the fleet convention is only closeable in the generator
 // that renders the stack.
 //
-// So `cafe dev` writes it, for every cafaye service on the stack, and the
+// So `cafe dev` writes it, for every anywaye service on the stack, and the
 // collector address is core's documented default — the same address
 // `internal/gen` emits as `DefaultEndpoint`, read from the same
 // `contract.Endpoint.Default` rather than written down a third time.

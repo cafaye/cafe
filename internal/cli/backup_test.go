@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/backup"
+	"github.com/anywaye/cafe/internal/backup"
 )
 
 // `cafe backup` at the command layer: flags, the prompt, the exit codes, and the
@@ -465,7 +465,7 @@ func TestTheLongHelpSaysTheThreeThingsThatAreNotObvious(t *testing.T) {
 	for _, want := range []string{
 		"never been drilled is not a backup",
 		"kamal-backup's",
-		"cafaye/kit's templates/kamal/drill.sh",
+		"anywaye/kit's templates/kamal/drill.sh",
 		"refuses exactly what the real run refuses",
 	} {
 		if !strings.Contains(backupLongHelp, want) {

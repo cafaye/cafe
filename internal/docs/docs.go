@@ -14,11 +14,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // The two ingest kinds. They are press's vocabulary, and they are INFERRED
-// from the repository's own `cafaye.yml` (`repository.visibility`) — the
+// from the repository's own `anywaye.yml` (`repository.visibility`) — the
 // same field the docs sync's anti-leak guard reads — rather than typed:
 // a public repository's pages are public docs, a private one's are private
 // notes. There is deliberately no `cafe notes publish`: one command that
@@ -43,7 +43,7 @@ const (
 // baked into a binary goes stale when the service moves. So the default is
 // the fleet's address and PressURLEnv overrides it — the same env-override
 // rule resolve holds.
-const DefaultPressURL = "https://press.cafaye.com"
+const DefaultPressURL = "https://press.anywaye.com"
 
 // PressURLEnv is where press's origin comes from when no flag names one.
 const PressURLEnv = "CAF_PRESS_URL"
@@ -63,7 +63,7 @@ func InferKind(manifest contract.Manifest) (string, error) {
 	default:
 		return "", fmt.Errorf("repository.visibility is %q: cafe docs publish infers the ingest kind from it "+
 			"(public ships as docs, private as notes) and will not guess — declare `repository.visibility: public` "+
-			"or `private` in cafaye.yml, or pass --visibility with what this repository is",
+			"or `private` in anywaye.yml, or pass --visibility with what this repository is",
 			manifest.RepositoryVisibility())
 	}
 }

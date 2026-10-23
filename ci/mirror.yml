@@ -14,7 +14,7 @@
 # gate that checks nothing is worse. The steps below are the specification
 # the executable CI is measured against, and the day this file stops being
 # that, the checks move with it.
-name: mirror to cafaye git
+name: mirror to anywaye git
 on:
   push:
     branches: [master]
@@ -26,5 +26,5 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
-          git remote add forgejo https://cafaye:${{ secrets.FORGEJO_TOKEN }}@git.cafaye.com/cafaye/cafe.git
+          git remote add forgejo https://anywaye:${{ secrets.FORGEJO_TOKEN }}@git.anywaye.com/anywaye/cafe.git
           git push forgejo master --force

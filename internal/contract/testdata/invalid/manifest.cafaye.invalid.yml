@@ -1,9 +1,9 @@
-# EXPECTED FAILURE — rejected by schemas/cafaye.manifest.schema.json.
+# EXPECTED FAILURE — rejected by schemas/anywaye.manifest.schema.json.
 # See examples/invalid/README.md for the full list of expected violations.
-#   name           -> pattern   (uppercase + underscore, not a cafaye namespace name)
-#   language       -> enum      (python3 is not a cafaye language)
+#   name           -> pattern   (uppercase + underscore, not a anywaye namespace name)
+#   language       -> enum      (python3 is not a anywaye language)
 #   core           -> pattern   (constraint is missing the patch version)
-#   repository.url -> pattern   (https remote; cafaye remotes are SSH, PLAN.md §1)
+#   repository.url -> pattern   (https remote; anywaye remotes are SSH, PLAN.md §1)
 #   ports          -> additionalProperties (undeclared top-level key)
 name: Billing_Service
 description: A manifest with the mistakes a service actually ships with.
@@ -16,7 +16,7 @@ exposes:
     - user.Created
 
 repository:
-  url: https://github.com/cafaye/billing-service
+  url: https://github.com/anywaye/billing-service
   defaultBranch: main
   visibility: public
 

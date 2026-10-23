@@ -77,7 +77,7 @@ func NewCertStore(dir string) *CertStore {
 // Certificate loads, caches and returns one hostname's pair. A missing pair
 // is an error that names the name and the directory, because "TLS is broken"
 // on a box is a sentence that sends an operator to the wrong place and
-// "api.cafaye.test has no certificate in /var/lib/boxd/edge/certs" does not.
+// "api.anywaye.test has no certificate in /var/lib/boxd/edge/certs" does not.
 func (s *CertStore) Certificate(name string) (*tls.Certificate, error) {
 	certPath, keyPath := certPair(s.Dir, name)
 	certStat, err := os.Stat(certPath)
@@ -155,7 +155,7 @@ func (m *Minted) Certificate(name string) (*tls.Certificate, error) {
 
 // covers reports whether the name is one this source was minted for. A
 // wildcard entry is supported because the `.svc` zone is exactly that shape —
-// `*.svc.cafaye.com` is the plan's internal zone (stability rule 4: it never
+// `*.svc.anywaye.com` is the plan's internal zone (stability rule 4: it never
 // appears in public DNS) and a source that had to name each service would be
 // a list that goes stale the moment a service is added.
 func (m *Minted) covers(name string) bool {
@@ -195,7 +195,7 @@ func mintCert(names []string) (*tls.Certificate, error) {
 	}
 	template := x509.Certificate{
 		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: names[0], Organization: []string{"cafaye box"}},
+		Subject:      pkix.Name{CommonName: names[0], Organization: []string{"anywaye box"}},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,

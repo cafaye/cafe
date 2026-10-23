@@ -1,5 +1,5 @@
 // Package resolve is the consumer of the tiered catalog (W4-P1) and the
-// artifact.fetch capability (W4-P2): it answers, for one project's cafaye.yml
+// artifact.fetch capability (W4-P2): it answers, for one project's anywaye.yml
 // `dependencies`, "does this resolve, and what is the named failure if not?"
 //
 // THE THREE TIERS, AND WHAT EACH ONE IS FOR. A dependency is resolved through

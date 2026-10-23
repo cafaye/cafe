@@ -11,7 +11,7 @@
 // There is no `docker system prune` in this package, and there is not going to
 // be one. A blanket prune removes state this tool does not own: the packet that
 // asked for this one names `searxng-*`, the kamal buildkit volume, and any volume
-// with no cafaye worker name as things to leave alone, and a command that
+// with no anywaye worker name as things to leave alone, and a command that
 // removes them is not a cleanup tool.
 //
 // Every call here is filtered by `com.docker.compose.project`, which is the label
@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/ledger"
 )
 
 // projectLabel is the label compose puts on every container and named volume it

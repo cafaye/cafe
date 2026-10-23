@@ -124,7 +124,7 @@ func request(host string, digest string) Request {
 		Service: "api",
 		Host:    host,
 		Build: Build{
-			Registry: "ghcr.io", Name: "cafaye/api", Tag: "1.4.0",
+			Registry: "ghcr.io", Name: "anywaye/api", Tag: "1.4.0",
 			Digest: digest,
 		},
 		Secrets: "api/production",
@@ -137,9 +137,9 @@ func request(host string, digest string) Request {
 // box and is served on the host name it answers on.
 func TestADeployStagesAServesBAndSwitchesC(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 
-	if _, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA)); err != nil {
+	if _, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA)); err != nil {
 		t.Fatalf("first deploy: %v", err)
 	}
 	if b.served != 1 {
@@ -181,14 +181,14 @@ func TestADeployStagesAServesBAndSwitchesC(t *testing.T) {
 // purpose, and the history says so afterwards.
 func TestAReleaseThatFailsItsGateFlipsBack(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 
-	first, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
+	first, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA))
 	if err != nil {
 		t.Fatalf("first deploy: %v", err)
 	}
 
-	req := request("api.cafaye.test", digestB)
+	req := request("api.anywaye.test", digestB)
 	req.Now = req.Now.Add(time.Minute)
 	b.failReady = digestB
 
@@ -258,13 +258,13 @@ func TestAReleaseThatFailsItsGateFlipsBack(t *testing.T) {
 // count is the whole proof.
 func TestRollbackFlipsThePointerAndNothingElse(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 
-	one, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
+	one, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA))
 	if err != nil {
 		t.Fatalf("first deploy: %v", err)
 	}
-	two := request("api.cafaye.test", digestB)
+	two := request("api.anywaye.test", digestB)
 	two.Now = two.Now.Add(time.Minute)
 	second, err := Deploy(context.Background(), s, b, two)
 	if err != nil {
@@ -310,9 +310,9 @@ func TestRollbackFlipsThePointerAndNothingElse(t *testing.T) {
 // cannot express: going back two releases, by id.
 func TestARollbackToANamedReleaseGoesBackTwo(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 
-	one := request("api.cafaye.test", digestA)
+	one := request("api.anywaye.test", digestA)
 	if _, err := Deploy(context.Background(), s, b, one); err != nil {
 		t.Fatalf("first deploy: %v", err)
 	}
@@ -321,7 +321,7 @@ func TestARollbackToANamedReleaseGoesBackTwo(t *testing.T) {
 		t.Fatalf("current: %v", err)
 	}
 	for _, d := range []string{digestB, digestC} {
-		req := request("api.cafaye.test", d)
+		req := request("api.anywaye.test", d)
 		req.Now = req.Now.Add(time.Minute)
 		if _, err := Deploy(context.Background(), s, b, req); err != nil {
 			t.Fatalf("deploy: %v", err)
@@ -341,15 +341,15 @@ func TestARollbackToANamedReleaseGoesBackTwo(t *testing.T) {
 // costs nothing and says which host.
 func TestARefusalLeavesNothingStaged(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 
 	for name, tc := range map[string]struct {
 		req  Request
 		want string
 	}{
-		"a host the edge does not route": {request("auth.cafaye.test", digestA), ErrNoRoute.Error()},
+		"a host the edge does not route": {request("auth.anywaye.test", digestA), ErrNoRoute.Error()},
 		"a build that is not pinned": {
-			request("api.cafaye.test", "latest"),
+			request("api.anywaye.test", "latest"),
 			"not pinned to a digest",
 		},
 	} {
@@ -383,14 +383,14 @@ func TestARefusalLeavesNothingStaged(t *testing.T) {
 // rollback by breaking the site a second time.
 func TestAnExpiredCertificateIsARefusal(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 	// The clock the deploy runs against is the one its request carries, so an
 	// expiry in the FUTURE of the wall clock can still be in the past of the
 	// deploy — and a test that forgot that would prove nothing.
 	past := time.Date(2026, 10, 11, 11, 0, 0, 0, time.UTC)
-	b.hosts["api.cafaye.test"] = Host{Name: "api.cafaye.test", Routed: true, CertNotAfter: past}
+	b.hosts["api.anywaye.test"] = Host{Name: "api.anywaye.test", Routed: true, CertNotAfter: past}
 
-	_, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
+	_, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA))
 	if !errors.Is(err, ErrNoCert) {
 		t.Fatalf("the error is %v, want ErrNoCert", err)
 	}
@@ -406,14 +406,14 @@ func TestAReleaseIsNeverOverwrittenInPlace(t *testing.T) {
 	s := openStack(t)
 	rel := Release{
 		ID: "20261011T120000Z-" + shortDigest(digestA), Service: "api",
-		Image: "ghcr.io/cafaye/api@" + digestA, Host: "api.cafaye.test",
+		Image: "ghcr.io/anywaye/api@" + digestA, Host: "api.anywaye.test",
 		StartedAt: time.Now().UTC(), Outcome: Staged,
 	}
 	if _, err := s.Stage(rel); err != nil {
 		t.Fatalf("stage: %v", err)
 	}
 	clobber := rel
-	clobber.Image = "ghcr.io/cafaye/api@" + digestB
+	clobber.Image = "ghcr.io/anywaye/api@" + digestB
 	if _, err := s.Stage(clobber); !errors.Is(err, ErrExists) {
 		t.Fatalf("the second stage returned %v, want ErrExists", err)
 	}
@@ -434,14 +434,14 @@ func TestAReleaseIsNeverOverwrittenInPlace(t *testing.T) {
 func TestKeepNReleasesAndNeverThePointer(t *testing.T) {
 	s := openStack(t)
 	s.Keep = 3
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 
-	first, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
+	first, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA))
 	if err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
 	for _, d := range []string{digestB, digestC} {
-		req := request("api.cafaye.test", d)
+		req := request("api.anywaye.test", d)
 		req.Now = req.Now.Add(time.Minute)
 		if _, err := Deploy(context.Background(), s, b, req); err != nil {
 			t.Fatalf("deploy: %v", err)
@@ -494,9 +494,9 @@ func TestKeepNReleasesAndNeverThePointer(t *testing.T) {
 // anything would pass by leaking nothing at all.
 func TestTheReleaseRecordCarriesNoSecretValue(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 
-	rep, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
+	rep, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA))
 	if err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
@@ -540,10 +540,10 @@ func TestTheReleaseRecordCarriesNoSecretValue(t *testing.T) {
 // rather than serving the release that just failed.
 func TestAFailedFirstDeployServesNothing(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 	b.failReady = digestA
 
-	rep, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
+	rep, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA))
 	if !errors.Is(err, ErrGateFailed) {
 		t.Fatalf("the error is %v, want ErrGateFailed", err)
 	}
@@ -562,10 +562,10 @@ func TestAFailedFirstDeployServesNothing(t *testing.T) {
 // not even be brought up: never in front of traffic, still on the record.
 func TestAFailedServeIsRecordedAndNothingServes(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 	b.failServe = digestA
 
-	_, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA))
+	_, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA))
 	if !errors.Is(err, ErrGateFailed) {
 		t.Fatalf("the error is %v, want ErrGateFailed", err)
 	}
@@ -586,9 +586,9 @@ func TestAFailedServeIsRecordedAndNothingServes(t *testing.T) {
 // the disagreement that would serve traffic nobody asked for.
 func TestThePointerAndTheHistoryAgree(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 	for _, d := range []string{digestA, digestB} {
-		req := request("api.cafaye.test", d)
+		req := request("api.anywaye.test", d)
 		req.Now = req.Now.Add(time.Minute)
 		if _, err := Deploy(context.Background(), s, b, req); err != nil {
 			t.Fatalf("deploy: %v", err)
@@ -611,8 +611,8 @@ func TestThePointerAndTheHistoryAgree(t *testing.T) {
 // with `cat` has a version, a current, a last_good and the releases.
 func TestTheHistoryIsAWholeDocument(t *testing.T) {
 	s := openStack(t)
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
-	if _, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA)); err != nil {
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
+	if _, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA)); err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
 	var doc map[string]any
@@ -661,8 +661,8 @@ func TestTheKeepCountSurvivesAReopen(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	s.Keep = 7
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
-	if _, err := Deploy(context.Background(), s, b, request("api.cafaye.test", digestA)); err != nil {
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
+	if _, err := Deploy(context.Background(), s, b, request("api.anywaye.test", digestA)); err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
 	again, err := Open(root)

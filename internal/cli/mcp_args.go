@@ -9,16 +9,16 @@ import "time"
 
 // projectArgs is a tool that needs a project directory and nothing else.
 type projectArgs struct {
-	// Project is a directory holding a cafaye.yml. It defaults to the server's
+	// Project is a directory holding a anywaye.yml. It defaults to the server's
 	// working directory, which is the project an agent host usually spawns cafe
 	// in.
-	Project string `json:"project,omitempty" jsonschema:"directory holding the cafaye.yml to read; the server's working directory when omitted"`
+	Project string `json:"project,omitempty" jsonschema:"directory holding the anywaye.yml to read; the server's working directory when omitted"`
 }
 
 // planArgs is a tool that plans or starts a stack, which is `cafe dev`'s own
 // flag set minus the two that only make sense on a terminal.
 type planArgs struct {
-	// Project is a directory holding a cafaye.yml.
+	// Project is a directory holding a anywaye.yml.
 	Project string `json:"project,omitempty" jsonschema:"project directory to plan; the server's working directory when omitted"`
 	// Out is where the rendered compose document is written, relative to the
 	// project unless absolute.
@@ -37,7 +37,7 @@ type planArgs struct {
 
 // downArgs is a tool that only needs to know which project.
 type downArgs struct {
-	// Project is a directory holding a cafaye.yml.
+	// Project is a directory holding a anywaye.yml.
 	Project string `json:"project,omitempty" jsonschema:"project whose stack to stop; the server's working directory when omitted"`
 }
 

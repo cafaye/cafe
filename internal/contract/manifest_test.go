@@ -24,29 +24,29 @@ func TestManifestFactsForDev(t *testing.T) {
 	}{
 		{
 			name:         "an api service with no dependencies",
-			file:         "valid/identity.cafaye.yml",
+			file:         "valid/identity.anywaye.yml",
 			wantLanguage: "go",
 			wantDesc:     "Authentication, sessions, MFA, OAuth, accounts/tenancy and the OIDC provider.",
 		},
 		{
 			name:         "a worker with one required dependency",
-			file:         "valid/worker-only.cafaye.yml",
+			file:         "valid/worker-only.anywaye.yml",
 			wantLanguage: "rust",
 			wantDesc:     "Media uploads, variants and the S3 processing pipeline.",
 			wantDeps:     []Dependency{{Name: "identity", Version: "^0.1.0", Required: true}},
 		},
 		{
 			name:         "a worker with one soft dependency",
-			file:         "valid/worker.cafaye.yml",
+			file:         "valid/worker.anywaye.yml",
 			wantLanguage: "elixir",
 			wantDesc:     "Transactional email, push delivery, notification preferences, outbound webhooks.",
 			wantDeps:     []Dependency{{Name: "identity", Version: "^0.1.0", Required: false}},
 		},
 		{
 			name:         "a spec repository",
-			file:         "valid/spec.cafaye.yml",
+			file:         "valid/spec.anywaye.yml",
 			wantLanguage: "spec",
-			wantDesc:     "The cafaye manifest format, event envelope and contract conventions every service compiles against.",
+			wantDesc:     "The anywaye manifest format, event envelope and contract conventions every service compiles against.",
 		},
 	}
 
@@ -86,7 +86,7 @@ dependencies:
   - name: identity
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
 owner:
   team: courier
 `)
@@ -121,7 +121,7 @@ dependencies:
   - name: beta
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `)
@@ -146,7 +146,7 @@ description: The contract itself.
 language: spec
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/core.git
+  url: git@github.com:anywaye/core.git
 owner:
   team: core
 `)
@@ -162,7 +162,7 @@ owner:
 // rejects, which is the one divergence the CLI cannot have.
 func TestCheckDataIsLintOnTheSameBytes(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "cafaye.yml")
+	path := filepath.Join(dir, "anywaye.yml")
 	write(t, path, invalidManifest)
 
 	_, finding := CheckData(path, []byte(invalidManifest))
@@ -201,7 +201,7 @@ func TestCheckDataReportsUnparseableBytes(t *testing.T) {
 // CheckData hands back the manifest it validated, so a caller does not parse
 // the same bytes a second time and get a second answer.
 func TestCheckDataReturnsTheManifestItChecked(t *testing.T) {
-	manifest, finding := CheckData("worker-only.cafaye.yml", fixture(t, "valid/worker-only.cafaye.yml"))
+	manifest, finding := CheckData("worker-only.anywaye.yml", fixture(t, "valid/worker-only.anywaye.yml"))
 
 	if !finding.OK() {
 		t.Fatalf("CheckData = %v, want OK", finding.Violations)
@@ -278,7 +278,7 @@ dependencies:
   - name: billing
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `)

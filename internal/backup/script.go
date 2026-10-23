@@ -25,7 +25,7 @@ import (
 // PG* variables — measured against `ghcr.io/crmne/kamal-backup:0.5.2` — while
 // libpq reads PG* from the environment and nothing else. So the preamble splits
 // the URL into PGHOST/PGPORT/PGUSER/PGPASSWORD and exports them, which is
-// cafaye/kit's `templates/kamal/drill.sh` §CONNECTION doing the same thing, for
+// anywaye/kit's `templates/kamal/drill.sh` §CONNECTION doing the same thing, for
 // the same reason: `ps` shows arguments to every user on the machine, and a
 // credential in argv is a credential on the machine.
 //
@@ -235,7 +235,7 @@ func DropScript(scratch string) string {
 // on the check to BE an assertion. `psql -tAc "SELECT count(*) FROM t"` is not
 // one: it exits 0 whether the count is 4,000 or 0, so a restore of an empty
 // database — or a restore that created the table and copied nothing into it —
-// is reported as a successful drill. This is the reason cafaye/kit's
+// is reported as a successful drill. This is the reason anywaye/kit's
 // `templates/kamal/drill.sh` builds a check rather than running a count, and it
 // is why this is a script and not a one-liner.
 //

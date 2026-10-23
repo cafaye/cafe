@@ -57,7 +57,7 @@ func TestARegistryEndpointValueOutranksCafsDefault(t *testing.T) {
 	registry := twoServiceRegistry()
 	registry["alpha"] = Entry{
 		Name:        "alpha",
-		Image:       "ghcr.io/cafaye/alpha:1.2.3",
+		Image:       "ghcr.io/anywaye/alpha:1.2.3",
 		Port:        8081,
 		Environment: []Env{{Name: "ALPHA_OTEL_ENDPOINT", Value: "https://otlp.example.com:4318"}},
 	}
@@ -77,8 +77,8 @@ func TestARegistryEndpointValueOutranksCafsDefault(t *testing.T) {
 	}
 }
 
-// Local infrastructure is a third-party image, not a cafaye service. postgres and
-// redis have no `cafaye.yml`, no `*_OTEL_ENDPOINT` contract and no collector to
+// Local infrastructure is a third-party image, not a anywaye service. postgres and
+// redis have no `anywaye.yml`, no `*_OTEL_ENDPOINT` contract and no collector to
 // report to, and handing them one is a variable nothing reads.
 func TestLocalInfrastructureIsHandedNoTelemetryEndpoint(t *testing.T) {
 	stack := mustPlan(t, twoDependencyManifest, twoServiceRegistry(), Options{Build: buildGo})
@@ -86,7 +86,7 @@ func TestLocalInfrastructureIsHandedNoTelemetryEndpoint(t *testing.T) {
 	for _, name := range []string{"postgres", "redis"} {
 		for variable := range envOf(service(t, stack, name)) {
 			if strings.HasSuffix(variable, "_OTEL_ENDPOINT") {
-				t.Errorf("%s was handed %s. It is a third-party image with no cafaye identity, and a "+
+				t.Errorf("%s was handed %s. It is a third-party image with no anywaye identity, and a "+
 					"variable it does not read is a line in the document a reader has to account for",
 					name, variable)
 			}
@@ -123,7 +123,7 @@ core: ^0.2.0
 exposes:
   api: openapi/openapi.yaml
 repository:
-  url: git@github.com:cafaye/my-service.git
+  url: git@github.com:anywaye/my-service.git
 owner:
   team: stack
 `
@@ -144,7 +144,7 @@ func twoServiceRegistry() Catalog {
 	registry := alphaRegistry()
 	registry["beta"] = Entry{
 		Name:  "beta",
-		Image: "ghcr.io/cafaye/beta:0.4.0",
+		Image: "ghcr.io/anywaye/beta:0.4.0",
 		Port:  8082,
 	}
 	return registry

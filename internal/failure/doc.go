@@ -1,15 +1,15 @@
-// Package failure is the cafaye failure-mode library: a machine-readable set of
+// Package failure is the anywaye failure-mode library: a machine-readable set of
 // the documented conditions of OUR OWN stack, and a checker that evaluates them
 // against what the box daemon can observe.
 //
-// WHY THIS EXISTS, and why it is not monitoring. CAFAYE-OPS.md:731-748 carries
+// WHY THIS EXISTS, and why it is not monitoring. ANYWAYE-OPS.md:731-748 carries
 // the seed — ten rows, each a condition a generic monitor cannot see, because
-// seeing it requires knowing cafaye. A monitor sees `unhealthy → restart` and
+// seeing it requires knowing anywaye. A monitor sees `unhealthy → restart` and
 // restarts a healthy courier; the library knows the probe timeout is the bug
-// (CAFAYE-OPS.md:739, :804-806). Grafana and Datadog do monitoring better than
+// (ANYWAYE-OPS.md:739, :804-806). Grafana and Datadog do monitoring better than
 // we will; this package is the half that exists because we documented the stack
-// (CAFAYE-OPS.md:758-763), and it is the Attended tier's actual product
-// (CAFAYE-OPS.md:816).
+// (ANYWAYE-OPS.md:758-763), and it is the Attended tier's actual product
+// (ANYWAYE-OPS.md:816).
 //
 // THE ELEVENTH ENTRY is the box's edge, and it is here because it is the one
 // failure mode this tree can produce a fact for rather than only a sentence:

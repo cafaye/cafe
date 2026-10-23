@@ -243,7 +243,7 @@ type TelemetrySpec struct {
 	// SpanNameSegments is how many dotted segments the pattern allows after the
 	// service: the pattern's `{1,3}`.
 	SpanNameSegments int
-	// ServiceNamePattern is the cafaye namespace rule, shared with the manifest
+	// ServiceNamePattern is the anywaye namespace rule, shared with the manifest
 	// schema and the event envelope.
 	ServiceNamePattern string
 

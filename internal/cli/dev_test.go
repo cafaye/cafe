@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/dev"
 )
 
 // A recording runtime is what lets the whole command be driven without a
@@ -109,7 +109,7 @@ func withStatus(running []dev.State, service string, status dev.Status, detail s
 func projectDir(t *testing.T, files map[string]string) string {
 	t.Helper()
 	dir := t.TempDir()
-	manifest := files["cafaye.yml"]
+	manifest := files["anywaye.yml"]
 	if manifest == "" {
 		manifest = `name: stack
 description: The service under development.
@@ -118,7 +118,7 @@ core: ^0.2.0
 exposes:
   api: openapi/openapi.yaml
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `
@@ -132,8 +132,8 @@ owner:
 			t.Fatal(err)
 		}
 	}
-	if _, ok := files["cafaye.yml"]; !ok {
-		if err := os.WriteFile(filepath.Join(dir, "cafaye.yml"), []byte(manifest), 0o644); err != nil {
+	if _, ok := files["anywaye.yml"]; !ok {
+		if err := os.WriteFile(filepath.Join(dir, "anywaye.yml"), []byte(manifest), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -153,7 +153,7 @@ func buildableProject(t *testing.T) string {
 func dependingProject(t *testing.T) string {
 	return projectDir(t, map[string]string{
 		"docker/Dockerfile": "FROM scratch\n",
-		"cafaye.yml": `name: stack
+		"anywaye.yml": `name: stack
 description: Depends on alpha.
 language: go
 core: ^0.2.0
@@ -163,7 +163,7 @@ dependencies:
   - name: alpha
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `,
@@ -174,7 +174,7 @@ owner:
 // resolves to.
 func alphaCatalog() dev.Catalog {
 	return dev.Catalog{
-		"alpha": {Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.2.3", Command: []string{"/app/alpha", "serve"}, Port: 8081},
+		"alpha": {Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.2.3", Command: []string{"/app/alpha", "serve"}, Port: 8081},
 	}
 }
 
@@ -189,7 +189,7 @@ func TestDevWithoutAManifest(t *testing.T) {
 	if code != exitFailure {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitFailure, stderr)
 	}
-	if !strings.Contains(stderr, "no cafaye.yml in "+dir) {
+	if !strings.Contains(stderr, "no anywaye.yml in "+dir) {
 		t.Errorf("stderr does not name the missing manifest and where it looked\ngot:\n%s", stderr)
 	}
 	if !strings.Contains(stderr, "cafe init") {
@@ -206,7 +206,7 @@ func TestDevWithoutAManifest(t *testing.T) {
 func TestDevWithAnInvalidManifest(t *testing.T) {
 	dir := projectDir(t, map[string]string{
 		"docker/Dockerfile": "FROM scratch\n",
-		"cafaye.yml":        "name: Stack\nlanguage: go\ncore: nope\n\nrepository:\n  url: https://example.com/x\nowner:\n  team: stack\n",
+		"anywaye.yml":        "name: Stack\nlanguage: go\ncore: nope\n\nrepository:\n  url: https://example.com/x\nowner:\n  team: stack\n",
 	})
 
 	code, _, stderr := runCLI(t, testVersion, "dev", dir)
@@ -218,7 +218,7 @@ func TestDevWithAnInvalidManifest(t *testing.T) {
 		t.Errorf("stderr does not carry the linter's line\ngot:\n%s", stderr)
 	}
 	// The same file, the same sentence.
-	_, _, lintStderr := runCLI(t, testVersion, "contract", "lint", filepath.Join(dir, "cafaye.yml"))
+	_, _, lintStderr := runCLI(t, testVersion, "contract", "lint", filepath.Join(dir, "anywaye.yml"))
 	if !strings.Contains(stderr, strings.TrimPrefix(lintStderr, "cafe: ")) &&
 		!strings.Contains(lintStderr, strings.TrimPrefix(stderr, "cafe: ")) {
 		t.Errorf("cafe dev and cafe contract lint disagree about the same file\nlint: %s\ndev:  %s", lintStderr, stderr)
@@ -400,7 +400,7 @@ func TestDevBringsUpTheStackAndReportsIt(t *testing.T) {
 func TestDevRefusesADependencyCycle(t *testing.T) {
 	dir := projectDir(t, map[string]string{
 		"docker/Dockerfile": "FROM scratch\n",
-		"cafaye.yml": `name: stack
+		"anywaye.yml": `name: stack
 description: Depends on a loop.
 language: go
 core: ^0.2.0
@@ -410,7 +410,7 @@ dependencies:
   - name: alpha
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `,
@@ -418,8 +418,8 @@ owner:
 	runtime := &recordingRuntime{running: upEverything("stack", "alpha")}
 	c := newDevCommand(devDeps{runtime: runtime, registry: func(string) (dev.Registry, error) {
 		return dev.Catalog{
-			"alpha": {Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.2.3", Dependencies: []string{"beta"}},
-			"beta":  {Name: "beta", Image: "ghcr.io/cafaye/beta:2.0.0", Dependencies: []string{"alpha"}},
+			"alpha": {Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.2.3", Dependencies: []string{"beta"}},
+			"beta":  {Name: "beta", Image: "ghcr.io/anywaye/beta:2.0.0", Dependencies: []string{"alpha"}},
 		}, nil
 	}})
 	var out bytes.Buffer
@@ -451,7 +451,7 @@ func TestDevRefusesAPortConflict(t *testing.T) {
 	// services cannot both bind it on the host.
 	catalog := alphaCatalog()
 	catalog["alpha"] = dev.Entry{
-		Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.2.3", Port: 8080, Publish: true,
+		Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.2.3", Port: 8080, Publish: true,
 	}
 	runtime := &recordingRuntime{running: upEverything("stack", "alpha")}
 	command := newDevCommand(devDeps{runtime: runtime, registry: func(string) (dev.Registry, error) {
@@ -474,7 +474,7 @@ func TestDevRefusesAPortConflict(t *testing.T) {
 func TestDevReportsASkippedSoftDependency(t *testing.T) {
 	dir := projectDir(t, map[string]string{
 		"docker/Dockerfile": "FROM scratch\n",
-		"cafaye.yml": `name: courier
+		"anywaye.yml": `name: courier
 description: Runs without identity.
 language: elixir
 core: ^0.2.0
@@ -486,7 +486,7 @@ dependencies:
     version: ^0.1.0
     required: false
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
 owner:
   team: courier
 `,
@@ -516,7 +516,7 @@ owner:
 func TestDevRefusesAnUnresolvableRequiredDependency(t *testing.T) {
 	dir := projectDir(t, map[string]string{
 		"docker/Dockerfile": "FROM scratch\n",
-		"cafaye.yml": `name: stack
+		"anywaye.yml": `name: stack
 description: Needs identity.
 language: go
 core: ^0.2.0
@@ -526,7 +526,7 @@ dependencies:
   - name: identity
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `,
@@ -555,7 +555,7 @@ owner:
 func TestDevWithARegistryFile(t *testing.T) {
 	dir := dependingProject(t)
 	catalogPath := filepath.Join(dir, "catalog.json")
-	writeTestFile(t, catalogPath, `{"alpha": {"name": "alpha", "image": "ghcr.io/cafaye/alpha:1.2.3", "port": 8081}}`)
+	writeTestFile(t, catalogPath, `{"alpha": {"name": "alpha", "image": "ghcr.io/anywaye/alpha:1.2.3", "port": 8081}}`)
 
 	code, stdout, stderr := runCLI(t, testVersion, "dev", "-dry-run", "-registry", catalogPath, dir)
 
@@ -565,7 +565,7 @@ func TestDevWithARegistryFile(t *testing.T) {
 	if !strings.Contains(stdout, "alpha") {
 		t.Errorf("the rendered document does not carry the catalog's service\ngot:\n%s", stdout)
 	}
-	if !strings.Contains(stdout, "ghcr.io/cafaye/alpha:1.2.3") {
+	if !strings.Contains(stdout, "ghcr.io/anywaye/alpha:1.2.3") {
 		t.Errorf("the rendered document does not carry the catalog's image\ngot:\n%s", stdout)
 	}
 }
@@ -604,12 +604,12 @@ func TestDevWithNothingToRun(t *testing.T) {
 // says so and succeeds: there was nothing to start and nothing wrong.
 func TestDevInASpecRepository(t *testing.T) {
 	dir := projectDir(t, map[string]string{
-		"cafaye.yml": `name: core
+		"anywaye.yml": `name: core
 description: The contract itself.
 language: spec
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/core.git
+  url: git@github.com:anywaye/core.git
 owner:
   team: core
 `,
@@ -838,7 +838,7 @@ func TestDevReportsAFailedTeardown(t *testing.T) {
 // sentence the runtime can produce.
 func TestDevReportsARuntimeFailure(t *testing.T) {
 	dir := buildableProject(t)
-	runtime := &recordingRuntime{upErr: errors.New("no such image: ghcr.io/cafaye/stack:nope")}
+	runtime := &recordingRuntime{upErr: errors.New("no such image: ghcr.io/anywaye/stack:nope")}
 	c := newDevCommand(devDeps{runtime: runtime, registry: emptyRegistry})
 	var out bytes.Buffer
 	env := newTestEnv()
@@ -1082,7 +1082,7 @@ func writeTestFile(t *testing.T, path, contents string) {
 // reconciles it rather than replacing it, so the mess is permanent.
 func TestDevTearsDownWhenTheStackFailsToStart(t *testing.T) {
 	dir := buildableProject(t)
-	runtime := &recordingRuntime{upErr: errors.New("no such image: ghcr.io/cafaye/stack:nope")}
+	runtime := &recordingRuntime{upErr: errors.New("no such image: ghcr.io/anywaye/stack:nope")}
 	c := newDevCommand(devDeps{runtime: runtime, registry: emptyRegistry})
 	var out bytes.Buffer
 	env := newTestEnv()

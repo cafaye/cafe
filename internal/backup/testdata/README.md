@@ -25,7 +25,7 @@ that reads the wrong key passes every case it was written for.
 | `deploy.yml` | `26c3ecad9860d1e46da4ba2a3a9af91b7075a33d5395b612d09df8a77ba1e589` |
 
 `deploy.resolved.yml` is what `kamal config` printed for that `deploy.yml` on
-kamal 2.12.0, with `KIT_SERVICE=identity`, `KIT_REGISTRY_ORG=cafaye`,
+kamal 2.12.0, with `KIT_SERVICE=identity`, `KIT_REGISTRY_ORG=anywaye`,
 `KIT_REPO=identity`, `KIT_WEB_HOST=203.0.113.10`,
 `KIT_APP_DOMAIN=id.example.invalid`, in a scratch git repository.
 

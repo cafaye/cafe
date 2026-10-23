@@ -13,7 +13,7 @@ type Options struct {
 	// Template is the catalog template name. "app" is the default and the
 	// only one until W6-P2 composes the platform app.
 	Template string
-	// Name is the cafaye namespace name. Empty means derive it from the base
+	// Name is the anywaye namespace name. Empty means derive it from the base
 	// of Dir, which is right for `cafe init` inside an existing repository and
 	// for `cafe new <name>` where the directory IS the name.
 	Name string

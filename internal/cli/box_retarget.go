@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/box"
 )
 
 type boxRetargetOptions struct {

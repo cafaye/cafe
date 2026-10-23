@@ -38,7 +38,7 @@ import (
 // kitWorkflow is the one call this repository makes. It is written out in full
 // rather than assembled from parts because the value of comparing it is that a
 // reader can check it against kit's tree with one `ls`.
-const kitWorkflow = "cafaye/kit/ci/ci.reusable.yml@master"
+const kitWorkflow = "anywaye/kit/ci/ci.reusable.yml@master"
 
 // The gate and the lockfile, named once. `bin/prime` is what a developer runs
 // and what CI must run; `go.sum` is the lockfile it can move.
@@ -121,7 +121,7 @@ func jobCallingKit(t *testing.T, wf workflow) (string, job) {
 	t.Helper()
 
 	for name, j := range wf.Jobs {
-		if strings.HasPrefix(j.Uses, "cafaye/kit/") {
+		if strings.HasPrefix(j.Uses, "anywaye/kit/") {
 			return name, j
 		}
 	}
@@ -158,7 +158,7 @@ func TestTheSharedJobCallsKitAtAPathThatResolves(t *testing.T) {
 
 	calls := 0
 	for name, j := range wf.Jobs {
-		if !strings.HasPrefix(j.Uses, "cafaye/kit/") {
+		if !strings.HasPrefix(j.Uses, "anywaye/kit/") {
 			continue
 		}
 		calls++

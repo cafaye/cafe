@@ -15,9 +15,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cafaye/cafe/internal/box"
-	"github.com/cafaye/cafe/internal/contract"
-	"github.com/cafaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/dev"
 )
 
 // devDeps is what `cafe dev` needs from the world. It is a parameter rather than
@@ -81,7 +81,7 @@ func newDevCommand(deps devDeps) *Command {
 		Name:    "dev",
 		Summary: "run the local development stack for a project",
 		Usage:   "cafe dev [flags] [project]",
-		LongHelp: "Reads <project>'s cafaye.yml — the current directory by default —\n" +
+		LongHelp: "Reads <project>'s anywaye.yml — the current directory by default —\n" +
 			"validates it against the same rules `cafe contract lint` applies,\n" +
 			"renders a compose file from it, writes that file, prints it, and\n" +
 			"brings the stack up. Services come from the manifest's declared\n" +

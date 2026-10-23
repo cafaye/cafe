@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // Every file this package writes is rendered by a hand-written function here
@@ -122,8 +122,8 @@ func writeGeneratedHeader(w *writer, manifest contract.Manifest, spec contract.T
 // which half of it is an instruction from core is an instruction from whoever
 // last touched the generator.
 //
-// Derived, read out of the cafaye core telemetry contract vendored at
-// cafaye/internal/contract/schemas/telemetry/ and pinned there by sha256:
+// Derived, read out of the anywaye core telemetry contract vendored at
+// anywaye/internal/contract/schemas/telemetry/ and pinned there by sha256:
 // the three per-signal attribute allowlists and their value vocabularies, the
 // names core refuses as a measurement attribute, the resource attributes, the
 // error.type vocabulary, the span-name grammar, the `)
@@ -138,7 +138,7 @@ func writeGeneratedHeader(w *writer, manifest contract.Manifest, spec contract.T
 //
 // Written down here, and not derived from anything, because core's schemas
 // constrain the shape of these values and do not state them: the namespace
-// every cafaye service groups under (`)
+// every anywaye service groups under (`)
 	w.at("%q", namespace)
 	w.text(`), and the address of the
 // collector that ships with the local stack (`)
@@ -147,7 +147,7 @@ func writeGeneratedHeader(w *writer, manifest contract.Manifest, spec contract.T
 // examples/valid/telemetry/otel-endpoint.json agree on both; they are the
 // fleet's documented values, not this generator's invention.
 //
-// To change any of it, change cafaye.yml or change core, and run
+// To change any of it, change anywaye.yml or change core, and run
 // ` + "`cafe gen telemetry -force`" + ` again. The test beside this file is
 // the thing that notices you did not.
 `)
@@ -171,7 +171,7 @@ const ServiceName = `)
 
 // Namespace is what this service groups under in a backend. It is what lets one
 // collector show the fleet as one thing rather than as six unrelated services,
-// and it is a Stable OpenTelemetry resource attribute rather than a cafaye
+// and it is a Stable OpenTelemetry resource attribute rather than a anywaye
 // invention.
 const Namespace = `)
 	w.at("%q", namespace)
@@ -304,7 +304,7 @@ func PlaintextScheme(endpoint string) bool {
 
 // The switches, and what turning each of them off means. The global one is the
 // OpenTelemetry specification's own kill switch, and it is what the no-op path
-// is implemented with rather than a cafaye reimplementation of "disabled": six
+// is implemented with rather than a anywaye reimplementation of "disabled": six
 // languages re-implementing one word is how six services acquire six different
 // definitions of it, and the difference between them is somebody's production
 // incident.
@@ -341,7 +341,7 @@ const (
 // restatement of the sentence above. It is measured, and the two halves are
 // decided by different code in every OTel SDK this fleet uses.
 //
-// courier's worker measured the cafaye name losing to the standard one and put it
+// courier's worker measured the anywaye name losing to the standard one and put it
 // in courier's test/courier/otel_export_test.exs. cafe measured the same thing on
 // this repository's own emitter — internal/emitter/precedence_test.go — and found
 // it was half true there as well: the ADDRESS followed this precedence, and the
@@ -1174,7 +1174,7 @@ func renderGoTest(manifest contract.Manifest, spec contract.TelemetrySpec, varia
 
 	writeGeneratedHeader(&w, manifest, spec, goTestPath,
 		"the suite for the file beside it: one test per rule core states about\n"+
-			"// what a cafaye signal may carry, and one per switch that turns\n"+
+			"// what a anywaye signal may carry, and one per switch that turns\n"+
 			"// telemetry off.")
 
 	w.text(`
@@ -1451,7 +1451,7 @@ func clearSwitches(t *testing.T) {
 `)
 
 	w.text(`
-// The endpoint variable, the precedence between the cafaye name and the standard
+// The endpoint variable, the precedence between the anywaye name and the standard
 // OTel spelling, and the scheme on whichever one won.
 //
 // WHY THIS IS FOUR CASES AND NOT THREE. The first three are what any
@@ -1472,14 +1472,14 @@ func clearSwitches(t *testing.T) {
 // cares about would be decided by whatever the machine running it had. An unset
 // variable reads as unset to Endpoint() and to the SDK, so setting it to "" is
 // how a row says "not set".
-func TestEndpointPrefersTheCafayeName(t *testing.T) {
+func TestEndpointPrefersTheAnywayeName(t *testing.T) {
 	for _, row := range []struct {
-		name, cafaye, standard, want string
+		name, anywaye, standard, want string
 		wantScheme                   string
 	}{
 		{name: "only the standard variable, and it is what is used", standard: "https://generic:4318",
 			want: "https://generic:4318", wantScheme: SchemeHTTPS},
-		{name: "only the cafaye variable, and it is what is used", cafaye: "https://otel.example:4318",
+		{name: "only the anywaye variable, and it is what is used", anywaye: "https://otel.example:4318",
 			want: "https://otel.example:4318", wantScheme: SchemeHTTPS},
 		{
 			name: "both set and agreeing on one address",
@@ -1487,23 +1487,23 @@ func TestEndpointPrefersTheCafayeName(t *testing.T) {
 			// being empty: agreement is the case a precedence is most likely to
 			// break, because a resolution that treats "both set" as a conflict
 			// would fail here while passing every other row.
-			cafaye: "http://agreed:4317", standard: "http://agreed:4317",
+			anywaye: "http://agreed:4317", standard: "http://agreed:4317",
 			want: "http://agreed:4317", wantScheme: SchemeHTTP,
 		},
 		{
 			// THE ROW THAT CAN FAIL. Differing in BOTH halves, because either one
 			// alone is satisfied by a resolution that only prefers the address.
-			name: "both set and conflicting: the cafaye name wins, address and scheme",
-			// https on the cafaye side and http on the standard side, so a
+			name: "both set and conflicting: the anywaye name wins, address and scheme",
+			// https on the anywaye side and http on the standard side, so a
 			// resolution that let the environment decide the scheme is caught here
 			// and not only in the address.
-			cafaye: "https://cafaye.example:4318", standard: "http://generic.example:4318",
-			want: "https://cafaye.example:4318", wantScheme: SchemeHTTPS,
+			anywaye: "https://anywaye.example:4318", standard: "http://generic.example:4318",
+			want: "https://anywaye.example:4318", wantScheme: SchemeHTTPS,
 		},
 		{name: "nothing set is the shipped collector", want: DefaultEndpoint, wantScheme: SchemeHTTP},
 	} {
 		t.Run(row.name, func(t *testing.T) {
-			t.Setenv(EndpointVariable, row.cafaye)
+			t.Setenv(EndpointVariable, row.anywaye)
 			t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", row.standard)
 
 			got := Endpoint()

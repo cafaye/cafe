@@ -14,7 +14,7 @@ import (
 func TestTheSeedIsTheTenDocumentedEntries(t *testing.T) {
 	rules := Library()
 	if got := len(rules); got != 11 {
-		t.Fatalf("the library has %d entries; the doc's table at CAFAYE-OPS.md:731-748 has 10 and the "+
+		t.Fatalf("the library has %d entries; the doc's table at ANYWAYE-OPS.md:731-748 has 10 and the "+
 			"edge entry is the eleventh (see Library's comment)", got)
 	}
 
@@ -52,8 +52,8 @@ func TestTheSeedIsTheTenDocumentedEntries(t *testing.T) {
 // assertion, and the line numbers in Known are the evidence.
 func TestEveryEntryCitesTheDoc(t *testing.T) {
 	for _, rule := range Library() {
-		if !strings.Contains(rule.Known, "CAFAYE-OPS.md:") {
-			t.Errorf("entry %q does not cite CAFAYE-OPS.md, which is where its fact came from", rule.ID)
+		if !strings.Contains(rule.Known, "ANYWAYE-OPS.md:") {
+			t.Errorf("entry %q does not cite ANYWAYE-OPS.md, which is where its fact came from", rule.ID)
 		}
 	}
 }
@@ -102,7 +102,7 @@ func TestNoRuleCarriesAConfiguredValue(t *testing.T) {
 	// The settings the seed names. Every one is a variable name a service
 	// reads, which is what makes the observation safe to carry: `identity`'s
 	// MFA routes are absent because MFA_ENCRYPTION_KEY is UNSET
-	// (CAFAYE-OPS.md:741), so the fact is the name's presence.
+	// (ANYWAYE-OPS.md:741), so the fact is the name's presence.
 	names := map[string]bool{}
 	for _, rule := range Library() {
 		for _, p := range append(append([]Predicate{}, rule.Condition.All...), rule.Condition.Any...) {
@@ -153,7 +153,7 @@ func TestTheEdgeEntryFiresWhenTheEdgeIsDownAndTheBoxIsUp(t *testing.T) {
 	// "the edge is fine" — is what makes the entry a detector rather than a
 	// rule that fires whenever anything is wrong.
 	up := down
-	up.Edge = &EdgeFact{Serving: true, Hosts: []EdgeHost{{Name: "api.cafaye.test", Health: "healthy"}}}
+	up.Edge = &EdgeFact{Serving: true, Hosts: []EdgeHost{{Name: "api.anywaye.test", Health: "healthy"}}}
 	if got := len(Evaluate([]Rule{rule}, up).Holds()); got != 0 {
 		t.Errorf("the edge-down condition fired with an edge that is serving")
 	}
@@ -166,7 +166,7 @@ func TestTheEdgeEntryFiresWhenTheEdgeIsDownAndTheBoxIsUp(t *testing.T) {
 		ID:      "control-edge-up-while-its-upstream-is-gone",
 		Failure: "the edge answers for a hostname whose app is gone",
 		Condition: Condition{All: []Predicate{
-			{Kind: PredEdgeHostUnhealthy, Service: "api.cafaye.test"},
+			{Kind: PredEdgeHostUnhealthy, Service: "api.anywaye.test"},
 		}},
 	}
 	up.Edge.Hosts[0].Health = "unhealthy"
@@ -211,8 +211,8 @@ func fullyPopulated() Observation {
 		Edge: &EdgeFact{
 			Serving: true,
 			Hosts: []EdgeHost{
-				{Name: "api.cafaye.test", Upstream: "127.0.0.1:8080", Health: "healthy"},
-				{Name: "auth.cafaye.test", Upstream: "127.0.0.1:8081", Health: "healthy"},
+				{Name: "api.anywaye.test", Upstream: "127.0.0.1:8080", Health: "healthy"},
+				{Name: "auth.anywaye.test", Upstream: "127.0.0.1:8081", Health: "healthy"},
 			},
 		},
 	}

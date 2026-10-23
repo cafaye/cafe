@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/box"
 )
 
 // The one interactive thing cafe does, shared by the commands that ask.

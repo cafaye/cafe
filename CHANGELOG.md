@@ -11,9 +11,9 @@ All notable changes to cafe are recorded here. The format follows
 - **`cafe gen chart` no longer emits `chart/templates/application.yaml`.** The
   chart now writes six files, not seven. The ArgoCD `Application` belongs to
   the substrate: kit owns one static `Application` per service — OCI-sourced
-  (`oci://ghcr.io/cafaye/charts`), applied by `install.sh` — and a service
+  (`oci://ghcr.io/anywaye/charts`), applied by `install.sh` — and a service
   repository commits none. The decision and its reason are recorded in
-  `cafaye/notes/deployment.md`, "Who owns the Application": closed-source charts ride
+  `anywaye/notes/deployment.md`, "Who owns the Application": closed-source charts ride
   a pull-based system, so the source of truth for what runs is the OCI
   artifact with one read-only pull secret, not a git path the cluster would
   need read access to. A generated `Application` would have been a second one
@@ -27,7 +27,7 @@ All notable changes to cafe are recorded here. The format follows
 
 - **`internal/resolve` speaks pantry's 1.7.0 addressing, and `cafe resolve`
   accepts an address.** Every project's address is `<owner_slug>/<name>` —
-  `cafaye/<name>` for the fleet, a publisher's immutable slug otherwise — and
+  `anywaye/<name>` for the fleet, a publisher's immutable slug otherwise — and
   `Project` now decodes the `owner_slug` that makes a name addressable.
   `HTTPPantry.ProjectByAddress` reads `GET /v1/projects/{owner}/{name}` as a
   second method rather than a parameter on `Project`, because the two reads
@@ -52,7 +52,7 @@ All notable changes to cafe are recorded here. The format follows
   themselves.
 
 - **`cafe publish` is non-interactive by default.** Per the user's ruling of
-  2026-10-11 — "for cafaye i think we should make everything non interactive
+  2026-10-11 — "for anywaye i think we should make everything non interactive
   by default as it shall mostly be used by agents" — the interactive
   confirmation prompt is removed from the default path (not gated behind a
   TTY check — gone): an agent runs `cafe publish`, it publishes. `--dry-run`
@@ -103,12 +103,12 @@ All notable changes to cafe are recorded here. The format follows
   that are the code generators, and the policies, which are named versioned rule
   bundles — and its `--verify-only` fails when the files on disk are not what
   would have been generated. This fleet had the parts and no whole:
-  `cafaye-ts` recorded repo/path/sha/sha256 per vendored file and `cafaye-py`
-  and `cafaye-rb` did not, and nothing anywhere said "the generated output is
+  `anywaye-ts` recorded repo/path/sha/sha256 per vendored file and `anywaye-py`
+  and `anywaye-rb` did not, and nothing anywhere said "the generated output is
   exactly what the pinned spec produces".
 
   `cafe.lock` is one entry per file the tree **declares**, in four kinds:
-  `spec` (`cafaye.yml` and the OpenAPI document `exposes.api` names),
+  `spec` (`anywaye.yml` and the OpenAPI document `exposes.api` names),
   `vendored-schema` (every `*.json` under `internal/contract/schemas`),
   `generated-client` (every path `cafe gen` writes for *this* manifest, read out
   of `internal/gen` rather than from a list written beside it) and `rule-bundle`
@@ -159,7 +159,7 @@ All notable changes to cafe are recorded here. The format follows
   must not be in doubt. And the shell cafe says to the accessory — splitting
   `DATABASE_URL` into `PG*`, because `ps` shows argv to every user on the
   machine, and building a check whose exit status *is* the assertion, because
-  `SELECT count(*)` exits 0 on an empty table — is **cafaye/kit's
+  `SELECT count(*)` exits 0 on an empty table — is **anywaye/kit's
   `templates/kamal/drill.sh`**, attributed as such in the code. cafe runs the
   same gem command without `--interactive`, because `--interactive` shells out
   to the system `ssh` for a pty cafe cannot give.
@@ -186,17 +186,17 @@ All notable changes to cafe are recorded here. The format follows
 - **`LICENSE`: cafe is MIT.** The repository shipped no licence file, which is
   not "unlicensed, therefore free" — it is **all rights reserved**, the default
   copyright position when a public repository grants nothing. cafe is the tool
-  every cafaye service is built with, so its licence is the first thing a
+  every anywaye service is built with, so its licence is the first thing a
   stranger reads.
 
   Go modules carry no licence field, so there is no manifest to reconcile and
   the file is the whole grant. The copyright line matches the three
   repositories that already shipped a licence exactly: `Copyright (c) 2026
-  cafaye`.
+  anywaye`.
 
 - **A gate declaration** (`gate.yml`). cafe now says what its gate is, what the
   gate needs from the machine, and what the gate's own output must contain
-  before the word "passed" means anything. The format is `cafaye/core`'s
+  before the word "passed" means anything. The format is `anywaye/core`'s
   `schemas/gate.schema.json`, the checker is its `harness/gate_check.py`, and
   the reasoning is its `docs/gate.md` — the brief for this packet is debt entry
   D2, and closing it is the whole of this change.
@@ -278,7 +278,7 @@ All notable changes to cafe are recorded here. The format follows
 
 - **`bin/prime` no longer claims to be kit's Go template.** Its header said
   "This is the kit Go template; if kit changes it, follow kit", which AGENTS.md
-  has contradicted for a packet already. It is cafaye's own, and it has to be: a
+  has contradicted for a packet already. It is anywaye's own, and it has to be: a
   template other repositories also use cannot promise a line of output that only
   this repository's declaration can match.
 
@@ -297,7 +297,7 @@ All notable changes to cafe are recorded here. The format follows
   `docker-compose.yml` by design, so the compose half of the fleet's endpoint
   convention is only closeable in the generator that renders the stack.
 
-  `wire` now hands every cafaye service the variable, with core's documented
+  `wire` now hands every anywaye service the variable, with core's documented
   collector address read out of `contract.Endpoint.Default` rather than written
   down a third time. A registry entry's own value still outranks it — that is the
   self-hoster escape hatch core's schema describes.
@@ -318,7 +318,7 @@ All notable changes to cafe are recorded here. The format follows
 
   Three shapes are asserted rather than assumed, because each is a different
   answer somebody could have given. Local infrastructure is handed nothing: it is
-  a third-party image with no cafaye identity. `-no-infra` still renders the
+  a third-party image with no anywaye identity. `-no-infra` still renders the
   variable, because that flag names postgres and redis and widening it would make
   a flag a developer reaches for during a database outage silently turn telemetry
   off. And the variable name is derived with the dash dropped, the same
@@ -344,7 +344,7 @@ All notable changes to cafe are recorded here. The format follows
   **process** environment — then the caller's options. `newGRPCExporter` passed the
   address explicitly, so its option was applied last and the address was right. It
   appended a scheme option only when it wanted plaintext, so with an `https`
-  cafaye value nothing overrode whatever the standard variable had said. Measured,
+  anywaye value nothing overrode whatever the standard variable had said. Measured,
   reading the first bytes of the connection:
 
   ```
@@ -403,7 +403,7 @@ All notable changes to cafe are recorded here. The format follows
   ```json
   "pantry": {
     "name": "pantry",
-    "image": "ghcr.io/cafaye/pantry:0.4.1",
+    "image": "ghcr.io/anywaye/pantry:0.4.1",
     "connections": { "postgres": "PANTRY_DATABASE_URL" }
   }
   ```
@@ -688,7 +688,7 @@ All notable changes to cafe are recorded here. The format follows
 
 - CI, on `.github/workflows/ci.yml`. The toolchain half is kit's shared
   workflow, called rather than copied
-  (`cafaye/kit/.github/workflows/ci.reusable.yml@master`, `language: go`), so a
+  (`anywaye/kit/.github/workflows/ci.reusable.yml@master`, `language: go`), so a
   fix in kit reaches this repository without a per-repo pull request. Go is
   pinned to 1.25 — the minor `go.mod` and `mise.toml` both declare, never
   `stable` or `latest` — and the coverage gate is set to 85% against a measured
@@ -761,7 +761,7 @@ All notable changes to cafe are recorded here. The format follows
   lockfiles. A caller of a shared workflow is code, and code that nobody
   executes is code nobody has tested.
 
-- `cafe dev [project]` — reads a project's `cafaye.yml`, validates it with the
+- `cafe dev [project]` — reads a project's `anywaye.yml`, validates it with the
   same rules `cafe contract lint` applies, renders a compose file from it,
   **writes that file and prints it in full**, brings the stack up, waits for
   health, and reports what came up and what did not. The document is printed
@@ -792,8 +792,8 @@ All notable changes to cafe are recorded here. The format follows
   toolchain for the language in the manifest. The ports come from the same plan
   `cafe dev` would build, so the two cannot drift. `-tools-only` prints the
   original table alone; `doctor` still always exits 0.
-- `cafe contract lint <path>` — validates every `cafaye.yml` under a file or a
-  directory against the manifest schema owned by cafaye/core, plus the three
+- `cafe contract lint <path>` — validates every `anywaye.yml` under a file or a
+  directory against the manifest schema owned by anywaye/core, plus the three
   cross-field rules a JSON Schema cannot state. One line per manifest, in
   lexical order: `OK <path>` or `INVALID <path>: <the first error>`. Exits 1 if
   any manifest is invalid, or if the path holds none at all.
@@ -822,7 +822,7 @@ All notable changes to cafe are recorded here. The format follows
 - Violations are reported in the order the fields appear in the manifest, not
   in the order the validator walked a Go map, so the first error on a line is
   the same on every run.
-- Five manifest fixtures copied verbatim from cafaye/core (four valid, one
+- Five manifest fixtures copied verbatim from anywaye/core (four valid, one
   invalid) plus four written for cafe, each of which the JSON Schema accepts so
   that only a cafe rule can reject it.
 
@@ -879,7 +879,7 @@ All notable changes to cafe are recorded here. The format follows
   `-dry-run`, `-no-infra`, `-port`, `-registry` and `-wait`.
 - `cafe doctor` takes an optional project directory and a `-registry`, and two
   project paths is a usage error.
-- `cafaye.yml` is core's 0.2 shape. It was still the pre-0.2 draft — declaring
+- `anywaye.yml` is core's 0.2 shape. It was still the pre-0.2 draft — declaring
   `languages`, `contracts` and `dev`, and none of core's required fields — so
   `cafe contract lint .` failed on this repository's own manifest. It is green
   now.
@@ -930,7 +930,7 @@ are `version` and `doctor`.
 - `bin/prime` (the kit Go gate: `go mod download && go build ./... && go test
   ./...`), `mise.toml` pinning Go 1.25, and a build-only `.goreleaser.yml` with
   no package managers yet.
-- `cafaye.yml` as a clearly marked manifest draft, pending the core schema.
+- `anywaye.yml` as a clearly marked manifest draft, pending the core schema.
 - `internal/cli/stub_test.go`: the `stubCommands` table, one row per stub with
   its argument count and flags. It is the single source of truth for which
   subcommands are still stubs: each one is pinned to return

@@ -10,10 +10,10 @@ import (
 )
 
 // manifestFileName is the one name a manifest may have. Core's examples are
-// called `*.cafaye.yml` because a repository can hold several of them side by
+// called `*.anywaye.yml` because a repository can hold several of them side by
 // side; a real service repository carries exactly one, at its root, and that
 // is the file every tool in the platform looks for.
-const manifestFileName = "cafaye.yml"
+const manifestFileName = "anywaye.yml"
 
 // skippedDirs are directories that hold other projects' manifests: a vendored
 // dependency, a generated tree, a build output, a checkout of a repository
@@ -30,7 +30,7 @@ var skippedDirs = []string{
 // Finding is one document and what is wrong with it. A document with no
 // violations is a valid document, not an absent finding.
 //
-// It is one file rather than one manifest: a `cafaye.yml` and the OpenAPI
+// It is one file rather than one manifest: a `anywaye.yml` and the OpenAPI
 // document it names are two files with two sets of rules, and one line per file
 // is the only shape in which `INVALID <path>: <the first error>` is honest.
 type Finding struct {
@@ -96,7 +96,7 @@ func (r Report) String() string {
 // The document is its own Finding rather than more Violations on the manifest's,
 // and that is a decision about the reader rather than about the code:
 //
-//   - The file being complained about is a different file. `INVALID cafaye.yml:
+//   - The file being complained about is a different file. `INVALID anywaye.yml:
 //     openapi/v1.yaml: is a floating-point value` sends the reader to the wrong
 //     document for a rule about an integer.
 //   - `cafe gen` and the contract tests read the document, not the manifest, so a
@@ -214,7 +214,7 @@ func lintOne(manifestPath string, ownManifest bool) (Report, serviceFacts, error
 		// the difference is measured rather than guessed at.
 		//
 		// pantry's registry holds a byte-identical copy of every fleet service's
-		// manifest under `registry/services/<name>/cafaye.yml`, and `tests/
+		// manifest under `registry/services/<name>/anywaye.yml`, and `tests/
 		// recorded_copy.rs` asserts the copy is byte-identical to the publisher's.
 		// Each copy says `api: openapi/v1.yaml`, which resolves in identity's
 		// repository and cannot resolve in pantry's, because the document is not
@@ -272,7 +272,7 @@ func readAPIDocument(full, document string) (*APIDocument, error) {
 // not a safe default. core's `semverRange` pattern admits no prerelease marker
 // (`^MAJOR.MINOR.PATCH`), so a dependency's contract version cannot say "alpha"
 // even if a service wants to write it; making this rule decidable per repository
-// is therefore a schema change and a finding, not a cafaye change.
+// is therefore a schema change and a finding, not a anywaye change.
 //
 // What it is NOT allowed to do is treat what it cannot see as a pass. A service
 // that is not in this run is absent from the table below, and absent is not

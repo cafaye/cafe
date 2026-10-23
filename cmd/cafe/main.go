@@ -1,4 +1,4 @@
-// Command cafe is the cafaye platform CLI.
+// Command cafe is the anywaye platform CLI.
 //
 // It is a thin entrypoint on purpose: it turns the process into an
 // internal/cli.Options and exits with the code cli.Run returns. Everything a
@@ -12,7 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/cafaye/cafe/internal/cli"
+	"github.com/anywaye/cafe/internal/cli"
 )
 
 // Build identity, injected at link time:
@@ -25,7 +25,7 @@ import (
 // The agent skill `cafe skills install` writes carries its own stamp, in
 // internal/version.Current — a third -X, and one that has to be set as well:
 //
-//	go build -ldflags "-X github.com/cafaye/cafe/internal/version.Current=1.2.3" ./cmd/cafe
+//	go build -ldflags "-X github.com/anywaye/cafe/internal/version.Current=1.2.3" ./cmd/cafe
 //
 // A release that sets only the first two ships a binary that says "cafe
 // 1.2.3" next to a skill that says "cli_version: dev", and that stamp is

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // docsTestManifest is a schema-valid manifest with the visibility plugged in.
@@ -28,11 +28,11 @@ description: The pages.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/pages.git
+  url: git@github.com:anywaye/pages.git
   defaultBranch: master
 ` + line + `owner:
   team: pages
-  contact: pages@cafaye.com
+  contact: pages@anywaye.com
 `
 }
 
@@ -128,7 +128,7 @@ Hello.
 // outside the tree left out by never being named.
 func TestTheDocsTarballHoldsExactlyThePageFiles(t *testing.T) {
 	dir := t.TempDir()
-	writePage(t, dir, "cafaye.yml", docsTestManifest("public"))
+	writePage(t, dir, "anywaye.yml", docsTestManifest("public"))
 	writePage(t, dir, "src/content/docs/index.md", pageBody)
 	writePage(t, dir, "src/content/docs/guide/a.md", pageBody)
 	writePage(t, dir, "src/content/docs/guide/b.mdx", pageBody)
@@ -160,7 +160,7 @@ func TestTheDocsTarballHoldsExactlyThePageFiles(t *testing.T) {
 // in particular no other subdirectory's files and no build output.
 func TestTheNotesTarballHoldsRootPagesAndProjects(t *testing.T) {
 	dir := t.TempDir()
-	writePage(t, dir, "cafaye.yml", docsTestManifest("private"))
+	writePage(t, dir, "anywaye.yml", docsTestManifest("private"))
 	writePage(t, dir, "a.md", pageBody)
 	writePage(t, dir, "b.mdx", pageBody)
 	writePage(t, dir, "main.go", "package main")
@@ -189,7 +189,7 @@ func TestTheNotesTarballHoldsRootPagesAndProjects(t *testing.T) {
 // the command looked.
 func TestAnEmptyTreeIsRefused(t *testing.T) {
 	dir := t.TempDir()
-	writePage(t, dir, "cafaye.yml", docsTestManifest("public"))
+	writePage(t, dir, "anywaye.yml", docsTestManifest("public"))
 
 	if _, _, err := BuildTar(dir, KindDocs); err == nil {
 		t.Error("a tree with no pages packed without complaint")
@@ -203,7 +203,7 @@ func TestAnEmptyTreeIsRefused(t *testing.T) {
 // moment — and a diff between two digests is a diff between two trees.
 func TestTheTarballIsDeterministic(t *testing.T) {
 	dir := t.TempDir()
-	writePage(t, dir, "cafaye.yml", docsTestManifest("public"))
+	writePage(t, dir, "anywaye.yml", docsTestManifest("public"))
 	writePage(t, dir, "src/content/docs/b.md", pageBody)
 	writePage(t, dir, "src/content/docs/a.md", pageBody)
 

@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
-// readManifest reads and validates one project's cafaye.yml. The validation is
+// readManifest reads and validates one project's anywaye.yml. The validation is
 // the contract linter's own, because cafe has no second opinion about what a
 // valid manifest is.
 func readManifest(project string) (contract.Manifest, error) {

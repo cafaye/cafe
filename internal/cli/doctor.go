@@ -12,9 +12,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cafaye/cafe/internal/contract"
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/ledger"
 )
 
 // tool is one row of the doctor report: the name a human reads, and the
@@ -26,7 +26,7 @@ type tool struct {
 	Binaries []string
 }
 
-// tools is the toolchain a cafaye developer needs locally. Order is the report
+// tools is the toolchain a anywaye developer needs locally. Order is the report
 // order: version control, containers, orchestration, then the service
 // languages.
 var tools = []tool{
@@ -118,7 +118,7 @@ func newDoctorCommand() *Command {
 	var opts doctorOptions
 	c := &Command{
 		Name:    "doctor",
-		Summary: "report which cafaye toolchains this machine has, and whether it can run this project",
+		Summary: "report which anywaye toolchains this machine has, and whether it can run this project",
 		Usage:   "cafe doctor [flags] [path]",
 		LongHelp: "Three tables, each row in one of three states: ok, warn, fail.\n" +
 			"\n" +

@@ -31,7 +31,7 @@ func tree(t *testing.T) string {
 	root := t.TempDir()
 	repo := filepath.Join("..", "..")
 
-	copyFile(t, filepath.Join(repo, "cafaye.yml"), filepath.Join(root, "cafaye.yml"))
+	copyFile(t, filepath.Join(repo, "anywaye.yml"), filepath.Join(root, "anywaye.yml"))
 	copyFile(t, filepath.Join(repo, "gate.yml"), filepath.Join(root, "gate.yml"))
 
 	if err := copyTree(filepath.Join(repo, "internal/contract/schemas"),
@@ -136,7 +136,7 @@ func TestTheLockPinsEveryKindCafCanIdentify(t *testing.T) {
 		kind Kind
 		want int
 	}{
-		{KindSpec, 1},            // cafaye.yml; cafe declares no exposes.api
+		{KindSpec, 1},            // anywaye.yml; cafe declares no exposes.api
 		{KindVendoredSchema, 7},  // one manifest schema and six telemetry
 		{KindGeneratedClient, 3}, // the three files cafe gen telemetry writes
 		{KindRuleBundle, 1},      // gate.yml
@@ -339,7 +339,7 @@ func TestATreeWithNoManifestIsAnErrorAndNotAnEmptyReport(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Verify over an empty tree returned %+v and no error", report)
 	}
-	if !strings.Contains(err.Error(), "cafaye.yml") {
+	if !strings.Contains(err.Error(), "anywaye.yml") {
 		t.Errorf("the refusal does not name the manifest it could not read:\n%v", err)
 	}
 }

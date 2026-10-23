@@ -1,4 +1,4 @@
-# cafaye.yml — darkroom: a pure worker. Nothing exposed, only consumed.
+# anywaye.yml — darkroom: a pure worker. Nothing exposed, only consumed.
 # `exposes` is omitted entirely: the service has no contract surface of its own.
 name: darkroom
 description: Media uploads, variants and the S3 processing pipeline.
@@ -15,10 +15,10 @@ dependencies:
     required: true
 
 repository:
-  url: git@github.com:cafaye/darkroom.git
+  url: git@github.com:anywaye/darkroom.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: darkroom
-  contact: darkroom@cafaye.com
+  contact: darkroom@anywaye.com

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/telemetry"
+	"github.com/anywaye/cafe/internal/telemetry"
 )
 
 // The endpoint precedence, asserted over the WIRE rather than over a function.
@@ -45,7 +45,7 @@ func dialed(first []byte) bool { return bytes.HasPrefix(first, h2ClientPreface) 
 // The four cases the documented precedence distinguishes, plus the one that was
 // wrong.
 //
-// `Endpoint()`'s own comment says the cafaye variable "wins over the standard
+// `Endpoint()`'s own comment says the anywaye variable "wins over the standard
 // `OTEL_EXPORTER_OTLP_ENDPOINT`". courier's worker measured the opposite and put
 // it in `test/courier/otel_export_test.exs`. This file is the same measurement
 // for cafe, and it found the ADDRESS half already correct and the SCHEME half not.
@@ -54,8 +54,8 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 		name string
 		// values builds each variable's setting from the two loopback addresses,
 		// so one row can point the two variables at DIFFERENT sockets — which is
-		// the only way "the cafaye one was dialed" is a statement about anything.
-		values func(mine, theirs string) (cafaye, standard string)
+		// the only way "the anywaye one was dialed" is a statement about anything.
+		values func(mine, theirs string) (anywaye, standard string)
 		// winner is the socket the documented precedence says was dialed.
 		winner string
 		// wantPlaintext is whether cafe must dial WITHOUT TLS. It is an answer, not
@@ -75,11 +75,11 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 				"ever reaches is not a fallback",
 		},
 		{
-			name: "only the cafaye variable, and it is what is used",
+			name: "only the anywaye variable, and it is what is used",
 			values: func(mine, _ string) (string, string) {
 				return "http://" + mine, ""
 			},
-			winner:        "the cafaye variable",
+			winner:        "the anywaye variable",
 			wantPlaintext: true,
 			why:           "the whole contract is this one variable",
 		},
@@ -89,31 +89,31 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 				address := "http://" + mine
 				return address, address
 			},
-			winner:        "the cafaye variable",
+			winner:        "the anywaye variable",
 			wantPlaintext: true,
 			why: "agreement has no winner, and a resolution that complained about the conflict would " +
 				"make an ordinary configuration an error state it does not need to be",
 		},
 		{
-			name: "both set and conflicting on the address: the cafaye one wins",
+			name: "both set and conflicting on the address: the anywaye one wins",
 			values: func(mine, theirs string) (string, string) {
 				return "http://" + mine, "https://" + theirs
 			},
-			winner:        "the cafaye variable",
+			winner:        "the anywaye variable",
 			wantPlaintext: true,
 			why: "the documented rule, and the one courier measured going the other way. This half " +
 				"already worked — a caller's options are applied after the SDK's own environment read — " +
 				"and it is asserted because a fix for the scheme must not break it",
 		},
 		{
-			name: "both set and conflicting on the scheme: the cafaye one wins",
+			name: "both set and conflicting on the scheme: the anywaye one wins",
 			values: func(mine, theirs string) (string, string) {
 				return "https://" + mine, "http://" + theirs
 			},
-			winner:        "the cafaye variable",
+			winner:        "the anywaye variable",
 			wantPlaintext: false,
 			why: "THIS ONE WAS WRONG, and only in this direction. newGRPCExporter used to append an " +
-				"option only when it wanted plaintext, so with an https cafaye value the scheme was " +
+				"option only when it wanted plaintext, so with an https anywaye value the scheme was " +
 				"left to whatever ApplyGRPCEnvConfigs read out of the standard variable — and a " +
 				"self-hoster's http:// standard value downgraded their own https:// endpoint to " +
 				"plaintext. MEASURED before the fix, the first bytes on the wire were " +
@@ -128,8 +128,8 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 			// t.Setenv, not Options.Lookup: the SDK reads the process environment
 			// itself and an injected map never reaches it. That is the whole reason
 			// the first version of this test passed against a broken exporter.
-			cafaye, standard := row.values(mine.addr, theirs.addr)
-			t.Setenv(telemetry.EndpointVariable, cafaye)
+			anywaye, standard := row.values(mine.addr, theirs.addr)
+			t.Setenv(telemetry.EndpointVariable, anywaye)
 			t.Setenv(otlpEndpointVariable, standard)
 			clearOTELSwitches(t)
 
@@ -144,10 +144,10 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 			mineDialed := mine.dialed(t)
 			theirsDialed := theirs.dialed(t)
 			if mineDialed == theirsDialed {
-				t.Fatalf("cafaye=%q dialed=%t and standard=%q dialed=%t: exactly one must be true",
-					cafaye, mineDialed, standard, theirsDialed)
+				t.Fatalf("anywaye=%q dialed=%t and standard=%q dialed=%t: exactly one must be true",
+					anywaye, mineDialed, standard, theirsDialed)
 			}
-			wantMine := row.winner == "the cafaye variable"
+			wantMine := row.winner == "the anywaye variable"
 			if mineDialed != wantMine {
 				t.Errorf("%s was dialed; the documented precedence says %s was. %s",
 					dialledName(mineDialed), row.winner, row.why)
@@ -169,7 +169,7 @@ func TestTheEndpointPrecedenceHoldsOnTheWire(t *testing.T) {
 
 func dialledName(dialed bool) string {
 	if dialed {
-		return "the cafaye endpoint"
+		return "the anywaye endpoint"
 	}
 	return "the standard endpoint"
 }

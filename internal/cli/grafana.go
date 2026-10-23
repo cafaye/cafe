@@ -11,10 +11,10 @@ func newGrafanaCommand() *Command {
 	var baseURL string
 	return &Command{
 		Name:    "grafana",
-		Summary: "Print the cafaye Grafana (dashboards) URL",
+		Summary: "Print the anywaye Grafana (dashboards) URL",
 		Usage:   "cafe grafana [--url URL]",
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&baseURL, "url", os.Getenv("CAFAYE_GRAFANA_URL"), "Grafana base URL")
+			fs.StringVar(&baseURL, "url", os.Getenv("ANYWAYE_GRAFANA_URL"), "Grafana base URL")
 		},
 		Run: func(args []string, env *Env) error {
 			if strings.TrimSpace(baseURL) == "" {

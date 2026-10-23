@@ -16,7 +16,7 @@ import (
 // (bufcheckserverbuild.go:894-935; the Purpose strings are the argument, and
 // WIRE_JSON is buf's own superset of WIRE — it says "the binary or JSON".)
 //
-// cafaye spells the nested middle out into three names because cafaye has no
+// anywaye spells the nested middle out into three names because anywaye has no
 // protobuf: the nesting is the same and the middle rung is the one this fleet
 // lives on. Six languages, two of which lose integer precision in JSON and none
 // of which carry a name in a binary encoding:
@@ -53,7 +53,7 @@ const AllTiers = TierSource | TierJSON | TierWire
 
 // DefaultTiers is what `cafe contract breaking` runs when the person did not say.
 //
-// SOURCE+JSON and not all three, because cafaye ships no binary encoding: no
+// SOURCE+JSON and not all three, because anywaye ships no binary encoding: no
 // service in the fleet has a protobuf or an Avro schema derived from its OpenAPI
 // document, so a WIRE break has nothing to break for every current member. The
 // tier exists for the service that will have one — darkroom's media keys and

@@ -31,7 +31,7 @@ import (
 //   - Nothing is synchronized by sleeping. A frame arrives or it does not, and
 //     "the process died" and "the process is alive and said nothing" are
 //     different failures with different messages (see nextFrame).
-//   - No test needs Docker, a container runtime, or a running cafaye
+//   - No test needs Docker, a container runtime, or a running anywaye
 //     deployment. Every workspace is a t.TempDir, and the tools that would need
 //     a deployment are exercised through their failure path, which is the path
 //     that has to work anyway.
@@ -697,7 +697,7 @@ func TestAToolThatFailsIsAToolErrorAndTheServerKeepsServing(t *testing.T) {
 	if !failed.IsError {
 		t.Fatalf("bringing up a directory with no manifest succeeded: %s", failed.text())
 	}
-	if !strings.Contains(failed.text(), "cafaye.yml") {
+	if !strings.Contains(failed.text(), "anywaye.yml") {
 		t.Errorf("the tool error does not say what was missing: %s", failed.text())
 	}
 
@@ -853,7 +853,7 @@ func TestTheRegistryToolRedactsServiceEnvironment(t *testing.T) {
 		"catalog.json": `{
   "alpha": {
     "name": "alpha",
-    "image": "ghcr.io/cafaye/alpha:1.2.3",
+    "image": "ghcr.io/anywaye/alpha:1.2.3",
     "port": 8080,
     "environment": {"SECRET_TOKEN": "` + secret + `", "LOG_LEVEL": "debug"}
   }

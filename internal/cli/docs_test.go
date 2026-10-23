@@ -9,15 +9,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/docs"
+	"github.com/anywaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/docs"
 )
 
 // docsCallerToken is a string no real credential looks like and every fake
 // in this file answers with it. The assertions are that it reaches the
 // exchange and reaches NEITHER stream — the same courier rule the pantry
 // publisher's tests hold.
-var docsCallerToken = "cafaye_" + strings.Repeat("d", 40)
+var docsCallerToken = "anywaye_" + strings.Repeat("d", 40)
 
 // docsExchangedToken is what the identity fake mints for press: a JWS-shaped
 // string distinct from the session, so a test can tell which credential
@@ -87,12 +87,12 @@ description: The public pages.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/pages.git
+  url: git@github.com:anywaye/pages.git
   defaultBranch: master
   visibility: public
 owner:
   team: pages
-  contact: pages@cafaye.com
+  contact: pages@anywaye.com
 `
 
 // A manifest for a private repository: the pages ship as notes.
@@ -101,12 +101,12 @@ description: The private notes.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/fieldnotes.git
+  url: git@github.com:anywaye/fieldnotes.git
   defaultBranch: master
   visibility: private
 owner:
   team: pages
-  contact: pages@cafaye.com
+  contact: pages@anywaye.com
 `
 
 // fakeDocsPublisher is the seam the decision-table tests drive: it records
@@ -134,12 +134,12 @@ func (f *fakeDocsPublisher) Publish(_ context.Context, token string, ingest docs
 
 var _ docs.Publisher = (*fakeDocsPublisher)(nil)
 
-// docsTestProject writes a cafaye.yml plus the page files into a directory
+// docsTestProject writes a anywaye.yml plus the page files into a directory
 // the test owns and returns the directory.
 func docsTestProject(t *testing.T, manifest string, pages map[string]string) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cafaye.yml"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "anywaye.yml"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write the manifest: %v", err)
 	}
 	for rel, body := range pages {
@@ -393,7 +393,7 @@ func TestAThirdVisibilityIsRefused(t *testing.T) {
 	}
 }
 
-// An unreadable cafaye.yml fails loudly rather than guessing: the command
+// An unreadable anywaye.yml fails loudly rather than guessing: the command
 // never infers a kind without the manifest, because a guess in the public
 // direction is a leak. A path that is a directory where the manifest should
 // be is unreadable on every machine — unlike a mode bit, which root
@@ -402,7 +402,7 @@ func TestAnUnreadableManifestFailsLoudly(t *testing.T) {
 	pub := &fakeDocsPublisher{}
 	deps := docsTestEnv(t, pub)
 	project := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(project, "cafaye.yml"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(project, "anywaye.yml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -411,7 +411,7 @@ func TestAnUnreadableManifestFailsLoudly(t *testing.T) {
 	if code != exitFailure {
 		t.Errorf("exit code = %d, want %d", code, exitFailure)
 	}
-	if !strings.Contains(stderr, "cafaye.yml") {
+	if !strings.Contains(stderr, "anywaye.yml") {
 		t.Errorf("the refusal does not name the manifest\ngot:\n%s", stderr)
 	}
 	if strings.Contains(stdout, "plan for") {

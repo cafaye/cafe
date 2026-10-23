@@ -187,7 +187,7 @@ func (e Entry) IsSecret() bool { return e.Provenance != Configuration }
 // The grammar is `path: "anchor"`, several joined by `, `. The anchor is
 // double-quoted so it may hold a colon, a comma or a backtick; it may not hold a
 // double quote, which none of them needs to.
-const installer = "cafaye/kit/templates/substrate/install.sh"
+const installer = "anywaye/kit/templates/substrate/install.sh"
 
 // cite renders one citation in the stored grammar.
 func cite(path, anchor string) string { return path + `: "` + anchor + `"` }
@@ -206,13 +206,13 @@ var (
 	srcRoles      = cite(installer, "password (step 8), and gateway's ASSERTION_SIGNING_KEY")
 	srcNeverPatch = cite(installer, "refusing to overwrite")
 
-	srcIDReadme    = cite("cafaye/identity/README.md", "SIGNUP_SIGNING_KEY")
-	srcOIDCJwks    = cite("cafaye/identity/README.md", "One key, `use: sig`")
-	srcMFAReadme   = cite("cafaye/identity/README.md", "MFA_ENCRYPTION_KEY")
-	srcOAuthReadme = cite("cafaye/identity/README.md", "OAUTH_ENCRYPTION_KEY")
-	srcPairTTL     = cite("cafaye/identity/README.md", "expires one hour")
-	srcMuseReadme  = cite("cafaye/muse/README.md", "Keys are read per request")
-	srcPacket      = cite("cafaye/notes/ops.md", "The honest ceiling here depends on reach")
+	srcIDReadme    = cite("anywaye/identity/README.md", "SIGNUP_SIGNING_KEY")
+	srcOIDCJwks    = cite("anywaye/identity/README.md", "One key, `use: sig`")
+	srcMFAReadme   = cite("anywaye/identity/README.md", "MFA_ENCRYPTION_KEY")
+	srcOAuthReadme = cite("anywaye/identity/README.md", "OAUTH_ENCRYPTION_KEY")
+	srcPairTTL     = cite("anywaye/identity/README.md", "expires one hour")
+	srcMuseReadme  = cite("anywaye/muse/README.md", "Keys are read per request")
+	srcPacket      = cite("anywaye/notes/ops.md", "The honest ceiling here depends on reach")
 )
 
 // DefaultInterval is the schedule the rotatable class runs on. Ninety days is
@@ -368,13 +368,13 @@ func Inventory() []Entry {
 			Name: "OIDC_SIGNING_KEY_ID", Namespace: "identity", Secret: "identity-secrets",
 			Class: NotRotatable, Provenance: Configuration,
 			Reason: "the kid published in the JWKS and signed into every token, derived from the key's own thumbprint. It is not a secret and it changes only when the key does — which is the cutover above.",
-			Source: cite("cafaye/identity/README.md", "The `kid` published in the JWKS") + ", " + srcOIDCJwks,
+			Source: cite("anywaye/identity/README.md", "The `kid` published in the JWKS") + ", " + srcOIDCJwks,
 		},
 		{
 			Name: "OIDC_ISSUER", Namespace: "identity", Secret: "identity-secrets",
 			Class: NotRotatable, Provenance: Configuration,
 			Reason: "configuration, not a secret: the URL identity publishes as its issuer, required with the signing key and its id or with none of them.",
-			Source: cite("cafaye/identity/README.md", "The OpenID Connect issuer") + ", " + srcRecord,
+			Source: cite("anywaye/identity/README.md", "The OpenID Connect issuer") + ", " + srcRecord,
 		},
 	}
 }

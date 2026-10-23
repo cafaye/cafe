@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/ledger"
 )
 
 // The registry's construction and its small accessors. They are trivial, and

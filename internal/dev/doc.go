@@ -1,5 +1,5 @@
 // Package dev turns a project into a running local stack: it reads a
-// `cafaye.yml`, asks a registry how the services it depends on are run,
+// `anywaye.yml`, asks a registry how the services it depends on are run,
 // decides what has to be up and in what order, renders the compose document
 // that describes it, and reports what came up.
 //
@@ -37,7 +37,7 @@
 //	{
 //	  "identity": {
 //	    "name": "identity",
-//	    "image": "ghcr.io/cafaye/identity:0.4.2",
+//	    "image": "ghcr.io/anywaye/identity:0.4.2",
 //	    "command": ["/app/identity", "serve"],
 //	    "port": 8080,
 //	    "publish": true,

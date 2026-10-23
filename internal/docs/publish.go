@@ -78,7 +78,7 @@ func (e *PressError) Error() string {
 // — and a client that renamed one would be a second copy of the document,
 // and the second copy is the one that drifts.
 type HTTPPublisher struct {
-	// BaseURL is press's origin, e.g. https://press.cafaye.com. Empty is
+	// BaseURL is press's origin, e.g. https://press.anywaye.com. Empty is
 	// refused rather than defaulted, for the reason HTTPPublisher's pantry
 	// sibling refuses it: a client with no endpoint is a client that would
 	// POST a relative path.

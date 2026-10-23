@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // `cafe boxd` reads the box STORE, and this file is the proof of the measured

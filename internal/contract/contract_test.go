@@ -32,10 +32,10 @@ func TestCheckAcceptsEveryValidManifestFromCore(t *testing.T) {
 		name string
 		file string
 	}{
-		{name: "api service with events", file: "valid/identity.cafaye.yml"},
-		{name: "worker publishing events without http", file: "valid/worker.cafaye.yml"},
-		{name: "worker consuming events with no surface", file: "valid/worker-only.cafaye.yml"},
-		{name: "core's own spec manifest", file: "valid/spec.cafaye.yml"},
+		{name: "api service with events", file: "valid/identity.anywaye.yml"},
+		{name: "worker publishing events without http", file: "valid/worker.anywaye.yml"},
+		{name: "worker consuming events with no surface", file: "valid/worker-only.anywaye.yml"},
+		{name: "core's own spec manifest", file: "valid/spec.anywaye.yml"},
 	}
 
 	for _, tt := range tests {
@@ -57,7 +57,7 @@ func TestCheckAcceptsEveryValidManifestFromCore(t *testing.T) {
 // asserts, in the order the schema reports them. The order matters — it is
 // what makes "the first error" on the lint line a stable, reviewable string.
 func TestCheckReportsCoreInvalidExampleExactly(t *testing.T) {
-	manifest, err := Parse(fixture(t, "invalid/manifest.cafaye.invalid.yml"))
+	manifest, err := Parse(fixture(t, "invalid/manifest.anywaye.invalid.yml"))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestCheckReportsCoreInvalidExampleExactly(t *testing.T) {
 // field and the rule, because the person reading the line is fixing a file,
 // not reading a validator's internals.
 func TestFirstViolationNamesTheFieldAndTheRule(t *testing.T) {
-	manifest, err := Parse(fixture(t, "invalid/manifest.cafaye.invalid.yml"))
+	manifest, err := Parse(fixture(t, "invalid/manifest.anywaye.invalid.yml"))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -116,21 +116,21 @@ func TestCheckReportsCrossFieldViolations(t *testing.T) {
 	}{
 		{
 			name:        "a service never consumes its own events",
-			file:        "invalid/self-consume.cafaye.yml",
+			file:        "invalid/self-consume.anywaye.yml",
 			wantKeyword: RuleNoSelfConsume,
 			wantPath:    "consumes/0",
 			wantMessage: `"billing.invoice.created" is published by this service and must not be in consumes; react in-process instead of paying for a bus`,
 		},
 		{
 			name:        "a published event type carries its own service prefix",
-			file:        "invalid/foreign-long-event.cafaye.yml",
+			file:        "invalid/foreign-long-event.anywaye.yml",
 			wantKeyword: RuleEventPrefix,
 			wantPath:    "exposes/events/1",
 			wantMessage: `"identity.api_key.created" must start with this service's own name (billing)`,
 		},
 		{
 			name:        "a declared contract surface is a real one",
-			file:        "invalid/empty-surface.cafaye.yml",
+			file:        "invalid/empty-surface.anywaye.yml",
 			wantKeyword: RuleDeclaresSurface,
 			wantPath:    "exposes",
 			wantMessage: "exposes declares neither an api document nor any events; a repository that publishes nothing omits exposes entirely",
@@ -192,7 +192,7 @@ func TestParseReportsYAMLErrorsAsViolations(t *testing.T) {
 // keep going and report the rest of the tree.
 func TestLintReportsUnparseableManifestsAsInvalid(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "cafaye.yml"), "name: courier\nexposes:\n\tevents: []\n")
+	write(t, filepath.Join(dir, "anywaye.yml"), "name: courier\nexposes:\n\tevents: []\n")
 
 	report, err := Lint(dir)
 	if err != nil {
@@ -227,7 +227,7 @@ func TestCheckStopsAtTheSchemaForMistypedFields(t *testing.T) {
 				"core: ^0.1.0\n" +
 				"exposes: openapi.yaml\n" +
 				"repository:\n" +
-				"  url: git@github.com:cafaye/courier.git\n" +
+				"  url: git@github.com:anywaye/courier.git\n" +
 				"owner:\n" +
 				"  team: courier\n",
 			wantKeyword: "type",
@@ -241,7 +241,7 @@ func TestCheckStopsAtTheSchemaForMistypedFields(t *testing.T) {
 				"consumes:\n" +
 				"  user: created\n" +
 				"repository:\n" +
-				"  url: git@github.com:cafaye/courier.git\n" +
+				"  url: git@github.com:anywaye/courier.git\n" +
 				"owner:\n" +
 				"  team: courier\n",
 			wantKeyword: "type",
@@ -253,7 +253,7 @@ func TestCheckStopsAtTheSchemaForMistypedFields(t *testing.T) {
 				"language: elixir\n" +
 				"core: ^0.1.0\n" +
 				"repository:\n" +
-				"  url: git@github.com:cafaye/courier.git\n" +
+				"  url: git@github.com:anywaye/courier.git\n" +
 				"owner:\n" +
 				"  team: courier\n",
 			wantKeyword: "type",
@@ -311,7 +311,7 @@ func TestManifestFacts(t *testing.T) {
 	}{
 		{
 			name:     "an api service",
-			file:     "valid/identity.cafaye.yml",
+			file:     "valid/identity.anywaye.yml",
 			wantName: "identity",
 			wantPublish: []string{
 				"identity.user.created", "identity.user.email_verified", "identity.account.created",
@@ -323,7 +323,7 @@ func TestManifestFacts(t *testing.T) {
 		},
 		{
 			name:     "a worker",
-			file:     "valid/worker.cafaye.yml",
+			file:     "valid/worker.anywaye.yml",
 			wantName: "courier",
 			wantPublish: []string{
 				"courier.email.queued", "courier.email.delivered", "courier.email.bounced",
@@ -336,13 +336,13 @@ func TestManifestFacts(t *testing.T) {
 		},
 		{
 			name:        "a library",
-			file:        "valid/worker-only.cafaye.yml",
+			file:        "valid/worker-only.anywaye.yml",
 			wantName:    "darkroom",
 			wantConsume: []string{"identity.account.created", "identity.member.role_changed"},
 		},
 		{
 			name:     "core itself",
-			file:     "valid/spec.cafaye.yml",
+			file:     "valid/spec.anywaye.yml",
 			wantName: "core",
 		},
 	}
@@ -374,10 +374,10 @@ func TestEveryCoreConstraintResolves(t *testing.T) {
 		file string
 		want string
 	}{
-		{file: "valid/identity.cafaye.yml", want: "^0.2.0"},
-		{file: "valid/worker.cafaye.yml", want: "~0.2.0"},
-		{file: "valid/worker-only.cafaye.yml", want: "0.2.0"},
-		{file: "valid/spec.cafaye.yml", want: "^0.2.0"},
+		{file: "valid/identity.anywaye.yml", want: "^0.2.0"},
+		{file: "valid/worker.anywaye.yml", want: "~0.2.0"},
+		{file: "valid/worker-only.anywaye.yml", want: "0.2.0"},
+		{file: "valid/spec.anywaye.yml", want: "^0.2.0"},
 	}
 
 	for _, tt := range tests {
@@ -454,8 +454,8 @@ func TestVendoredSchemaCompilesAsDraft202012(t *testing.T) {
 		want string
 	}{
 		{name: "$schema", got: declared.Schema, want: "https://json-schema.org/draft/2020-12/schema"},
-		{name: "$id", got: declared.ID, want: "https://cafaye.com/schemas/cafaye.manifest.schema.json"},
-		{name: "title", got: declared.Title, want: "cafaye service manifest"},
+		{name: "$id", got: declared.ID, want: "https://anywaye.com/schemas/anywaye.manifest.schema.json"},
+		{name: "title", got: declared.Title, want: "anywaye service manifest"},
 	}
 	for _, tt := range tests {
 		if tt.got != tt.want {
@@ -512,13 +512,13 @@ func TestVendoredSchemaPinsTheEventTypePattern(t *testing.T) {
 // pinned to the order of the document. This test would pass by luck once and
 // fail on some later run if the sort were removed — which is why it repeats.
 func TestViolationOrderIsStableAcrossRuns(t *testing.T) {
-	first := violationPaths(t, fixture(t, "invalid/manifest.cafaye.invalid.yml"))
+	first := violationPaths(t, fixture(t, "invalid/manifest.anywaye.invalid.yml"))
 	if len(first) < 2 {
 		t.Fatalf("fixture reports %v, want at least two violations to order", first)
 	}
 
 	for run := 0; run < 20; run++ {
-		got := violationPaths(t, fixture(t, "invalid/manifest.cafaye.invalid.yml"))
+		got := violationPaths(t, fixture(t, "invalid/manifest.anywaye.invalid.yml"))
 		if !slices.Equal(got, first) {
 			t.Fatalf("run %d reported %v, want %v", run, got, first)
 		}
@@ -546,7 +546,7 @@ func manifestWith(fields string) string {
 		"core: ^0.1.0\n" +
 		fields +
 		"repository:\n" +
-		"  url: git@github.com:cafaye/courier.git\n" +
+		"  url: git@github.com:anywaye/courier.git\n" +
 		"  defaultBranch: master\n"
 }
 

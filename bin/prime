@@ -7,7 +7,7 @@
 #
 # NOT kit's Go template, and not claimed to be. It was, until caf-07, down to a
 # stale comment saying so; AGENTS.md has said the opposite for a packet already.
-# It is cafaye's own because `gate.yml` declares a proof that this script's own
+# It is anywaye's own because `gate.yml` declares a proof that this script's own
 # output has to satisfy, and a template that other repositories also use cannot
 # promise a line of output that only this repository's declaration can match.
 #

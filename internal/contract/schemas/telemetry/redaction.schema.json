@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://cafaye.com/schemas/telemetry/redaction.schema.json",
-  "title": "cafaye telemetry redaction boundary",
+  "$id": "https://anywaye.com/schemas/telemetry/redaction.schema.json",
+  "title": "anywaye telemetry redaction boundary",
   "description": "The rule this whole spec exists for: prompt and completion content must never appear in a telemetry span. muse is an LLM gateway, so its spans naturally want to record the prompt — 'which model, which prompt shape, how long' is the obvious thing to instrument and it is the obvious thing that writes every customer's content into a searchable, retained, widely-readable log store. PLAN.md §7b puts enforcement at the OTel collector as one chokepoint, with per-service allowlists as defence in depth, and this schema is what makes that claim checkable rather than architectural: it declares WHERE enforcement lives, WHAT may be recorded about an LLM call, and WHAT may never be recorded, and both kit's collector config and a service's own SDK setup are checked against it. The default is deny. A telemetry pipeline that drops an attribute it does not recognise is the only shape of this control that survives a well-meaning change made six months from now by someone who did not read this file — which is the realistic way this leaks, not an attacker. The house canary is muse/tests/test_trace_propagation.py, which places a unique string in both the prompt and the completion and asserts it appears nowhere in the rendered span payload, separately from asserting the dangerous key names are absent; this schema is the fleet-level form of that test. See docs/observability.md and D13 in DECISIONS.md for the enforcement-point call.",
   "type": "object",
   "additionalProperties": false,

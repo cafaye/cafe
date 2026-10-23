@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // fakePantry is the seam a test drives the resolver's tier 1 and tier 2
@@ -98,12 +98,12 @@ func deps(names ...string) []contract.Dependency {
 func TestAFreeProjectResolvesThroughTier1AndTier2(t *testing.T) {
 	pantry := &fakePantry{
 		project: &Project{Name: "gateway", Repository: PublicRepo{Visibility: "public"}},
-		coords:  &Coordinates{Name: "gateway", Repository: Repository{URL: "git@github.com:cafaye/gateway.git", DefaultBranch: "master"}},
+		coords:  &Coordinates{Name: "gateway", Repository: Repository{URL: "git@github.com:anywaye/gateway.git", DefaultBranch: "master"}},
 	}
 	cp := &fakeControlPlane{}
 	r := NewResolver(pantry, cp)
 
-	report := r.Resolve(context.Background(), ".", deps("gateway"), "cafaye_token", "")
+	report := r.Resolve(context.Background(), ".", deps("gateway"), "anywaye_token", "")
 
 	if len(report.Services) != 1 {
 		t.Fatalf("resolved %d services, want 1", len(report.Services))
@@ -118,13 +118,13 @@ func TestAFreeProjectResolvesThroughTier1AndTier2(t *testing.T) {
 	if res.Coordinates == nil {
 		t.Fatalf("free service resolved without coordinates")
 	}
-	if res.Coordinates.Repository.URL != "git@github.com:cafaye/gateway.git" {
+	if res.Coordinates.Repository.URL != "git@github.com:anywaye/gateway.git" {
 		t.Errorf("repository = %q", res.Coordinates.Repository.URL)
 	}
 	if cp.calls != 0 {
 		t.Errorf("control plane calls = %d, want 0 (a free service never reaches tier 3)", cp.calls)
 	}
-	if pantry.lastToken != "cafaye_token" {
+	if pantry.lastToken != "anywaye_token" {
 		t.Errorf("tier 2 token = %q, want the caller's token", pantry.lastToken)
 	}
 }
@@ -134,7 +134,7 @@ func TestAFreeProjectResolvesThroughTier1AndTier2(t *testing.T) {
 func TestAPaidProjectResolvesThroughAllThreeTiers(t *testing.T) {
 	pantry := &fakePantry{
 		project: &Project{Name: "identity", Repository: PublicRepo{Visibility: "private"}},
-		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:cafaye/identity.git", DefaultBranch: "master"}},
+		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:anywaye/identity.git", DefaultBranch: "master"}},
 	}
 	cp := &fakeControlPlane{grant: &FetchGrant{
 		Purpose:      "artifact.fetch",
@@ -145,7 +145,7 @@ func TestAPaidProjectResolvesThroughAllThreeTiers(t *testing.T) {
 	}}
 	r := NewResolver(pantry, cp)
 
-	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
+	report := r.Resolve(context.Background(), ".", deps("identity"), "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
 	if res.Failure != nil {
@@ -172,7 +172,7 @@ func TestAPaidProjectResolvesThroughAllThreeTiers(t *testing.T) {
 	if cp.version != "^0.1.0" {
 		t.Errorf("version range = %q", cp.version)
 	}
-	if cp.token != "cafaye_token" {
+	if cp.token != "anywaye_token" {
 		t.Errorf("tier 3 token = %q, want the caller's token", cp.token)
 	}
 }
@@ -184,11 +184,11 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 	// pantry's own sentence from internal/httpapi/httpapi.go's
 	// `catalog.ErrNoSuchService` branch. It deliberately does not echo the
 	// name, which is what keeps a 404 from being an existence oracle.
-	pantry := &fakePantry{projectErr: &PantryError{Status: 404, Code: "not_found", Detail: "no official cafaye service is registered under that name"}}
+	pantry := &fakePantry{projectErr: &PantryError{Status: 404, Code: "not_found", Detail: "no official anywaye service is registered under that name"}}
 	cp := &fakeControlPlane{}
 	r := NewResolver(pantry, cp)
 
-	report := r.Resolve(context.Background(), ".", deps("nope"), "cafaye_token", "")
+	report := r.Resolve(context.Background(), ".", deps("nope"), "anywaye_token", "")
 
 	res := report.Services[0]
 	if res.Failure == nil {
@@ -203,7 +203,7 @@ func TestUnknownNameIsANamedTier1Failure(t *testing.T) {
 	if res.Failure.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", res.Failure.Code)
 	}
-	if !strings.Contains(res.Failure.Message, "no official cafaye service") {
+	if !strings.Contains(res.Failure.Message, "no official anywaye service") {
 		t.Errorf("message = %q", res.Failure.Message)
 	}
 	if res.Coordinates != nil {
@@ -243,13 +243,13 @@ func TestNoCredentialIsANamedTier2Failure(t *testing.T) {
 func TestEntitlementRequiredIsNamedWithProductAndRemedy(t *testing.T) {
 	pantry := &fakePantry{
 		project: &Project{Name: "identity"},
-		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:cafaye/identity.git"}},
+		coords:  &Coordinates{Name: "identity", Repository: Repository{URL: "git@github.com:anywaye/identity.git"}},
 	}
 	cp := &fakeControlPlane{err: &ControlPlaneError{Status: 403, Code: "entitlement_required",
-		Message: "product `identity` needs an entitlement — start one at https://cafaye.com"}}
+		Message: "product `identity` needs an entitlement — start one at https://anywaye.com"}}
 	r := NewResolver(pantry, cp)
 
-	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
+	report := r.Resolve(context.Background(), ".", deps("identity"), "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
 	if res.Failure == nil {
@@ -261,7 +261,7 @@ func TestEntitlementRequiredIsNamedWithProductAndRemedy(t *testing.T) {
 	if !strings.Contains(res.Failure.Message, "`identity`") {
 		t.Errorf("message = %q, want it to name the product", res.Failure.Message)
 	}
-	if !strings.Contains(res.Failure.Message, "https://cafaye.com") {
+	if !strings.Contains(res.Failure.Message, "https://anywaye.com") {
 		t.Errorf("message = %q, want it to say where to start one", res.Failure.Message)
 	}
 	// Tier 2 succeeded — the coordinates are real — and tier 3 is what failed.
@@ -281,7 +281,7 @@ func TestVersionNotGrantedNamesBothRanges(t *testing.T) {
 		Message: "your entitlement covers `^0.2.0`, this project asks for `^0.1.0`"}}
 	r := NewResolver(pantry, cp)
 
-	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
+	report := r.Resolve(context.Background(), ".", deps("identity"), "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
 	if res.Failure == nil {
@@ -307,7 +307,7 @@ func TestPaidDependencyWithoutAccountIsNamed(t *testing.T) {
 	}
 	r := NewResolver(pantry, &fakeControlPlane{})
 
-	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "")
+	report := r.Resolve(context.Background(), ".", deps("identity"), "anywaye_token", "")
 
 	res := report.Services[0]
 	if res.Failure == nil {
@@ -326,7 +326,7 @@ func TestPaidDependencyWithoutAccountIsNamed(t *testing.T) {
 func TestNoPantryIsANamedFailure(t *testing.T) {
 	r := NewResolver(nil, &fakeControlPlane{})
 
-	report := r.Resolve(context.Background(), ".", deps("gateway"), "cafaye_token", "")
+	report := r.Resolve(context.Background(), ".", deps("gateway"), "anywaye_token", "")
 
 	res := report.Services[0]
 	if res.Failure == nil || res.Failure.Code != "no_catalog" {
@@ -348,7 +348,7 @@ func TestPaidDependencyWithoutAVersionIsNamedAndNeverAsks(t *testing.T) {
 	r := NewResolver(pantry, cp)
 
 	dep := contract.Dependency{Name: "identity", Version: "", Required: true}
-	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "11111111-1111-4111-8111-111111111111")
+	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
 	if res.Failure == nil {
@@ -377,7 +377,7 @@ func TestAccountThatIsNotAUUIDIsNamed(t *testing.T) {
 	r := NewResolver(pantry, cp)
 
 	dep := contract.Dependency{Name: "identity", Version: "^0.1.0", Required: true}
-	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "not-a-uuid")
+	report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "anywaye_token", "not-a-uuid")
 
 	res := report.Services[0]
 	if res.Failure == nil || res.Failure.Code != "account_invalid" {
@@ -403,7 +403,7 @@ func TestAVersionTheSchemaAcceptsIsAVersionBoxAccepts(t *testing.T) {
 		r := NewResolver(pantry, cp)
 
 		dep := contract.Dependency{Name: "identity", Version: v, Required: true}
-		report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "cafaye_token", "11111111-1111-4111-8111-111111111111")
+		report := r.Resolve(context.Background(), ".", []contract.Dependency{dep}, "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 		if report.Services[0].Failure != nil {
 			t.Errorf("%s: failed: %+v", v, report.Services[0].Failure)
@@ -427,7 +427,7 @@ func TestNoControlPlaneIsANamedFailureForPaidOnly(t *testing.T) {
 	}
 	r := NewResolver(pantry, nil)
 
-	report := r.Resolve(context.Background(), ".", deps("identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
+	report := r.Resolve(context.Background(), ".", deps("identity"), "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
 	if res.Failure == nil || res.Failure.Code != "no_control_plane" {
@@ -444,7 +444,7 @@ func TestTransportFailureIsNamed(t *testing.T) {
 	pantry := &fakePantry{projectErr: errors.New("dial tcp: connection refused")}
 	r := NewResolver(pantry, &fakeControlPlane{})
 
-	report := r.Resolve(context.Background(), ".", deps("gateway"), "cafaye_token", "")
+	report := r.Resolve(context.Background(), ".", deps("gateway"), "anywaye_token", "")
 
 	res := report.Services[0]
 	if res.Failure == nil {
@@ -468,7 +468,7 @@ func TestEveryDependencyIsResolvedIndependently(t *testing.T) {
 	cp := &fakeControlPlane{err: &ControlPlaneError{Status: 403, Code: "entitlement_required", Message: "product `identity` needs an entitlement"}}
 	r := NewResolver(pantry, cp)
 
-	report := r.Resolve(context.Background(), ".", deps("gateway", "identity"), "cafaye_token", "11111111-1111-4111-8111-111111111111")
+	report := r.Resolve(context.Background(), ".", deps("gateway", "identity"), "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 	if len(report.Services) != 2 {
 		t.Fatalf("resolved %d services, want 2", len(report.Services))
@@ -516,7 +516,7 @@ func TestAnAmbiguousBareNameRetriesByAddressWhenAnOwnerIsKnown(t *testing.T) {
 	}
 
 	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
-		context.Background(), "alice", "widget", "cafaye_token", "")
+		context.Background(), "alice", "widget", "anywaye_token", "")
 
 	if pantry.addressCalls != 1 {
 		t.Fatalf("address reads = %d, want 1 (the ambiguity retry)", pantry.addressCalls)
@@ -542,11 +542,11 @@ func TestAnAmbiguousBareNameRetriesByAddressWhenAnOwnerIsKnown(t *testing.T) {
 func TestAPlainNotFoundNeverRetriesByAddress(t *testing.T) {
 	pantry := &fakePantry{
 		projectErr: &PantryError{Status: 404, Code: "not_found",
-			Detail: "no official cafaye project is registered under that name"},
+			Detail: "no official anywaye project is registered under that name"},
 	}
 
 	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
-		context.Background(), "alice", "widget", "cafaye_token", "")
+		context.Background(), "alice", "widget", "anywaye_token", "")
 
 	if pantry.addressCalls != 0 {
 		t.Errorf("address reads = %d, want 0 — a plain 404 stays a 404", pantry.addressCalls)
@@ -566,11 +566,11 @@ func TestAPlainNotFoundNeverRetriesByAddress(t *testing.T) {
 func TestABareNotFoundWithoutAnOwnerDoesNotRetry(t *testing.T) {
 	pantry := &fakePantry{
 		projectErr: &PantryError{Status: 404, Code: "not_found",
-			Detail: "no official cafaye project is registered under that name"},
+			Detail: "no official anywaye project is registered under that name"},
 	}
 
 	report := NewResolver(pantry, &fakeControlPlane{}).Resolve(
-		context.Background(), ".", deps("widget"), "cafaye_token", "")
+		context.Background(), ".", deps("widget"), "anywaye_token", "")
 
 	if pantry.addressCalls != 0 {
 		t.Errorf("address reads = %d, want 0", pantry.addressCalls)
@@ -595,11 +595,11 @@ func TestAnAddressNamingTheWrongOwnerIsARefusal(t *testing.T) {
 		project: &Project{Name: "widget", OwnerSlug: "bob"},
 		coords:  &Coordinates{Name: "widget", Repository: Repository{URL: "git@github.com:bob/widget.git"}},
 		addressErr: &PantryError{Status: 404, Code: "not_found",
-			Detail: "no official cafaye project is registered under the address alice/widget"},
+			Detail: "no official anywaye project is registered under the address alice/widget"},
 	}
 
 	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
-		context.Background(), "alice", "widget", "cafaye_token", "")
+		context.Background(), "alice", "widget", "anywaye_token", "")
 
 	res := report.Services[0]
 	if res.Failure == nil {
@@ -627,7 +627,7 @@ func TestAnAddressThatMatchesResolvesWithoutASecondRead(t *testing.T) {
 	}
 
 	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
-		context.Background(), "alice", "widget", "cafaye_token", "")
+		context.Background(), "alice", "widget", "anywaye_token", "")
 
 	res := report.Services[0]
 	if res.Failure != nil {
@@ -654,7 +654,7 @@ func TestAnAddressedPaidProductStillNeedsARange(t *testing.T) {
 	cp := &fakeControlPlane{}
 
 	report := NewResolver(pantry, cp).ResolveAddress(
-		context.Background(), "alice", "identity", "cafaye_token", "11111111-1111-4111-8111-111111111111")
+		context.Background(), "alice", "identity", "anywaye_token", "11111111-1111-4111-8111-111111111111")
 
 	res := report.Services[0]
 	if res.Failure == nil || res.Failure.Code != "version_required" {
@@ -678,13 +678,13 @@ func TestAnAddressedPaidProductStillNeedsARange(t *testing.T) {
 func TestAnAmbiguitySpelledInTheCodeIsStillAmbiguity(t *testing.T) {
 	pantry := &fakePantry{
 		projectErr: &PantryError{Status: 404, Code: "name_ambiguous",
-			Detail: "no official cafaye project is registered under that name"},
+			Detail: "no official anywaye project is registered under that name"},
 		address: &Project{Name: "widget", OwnerSlug: "alice"},
 		coords:  &Coordinates{Name: "widget"},
 	}
 
 	report := NewResolver(pantry, &fakeControlPlane{}).ResolveAddress(
-		context.Background(), "alice", "widget", "cafaye_token", "")
+		context.Background(), "alice", "widget", "anywaye_token", "")
 
 	if pantry.addressCalls != 1 {
 		t.Fatalf("address reads = %d, want 1 — the code is the signal", pantry.addressCalls)

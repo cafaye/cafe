@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cafaye/cafe/internal/contract"
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/gen"
+	"github.com/anywaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/gen"
 )
 
 // The places a tree puts the four kinds, named once.
@@ -17,7 +17,7 @@ import (
 // Each is a convention this repository already documents and already keeps, not
 // something this package invented to have something to pin:
 //
-//	cafaye.yml               every project, and the manifest schema is core's
+//	anywaye.yml               every project, and the manifest schema is core's
 //	internal/contract/schemas  schemas/README.md states the convention and the
 //	                          refresh procedure that is allowed to change them
 //	(whatever cafe gen writes)  internal/gen is the single source of truth for
@@ -32,7 +32,7 @@ import (
 // of three generated files, which is exactly the half-landed bump this package
 // was written for.
 const (
-	manifestFileName = "cafaye.yml"
+	manifestFileName = "anywaye.yml"
 	schemasDir       = "internal/contract/schemas"
 	ruleBundleFile   = "gate.yml"
 )

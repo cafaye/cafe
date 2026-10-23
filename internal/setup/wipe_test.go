@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-// seedBox puts a full box on the fake host: the cafe binary, cafaye's state,
+// seedBox puts a full box on the fake host: the cafe binary, anywaye's state,
 // the daemon's unit, a running Docker, a k3s install — and, deliberately, the
 // two things the wipe KEEPS (the operator's authorized keys and the releases
-// directory) and one file no cafaye command created. The tests below assert
+// directory) and one file no anywaye command created. The tests below assert
 // that the first two survive and the third is untouched, which is the whole
 // safety argument of the command.
 func seedBox(h *fakeHost) {
@@ -19,15 +19,15 @@ func seedBox(h *fakeHost) {
 	h.fs[EnrolledJSON] = []byte(`{"box_id":"box_wipe_01"}`)
 	h.fs["/root/.config/cafe/keyring/box/box_wipe_01"] = []byte("private key")
 	h.fs["/var/lib/kit/substrate-receipt.json"] = []byte(`{}`)
-	h.fs["/var/lib/cafaye/bin/deploy"] = []byte("binary")
-	h.fs["/var/lib/cafaye/substrate/pods/x"] = []byte("pod")
-	h.fs["/var/lib/cafaye/edge/spec.json"] = []byte(`{}`)
+	h.fs["/var/lib/anywaye/bin/deploy"] = []byte("binary")
+	h.fs["/var/lib/anywaye/substrate/pods/x"] = []byte("pod")
+	h.fs["/var/lib/anywaye/edge/spec.json"] = []byte(`{}`)
 	h.fs[UnitPath] = unitDocument(Options{Range: "^1.0.0"})
 
 	// Kept: the operator's access, the deployed artifacts, and a stranger's file.
 	h.fs["/root/.ssh/authorized_keys"] = []byte("ssh-ed25519 AAAA operator")
-	h.fs["/var/lib/cafaye/releases/rel-1/app"] = []byte("release")
-	h.fs["/srv/customer/data"] = []byte("not cafaye's")
+	h.fs["/var/lib/anywaye/releases/rel-1/app"] = []byte("release")
+	h.fs["/srv/customer/data"] = []byte("not anywaye's")
 
 	// k3s, as a live box holds it: the binary, the installer's scripts, and the
 	// four directories from the measured box. `/usr/local/bin/kubectl` is
@@ -89,11 +89,11 @@ func TestTheFirstWipeOnABoxRemovesEverythingInOrder(t *testing.T) {
 		t.Errorf("the daemon was not stopped before the binary was removed: %d > %d", a, b)
 	}
 
-	// Everything cafaye installed is gone.
+	// Everything anywaye installed is gone.
 	for _, p := range []string{
 		CafeBinPath, IdentityPath, EnrolledJSON, UnitPath,
-		"/var/lib/kit/substrate-receipt.json", "/var/lib/cafaye/bin/deploy",
-		"/var/lib/cafaye/substrate/pods/x", "/var/lib/cafaye/edge/spec.json",
+		"/var/lib/kit/substrate-receipt.json", "/var/lib/anywaye/bin/deploy",
+		"/var/lib/anywaye/substrate/pods/x", "/var/lib/anywaye/edge/spec.json",
 		k3sBinary, k3sUninstall,
 		RancherEtcDir + "/k3s/k3s.yaml", RancherLibDir + "/k3s/server/db/state.db",
 		KubeletDir + "/pods/x", KubeConfigDir + "/config",
@@ -114,30 +114,30 @@ func TestTheFirstWipeOnABoxRemovesEverythingInOrder(t *testing.T) {
 	// The two things it KEEPS are still there, and so is the stranger's file.
 	for _, p := range []string{
 		"/root/.ssh/authorized_keys",
-		"/var/lib/cafaye/releases/rel-1/app",
+		"/var/lib/anywaye/releases/rel-1/app",
 		"/srv/customer/data",
 	} {
 		if _, ok := host.fs[p]; !ok {
 			t.Errorf("the wipe removed a path it must keep: %s", p)
 		}
 	}
-	if !contains(res.Kept, SSHAuthorizedKeys) || !contains(res.Kept, CafayeReleases) {
+	if !contains(res.Kept, SSHAuthorizedKeys) || !contains(res.Kept, AnywayeReleases) {
 		t.Errorf("the document's kept list = %v, want the keys and the releases", res.Kept)
 	}
 
 	// No command the run issued touched the operator's access, the releases,
-	// or a bare /var/lib/cafaye. This is the assertion the "never a rm -rf over
+	// or a bare /var/lib/anywaye. This is the assertion the "never a rm -rf over
 	// a directory somebody else may share" rule rests on.
 	for _, c := range host.commands {
 		if strings.Contains(c.Command, SSHAuthorizedKeys) {
 			t.Errorf("a command names the operator's SSH directory: %s", c.Command)
 		}
-		if strings.Contains(c.Command, CafayeReleases) {
+		if strings.Contains(c.Command, AnywayeReleases) {
 			t.Errorf("a command names the releases directory: %s", c.Command)
 		}
-		if strings.Contains(c.Command, "rm -rf -- "+CafayeStateDir+" ") ||
-			strings.HasSuffix(c.Command, "rm -rf -- "+CafayeStateDir) {
-			t.Errorf("a command removes /var/lib/cafaye wholesale: %s", c.Command)
+		if strings.Contains(c.Command, "rm -rf -- "+AnywayeStateDir+" ") ||
+			strings.HasSuffix(c.Command, "rm -rf -- "+AnywayeStateDir) {
+			t.Errorf("a command removes /var/lib/anywaye wholesale: %s", c.Command)
 		}
 	}
 }
@@ -238,7 +238,7 @@ func TestAWipeDryRunPrintsThePlanAndRemovesNothing(t *testing.T) {
 func TestAWipeOnAHostThatIsNotABoxRefusesAndRemovesNothing(t *testing.T) {
 	host := newFakeHost()
 	// The stranger's machine: a k3s and a Docker cafe did not install, and not
-	// one cafaye artifact among them.
+	// one anywaye artifact among them.
 	host.fs[k3sBinary] = []byte("k3s")
 	host.fs["/var/lib/rancher/k3s/server/db/state.db"] = []byte("db")
 	host.installed["docker"] = true
@@ -269,22 +269,22 @@ func TestAWipeOnAHostThatIsNotABoxRefusesAndRemovesNothing(t *testing.T) {
 	}
 }
 
-// The control over the refusal: the same host WITH one cafaye artifact is a box
+// The control over the refusal: the same host WITH one anywaye artifact is a box
 // and proceeds. A refusal that fired on every host would pass the test above
 // and be useless.
 func TestTheNotABoxRefusalCanFail(t *testing.T) {
 	host := newFakeHost()
 	// One artifact is enough — the releases directory the wipe keeps.
-	host.fs[CafayeReleases+"/rel-1/app"] = []byte("release")
+	host.fs[AnywayeReleases+"/rel-1/app"] = []byte("release")
 
 	res, err := Wipe(context.Background(), wipeOptions(host))
 	if err != nil {
-		t.Fatalf("a host holding a cafaye artifact must not be refused: %v\n%+v", err, res)
+		t.Fatalf("a host holding a anywaye artifact must not be refused: %v\n%+v", err, res)
 	}
 	if !res.OK() {
 		t.Fatalf("the run refused: %s", res.FailedStep())
 	}
-	if _, ok := host.fs[CafayeReleases+"/rel-1/app"]; !ok {
+	if _, ok := host.fs[AnywayeReleases+"/rel-1/app"]; !ok {
 		t.Error("the wipe removed the releases directory it keeps")
 	}
 }
@@ -313,7 +313,7 @@ func TestTheOperatorIsAskedBeforeAnythingIsRemoved(t *testing.T) {
 	if asked != 1 {
 		t.Errorf("the operator was asked %d times, want 1", asked)
 	}
-	for _, want := range []string{"box.test", SSHAuthorizedKeys, CafayeReleases} {
+	for _, want := range []string{"box.test", SSHAuthorizedKeys, AnywayeReleases} {
 		if !strings.Contains(prompt, want) {
 			t.Errorf("the prompt does not name %q: %q", want, prompt)
 		}
@@ -474,7 +474,7 @@ func TestEveryRemovalIsWithinTheClosedSet(t *testing.T) {
 	}
 	// The negative control: the paths the wipe must never name are not in the
 	// set, so a step that started naming one would fail the assertions above.
-	for _, forbidden := range []string{SSHAuthorizedKeys, CafayeReleases, "/usr/local/bin/kubectl", "/", CafayeStateDir} {
+	for _, forbidden := range []string{SSHAuthorizedKeys, AnywayeReleases, "/usr/local/bin/kubectl", "/", AnywayeStateDir} {
 		if allowed[forbidden] {
 			t.Errorf("the closed set contains %s, which the wipe must never remove", forbidden)
 		}

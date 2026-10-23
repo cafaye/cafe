@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/backup"
-	"github.com/cafaye/cafe/internal/cve"
-	"github.com/cafaye/cafe/internal/failure"
-	"github.com/cafaye/cafe/internal/secret"
+	"github.com/anywaye/cafe/internal/backup"
+	"github.com/anywaye/cafe/internal/cve"
+	"github.com/anywaye/cafe/internal/failure"
+	"github.com/anywaye/cafe/internal/secret"
 )
 
 // fixture is one box's month, in every shape the report consumes. It is built
@@ -45,8 +45,8 @@ func fixture() Input {
 			{ID: "INC-2", StartedAt: end.Add(-26 * time.Hour), Severity: "sev3", Summary: "identity's JWKS fetch was slow"},
 		},
 		Upstream: []Release{
-			{Name: "cafaye", Version: "1.14.0", ReceivedAt: start.Add(100 * time.Hour), Decision: DecisionApplied},
-			{Name: "cafaye", Version: "1.15.0", ReceivedAt: start.Add(400 * time.Hour), Decision: DecisionHeld,
+			{Name: "anywaye", Version: "1.14.0", ReceivedAt: start.Add(100 * time.Hour), Decision: DecisionApplied},
+			{Name: "anywaye", Version: "1.15.0", ReceivedAt: start.Add(400 * time.Hour), Decision: DecisionHeld,
 				HeldReason: "identity's signing key cutover needs a window the customer picks"},
 		},
 		Drills: []backup.DrillRecord{

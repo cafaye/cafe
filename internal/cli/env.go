@@ -14,9 +14,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/ledger"
-	"github.com/cafaye/cafe/internal/ports"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/ports"
 )
 
 // envDeps is what `cafe env up` needs from the world. It is a parameter rather

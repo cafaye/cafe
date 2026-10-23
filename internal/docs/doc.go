@@ -29,9 +29,9 @@
 //
 // The same question was asked of the pantry publish path (cafe publish), and
 // the answer is that pantry is a DIFFERENT contract, not a second instance of
-// this one: pantry's write surface (`cafaye/pantry`, internal/publisher/
+// this one: pantry's write surface (`anywaye/pantry`, internal/publisher/
 // principal.go and internal/httpapi/write.go) verifies a GATEWAY principal
-// assertion crossing in the `x-cafaye-principal` header — RS256 against
+// assertion crossing in the `x-anywaye-principal` header — RS256 against
 // gateway's public key, with `aud` equal to `PANTRY_AUDIENCE`, which is
 // pantry's own ORIGIN (an http(s) URL), not an audience NAME. Identity's
 // exchange mints an audience matching `^[a-z][a-z0-9-]{0,63}$` and signs with

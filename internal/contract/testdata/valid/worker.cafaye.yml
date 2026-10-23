@@ -1,4 +1,4 @@
-# cafaye.yml — courier: a background worker. No inbound HTTP, but it publishes events.
+# anywaye.yml — courier: a background worker. No inbound HTTP, but it publishes events.
 name: courier
 description: Transactional email, push delivery, notification preferences, outbound webhooks.
 language: elixir
@@ -24,10 +24,10 @@ dependencies:
     required: false
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com

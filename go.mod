@@ -1,4 +1,4 @@
-module github.com/cafaye/cafe
+module github.com/anywaye/cafe
 
 go 1.26.0
 

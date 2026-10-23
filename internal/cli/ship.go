@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/box"
 )
 
 // This file is the ONE place the CLI talks to ship.
@@ -45,7 +45,7 @@ const shipTokenEnv = "SHIP_TOKEN"
 
 // The base URL, and where it comes from.
 //
-// `CAFAYE_URL` is the one name for the deployment, and `SHIP_URL` is the
+// `ANYWAYE_URL` is the one name for the deployment, and `SHIP_URL` is the
 // older name kept working because a deployment that only knows the older one
 // still has to reach the service. The order matters: the deployment's own
 // name wins, and the legacy name is the fallback.
@@ -54,9 +54,9 @@ const shipTokenEnv = "SHIP_TOKEN"
 // ship is reached THROUGH the deployment: `/v1/ship/…` on the deployment's
 // origin is the door, and ship's own hostname is not on the public internet.
 const (
-	cafayeURLEnv   = "CAFAYE_URL"
+	anywayeURLEnv   = "ANYWAYE_URL"
 	shipURLEnv     = "SHIP_URL"
-	defaultShipURL = "https://cafaye.com"
+	defaultShipURL = "https://anywaye.com"
 )
 
 // shipDeps is what every ship-backed command needs: the base URL and the
@@ -91,12 +91,12 @@ type (
 // request is built rather than by a panic three lines into one.
 func (d shipDeps) withDefaults() (shipDeps, error) {
 	if d.shipURL == "" {
-		// SHIP_URL points at the ship service directly; CAFAYE_URL is the
+		// SHIP_URL points at the ship service directly; ANYWAYE_URL is the
 		// website origin, which only proxies ship under /v1/ship and is not
 		// a substitute for a direct ship address. Prefer SHIP_URL.
 		d.shipURL = os.Getenv(shipURLEnv)
 		if d.shipURL == "" {
-			d.shipURL = os.Getenv(cafayeURLEnv)
+			d.shipURL = os.Getenv(anywayeURLEnv)
 		}
 		if d.shipURL == "" {
 			d.shipURL = defaultShipURL

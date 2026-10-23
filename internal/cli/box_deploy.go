@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/stack"
+	"github.com/anywaye/cafe/internal/stack"
 )
 
 // boxStackDeps is what the deploy verbs need from the world: where this
@@ -147,7 +147,7 @@ func runArgv(bin, releaseDir, id string) []string {
 		bin, "run", "--detach", "--name", "cafe-" + id,
 		"--env-file", filepath.Join(releaseDir, "env"),
 		"--volume", releaseDir + ":/srv/release:ro",
-		"cafaye/release:" + id,
+		"anywaye/release:" + id,
 	}
 }
 
@@ -439,7 +439,7 @@ func substrateFor(deps boxStackDeps, store *stack.Store) *substrate {
 }
 
 // deployRequest turns the flags into the request. The service name defaults
-// out of the image name, because a person typing `--build ghcr.io/cafaye/api@sha256:…`
+// out of the image name, because a person typing `--build ghcr.io/anywaye/api@sha256:…`
 // has already said which service it is, and a second flag asking the same
 // question is a flag a person gets wrong.
 func deployRequest(opts *boxDeployOpts) (stack.Request, error) {

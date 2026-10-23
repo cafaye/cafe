@@ -10,9 +10,9 @@
 // and its `--verify-only` mode checks the files on disk against the lock and
 // fails if they are not what would have been generated.
 //
-// This fleet had the parts and no whole. `cafaye-ts` records repo, path, sha
-// and sha256 per vendored file; `cafaye-py` and `cafaye-rb` do not; kit vendors
-// core's telemetry schemas; every service's `cafaye.yml` names the core version
+// This fleet had the parts and no whole. `anywaye-ts` records repo, path, sha
+// and sha256 per vendored file; `anywaye-py` and `anywaye-rb` do not; kit vendors
+// core's telemetry schemas; every service's `anywaye.yml` names the core version
 // it was written against. Nothing anywhere said "the generated output is exactly
 // what the pinned spec produces". So a core bump that refreshed the schemas but
 // nobody regenerated, or a vendored schema with one hand-edit in it, produced a

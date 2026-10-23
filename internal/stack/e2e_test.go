@@ -28,7 +28,7 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 	// is why a rollback of one service does not touch the other.
 	root := t.TempDir()
 	apiStack, authStack := openStackIn(t, root, "api"), openStackIn(t, root, "auth")
-	stacks := map[string]*Store{"api.cafaye.test": apiStack, "auth.cafaye.test": authStack}
+	stacks := map[string]*Store{"api.anywaye.test": apiStack, "auth.anywaye.test": authStack}
 
 	// The edge: one listener on loopback, two host names, and its upstream is
 	// the directory the pointer names. This is the whole of kamal's proxy in
@@ -49,7 +49,7 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 	}))
 	defer edge.Close()
 
-	b := newBox(t, map[string]*Store{"api": apiStack, "auth": authStack}, "api.cafaye.test", "auth.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": apiStack, "auth": authStack}, "api.anywaye.test", "auth.anywaye.test")
 
 	ctx := context.Background()
 	apiDigest, api2Digest, authDigest := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64)
@@ -63,22 +63,22 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 
 	// 1. api ships. Through the Host header, on the real name.
 	api, err := Deploy(ctx, apiStack, b, Request{
-		Service: "api", Host: "api.cafaye.test", Secrets: "api/production",
-		Build: Build{Registry: "ghcr.io", Name: "cafaye/api", Tag: "1.4.0", Digest: "sha256:" + apiDigest},
+		Service: "api", Host: "api.anywaye.test", Secrets: "api/production",
+		Build: Build{Registry: "ghcr.io", Name: "anywaye/api", Tag: "1.4.0", Digest: "sha256:" + apiDigest},
 	})
 	if err != nil {
 		t.Fatalf("api deploy: %v", err)
 	}
-	if got := get(t, edge.URL, "api.cafaye.test"); got != "api 1.4.0" {
-		t.Fatalf("api.cafaye.test answered %q, want the release it was just given", got)
+	if got := get(t, edge.URL, "api.anywaye.test"); got != "api 1.4.0" {
+		t.Fatalf("api.anywaye.test answered %q, want the release it was just given", got)
 	}
 
 	// 2. auth ships on its OWN host name, and api is untouched.
 	if _, err := Deploy(ctx, authStack, b, Request{
 		Service: "auth",
-		Host:    "auth.cafaye.test",
+		Host:    "auth.anywaye.test",
 		Secrets: "auth/production",
-		Build:   Build{Registry: "ghcr.io", Name: "cafaye/auth", Tag: "2.1.0", Digest: "sha256:" + authDigest},
+		Build:   Build{Registry: "ghcr.io", Name: "anywaye/auth", Tag: "2.1.0", Digest: "sha256:" + authDigest},
 	}); err != nil {
 		t.Fatalf("auth deploy: %v", err)
 	}
@@ -86,8 +86,8 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 	// 3. The service change: api ships a second build, and the name answers
 	//    with it — while auth still answers with its own.
 	api2, err := Deploy(ctx, apiStack, b, Request{
-		Service: "api", Host: "api.cafaye.test", Secrets: "api/production",
-		Build: Build{Registry: "ghcr.io", Name: "cafaye/api", Tag: "1.5.0", Digest: "sha256:" + api2Digest},
+		Service: "api", Host: "api.anywaye.test", Secrets: "api/production",
+		Build: Build{Registry: "ghcr.io", Name: "anywaye/api", Tag: "1.5.0", Digest: "sha256:" + api2Digest},
 	})
 	if err != nil {
 		t.Fatalf("the api service change: %v", err)
@@ -95,8 +95,8 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 	if api2.Release.ID == api.Release.ID {
 		t.Fatal("the service change did not stage a second release")
 	}
-	if got := get(t, edge.URL, "api.cafaye.test"); got != "api 1.5.0" {
-		t.Fatalf("api.cafaye.test still answers %q after the service change", got)
+	if got := get(t, edge.URL, "api.anywaye.test"); got != "api 1.5.0" {
+		t.Fatalf("api.anywaye.test still answers %q after the service change", got)
 	}
 
 	// 4. The broken deploy: it fails its gate, and the box puts the previous
@@ -106,8 +106,8 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 	// not a bad clock.
 	b.failReady = "sha256:" + strings.Repeat("d", 64)
 	rep, err := Deploy(ctx, apiStack, b, Request{
-		Service: "api", Host: "api.cafaye.test", Secrets: "api/production",
-		Build: Build{Registry: "ghcr.io", Name: "cafaye/api", Tag: "1.6.0", Digest: "sha256:" + strings.Repeat("d", 64)},
+		Service: "api", Host: "api.anywaye.test", Secrets: "api/production",
+		Build: Build{Registry: "ghcr.io", Name: "anywaye/api", Tag: "1.6.0", Digest: "sha256:" + strings.Repeat("d", 64)},
 		Now:   time.Now().UTC(),
 	})
 	if err == nil {
@@ -116,13 +116,13 @@ func TestAServiceChangeGoesThroughTheHostNamesOnTheBox(t *testing.T) {
 	if !rep.RolledBack {
 		t.Fatalf("the report does not say the box rolled back: %+v", rep)
 	}
-	if got := get(t, edge.URL, "api.cafaye.test"); got != "api 1.5.0" {
-		t.Fatalf("api.cafaye.test answers %q after the broken deploy, want the release the box rolled back to", got)
+	if got := get(t, edge.URL, "api.anywaye.test"); got != "api 1.5.0" {
+		t.Fatalf("api.anywaye.test answers %q after the broken deploy, want the release the box rolled back to", got)
 	}
 	// ...and the rollback left auth alone: one stack, several services, and a
 	// rollback of one is not a rollback of the box.
-	if got := get(t, edge.URL, "auth.cafaye.test"); got != "auth 2.1.0" {
-		t.Fatalf("auth.cafaye.test answers %q, and a rollback of api must not touch it", got)
+	if got := get(t, edge.URL, "auth.anywaye.test"); got != "auth 2.1.0" {
+		t.Fatalf("auth.anywaye.test answers %q, and a rollback of api must not touch it", got)
 	}
 }
 
@@ -183,10 +183,10 @@ func TestTheEdgeSeesThePointerSwitchAsNoDowntime(t *testing.T) {
 	}))
 	defer edge.Close()
 
-	b := newBox(t, map[string]*Store{"api": s}, "api.cafaye.test")
+	b := newBox(t, map[string]*Store{"api": s}, "api.anywaye.test")
 	first := Request{
-		Service: "api", Host: "api.cafaye.test", Secrets: "api/production",
-		Build: Build{Registry: "ghcr.io", Name: "cafaye/api", Digest: "sha256:" + strings.Repeat("a", 64)},
+		Service: "api", Host: "api.anywaye.test", Secrets: "api/production",
+		Build: Build{Registry: "ghcr.io", Name: "anywaye/api", Digest: "sha256:" + strings.Repeat("a", 64)},
 		Now:   time.Now().UTC(),
 	}
 	if _, err := Deploy(context.Background(), s, b, first); err != nil {
@@ -223,8 +223,8 @@ func TestTheEdgeSeesThePointerSwitchAsNoDowntime(t *testing.T) {
 	}()
 	for _, d := range []string{strings.Repeat("b", 64), strings.Repeat("c", 64), strings.Repeat("d", 64)} {
 		req := Request{
-			Service: "api", Host: "api.cafaye.test", Secrets: "api/production",
-			Build: Build{Registry: "ghcr.io", Name: "cafaye/api", Digest: "sha256:" + d},
+			Service: "api", Host: "api.anywaye.test", Secrets: "api/production",
+			Build: Build{Registry: "ghcr.io", Name: "anywaye/api", Digest: "sha256:" + d},
 			Now:   time.Now().UTC(),
 		}
 		if _, err := Deploy(context.Background(), s, b, req); err != nil {

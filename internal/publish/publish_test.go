@@ -11,11 +11,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
-	"github.com/cafaye/cafe/internal/resolve"
+	"github.com/anywaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/resolve"
 )
 
-// publishTestManifest parses one cafaye.yml the way the command does, so the
+// publishTestManifest parses one anywaye.yml the way the command does, so the
 // tests exercise the same contract.Manifest the command will hand ProposalFor.
 func publishTestManifest(t *testing.T, body string) contract.Manifest {
 	t.Helper()
@@ -44,12 +44,12 @@ dependencies:
     version: ^0.1.0
     required: false
 repository:
-  url: git@github.com:cafaye/app.git
+  url: git@github.com:anywaye/app.git
   defaultBranch: master
   visibility: public
 owner:
   team: app
-  contact: app@cafaye.com
+  contact: app@anywaye.com
 `
 
 // The kind is derived from the contract surface, and the derivation is pantry's
@@ -168,10 +168,10 @@ func TestTheRegistrationCarriesTheManifestsFacts(t *testing.T) {
 		{"name", reg.Name, "app"},
 		{"language", reg.Language, "go"},
 		{"core", reg.Core, "^0.2.0"},
-		{"repository url", reg.Repository.URL, "git@github.com:cafaye/app.git"},
+		{"repository url", reg.Repository.URL, "git@github.com:anywaye/app.git"},
 		{"default branch", reg.Repository.DefaultBranch, "master"},
 		{"owner team", reg.Owner.Team, "app"},
-		{"owner contact", reg.Owner.Contact, "app@cafaye.com"},
+		{"owner contact", reg.Owner.Contact, "app@anywaye.com"},
 		{"state", reg.State, StatePublished},
 	} {
 		if tc.got != tc.want {
@@ -263,14 +263,14 @@ func TestRunExecutesTheThreeWritesInOrder(t *testing.T) {
 		t.Fatalf("ProposalFor: %v", err)
 	}
 
-	report := Run(context.Background(), fake, "cafaye_token", proposal)
+	report := Run(context.Background(), fake, "anywaye_token", proposal)
 
 	want := []string{OpRegister, OpVersion, OpRequirement, OpRequirement}
 	if strings.Join(fake.calls, ",") != strings.Join(want, ",") {
 		t.Errorf("calls = %v, want %v", fake.calls, want)
 	}
-	if fake.token != "cafaye_token" {
-		t.Errorf("the token reached the writes (len %d, want %d)", len(fake.token), len("cafaye_token"))
+	if fake.token != "anywaye_token" {
+		t.Errorf("the token reached the writes (len %d, want %d)", len(fake.token), len("anywaye_token"))
 	}
 	if !report.Published {
 		t.Errorf("a clean run is not published: %+v", report.Steps)
@@ -485,13 +485,13 @@ func TestTheHTTPPublisherPostsPantrysWireShape(t *testing.T) {
 		t.Fatalf("ProposalFor: %v", err)
 	}
 
-	report := Run(context.Background(), publisher, "cafaye_token", proposal)
+	report := Run(context.Background(), publisher, "anywaye_token", proposal)
 
 	if strings.Join(paths, ",") != "/v1/services,/v1/services/app/versions,/v1/services/app/requirements,/v1/services/app/requirements" {
 		t.Errorf("paths = %v", paths)
 	}
-	if auth != "Bearer cafaye_token" {
-		t.Errorf("the bearer reached the server as %q, want %q", auth, "Bearer cafaye_token")
+	if auth != "Bearer anywaye_token" {
+		t.Errorf("the bearer reached the server as %q, want %q", auth, "Bearer anywaye_token")
 	}
 	reg := bodies[0]
 	for _, tc := range []struct{ field, want string }{
@@ -511,7 +511,7 @@ func TestTheHTTPPublisherPostsPantrysWireShape(t *testing.T) {
 		t.Errorf("the registration's manifest = %v, want the manifest document", manifest)
 	}
 	repo, _ := reg["repository"].(map[string]any)
-	if repo["url"] != "git@github.com:cafaye/app.git" {
+	if repo["url"] != "git@github.com:anywaye/app.git" {
 		t.Errorf("repository = %v, want the manifest's coordinates", repo)
 	}
 	if bodies[1]["tag"] != "v1.0.0" {
@@ -603,7 +603,7 @@ func TestThe201BodyCarriesTheAddressTheProjectRegisteredUnder(t *testing.T) {
 			}
 			return http.StatusCreated
 		},
-		body: `{"name":"app","owner_slug":"cafaye","tag":"v1.0.0","version":"1.0.0","yanked":false,"dependency":"required"}`,
+		body: `{"name":"app","owner_slug":"anywaye","tag":"v1.0.0","version":"1.0.0","yanked":false,"dependency":"required"}`,
 	}
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -612,10 +612,10 @@ func TestThe201BodyCarriesTheAddressTheProjectRegisteredUnder(t *testing.T) {
 		t.Fatalf("ProposalFor: %v", err)
 	}
 
-	report := Run(context.Background(), HTTPPublisher{BaseURL: server.URL}, "cafaye_token", proposal)
+	report := Run(context.Background(), HTTPPublisher{BaseURL: server.URL}, "anywaye_token", proposal)
 
-	if report.Address != "cafaye/app" {
-		t.Errorf("address = %q, want cafaye/app — the 201 body's owner_slug and the name", report.Address)
+	if report.Address != "anywaye/app" {
+		t.Errorf("address = %q, want anywaye/app — the 201 body's owner_slug and the name", report.Address)
 	}
 	if !report.Published {
 		t.Errorf("the run is not published: %+v", report.Steps)
@@ -624,7 +624,7 @@ func TestThe201BodyCarriesTheAddressTheProjectRegisteredUnder(t *testing.T) {
 
 // A re-register answered 409 carries no 201 body, so there is no owner_slug to
 // read and the report says nothing rather than inventing an address from the
-// name. A report that guessed `cafaye/app` would be a report naming an address
+// name. A report that guessed `anywaye/app` would be a report naming an address
 // the server never confirmed.
 func TestAnIdempotentReRegisterHasNoAddressToName(t *testing.T) {
 	fake := &fakePublisher{registerErr: &resolve.PantryError{Status: 409, Code: "conflict",

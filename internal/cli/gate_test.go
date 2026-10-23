@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/gate"
+	"github.com/anywaye/cafe/internal/gate"
 )
 
 // TestGateFloorsDryRunPrintsTheDeltaAndWritesNothing drives the command through

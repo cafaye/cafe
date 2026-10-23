@@ -15,7 +15,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // kernelSpelling is what a unix calls its own kernel. It is a table rather
@@ -532,7 +532,7 @@ func (h *fakeHost) runWipe(command string) (bool, Output) {
 // wipeStatePaths is the state step's own list, read off the plan's constants so
 // the simulator and the command cannot disagree about what the step removes.
 func wipeStatePaths() []string {
-	return []string{EtcCafeDir, EnrolledDir, KitStatePath, CafayeBinDir, CafayeSubstrate, CafayeEdge}
+	return []string{EtcCafeDir, EnrolledDir, KitStatePath, AnywayeBinDir, AnywayeSubstrate, AnywayeEdge}
 }
 
 // hasPrefix reports whether any path in the fake filesystem is p or lives under
@@ -557,12 +557,12 @@ func (h *fakeHost) anyPrefix(paths []string) bool {
 
 // boxArtifacts is the fingerprint's own question — the artifact paths a box
 // holds — and it includes the releases directory the wipe KEEPS: a box whose
-// only remaining cafaye artifact is its release history is still a box, which
+// only remaining anywaye artifact is its release history is still a box, which
 // is what makes a second wipe of an already-wiped host a no-op rather than a
 // refusal.
 func (h *fakeHost) boxArtifacts() []string {
 	var found []string
-	for _, p := range []string{CafeBinPath, EtcCafeDir, EnrolledDir, KitStatePath, CafayeStateDir} {
+	for _, p := range []string{CafeBinPath, EtcCafeDir, EnrolledDir, KitStatePath, AnywayeStateDir} {
 		if h.hasPrefix(p) {
 			found = append(found, p)
 		}
@@ -572,7 +572,7 @@ func (h *fakeHost) boxArtifacts() []string {
 
 // removePrefixes deletes every path that is p or lives under it. It is
 // deliberately one path at a time rather than a `strings.HasPrefix` sweep: a
-// removal of "/var/lib/cafaye" must not take "/var/lib/cafaye/releases" with
+// removal of "/var/lib/anywaye" must not take "/var/lib/anywaye/releases" with
 // it, and the simulator must reproduce that.
 func (h *fakeHost) removePrefixes(paths []string) {
 	for path := range h.fs {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // The clock every test drives the verifier with, so a drill's age and a

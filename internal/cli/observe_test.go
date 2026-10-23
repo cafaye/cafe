@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/backup"
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/backup"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // The observe stream's pure facts, driven as tables, plus one integration that

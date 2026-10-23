@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // Observation is every fact a rule may read. It is a value rather than an
@@ -15,7 +15,7 @@ import (
 // configuration is where credentials live — internal/boxd/identity.go:131-134 says
 // as much, and the fact the eleven rules need is a name's presence:
 // `identity`'s MFA routes are absent because `MFA_ENCRYPTION_KEY` is unset
-// (CAFAYE-OPS.md:741), so what identifies the failure mode is whether the name
+// (ANYWAYE-OPS.md:741), so what identifies the failure mode is whether the name
 // is set, not what it is set to.
 //
 // Every field is optional in the same way: a nil map and a nil slice both mean
@@ -30,7 +30,7 @@ type Observation struct {
 
 	// Replicas is how many replicas each service runs. Rule 8 needs it:
 	// gateway sessions are per-process, so a second replica is a live outage
-	// (CAFAYE-OPS.md:746).
+	// (ANYWAYE-OPS.md:746).
 	Replicas map[string]int `json:"replicas,omitempty"`
 
 	// Settings is, per service, the names of the settings that ARE set. Names
@@ -48,18 +48,18 @@ type Observation struct {
 
 	// Healthchecks is the healthcheck path the substrate is configured to use
 	// for each service. Rule 2 needs it: kit's proxy healthchecks `/up`
-	// (CAFAYE-OPS.md:740), which is neither of core's two paths.
+	// (ANYWAYE-OPS.md:740), which is neither of core's two paths.
 	Healthchecks map[string]string `json:"healthchecks,omitempty"`
 
 	// Databases is every database a service declares. Rule 5 needs it: two
 	// services declaring one database name is two pockets of Postgres,
 	// because `KIT_POSTGRES_DATABASES` merges last-one-wins
-	// (CAFAYE-OPS.md:743).
+	// (ANYWAYE-OPS.md:743).
 	Databases []Database `json:"databases,omitempty"`
 
 	// Outbox is how many unprocessed outbox rows each service has. Rule 7
 	// needs it: an event is a row, and no service starts a publisher loop
-	// (CAFAYE-OPS.md:745, :839-842).
+	// (ANYWAYE-OPS.md:745, :839-842).
 	Outbox map[string]int `json:"outbox,omitempty"`
 
 	// Publishers are the services with a publisher loop running. Rule 7 reads
@@ -68,7 +68,7 @@ type Observation struct {
 
 	// Collectors are the collector addresses that run on this box. Empty means
 	// none do — which, on a box whose services export signals, is the
-	// traces-going-nowhere fact itself (CAFAYE-OPS.md:744).
+	// traces-going-nowhere fact itself (ANYWAYE-OPS.md:744).
 	//
 	// It is a slice rather than a string for the nil convention the whole type
 	// runs on: nil means the observation never looked and empty means it
@@ -83,7 +83,7 @@ type Observation struct {
 
 	// Instrumented are the services that export signals. Rule 6 needs it:
 	// instrumented in four services with no collector anywhere is traces
-	// going nowhere (CAFAYE-OPS.md:744).
+	// going nowhere (ANYWAYE-OPS.md:744).
 	Instrumented []string `json:"instrumented,omitempty"`
 
 	// Edge is what the box's edge reports about itself — whether it is
@@ -132,7 +132,7 @@ type EdgeHost struct {
 // Probe is one observed probe answer. LatencyMS is the whole answer's latency
 // rather than a connection's, because the failure mode it identifies is a
 // READINESS check that is slow when its dependency has gone
-// (CAFAYE-OPS.md:739) — the connection is fine and the answer takes 4.4
+// (ANYWAYE-OPS.md:739) — the connection is fine and the answer takes 4.4
 // seconds.
 type Probe struct {
 	Service string `json:"service"`
@@ -143,14 +143,14 @@ type Probe struct {
 	// rule 1's condition from a service that is merely slow.
 	Status int `json:"status"`
 	// LatencyMS is how long the answer took. The 4.4s figure is the doc's own
-	// (CAFAYE-OPS.md:739, :804), not a measurement of this fleet's.
+	// (ANYWAYE-OPS.md:739, :804), not a measurement of this fleet's.
 	LatencyMS int `json:"latency_ms"`
 }
 
 // Database is one declared database and the service that declares it. The name
 // is the identity: `KIT_POSTGRES_DATABASES` merges last-one-wins, so two rows
 // with one name are one database and the second service's role never exists
-// (CAFAYE-OPS.md:743).
+// (ANYWAYE-OPS.md:743).
 type Database struct {
 	Name    string `json:"name"`
 	Service string `json:"service"`

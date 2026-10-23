@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/backup"
+	"github.com/anywaye/cafe/internal/backup"
 )
 
 // backupDeps is what `cafe backup` needs from the world: the backup engine.
@@ -150,7 +150,7 @@ hung dump is a named failure rather than a hang.
 THE RESTORE PROOF IS NOT CAF'S TO IMPLEMENT. kamal-backup does not create the scratch database,
 does not drop it, and does not assert anything, so cafe supplies those two things. The refusal
 to drill into a production-looking name is NOT duplicated here: it is kamal-backup's, and in
-operator form it is cafaye/kit's templates/kamal/drill.sh's. cafe hands the gem a name and
+operator form it is anywaye/kit's templates/kamal/drill.sh's. cafe hands the gem a name and
 reports what the gem said.
 
 THE ENGINE. --engine selects the backup engine: kamal (the default, the engine the fleet

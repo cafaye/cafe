@@ -31,7 +31,7 @@ var ErrDeployFailed = errors.New("cafe deploy: the deploy failed")
 type Request struct {
 	// Dir is the project directory. Empty means the current one.
 	Dir string
-	// Service is the service being deployed. It comes from the cafaye.yml
+	// Service is the service being deployed. It comes from the anywaye.yml
 	// manifest, not from the Kamal config: Kamal's `service:` is the container
 	// name and the contract cafe owns is the service name.
 	Service string

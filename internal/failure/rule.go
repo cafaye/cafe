@@ -2,7 +2,7 @@ package failure
 
 // readyzLatencyFloor is the number of milliseconds a courier `/readyz` takes
 // when its database has gone: the doc's own ~4.4s
-// (CAFAYE-OPS.md:739, :804). It is a floor rather than an exact threshold
+// (ANYWAYE-OPS.md:739, :804). It is a floor rather than an exact threshold
 // because the doc's figure is a documented observation and not a measurement
 // this packet took, and a rule that fired at exactly 4400 would be a rule that
 // missed at 4399.
@@ -50,7 +50,7 @@ type Rule struct {
 	Condition Condition
 }
 
-// Library is the seed: the ten entries CAFAYE-OPS.md:731-748 already records
+// Library is the seed: the ten entries ANYWAYE-OPS.md:731-748 already records
 // plus the eleventh this repository owes its own edge, in the doc's order with
 // the eleventh last. It is a function rather than a package-level variable so
 // no caller can append to the library the rest of the process reads, and so a
@@ -73,7 +73,7 @@ func Library() []Rule {
 			Failure: "courier's /readyz takes ~4.4s to answer when its DB has gone",
 			Sees:    "unhealthy → restart",
 			Known: "restarting a healthy service is the bug; the probe timeout is the bug, " +
-				"not the service (CAFAYE-OPS.md:739, :804-806)",
+				"not the service (ANYWAYE-OPS.md:739, :804-806)",
 			Remedy: "Do not restart courier. Raise the probe timeout past the readiness " +
 				"check's own latency, so a slow honest 503 is read as a dependency being " +
 				"gone rather than as a process to be replaced.",
@@ -92,7 +92,7 @@ func Library() []Rule {
 			Failure: "kit's proxy healthcheck path is /up",
 			Sees:    "404, rollout never goes green",
 			Known: "/up is a boot check; every service serves /readyz; `billing` serves " +
-				"/up and doesn't check the DB (CAFAYE-OPS.md:740, :807-809)",
+				"/up and doesn't check the DB (ANYWAYE-OPS.md:740, :807-809)",
 			Remedy: "Point the proxy's healthcheck at /healthz or /readyz — core pins both " +
 				"paths — and read `billing`'s /up as what it is: a boot check that answers " +
 				"200 while its database is gone.",
@@ -110,7 +110,7 @@ func Library() []Rule {
 			Failure: "identity's MFA routes are absent",
 			Sees:    "404",
 			Known: "unset MFA_ENCRYPTION_KEY — absent, not broken; no error is ever " +
-				"printed (CAFAYE-OPS.md:741, :810-812). identity's own boot says the same " +
+				"printed (ANYWAYE-OPS.md:741, :810-812). identity's own boot says the same " +
 				"thing in its source: the MFA management routes are not mounted when the " +
 				"key is unconfigured, and the message is a warning rather than an error " +
 				"(identity/cmd/identity/main.go:646, :1185)",
@@ -118,7 +118,7 @@ func Library() []Rule {
 				"is a deployment fact and not a bug report against the routes.",
 			Contract: "core schemas/events/identity/mfa/enabled.schema.json and " +
 				"disabled.schema.json are the contracted MFA events; the MFA surface is a " +
-				"cafaye contract, so its absence is a configuration state and not a " +
+				"anywaye contract, so its absence is a configuration state and not a " +
 				"feature that was never built.",
 			Condition: Condition{All: []Predicate{
 				{Kind: PredServiceRunning, Service: "identity"},
@@ -130,7 +130,7 @@ func Library() []Rule {
 			Failure: "OIDC not mounted",
 			Sees:    "404 on discovery",
 			Known: "all three of OIDC_ISSUER/OIDC_SIGNING_KEY/OIDC_SIGNING_KEY_ID must be " +
-				"set together (CAFAYE-OPS.md:742, :813-814)",
+				"set together (ANYWAYE-OPS.md:742, :813-814)",
 			Remedy: "Set all three. A partial set mounts nothing and 404s on discovery " +
 				"exactly as an empty one does, so check the third before believing the " +
 				"first two are wrong.",
@@ -146,7 +146,7 @@ func Library() []Rule {
 			Failure: "Two pockets of Postgres, five services",
 			Sees:    "role does not exist",
 			Known: "KIT_POSTGRES_DATABASES merges last-one-wins in compose " +
-				"(CAFAYE-OPS.md:743)",
+				"(ANYWAYE-OPS.md:743)",
 			Remedy: "Give each service its own database name. A merge that keeps the " +
 				"last declaration is a merge that loses a role, and the service that " +
 				"lost it is the one whose role does not exist.",
@@ -160,7 +160,7 @@ func Library() []Rule {
 			Failure: "Traces \"going nowhere\"",
 			Sees:    "no error",
 			Known: "instrumented in 4 services, no collector deployed anywhere " +
-				"(CAFAYE-OPS.md:744, :843-845)",
+				"(ANYWAYE-OPS.md:744, :843-845)",
 			Remedy: "Deploy a collector, or point <SERVICE>_OTEL_ENDPOINT at one the " +
 				"customer already runs. Nothing is broken and nothing is slow — that is " +
 				"why this one is invisible without the library.",
@@ -179,7 +179,7 @@ func Library() []Rule {
 			Failure: "Outbox rows piling up",
 			Sees:    "nothing",
 			Known: "no service starts a publisher loop; an event is a row " +
-				"(CAFAYE-OPS.md:745, :839-842)",
+				"(ANYWAYE-OPS.md:745, :839-842)",
 			Remedy: "Run a publisher. The rows are the event log — nothing is lost and " +
 				"nothing moves until something drains them.",
 			Contract: "core schemas/event-envelope.schema.json is the envelope an event " +
@@ -195,7 +195,7 @@ func Library() []Rule {
 			ID:      "gateway-sessions-per-process",
 			Failure: "gateway sessions are per-process",
 			Sees:    "works",
-			Known:   "run one replica; scaling to two is a live outage (CAFAYE-OPS.md:746)",
+			Known:   "run one replica; scaling to two is a live outage (ANYWAYE-OPS.md:746)",
 			Remedy: "Run exactly one replica. Everything looks right at two, which is " +
 				"what makes it an outage rather than a failure.",
 			Contract: "",
@@ -209,7 +209,7 @@ func Library() []Rule {
 			Failure: "Password reset answers 503",
 			Sees:    "transient error",
 			Known: "mailer unconfigured — a configuration fact, not a fault " +
-				"(CAFAYE-OPS.md:747)",
+				"(ANYWAYE-OPS.md:747)",
 			Remedy: "Configure the mailer. Read the 503 as a relay nobody is sending " +
 				"through rather than as an incident to be retried.",
 			Contract: "",
@@ -223,11 +223,11 @@ func Library() []Rule {
 			Failure: "MUSE_VAULT_KEY, OIDC_SIGNING_KEY",
 			Sees:    "—",
 			Known: "cannot be rotated at all; a rotation is a cutover or a fork " +
-				"(CAFAYE-OPS.md:748, :783-788)",
+				"(ANYWAYE-OPS.md:748, :783-788)",
 			Remedy: "Enumerate them as frozen, so nobody spends a weekend discovering " +
 				"it. Rotate the rotatable class (COURIER_SECRET_BOX_KEY, SECRET_KEY_BASE, " +
 				"the Redis password) on a schedule and leave these alone " +
-				"(CAFAYE-OPS.md:786-788); OPS-P10 owns the inventory.",
+				"(ANYWAYE-OPS.md:786-788); OPS-P10 owns the inventory.",
 			Contract: "",
 			Condition: Condition{Any: []Predicate{
 				{Kind: PredSettingSet, Service: "muse", Name: "MUSE_VAULT_KEY"},
@@ -253,7 +253,7 @@ func Library() []Rule {
 				"the one path it answers itself so that an answer means the edge " +
 				"is alive rather than the app behind it is. The doc's observe-stream " +
 				"line already names cert expiry as something the stream has to carry " +
-				"(CAFAYE-OPS.md:660) and a box's edge is where that certificate " +
+				"(ANYWAYE-OPS.md:660) and a box's edge is where that certificate " +
 				"lives; the doc's table does not record the edge's own failure, " +
 				"which is why this entry is the eleventh rather than a row in it.",
 			Remedy: "Probe the edge's own health path from OUTSIDE the box — " +
@@ -268,7 +268,7 @@ func Library() []Rule {
 				"same Edge fact).",
 			// No core contract is cited because core says nothing about a box's
 			// edge: core pins the two probe paths and the resource attributes,
-			// and the edge is a cafaye invention. An invented citation would be
+			// and the edge is a anywaye invention. An invented citation would be
 			// worse than an empty field — see Rule.Contract.
 			Contract: "",
 			Condition: Condition{

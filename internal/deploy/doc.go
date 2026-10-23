@@ -1,20 +1,20 @@
-// Package deploy turns a cafaye project into a running deployment, and reports
+// Package deploy turns a anywaye project into a running deployment, and reports
 // afterwards what is actually running.
 //
 // # Three engines, one seam
 //
 // The engine is the runner's, selected by --engine: kamal (the default, the
 // engine the fleet runs), argo (the launch substrate's, where there is no
-// Kamal) and remote (the cafaye-operated platform, pinned off until TG-D1).
+// Kamal) and remote (the anywaye-operated platform, pinned off until TG-D1).
 // All three are behind the same Runner interface, which is why nothing above
 // the CLI changes — DEPLOYMENT.md: "The k3s/Argo implementation lands behind
 // that same interface." Kamal and kit/templates/kamal retire at parity, not
 // before.
 //
-// The third engine is the only one whose target is a cafaye deployment rather
+// The third engine is the only one whose target is a anywaye deployment rather
 // than one the operator owns, and it is the reason the seam was worth building:
 // before it, `cafe deploy` had two engines and both pointed at something the
-// operator runs themselves, which is the "nowhere cafaye-operated to deploy to"
+// operator runs themselves, which is the "nowhere anywaye-operated to deploy to"
 // gap AGENTS-FIRST.md named as knowingly not done. It ships REFUSED, and
 // remote.go holds why: one deployment serving many accounts is only safe once
 // one deployment is proven safe for strangers, and that proof is TENANCY-GATE.md.

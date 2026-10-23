@@ -127,19 +127,19 @@ func breakingRules() []BreakingRule {
 			// divergence, and it is about the format rather than about the tiers:
 			// buf's reservation covers field NUMBERS as well as names, and the
 			// number is the half that protects a binary encoding. OpenAPI
-			// properties have names and no ordinal, so the cafaye extension
+			// properties have names and no ordinal, so the anywaye extension
 			// reserves the half that is a label and there is no wire half left to
 			// reserve. buf's WIRE here protects something this format has not got.
 			ID:      "reserved-no-delete",
 			Buf:     "RESERVED_MESSAGE_NO_DELETE, minus its WIRE half",
 			Tiers:   TierSource | TierJSON,
-			Purpose: "a name reserved with x-cafaye-reserved-properties stays reserved",
+			Purpose: "a name reserved with x-anywaye-reserved-properties stays reserved",
 		},
 		{
 			// buf splits this one action across two rules in two category sets:
 			// FIELD_NO_DELETE is FILE and PACKAGE, and
 			// FIELD_NO_DELETE_UNLESS_NAME_RESERVED is WIRE_JSON with its
-			// number-reserved sibling in WIRE_JSON and WIRE. cafaye has one
+			// number-reserved sibling in WIRE_JSON and WIRE. anywaye has one
 			// tombstone rather than a pair, so this is one rule and the tiers are
 			// the union of both. It is also why a deletion is the row that reaches
 			// WIRE at all: tombstoning the name is exactly what keeps the slot from
@@ -203,7 +203,7 @@ func breakingRules() []BreakingRule {
 			Purpose: "an operation's request body keeps its type",
 		},
 		{
-			// cafaye has no buf analog for "an operation stopped answering with
+			// anywaye has no buf analog for "an operation stopped answering with
 			// this status", so this row is argued rather than copied. A status is a
 			// label on an answer: identity's own document dropped a 409 from POST
 			// /v1/email-verifications in 1.6.0 without any encoding moving. The
@@ -295,7 +295,7 @@ func schemaNoDelete(previous, current *APIDocument) []Break {
 // reservedNoDelete: a tombstone that stopped being a tombstone.
 //
 // This is the rule that stops the escape hatch becoming a way to lose a name for
-// good, and it is why `x-cafaye-reserved-properties` has to be monotone. Its
+// good, and it is why `x-anywaye-reserved-properties` has to be monotone. Its
 // message is buf's verbatim shape (breaking.go, `handleBreakingReservedMessage
 // NoDelete`): "Previously present reserved name %q on message %q was deleted."
 // buf names the reservation and the thing that carried it because a diff at that
@@ -592,7 +592,7 @@ func operationNamed(doc *APIDocument, key string) *Operation {
 //
 // The tombstone is the other half, and it is what makes this decidable rather
 // than merely cautious. Pairing a departure with an arrival is only evidence of a
-// rename if the departure was DECLARED: without `x-cafaye-reserved-properties`,
+// rename if the departure was DECLARED: without `x-anywaye-reserved-properties`,
 // `name` -> `other` and `name` -> `display_name` are the same document edit, and
 // calling the second a rename would report a SOURCE+JSON finding where the same
 // edit without the mark is a SOURCE+JSON+WIRE one. Guessing which a person meant

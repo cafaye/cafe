@@ -233,7 +233,7 @@ func TestTheAppNameMustBeTheService(t *testing.T) {
 
 	t.Run("the real pair agrees", func(t *testing.T) {
 		if got := Check(cfg, accessories, fixtureResolved, "identity"); len(got) != 0 {
-			t.Errorf("identity's `app: identity` and cafaye.yml's `name: identity` were reported as "+
+			t.Errorf("identity's `app: identity` and anywaye.yml's `name: identity` were reported as "+
 				"disagreeing:\n%s", Violations(got))
 		}
 	})

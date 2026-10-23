@@ -11,7 +11,7 @@ import (
 //
 //   - the cases core's endpoint contract distinguishes are named as rows, not as
 //     prose, so a service that reads the table knows what happens in each;
-//   - the both-set-and-conflicting row asserts the cafaye variable wins, because
+//   - the both-set-and-conflicting row asserts the anywaye variable wins, because
 //     that is the only row whose answer is not obvious from the reading.
 //
 // The second point is the substantive one. The two single-variable rows and the
@@ -45,8 +45,8 @@ func TestTheGeneratedSetupCarriesTheEndpointPrecedenceItDocuments(t *testing.T) 
 	// The suite's table, which is where a service learns the four cases rather than
 	// inferring them from the function body.
 	for _, want := range []string{
-		"func TestEndpointPrefersTheCafayeName",
-		"t.Setenv(EndpointVariable, row.cafaye)",
+		"func TestEndpointPrefersTheAnywayeName",
+		"t.Setenv(EndpointVariable, row.anywaye)",
 		`t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", row.standard)`,
 	} {
 		if !strings.Contains(suite, want) {
@@ -70,8 +70,8 @@ func TestTheGeneratedSetupCarriesTheEndpointPrecedenceItDocuments(t *testing.T) 
 	// matched the generator's own alignment would go red the moment a row above
 	// this one changed width, which is a test of the wrong thing.
 	for _, want := range []string{
-		`"both set and conflicting: the cafaye name wins, address and scheme"`,
-		`"https://cafaye.example:4318"`,
+		`"both set and conflicting: the anywaye name wins, address and scheme"`,
+		`"https://anywaye.example:4318"`,
 		`"http://generic.example:4318"`,
 	} {
 		if !strings.Contains(suite, want) {
@@ -111,11 +111,11 @@ func TestTheGeneratedSetupSaysTheSchemeIsPartOfTheContract(t *testing.T) {
 func TestTheGeneratedPrecedenceTableUnsetsBothVariablesInEveryRow(t *testing.T) {
 	suite := string(findFile(t, generate(t, manifestFor), goTestPath).Content)
 
-	// `t.Setenv(name, row.cafaye)` with `row.cafaye` empty in the unset rows is
+	// `t.Setenv(name, row.anywaye)` with `row.anywaye` empty in the unset rows is
 	// what isolates them: t.Setenv restores on cleanup, so each row sees exactly
 	// what its own fields say. The generator emits the unset value explicitly
 	// rather than skipping the call, and that is the difference.
-	if !strings.Contains(suite, `t.Setenv(EndpointVariable, row.cafaye)`) ||
+	if !strings.Contains(suite, `t.Setenv(EndpointVariable, row.anywaye)`) ||
 		!strings.Contains(suite, `t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", row.standard)`) {
 		t.Error("the generated precedence table does not set both variables in every row, so a row " +
 			"decides on whatever the machine running it had set")
@@ -123,10 +123,10 @@ func TestTheGeneratedPrecedenceTableUnsetsBothVariablesInEveryRow(t *testing.T) 
 
 	// Scoped to the precedence test's own body, because the generated suite has
 	// several tables and a count over the whole file would be measuring them all.
-	const fn = "func TestEndpointPrefersTheCafayeName"
+	const fn = "func TestEndpointPrefersTheAnywayeName"
 	start := strings.Index(suite, fn)
 	if start < 0 {
-		t.Fatal("the generated suite has no TestEndpointPrefersTheCafayeName")
+		t.Fatal("the generated suite has no TestEndpointPrefersTheAnywayeName")
 	}
 	body := suite[start:]
 	if end := strings.Index(body, "\n}\n"); end > 0 {

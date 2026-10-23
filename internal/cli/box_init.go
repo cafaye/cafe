@@ -6,11 +6,11 @@ import (
 )
 
 // boxInstallURL is the one canonical install script. The control plane serves
-// it at https://cafaye.com/box/install and that is the only maintained copy:
+// it at https://anywaye.com/box/install and that is the only maintained copy:
 // a second copy vendored in this binary would be a second source of truth that
 // can disagree with the server, and the failure is a client and a server running
 // different installers.
-const boxInstallURL = "https://cafaye.com/box/install"
+const boxInstallURL = "https://anywaye.com/box/install"
 
 // boxInstallCommand is the exact one-liner a user runs. curl -fsSL so a 404
 // is silent rather than piped into bash, and bash so the script runs.
@@ -42,7 +42,7 @@ const (
 
 // installInput is one environment variable the installer reads. It is the ONE
 // place cafe records the set, because cafe cannot read the installer: the script
-// lives in another repository (`cafaye/kit`'s `templates/substrate/install.sh`,
+// lives in another repository (`anywaye/kit`'s `templates/substrate/install.sh`,
 // the bytes the control plane serves at boxInstallURL) and is served over the
 // network, which is exactly what `cafe box init` promises never to touch. So the
 // table below is copied BY HAND from the installer's own refusals — each entry's
@@ -91,7 +91,7 @@ func (in installInput) tag() string {
 // boxInstallInputs is every operator input the substrate installer reads, in the
 // order a run meets them, so the list is also the order a run is refused in.
 //
-// AUTHORITY: `cafaye/kit`'s `templates/substrate/install.sh` — the file served at
+// AUTHORITY: `anywaye/kit`'s `templates/substrate/install.sh` — the file served at
 // boxInstallURL. Required rows mirror its `kit_substrate_refuse "<NAME>"` calls;
 // `default` rows mirror its `${KIT_SUBSTRATE_…:=…}` defaults. The comment names
 // the authority because cafe cannot import it, which is the whole reason the
@@ -216,13 +216,13 @@ var boxInstallInputs = []installInput{
 		Name:    "KIT_SUBSTRATE_BOX_URL",
 		Kind:    inputDefault,
 		Meaning: "where a capability is redeemed",
-		Default: "https://box.svc.cafaye.com",
+		Default: "https://box.svc.anywaye.com",
 	},
 	{
 		Name:    "KIT_SUBSTRATE_REGISTRY_URL",
 		Kind:    inputDefault,
 		Meaning: "where a capability is exchanged for a registry credential",
-		Default: "https://registry.svc.cafaye.com",
+		Default: "https://registry.svc.anywaye.com",
 	},
 	{
 		Name:    "KIT_SUBSTRATE_SMTP_ADAPTER",
@@ -293,7 +293,7 @@ func inputsOfKind(kind installInputKind) []installInput {
 // substrate README's own "How to run it" block uses, for the same reason.
 func renderInstallCommand() string {
 	var b strings.Builder
-	b.WriteString("# cafaye box install. Replace anything in <angle brackets> or on example.com,\n")
+	b.WriteString("# anywaye box install. Replace anything in <angle brackets> or on example.com,\n")
 	b.WriteString("# keep the rest, then run this whole block in one shell.\n")
 
 	b.WriteString("# Required — the installer refuses, one per run, without each of these:\n")

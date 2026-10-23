@@ -11,7 +11,7 @@ import (
 // operator sees, so both are asserted.
 //
 // Every row below was checked against buf's own table for the tiers. The rows
-// where cafaye says something buf would not are commented at the row, because
+// where anywaye says something buf would not are commented at the row, because
 // done-means said buf wins and a divergence is only reviewable if it is written
 // down. The summary: deleting a whole schema or an operation is a SOURCE break
 // and nothing more, because buf puts MESSAGE_NO_DELETE and RPC_NO_DELETE in FILE
@@ -33,13 +33,13 @@ func TestClassifySaysWhichTierEachChangeBreaks(t *testing.T) {
 			// exactly this reason and is not in WIRE.
 			//
 			// The rename is written the way OpenAPI can actually express one: the
-			// old name is tombstoned and the new name is present. cafaye has no
+			// old name is tombstoned and the new name is present. anywaye has no
 			// ordinal for a property, so a tombstone is the only evidence that a
 			// name was vacated deliberately rather than forgotten — which is also
 			// buf's own reading of a reserved name.
 			name:     "a renamed property breaks source and JSON and not wire",
 			previous: schemaDoc(`        name: {type: string}`),
-			current: schemaDocKeys("      x-cafaye-reserved-properties: [name]",
+			current: schemaDocKeys("      x-anywaye-reserved-properties: [name]",
 				`        display_name: {type: string}`),
 			rule:  "property-same-name",
 			tiers: TierSource | TierJSON,
@@ -53,13 +53,13 @@ func TestClassifySaysWhichTierEachChangeBreaks(t *testing.T) {
 		},
 		{
 			// buf's escape hatch: NoDelete is the default rule and
-			// NoDeleteUnlessNameReserved is the opt-in, and cafaye's opt-in is the
+			// NoDeleteUnlessNameReserved is the opt-in, and anywaye's opt-in is the
 			// vendor extension on the object that used to carry the property.
 			// Nothing was added to replace it, so this is a departure rather than
 			// a rename and it is sanctioned.
 			name:     "a tombstoned deletion with nothing in its place is not a break",
 			previous: schemaDoc(`        name: {type: string}`),
-			current:  schemaDocKeys("      x-cafaye-reserved-properties: [name]"),
+			current:  schemaDocKeys("      x-anywaye-reserved-properties: [name]"),
 			rule:     "",
 			tiers:    TierNone,
 		},
@@ -67,9 +67,9 @@ func TestClassifySaysWhichTierEachChangeBreaks(t *testing.T) {
 			// The Kubernetes tombstone, arrived at independently of buf's
 			// `reserved` statement: remove the field, leave a mark where it was.
 			name: "dropping the tombstone is itself a break",
-			previous: schemaDocKeys("      x-cafaye-reserved-properties: [name, nickname]",
+			previous: schemaDocKeys("      x-anywaye-reserved-properties: [name, nickname]",
 				`        name: {type: string}`),
-			current: schemaDocKeys("      x-cafaye-reserved-properties: [name]",
+			current: schemaDocKeys("      x-anywaye-reserved-properties: [name]",
 				`        name: {type: string}`),
 			rule:  "reserved-no-delete",
 			tiers: TierSource | TierJSON,
@@ -201,7 +201,7 @@ func TestClassifyIsSilentWhenNothingThatMattersMoved(t *testing.T) {
 		"a new schema": schemaDoc(`        name: {type: string, description: The name}`) +
 			"\n    Extra:\n      type: object\n      properties:\n        id: {type: string}\n",
 		"a new tombstone alongside every property": schemaDocKeys(
-			"      x-cafaye-reserved-properties: [nickname]",
+			"      x-anywaye-reserved-properties: [nickname]",
 			`        name: {type: string, description: The name}`),
 	}
 	previous := mustParseAPI(t, base)
@@ -239,7 +239,7 @@ func TestClassifyIgnoresTheProseAroundAnOperation(t *testing.T) {
 // flag is decoration.
 func TestSelectingTiersIsWhatTheFlagDoesAndItIsNotDecoration(t *testing.T) {
 	previous := mustParseAPI(t, schemaDoc(`        name: {type: string}`))
-	current := mustParseAPI(t, schemaDocKeys("      x-cafaye-reserved-properties: [name]",
+	current := mustParseAPI(t, schemaDocKeys("      x-anywaye-reserved-properties: [name]",
 		`        display_name: {type: string}`))
 
 	all := Classify(previous, current)
@@ -276,7 +276,7 @@ func TestADeletionIsTheRowThatReachesWire(t *testing.T) {
 // reported by WIRE alone.
 func TestSelectingTwoTiersReportsWhatBreaksEither(t *testing.T) {
 	previous := mustParseAPI(t, schemaDoc(`        name: {type: string}`))
-	current := mustParseAPI(t, schemaDocKeys("      x-cafaye-reserved-properties: [name]",
+	current := mustParseAPI(t, schemaDocKeys("      x-anywaye-reserved-properties: [name]",
 		`        display_name: {type: string}`))
 	all := Classify(previous, current)
 
@@ -310,14 +310,14 @@ func TestTheTombstoneMessagesNameWhatWasForgotten(t *testing.T) {
 		},
 		{
 			name:     "a dropped tombstone names the reservation and the schema",
-			previous: schemaDocKeys("      x-cafaye-reserved-properties: [name]", `        name: {type: string}`),
+			previous: schemaDocKeys("      x-anywaye-reserved-properties: [name]", `        name: {type: string}`),
 			current:  schemaDoc(`        name: {type: string}`),
 			want:     `Previously present reserved name "name" on schema "User" was deleted`,
 		},
 		{
 			name:     "a rename names both names",
 			previous: schemaDoc(`        name: {type: string}`),
-			current: schemaDocKeys("      x-cafaye-reserved-properties: [name]",
+			current: schemaDocKeys("      x-anywaye-reserved-properties: [name]",
 				`        display_name: {type: string}`),
 			want: `property "name" on schema "User" was renamed to "display_name"`,
 		},
@@ -364,7 +364,7 @@ func TestClassifyIsDeterministic(t *testing.T) {
 // and a line that does not say so cannot be filtered, grepped or triaged.
 func TestAFindingNamesItsTiersOnOneLine(t *testing.T) {
 	previous := mustParseAPI(t, schemaDoc(`        name: {type: string}`))
-	current := mustParseAPI(t, schemaDocKeys("      x-cafaye-reserved-properties: [name]",
+	current := mustParseAPI(t, schemaDocKeys("      x-anywaye-reserved-properties: [name]",
 		`        display_name: {type: string}`))
 
 	line := Classify(previous, current)[0].String()

@@ -31,9 +31,9 @@ func (f *fakeHuman) Login(_ context.Context, email, password string) (*humanLogi
 
 func loginTestEnv(t *testing.T) (loginDeps, *fakeHuman, *agentTestRing) {
 	t.Helper()
-	f := &fakeHuman{token: loginTestToken, email: "noel@cafaye.test"}
+	f := &fakeHuman{token: loginTestToken, email: "noel@anywaye.test"}
 	ring := newAgentTestRing()
-	deps := loginDeps{dir: t.TempDir(), ring: ring, baseURL: "https://cafaye.test"}
+	deps := loginDeps{dir: t.TempDir(), ring: ring, baseURL: "https://anywaye.test"}
 	deps.dial = func(baseURL string) humanEndpoint {
 		f.calls = append(f.calls, "dial:"+baseURL)
 		return f
@@ -62,7 +62,7 @@ func runLoginCLIStdin(t *testing.T, deps loginDeps, stdin io.Reader, args ...str
 
 func TestLoginSplitsStreamsAndStoresToken(t *testing.T) {
 	deps, _, ring := loginTestEnv(t)
-	code, stdout, stderr := runLoginCLI(t, deps, "--email", "noel@cafaye.test", "--password", "secret123")
+	code, stdout, stderr := runLoginCLI(t, deps, "--email", "noel@anywaye.test", "--password", "secret123")
 	if code != 0 {
 		t.Fatalf("exit %d stderr %s", code, stderr)
 	}
@@ -77,17 +77,17 @@ func TestLoginSplitsStreamsAndStoresToken(t *testing.T) {
 	if strings.Contains(stdout, loginTestToken) || strings.Contains(stderr, loginTestToken) {
 		t.Error("token leaked to stream")
 	}
-	if !strings.Contains(stderr, "noel@cafaye.test") {
+	if !strings.Contains(stderr, "noel@anywaye.test") {
 		t.Errorf("stderr missing email: %s", stderr)
 	}
-	if got := ring.entries["cafe/human/noel@cafaye.test"]; got != loginTestToken {
+	if got := ring.entries["cafe/human/noel@anywaye.test"]; got != loginTestToken {
 		t.Errorf("ring holds %q", got)
 	}
 }
 
 func TestLoginTokenNeverPrinted(t *testing.T) {
 	deps, _, ring := loginTestEnv(t)
-	code, stdout, stderr := runLoginCLI(t, deps, "--email", "noel@cafaye.test", "--password", "secret123")
+	code, stdout, stderr := runLoginCLI(t, deps, "--email", "noel@anywaye.test", "--password", "secret123")
 	if code != 0 {
 		t.Fatalf("exit %d %s", code, stderr)
 	}
@@ -96,11 +96,11 @@ func TestLoginTokenNeverPrinted(t *testing.T) {
 			t.Error("token in stream")
 		}
 	}
-	if ring.entries["cafe/human/noel@cafaye.test"] == "" {
+	if ring.entries["cafe/human/noel@anywaye.test"] == "" {
 		t.Error("ring empty")
 	}
 	// control: email IS printed
-	if !strings.Contains(stdout, "noel@cafaye.test") {
+	if !strings.Contains(stdout, "noel@anywaye.test") {
 		t.Errorf("doc missing email: %s", stdout)
 	}
 }
@@ -146,26 +146,26 @@ func TestLoginRejectsBadArgs(t *testing.T) {
 // is the secret itself: neither stream carries the password.
 func TestLoginPasswordStdinStoresTheSameTokenAsTheFlagPath(t *testing.T) {
 	flagDeps, flagFake, flagRing := loginTestEnv(t)
-	code, _, _ := runLoginCLI(t, flagDeps, "--email", "noel@cafaye.test", "--password", "secret123")
+	code, _, _ := runLoginCLI(t, flagDeps, "--email", "noel@anywaye.test", "--password", "secret123")
 	if code != 0 {
 		t.Fatalf("flag path exit %d", code)
 	}
 
 	stdinDeps, stdinFake, stdinRing := loginTestEnv(t)
-	code, stdout, stderr := runLoginCLIStdin(t, stdinDeps, strings.NewReader("secret123\n"), "--email", "noel@cafaye.test", "--password-stdin")
+	code, stdout, stderr := runLoginCLIStdin(t, stdinDeps, strings.NewReader("secret123\n"), "--email", "noel@anywaye.test", "--password-stdin")
 	if code != 0 {
 		t.Fatalf("stdin path exit %d stderr %s", code, stderr)
 	}
 
-	if got := stdinRing.entries["cafe/human/noel@cafaye.test"]; got != loginTestToken {
+	if got := stdinRing.entries["cafe/human/noel@anywaye.test"]; got != loginTestToken {
 		t.Errorf("stdin path stored %q, want the token the flag path stores (%q)", got, loginTestToken)
 	}
-	if stdinRing.entries["cafe/human/noel@cafaye.test"] != flagRing.entries["cafe/human/noel@cafaye.test"] {
+	if stdinRing.entries["cafe/human/noel@anywaye.test"] != flagRing.entries["cafe/human/noel@anywaye.test"] {
 		t.Error("the two paths stored different tokens")
 	}
 	// The value the pipe carried, trimmed of the writer's newline, is the value
 	// the endpoint was called with.
-	want := "login:noel@cafaye.test:secret123"
+	want := "login:noel@anywaye.test:secret123"
 	if !containsCall(stdinFake.calls, want) {
 		t.Errorf("endpoint calls %v, want %q", stdinFake.calls, want)
 	}
@@ -180,7 +180,7 @@ func TestLoginPasswordStdinStoresTheSameTokenAsTheFlagPath(t *testing.T) {
 	}
 	// control: the email IS printed, so a run that redacted everything would
 	// not pass by leaking nothing at all.
-	if !strings.Contains(stdout, "noel@cafaye.test") {
+	if !strings.Contains(stdout, "noel@anywaye.test") {
 		t.Errorf("stdout missing email: %s", stdout)
 	}
 }
@@ -199,7 +199,7 @@ func containsCall(calls []string, want string) bool {
 // and neither deserves to win silently.
 func TestLoginPasswordAndPasswordStdinTogetherIsARefusal(t *testing.T) {
 	deps, fake, ring := loginTestEnv(t)
-	code, _, stderr := runLoginCLIStdin(t, deps, strings.NewReader("secret123\n"), "--email", "noel@cafaye.test", "--password", "secret123", "--password-stdin")
+	code, _, stderr := runLoginCLIStdin(t, deps, strings.NewReader("secret123\n"), "--email", "noel@anywaye.test", "--password", "secret123", "--password-stdin")
 	if code != exitUsage {
 		t.Fatalf("exit %d want usage; stderr %s", code, stderr)
 	}
@@ -221,7 +221,7 @@ func TestLoginPasswordStdinEmptyIsARefusal(t *testing.T) {
 	for name, stdin := range map[string]string{"empty": "", "blank": "  \n\t\n"} {
 		t.Run(name, func(t *testing.T) {
 			deps, fake, ring := loginTestEnv(t)
-			code, _, stderr := runLoginCLIStdin(t, deps, strings.NewReader(stdin), "--email", "noel@cafaye.test", "--password-stdin")
+			code, _, stderr := runLoginCLIStdin(t, deps, strings.NewReader(stdin), "--email", "noel@anywaye.test", "--password-stdin")
 			if code != exitUsage {
 				t.Fatalf("exit %d want usage; stderr %s", code, stderr)
 			}
@@ -250,7 +250,7 @@ func loginOverHTTP(t *testing.T, answer string) (int, string, string) {
 	}))
 	t.Cleanup(srv.Close)
 	deps := loginDeps{dir: t.TempDir(), ring: newAgentTestRing(), baseURL: srv.URL, dial: defaultHumanDial()}
-	return runLoginCLI(t, deps, "--email", "mfa@cafaye.test", "--password", "secret123")
+	return runLoginCLI(t, deps, "--email", "mfa@anywaye.test", "--password", "secret123")
 }
 
 // A 202 with mfa_required is identity minting a challenge rather than a session.
@@ -287,7 +287,7 @@ func TestLoginEmptyTokenStillSaysIdentityDidNotMintOne(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	deps := loginDeps{dir: t.TempDir(), ring: newAgentTestRing(), baseURL: srv.URL, dial: defaultHumanDial()}
-	code, _, stderr := runLoginCLI(t, deps, "--email", "noel@cafaye.test", "--password", "secret123")
+	code, _, stderr := runLoginCLI(t, deps, "--email", "noel@anywaye.test", "--password", "secret123")
 	if code != exitFailure {
 		t.Fatalf("exit %d want failure", code)
 	}
@@ -326,7 +326,7 @@ func TestLoginHelpExampleNamesTheEnvVarTheCodeReads(t *testing.T) {
 	// The positive half: the exact runnable example is present, built from the
 	// constant so the URL it shows (a self-hosted box, not the hosted endpoint)
 	// is anchored to the variable the code reads.
-	want := identityURLEnv + "=https://identity.cafaye.com cafe login --email you@example.com --password-stdin"
+	want := identityURLEnv + "=https://identity.anywaye.com cafe login --email you@example.com --password-stdin"
 	if !strings.Contains(help, want) {
 		t.Errorf("the example command is not runnable as pasted; want a line containing:\n%s\ngot:\n%s", want, help)
 	}

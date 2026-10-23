@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/mcp"
+	"github.com/anywaye/cafe/internal/mcp"
 )
 
 type lokiArgs struct {
@@ -29,7 +29,7 @@ type lokiLine struct {
 func (t *mcpTools) loki() mcp.Tool[lokiArgs, []lokiLine] {
 	return mcp.Tool[lokiArgs, []lokiLine]{
 		Name:        "caf_loki",
-		Description: "Query the cafaye log store (Loki) for lines, optionally filtered by trace id. Does not mutate anything.",
+		Description: "Query the anywaye log store (Loki) for lines, optionally filtered by trace id. Does not mutate anything.",
 		ReadOnly:    true,
 		Idempotent:  true,
 		Input:       lokiArgs{},
@@ -38,7 +38,7 @@ func (t *mcpTools) loki() mcp.Tool[lokiArgs, []lokiLine] {
 }
 
 func (t *mcpTools) runLoki(ctx context.Context, args lokiArgs) ([]lokiLine, error) {
-	baseURL := strings.TrimSpace(os.Getenv("CAFAYE_LOKI_URL"))
+	baseURL := strings.TrimSpace(os.Getenv("ANYWAYE_LOKI_URL"))
 	if baseURL == "" {
 		baseURL = "http://localhost:15901"
 	}

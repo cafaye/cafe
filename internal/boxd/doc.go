@@ -57,7 +57,7 @@
 //
 // Why it does not exist: enrollment generates the box's keypair and writes
 // the identity document, but nothing in the fleet issues a certificate — the
-// control plane (`cafaye/box`) has no signing endpoint, no CA, and no
+// control plane (`anywaye/box`) has no signing endpoint, no CA, and no
 // certificate code at all. The mTLS half of this relationship is currently
 // the daemon's own requirement: nothing server-side enforces it.
 //
@@ -85,7 +85,7 @@
 // the unit dead with no reason in its status; retrying forever is the defect.
 //
 // The deferral is dated and its trigger is named: the Phase C packet that
-// lands client-credential issuance in `cafaye/box` — a signing endpoint and
+// lands client-credential issuance in `anywaye/box` — a signing endpoint and
 // a CA the box trusts (enrollment-time issuance), or a key-bearer endpoint
 // over the SSH reverse tunnel that is already this fleet's Phase B transport.
 // At that point enrollment writes the real certificate and key paths into

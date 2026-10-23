@@ -6,19 +6,19 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cafaye/cafe/internal/skills"
+	"github.com/anywaye/cafe/internal/skills"
 )
 
 func newSkillsCommand() *Command {
 	c := &Command{
 		Name:    "skills",
-		Summary: "install version-matched cafaye agent skill files",
+		Summary: "install version-matched anywaye agent skill files",
 		Usage:   "cafe skills <subcommand> [args]",
-		LongHelp: "Install the cafaye agent skill into your workspace so your coding agent\n" +
-			"(Claude Code, Codex, etc.) knows how to use cafaye.\n\n" +
+		LongHelp: "Install the anywaye agent skill into your workspace so your coding agent\n" +
+			"(Claude Code, Codex, etc.) knows how to use anywaye.\n\n" +
 			"Subcommands:\n" +
-			"  install   Install/update the cafaye skill file\n\n" +
-			"The skill is installed to ~/.agents/skills/cafaye/SKILL.md by default.\n" +
+			"  install   Install/update the anywaye skill file\n\n" +
+			"The skill is installed to ~/.agents/skills/anywaye/SKILL.md by default.\n" +
 			"It is version-matched to the CLI — run `cafe skills install` after\n" +
 			"updating the CLI to get the latest skill.",
 	}

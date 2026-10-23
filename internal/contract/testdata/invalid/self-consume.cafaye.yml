@@ -24,10 +24,10 @@ consumes:
   - billing.invoice.created
 
 repository:
-  url: git@github.com:cafaye/billing.git
+  url: git@github.com:anywaye/billing.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: billing
-  contact: billing@cafaye.com
+  contact: billing@anywaye.com

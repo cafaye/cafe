@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/dev"
-	"github.com/cafaye/cafe/internal/ledger"
-	"github.com/cafaye/cafe/internal/ports"
+	"github.com/anywaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/ports"
 )
 
 // `cafe env up` is the only provisioning verb, and the thing that makes it one
@@ -149,12 +149,12 @@ func TestTheReceiptCarriesNoValueFromTheStacksEnvironment(t *testing.T) {
 	// like a credential, which is what a real one is.
 	manifest := strings.Replace(manifestForLanguage("go"),
 		"repository:", "dependencies:\n  - name: alpha\n    version: ^0.1.0\nrepository:", 1)
-	if err := os.WriteFile(filepath.Join(dir, "cafaye.yml"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "anywaye.yml"), []byte(manifest), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	catalog := filepath.Join(dir, "catalog.json")
 	if err := os.WriteFile(catalog, []byte(
-		`{"alpha":{"name":"alpha","image":"ghcr.io/cafaye/alpha:1.2.3","port":8081,`+
+		`{"alpha":{"name":"alpha","image":"ghcr.io/anywaye/alpha:1.2.3","port":8081,`+
 			`"environment":{"ALPHA_TOKEN":"super-secret-value"}}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -487,7 +487,7 @@ func runEnvUpWithLedger(t *testing.T, dir string, book *ledger.Ledger, deps envD
 func envProject(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cafaye.yml"), []byte(manifestForLanguage("go")), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "anywaye.yml"), []byte(manifestForLanguage("go")), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "docker"), 0o755); err != nil {

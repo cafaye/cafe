@@ -1,5 +1,5 @@
 // Package gen is `cafe gen`: what cafe writes out of a manifest, derived from
-// the contracts cafaye/core owns.
+// the contracts anywaye/core owns.
 //
 // The package exists so that a tool reading a manifest and a tool writing files
 // out of one are not the same code. Everything here is a pure function over a
@@ -62,7 +62,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // ErrUnknownTarget is a target cafe does not generate. It is a distinct sentinel
@@ -208,7 +208,7 @@ func Generate(target string, manifest contract.Manifest, opts TargetOptions) (Ou
 // refuses reports a target that exists but has nothing to say about this
 // project, and names the place the answer lives.
 //
-// The sentence matters more than it looks. `language: ruby` is not a cafaye
+// The sentence matters more than it looks. `language: ruby` is not a anywaye
 // mistake and not something the person can fix by installing anything; it is a
 // question of whose job this is, and answering it with a file path rather than
 // with "unsupported" is the difference between a refusal a person can act on

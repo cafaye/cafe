@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/box"
-	"github.com/cafaye/cafe/internal/scaffold"
+	"github.com/anywaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/scaffold"
 )
 
 // newOptions is the parsed flag state for `cafe new`.
@@ -31,18 +31,18 @@ func newNewCommand(deps shipDeps) *Command {
 	opts := &newOptions{}
 	c := &Command{
 		Name:    "new",
-		Summary: "scaffold a new cafaye service or app",
+		Summary: "scaffold a new anywaye service or app",
 		Usage:   "cafe new [flags] <name>",
 		LongHelp: "Scaffolds a project into <name>/ from the template catalog embedded in this\n" +
 			"binary. The catalog is read from internal/scaffold: one directory per template,\n" +
 			"one index naming them, so adding a template is adding a directory and a row\n" +
 			"rather than a recompile of a table written beside the code.\n" +
 			"\n" +
-			"The scaffolded cafaye.yml is validated against core's manifest schema before\n" +
+			"The scaffolded anywaye.yml is validated against core's manifest schema before\n" +
 			"anything is written — the same check `cafe contract lint` runs — so a scaffolded\n" +
 			"project cannot be one the contract rejects.\n" +
 			"\n" +
-			"<name> is the cafaye namespace name: lowercase kebab-case, 2-40 characters.\n" +
+			"<name> is the anywaye namespace name: lowercase kebab-case, 2-40 characters.\n" +
 			"It is the directory the project is written into, and the name the manifest\n" +
 			"carries unless -name overrides it (a repository whose directory is not its\n" +
 			"service name is exactly that case).\n" +
@@ -78,7 +78,7 @@ func newNewCommand(deps shipDeps) *Command {
 		if sessionToken == "" {
 			identityURL := os.Getenv("IDENTITY_URL")
 			if identityURL == "" {
-				identityURL = "https://cafaye.com"
+				identityURL = "https://anywaye.com"
 			}
 			regBody, _ := json.Marshal(map[string]any{
 				"name":   args[0],
@@ -140,7 +140,7 @@ func newNewCommand(deps shipDeps) *Command {
 						_, _ = fmt.Fprintf(env.Stdout, "  Agent claimed! Minting session token...\n")
 
 						// Mint a token for ship access.
-						mintBody, _ := json.Marshal(map[string]any{"name": "cafaye-cli"})
+						mintBody, _ := json.Marshal(map[string]any{"name": "anywaye-cli"})
 						mintReq, _ := http.NewRequest("POST", strings.TrimRight(identityURL, "/")+"/v1/agents/tokens", strings.NewReader(string(mintBody)))
 						mintReq.Header.Set("Authorization", "Bearer "+bootstrapToken)
 						mintReq.Header.Set("Content-Type", "application/json")
@@ -170,7 +170,7 @@ func newNewCommand(deps shipDeps) *Command {
 						if dir != "" {
 							ring := box.FileRing{Dir: filepath.Join(dir, "keyring")}
 							ring.Set(agent.KeyringService, "agent/"+reg.Agent.ID, minted.Token)
-							subject := args[0] + "@cafaye"
+							subject := args[0] + "@anywaye"
 							ring.Set(agent.KeyringService, humanAccount(subject), minted.Token)
 							writeHumanSubject(dir, subject)
 						}
@@ -213,16 +213,16 @@ func newNewCommand(deps shipDeps) *Command {
 				var proj struct {
 					ID               string `json:"id"`
 					RepoFullName     string `json:"repo_full_name"`
-					CafayeGitRepoURL string `json:"cafaye_git_repo_url"`
+					AnywayeGitRepoURL string `json:"anywaye_git_repo_url"`
 				}
 				json.Unmarshal(body, &proj)
 				if proj.ID != "" {
 					projectCreated = true
-					cloneURL = proj.CafayeGitRepoURL
+					cloneURL = proj.AnywayeGitRepoURL
 					_, _ = fmt.Fprintf(env.Stdout, "  Project created: %s\n", proj.ID)
 					if proj.RepoFullName != "" {
 						_, _ = fmt.Fprintf(env.Stdout, "  Repository: %s\n", proj.RepoFullName)
-						_, _ = fmt.Fprintf(env.Stdout, "  Clone:      %s\n", proj.CafayeGitRepoURL)
+						_, _ = fmt.Fprintf(env.Stdout, "  Clone:      %s\n", proj.AnywayeGitRepoURL)
 					}
 					_, _ = fmt.Fprintf(env.Stdout, "  Ship URL: %s\n", deps.shipURL)
 				}
@@ -274,14 +274,14 @@ func newNewCommand(deps shipDeps) *Command {
 			} else {
 				_, _ = fmt.Fprintf(env.Stdout, "  No active subscription — two options:\n")
 				_, _ = fmt.Fprintf(env.Stdout, "\n")
-				_, _ = fmt.Fprintf(env.Stdout, "  [Cloud] Pay for a dev box: https://cafaye.com/v1/plans\n")
+				_, _ = fmt.Fprintf(env.Stdout, "  [Cloud] Pay for a dev box: https://anywaye.com/v1/plans\n")
 				_, _ = fmt.Fprintf(env.Stdout, "          Then run: cafe new %s (again) to provision\n", args[0])
 				_, _ = fmt.Fprintf(env.Stdout, "\n")
 				_, _ = fmt.Fprintf(env.Stdout, "  [Local] Develop on your own machine:\n")
 				if cloneURL != "" {
 					_, _ = fmt.Fprintf(env.Stdout, "          1. Clone: git clone %s\n", cloneURL)
 				} else {
-					_, _ = fmt.Fprintf(env.Stdout, "          1. Clone: git clone https://git.cafaye.com/<your-account>/%s.git\n", args[0])
+					_, _ = fmt.Fprintf(env.Stdout, "          1. Clone: git clone https://git.anywaye.com/<your-account>/%s.git\n", args[0])
 				}
 				_, _ = fmt.Fprintf(env.Stdout, "          2. Install deps and run your dev server locally\n")
 				_, _ = fmt.Fprintf(env.Stdout, "          3. Expose via tunnel: cafe tunnel start <project-id> --port 3000\n")

@@ -303,7 +303,7 @@ func TestOneDocumentCarriesOneVersionedPrefix(t *testing.T) {
 // pantry all resolve the same path and find nothing.
 func TestLintingAManifestChecksTheDocumentItNames(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "cafaye.yml"), manifestNaming(`  api: openapi/v1.yaml`))
+	write(t, filepath.Join(dir, "anywaye.yml"), manifestNaming(`  api: openapi/v1.yaml`))
 
 	report, err := Lint(dir)
 	if err != nil {
@@ -312,7 +312,7 @@ func TestLintingAManifestChecksTheDocumentItNames(t *testing.T) {
 	if report.OK() {
 		t.Fatal("Lint = OK for a manifest naming a document that does not exist")
 	}
-	manifest := findingFor(t, report, filepath.Join(dir, "cafaye.yml"))
+	manifest := findingFor(t, report, filepath.Join(dir, "anywaye.yml"))
 	if violationAt(manifest.Violations, RuleAPIDocumentMissing, "exposes/api") == nil {
 		t.Errorf("the missing document was not named on the manifest; got %v", manifest.Violations)
 	}
@@ -323,7 +323,7 @@ func TestLintingAManifestChecksTheDocumentItNames(t *testing.T) {
 // would send the reader to the wrong file for a rule about an integer.
 func TestLintingAManifestLintsTheDocumentWithItsOwnRules(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "cafaye.yml"), manifestNaming(`  api: openapi/v1.yaml`))
+	write(t, filepath.Join(dir, "anywaye.yml"), manifestNaming(`  api: openapi/v1.yaml`))
 	write(t, filepath.Join(dir, "openapi/v1.yaml"),
 		userDocSpec{properties: `        temperature: {type: number}`}.render())
 
@@ -355,29 +355,29 @@ func TestLintingAManifestLintsTheDocumentWithItsOwnRules(t *testing.T) {
 func TestACopyOfAnotherServicesManifestMayNameADocumentThatIsNotBesideIt(t *testing.T) {
 	dir := t.TempDir()
 	// The registry's own manifest, at the root, with a document beside it.
-	write(t, filepath.Join(dir, "cafaye.yml"), manifestNaming(`  api: openapi/v1.yaml`))
+	write(t, filepath.Join(dir, "anywaye.yml"), manifestNaming(`  api: openapi/v1.yaml`))
 	write(t, filepath.Join(dir, "openapi", "v1.yaml"), pathsDoc("/v1/services"))
 
 	// A copy of identity's manifest, verbatim, with no document beside it.
-	write(t, filepath.Join(dir, "registry", "services", "identity", "cafaye.yml"),
+	write(t, filepath.Join(dir, "registry", "services", "identity", "anywaye.yml"),
 		strings.Replace(manifestNaming(`  api: openapi/v1.yaml`), "name: courier", "name: identity", 1))
 
 	report, err := Lint(dir)
 	if err != nil {
 		t.Fatalf("Lint: %v", err)
 	}
-	copied := findingFor(t, report, filepath.Join(dir, "registry", "services", "identity", "cafaye.yml"))
+	copied := findingFor(t, report, filepath.Join(dir, "registry", "services", "identity", "anywaye.yml"))
 	if !copied.OK() {
 		t.Errorf("a verbatim copy was failed for a document that belongs to another repository: %v", copied.Violations)
 	}
 	// The root manifest still must have its document: the exemption is for copies,
 	// not for the repository's own.
-	write(t, filepath.Join(dir, "cafaye.yml"), manifestNaming(`  api: openapi/moved.yaml`))
+	write(t, filepath.Join(dir, "anywaye.yml"), manifestNaming(`  api: openapi/moved.yaml`))
 	report, err = Lint(dir)
 	if err != nil {
 		t.Fatalf("Lint: %v", err)
 	}
-	if findingFor(t, report, filepath.Join(dir, "cafaye.yml")).OK() {
+	if findingFor(t, report, filepath.Join(dir, "anywaye.yml")).OK() {
 		t.Error("the repository's own manifest passed while its document was missing")
 	}
 }
@@ -388,7 +388,7 @@ func TestACopyOfAnotherServicesManifestMayNameADocumentThatIsNotBesideIt(t *test
 // than passing silently on a dependency it cannot see.
 func TestAStableServiceMayNotDependOnAnAlphaContract(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "stable", "cafaye.yml"), manifestNaming(`  api: openapi/v1.yaml
+	write(t, filepath.Join(dir, "stable", "anywaye.yml"), manifestNaming(`  api: openapi/v1.yaml
 
 dependencies:
   - name: darkroom
@@ -396,7 +396,7 @@ dependencies:
 	write(t, filepath.Join(dir, "stable", "openapi", "v1.yaml"), pathsDoc("/v1/users"))
 
 	dirAlpha := filepath.Join(dir, "alpha")
-	write(t, filepath.Join(dirAlpha, "cafaye.yml"), strings.Replace(
+	write(t, filepath.Join(dirAlpha, "anywaye.yml"), strings.Replace(
 		manifestNaming(`  api: openapi/v1alpha1.yaml`),
 		"name: courier", "name: darkroom", 1))
 	write(t, filepath.Join(dirAlpha, "openapi", "v1alpha1.yaml"), pathsDoc("/v1alpha1/images"))
@@ -405,7 +405,7 @@ dependencies:
 	if err != nil {
 		t.Fatalf("Lint: %v", err)
 	}
-	courier := findingFor(t, report, filepath.Join(dir, "stable", "cafaye.yml"))
+	courier := findingFor(t, report, filepath.Join(dir, "stable", "anywaye.yml"))
 	if violationAt(courier.Violations, RuleStableDependsOnAlpha, "") == nil {
 		t.Errorf("a stable courier on an alpha darkroom was accepted; got %v", courier.Violations)
 	}
@@ -417,14 +417,14 @@ dependencies:
 func TestALessStableServiceMayDependOnAMoreStableOne(t *testing.T) {
 	dir := t.TempDir()
 	dirAlpha := filepath.Join(dir, "alpha")
-	write(t, filepath.Join(dirAlpha, "cafaye.yml"), manifestNaming(`  api: openapi/v1alpha1.yaml
+	write(t, filepath.Join(dirAlpha, "anywaye.yml"), manifestNaming(`  api: openapi/v1alpha1.yaml
 
 dependencies:
   - name: pantry
     version: ^0.1.0`))
 	write(t, filepath.Join(dirAlpha, "openapi", "v1alpha1.yaml"), pathsDoc("/v1alpha1/users"))
 
-	write(t, filepath.Join(dir, "stable", "cafaye.yml"), strings.Replace(
+	write(t, filepath.Join(dir, "stable", "anywaye.yml"), strings.Replace(
 		strings.Replace(manifestNaming(`  api: openapi/v1.yaml`), "name: courier", "name: pantry", 1),
 		"language: elixir", "language: spec", 1))
 	write(t, filepath.Join(dir, "stable", "openapi", "v1.yaml"), pathsDoc("/v1/services"))
@@ -475,13 +475,13 @@ exposes:
 ` + exposes + `
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com
 `
 }
 

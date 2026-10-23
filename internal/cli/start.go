@@ -26,9 +26,9 @@ func newStartCommand(deps startDeps) *Command {
 	)
 	c := &Command{
 		Name:    "start",
-		Summary: "bootstrap a new project on cafaye (agent-driven)",
+		Summary: "bootstrap a new project on anywaye (agent-driven)",
 		Usage:   "cafe start [flags]",
-		LongHelp: "Bootstrap a new project on cafaye. Creates the project on ship and\n" +
+		LongHelp: "Bootstrap a new project on anywaye. Creates the project on ship and\n" +
 			"prints the connection info. The agent then takes over.\n\n" +
 			"Flags:\n" +
 			"  --name <name>    Project name (default: my-project)\n" +

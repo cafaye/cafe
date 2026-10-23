@@ -36,7 +36,7 @@ func lockProject(t *testing.T) string {
 			t.Fatalf("copy %s: %v", dir, err)
 		}
 	}
-	for _, file := range []string{"cafaye.yml", "gate.yml"} {
+	for _, file := range []string{"anywaye.yml", "gate.yml"} {
 		copyFileTo(t, filepath.Join(repo, file), filepath.Join(root, file))
 	}
 	return root
@@ -192,7 +192,7 @@ func TestVerifyGoesRedOnAHandEditedVendoredSchemaAndGreenOnARestore(t *testing.T
 // `cafe gen`'s half of the same argument and it was here first.)
 //
 // So this row is not the first line of defense for generated files in THIS tree.
-// What `cafe lock` uniquely adds here is the other two kinds — `cafaye.yml` and
+// What `cafe lock` uniquely adds here is the other two kinds — `anywaye.yml` and
 // `gate.yml`, neither of which anything hashed before this packet — and the fact
 // that all four are checked by one mechanism rather than by a pin in each of
 // three packages.

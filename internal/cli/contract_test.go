@@ -13,13 +13,13 @@ import (
 // passed. A CI job reads this, so the lines are the product.
 func TestContractLintOutput(t *testing.T) {
 	valid := t.TempDir()
-	writeManifest(t, filepath.Join(valid, "cafaye.yml"), courierManifest)
+	writeManifest(t, filepath.Join(valid, "anywaye.yml"), courierManifest)
 
 	tree := t.TempDir()
-	writeManifest(t, filepath.Join(tree, "cafaye.yml"), courierManifest)
-	writeManifest(t, filepath.Join(tree, "services", "billing", "cafaye.yml"), billingManifest)
-	writeManifest(t, filepath.Join(tree, "services", "broken", "cafaye.yml"), brokenManifest)
-	writeManifest(t, filepath.Join(tree, "node_modules", "dep", "cafaye.yml"), billingManifest)
+	writeManifest(t, filepath.Join(tree, "anywaye.yml"), courierManifest)
+	writeManifest(t, filepath.Join(tree, "services", "billing", "anywaye.yml"), billingManifest)
+	writeManifest(t, filepath.Join(tree, "services", "broken", "anywaye.yml"), brokenManifest)
+	writeManifest(t, filepath.Join(tree, "node_modules", "dep", "anywaye.yml"), billingManifest)
 
 	tests := []struct {
 		name     string
@@ -33,14 +33,14 @@ func TestContractLintOutput(t *testing.T) {
 			name:     "one valid manifest",
 			args:     []string{"contract", "lint", valid},
 			wantCode: exitSuccess,
-			wantOut:  []string{"OK " + filepath.Join(valid, "cafaye.yml") + "\n"},
+			wantOut:  []string{"OK " + filepath.Join(valid, "anywaye.yml") + "\n"},
 		},
 		{
 			name:     "one invalid manifest",
-			args:     []string{"contract", "lint", filepath.Join(tree, "services", "billing", "cafaye.yml")},
+			args:     []string{"contract", "lint", filepath.Join(tree, "services", "billing", "anywaye.yml")},
 			wantCode: exitFailure,
 			wantOut: []string{
-				"INVALID " + filepath.Join(tree, "services", "billing", "cafaye.yml") +
+				"INVALID " + filepath.Join(tree, "services", "billing", "anywaye.yml") +
 					`: name: "Billing_Service" does not match "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"` + "\n",
 			},
 		},
@@ -49,19 +49,19 @@ func TestContractLintOutput(t *testing.T) {
 			args:     []string{"contract", "lint", tree},
 			wantCode: exitFailure,
 			wantOut: []string{
-				"OK " + filepath.Join(tree, "cafaye.yml") + "\n",
-				"INVALID " + filepath.Join(tree, "services", "billing", "cafaye.yml"),
-				"INVALID " + filepath.Join(tree, "services", "broken", "cafaye.yml"),
+				"OK " + filepath.Join(tree, "anywaye.yml") + "\n",
+				"INVALID " + filepath.Join(tree, "services", "billing", "anywaye.yml"),
+				"INVALID " + filepath.Join(tree, "services", "broken", "anywaye.yml"),
 			},
 			wantGone: []string{"node_modules"},
 		},
 		{
 			name:     "a manifest that is not YAML is invalid, not skipped",
-			args:     []string{"contract", "lint", filepath.Join(tree, "services", "broken", "cafaye.yml")},
+			args:     []string{"contract", "lint", filepath.Join(tree, "services", "broken", "anywaye.yml")},
 			wantCode: exitFailure,
 			// The position and the reason come from the YAML parser, so only
 			// the shape of the line is pinned here.
-			wantOut: []string{"INVALID " + filepath.Join(tree, "services", "broken", "cafaye.yml") + ": invalid YAML: [3:1]"},
+			wantOut: []string{"INVALID " + filepath.Join(tree, "services", "broken", "anywaye.yml") + ": invalid YAML: [3:1]"},
 		},
 		{
 			name:     "a path that does not exist is a failure, not a pass",
@@ -105,9 +105,9 @@ func TestContractLintOutput(t *testing.T) {
 // a CI log counts lines, and a summary would be a line that is not a manifest.
 func TestContractLintPrintsOneLinePerManifest(t *testing.T) {
 	dir := t.TempDir()
-	writeManifest(t, filepath.Join(dir, "cafaye.yml"), courierManifest)
-	writeManifest(t, filepath.Join(dir, "billing", "cafaye.yml"), billingManifest)
-	writeManifest(t, filepath.Join(dir, "identity", "cafaye.yml"), identityManifest)
+	writeManifest(t, filepath.Join(dir, "anywaye.yml"), courierManifest)
+	writeManifest(t, filepath.Join(dir, "billing", "anywaye.yml"), billingManifest)
+	writeManifest(t, filepath.Join(dir, "identity", "anywaye.yml"), identityManifest)
 
 	code, stdout, stderr := runCLI(t, testVersion, "contract", "lint", dir)
 
@@ -372,13 +372,13 @@ consumes:
   - identity.member.invited
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com
 `
 
 const identityManifest = `name: identity
@@ -393,13 +393,13 @@ exposes:
     - identity.api_key.created
 
 repository:
-  url: git@github.com:cafaye/identity.git
+  url: git@github.com:anywaye/identity.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: identity
-  contact: identity@cafaye.com
+  contact: identity@anywaye.com
 `
 
 // billingManifest carries the mistakes core's negative example carries, so the
@@ -413,7 +413,7 @@ exposes:
   api: ./openapi.yaml
 
 repository:
-  url: https://github.com/cafaye/billing-service
+  url: https://github.com/anywaye/billing-service
   defaultBranch: main
 
 owner:

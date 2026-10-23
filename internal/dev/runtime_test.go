@@ -477,7 +477,7 @@ func TestComposeRuntimeUsesTheResolvedBinary(t *testing.T) {
 // the one-line reason compose gives ("exit status 1") is the least useful
 // sentence in the tool and the answer is always in the lines after it.
 func TestComposeRuntimeReportsTheFailureOutput(t *testing.T) {
-	ran := &recordedRunner{err: errors.New("exit status 1"), output: "no such image: ghcr.io/cafaye/alpha:nope"}
+	ran := &recordedRunner{err: errors.New("exit status 1"), output: "no such image: ghcr.io/anywaye/alpha:nope"}
 
 	err := (&ComposeRuntime{binary: "docker", run: ran.run}).Up(context.Background(), "stack-dev", "file.yaml")
 

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/box"
 )
 
 // loginDeps is what `cafe login` needs, mirroring agentDeps so the seams are
@@ -197,7 +197,7 @@ func newLoginCommand(deps loginDeps) *Command {
 			// The example interpolates identityURLEnv rather than naming the
 			// variable a second time: a second literal is how this help came to
 			// tell users to set IDENTITY_URL while the code read CAF_IDENTITY_URL.
-			"\t" + identityURLEnv + "=https://identity.cafaye.com cafe login --email you@example.com --password-stdin\n\n" +
+			"\t" + identityURLEnv + "=https://identity.anywaye.com cafe login --email you@example.com --password-stdin\n\n" +
 			"Nothing about the password is echoed, logged, or carried into an error or a\n" +
 			"report on either channel.",
 		Flags: func(fs *flag.FlagSet) {

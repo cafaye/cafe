@@ -19,7 +19,7 @@ func TestSkillsInstallSaysWhereItWrote(t *testing.T) {
 	if code != exitSuccess {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
-	want := filepath.Join(root, ".agents", "skills", "cafaye", "SKILL.md")
+	want := filepath.Join(root, ".agents", "skills", "anywaye", "SKILL.md")
 	if !strings.Contains(stdout, "skill_path: "+want) {
 		t.Errorf("stdout does not name the installed file\ngot:\n%s", stdout)
 	}

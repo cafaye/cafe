@@ -22,10 +22,10 @@ func newLogsCommand() *Command {
 	)
 	return &Command{
 		Name:    "logs",
-		Summary: "Query the cafaye log store (Loki) for lines, optionally by trace id",
+		Summary: "Query the anywaye log store (Loki) for lines, optionally by trace id",
 		Usage:   "cafe logs [--url URL] [--query LOGQL] [--trace-id ID] [--since DURATION] [--limit N]",
 		Flags: func(fs *flag.FlagSet) {
-			fs.StringVar(&baseURL, "url", os.Getenv("CAFAYE_LOKI_URL"), "Loki base URL")
+			fs.StringVar(&baseURL, "url", os.Getenv("ANYWAYE_LOKI_URL"), "Loki base URL")
 			fs.StringVar(&query, "query", "", "LogQL query (default: all streams)")
 			fs.StringVar(&traceID, "trace-id", "", "filter lines containing this trace id")
 			fs.StringVar(&since, "since", "15m", "lookback duration")

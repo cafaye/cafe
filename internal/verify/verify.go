@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // The three answers the verifier gives, and the vocabulary every section of
@@ -22,7 +22,7 @@ const (
 // VerificationSchemaVersion is the version of the verification document. It
 // is a field rather than implied by the wire so a reader holding one in a
 // year can tell which shape it is without knowing which cafe build produced
-// it — the same reason every cafaye artifact carries its own version.
+// it — the same reason every anywaye artifact carries its own version.
 const VerificationSchemaVersion = 1
 
 // diskWarnPercent is where a root filesystem stops being a number and starts

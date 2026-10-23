@@ -1,7 +1,7 @@
 # {{ .Name }}
 
-A cafaye app, scaffolded by `cafe new --template app`. It runs on `cafe dev`,
-ships from a Helm chart `cafe gen chart` writes, and is held to the cafaye
+A anywaye app, scaffolded by `cafe new --template app`. It runs on `cafe dev`,
+ships from a Helm chart `cafe gen chart` writes, and is held to the anywaye
 contract by `cafe contract lint`.
 
 ## The loop
@@ -16,12 +16,12 @@ cafe contract lint .  # the manifest, checked against core's schema
 
 | Path | What it is |
 | --- | --- |
-| `cafaye.yml` | the app's identity: name, language, contract version, owner, repository |
+| `anywaye.yml` | the app's identity: name, language, contract version, owner, repository |
 | `main.go` | a real service on `:8080`, answering `/healthz` and `/readyz` |
 | `go.mod` | the Go module |
 | `docker/Dockerfile` | the image `cafe dev` builds, in the place it looks for one |
 
-The app listens on 8080 because that is the port cafaye knows a Go service
+The app listens on 8080 because that is the port anywaye knows a Go service
 listens on — it is read out of the manifest's `language`, not configured
 anywhere, so the manifest and the container cannot disagree.
 
@@ -39,5 +39,5 @@ this app starts publishing events or serving an API, declare them in
 of truth; the platform's surface is its contracts and configuration. An agent
 that patches vendored platform service source creates a fork that has to be
 supported through every update. Extend this app through the contract
-(`cafaye.yml`, the OpenAPI document, the event types), not by editing the
+(`anywaye.yml`, the OpenAPI document, the event types), not by editing the
 platform underneath it.

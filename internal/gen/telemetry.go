@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // The paths one `cafe gen telemetry` run writes, relative to the output root.
@@ -31,17 +31,17 @@ const (
 	endpointPath = "telemetry/otel-endpoint.json"
 )
 
-// namespace is the fleet every cafaye service belongs to, and the value of
+// namespace is the fleet every anywaye service belongs to, and the value of
 // `service.namespace` on every resource.
 //
 // It is written down here rather than read out of core, because core's schemas
 // give the field a `pattern` and a prose description and not a value: the
-// description says "`cafaye` for every one of them" and that sentence is the
+// description says "`anywaye` for every one of them" and that sentence is the
 // only statement of it. It is emitted rather than guessed because the field is
 // what lets one collector group the fleet under a parent instead of showing
 // seven unrelated services, and a resource without it is a span nobody can
 // group.
-const namespace = "cafaye"
+const namespace = "anywaye"
 
 // telemetry is `cafe gen telemetry`: the pure function.
 //

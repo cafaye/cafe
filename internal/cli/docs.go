@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/agent"
-	"github.com/cafaye/cafe/internal/box"
-	"github.com/cafaye/cafe/internal/docs"
+	"github.com/anywaye/cafe/internal/agent"
+	"github.com/anywaye/cafe/internal/box"
+	"github.com/anywaye/cafe/internal/docs"
 )
 
 // docsDeps is what `cafe docs publish` needs from the world, and it is a
@@ -22,7 +22,7 @@ import (
 // are testable in this repository.
 //
 // There is deliberately NO confirmation seam. Since the 2026-10-11 ruling
-// ("for cafaye i think we should make everything non interactive by default
+// ("for anywaye i think we should make everything non interactive by default
 // as it shall mostly be used by agents") the default path publishes without
 // asking, and no code path in this command may block on a TTY. A seam for a
 // prompt would be a seam for a prompt that must never be asked.
@@ -112,7 +112,7 @@ by default, since cafe is mostly used by agents.
 
 Visibility is inferred, not typed: run in a public repository and the pages
 ship as docs; run in a private one and they ship as notes. The inference
-reads the repository's own cafaye.yml (repository.visibility) — the same
+reads the repository's own anywaye.yml (repository.visibility) — the same
 field the docs sync's anti-leak guard reads. There is deliberately no
 cafe notes publish: one command that knows where it is, because two commands
 is two helps to keep in sync.
@@ -252,7 +252,7 @@ func runDocsPublish(project string, opts *docsPublishOptions, deps docsDeps, env
 	deps = deps.withDefaults()
 
 	// The manifest is validated by the contract linter's own gate BEFORE
-	// anything is planned or sent: an unreadable cafaye.yml is a refusal
+	// anything is planned or sent: an unreadable anywaye.yml is a refusal
 	// that names the file, and the command never guesses the kind — a
 	// guess in the public direction is a leak.
 	manifest, err := readManifest(project)

@@ -14,18 +14,18 @@ import (
 //   - A step is a CHECK and an APPLY, and the check runs first every time. A
 //     second `cafe box wipe` on a host this one has already wiped runs no
 //     destructive command at all: every check passes, and the document says so.
-//   - The wipe is a LIST of cafaye's own artifacts, never an `rm -rf` over a
-//     directory somebody else may share. `/var/lib/cafaye` is removed
+//   - The wipe is a LIST of anywaye's own artifacts, never an `rm -rf` over a
+//     directory somebody else may share. `/var/lib/anywaye` is removed
 //     subdirectory by subdirectory — `bin`, `substrate`, `edge` — and never
 //     wholesale, because `releases` lives under it and the deploy path owns it.
 //   - The operator's own access is never touched. `/root/.ssh` and
-//     `/var/lib/cafaye/releases` are named in the result as KEPT, and there is
+//     `/var/lib/anywaye/releases` are named in the result as KEPT, and there is
 //     no step in the table that could remove either: a wipe that can lock the
 //     operator out is worse than no wipe.
 //
 // It refuses, rather than guesses, when the host does not look like a box this
 // command set up: the box-fingerprint step is the first read-only question, and
-// a host with none of cafaye's artifacts is refused before a single removal
+// a host with none of anywaye's artifacts is refused before a single removal
 // runs. That refusal is the whole reason this is a command and not a script: a
 // hand-rolled `rm -rf` has no way to tell a decommissioned box from a
 // stranger's k3s.
@@ -52,18 +52,18 @@ const (
 	StepWipeDaemon      = "daemon-stopped"
 	StepWipeUnit        = "unit-removed"
 	StepWipeBinary      = "cafe-binary-removed"
-	StepWipeState       = "cafaye-state-removed"
+	StepWipeState       = "anywaye-state-removed"
 	StepWipeK3s         = "k3s-removed"
 	StepWipeDocker      = "docker-removed"
 )
 
 // The paths the wipe owns, named once. They are constants rather than string
 // literals in the table because the CHECK, the APPLY and the KEPT list all
-// have to agree about them, and a second spelling of "/var/lib/cafaye/bin" is
+// have to agree about them, and a second spelling of "/var/lib/anywaye/bin" is
 // how a step removes one directory and reports another.
 const (
 	// EtcCafeDir holds the daemon's enrolled identity. IdentityPath lives
-	// inside it, and the whole directory is cafaye's: nothing else writes there.
+	// inside it, and the whole directory is anywaye's: nothing else writes there.
 	EtcCafeDir = "/etc/cafe"
 	// EnrolledDir holds the box's non-secret enrollment and its keyring:
 	// box.json, box-events.jsonl and the private key. The private key is a
@@ -71,19 +71,19 @@ const (
 	EnrolledDir = "/root/.config/cafe"
 	// KitStatePath is the substrate installer's receipt directory.
 	KitStatePath = "/var/lib/kit"
-	// CafayeStateDir is the box's own state root. It is NOT removed wholesale:
-	// CafayeReleases lives under it and is kept, so the wipe names the three
+	// AnywayeStateDir is the box's own state root. It is NOT removed wholesale:
+	// AnywayeReleases lives under it and is kept, so the wipe names the three
 	// subdirectories it owns instead.
-	CafayeStateDir = "/var/lib/cafaye"
-	// CafayeBinDir, CafayeSubstrate and CafayeEdge are the three subdirectories
-	// of CafayeStateDir the wipe removes.
-	CafayeBinDir    = "/var/lib/cafaye/bin"
-	CafayeSubstrate = "/var/lib/cafaye/substrate"
-	CafayeEdge      = "/var/lib/cafaye/edge"
-	// CafayeReleases is the deploy path's release directories, and it is KEPT.
+	AnywayeStateDir = "/var/lib/anywaye"
+	// AnywayeBinDir, AnywayeSubstrate and AnywayeEdge are the three subdirectories
+	// of AnywayeStateDir the wipe removes.
+	AnywayeBinDir    = "/var/lib/anywaye/bin"
+	AnywayeSubstrate = "/var/lib/anywaye/substrate"
+	AnywayeEdge      = "/var/lib/anywaye/edge"
+	// AnywayeReleases is the deploy path's release directories, and it is KEPT.
 	// A release is the operator's deployed artifact, not an installation fact:
 	// a wipe that removed it would delete the thing the box was serving.
-	CafayeReleases = "/var/lib/cafaye/releases"
+	AnywayeReleases = "/var/lib/anywaye/releases"
 	// SSHAuthorizedKeys is the operator's own access. It is named here only so
 	// the KEPT list and the help have one place to point at; no step references
 	// it, and a test asserts no command does.
@@ -133,7 +133,7 @@ const (
 // wipeKeptPaths is what the wipe deliberately does not remove, and the help
 // says so in as many words. It is a variable rather than a constant so the
 // result can copy it without a caller reaching into a package-level slice.
-var wipeKeptPaths = []string{SSHAuthorizedKeys, CafayeReleases}
+var wipeKeptPaths = []string{SSHAuthorizedKeys, AnywayeReleases}
 
 // wipeRemovablePaths is the CLOSED SET of paths any destructive command in this
 // package is allowed to name. It is the answer to "how do you know the wipe
@@ -147,9 +147,9 @@ var wipeKeptPaths = []string{SSHAuthorizedKeys, CafayeReleases}
 // copy of the table.
 func wipeRemovablePaths() []string {
 	return []string{
-		// cafaye's own: the binary, the unit, and the three state directories.
+		// anywaye's own: the binary, the unit, and the three state directories.
 		CafeBinPath, UnitPath, EtcCafeDir, EnrolledDir, KitStatePath,
-		CafayeBinDir, CafayeSubstrate, CafayeEdge,
+		AnywayeBinDir, AnywayeSubstrate, AnywayeEdge,
 		// k3s's, and only the paths named for k3s.
 		k3sBinary, k3sKillall, k3sUninstall, k3sAgentUninstall,
 		RancherEtcDir, RancherLibDir, KubeletDir, KubeConfigDir,
@@ -256,7 +256,7 @@ func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
 	}
 	result.Sudo = sudo
 
-	// Phase 1b. Is this a box cafe set up? A host with none of cafaye's
+	// Phase 1b. Is this a box cafe set up? A host with none of anywaye's
 	// artifacts is refused here, before the confirmation and before any
 	// removal, because the alternative is uninstalling a k3s this command did
 	// not install.
@@ -272,7 +272,7 @@ func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
 	// the document a real run prints line up row for row.
 	result.Steps = append(result.Steps,
 		StepResult{Name: StepWipeFingerprint, Title: wipeFingerprintRow().Title,
-			Action: ActionAlreadyDone, Detail: "cafaye's own artifacts on this host: " + strings.Join(found, ", ")},
+			Action: ActionAlreadyDone, Detail: "anywaye's own artifacts on this host: " + strings.Join(found, ", ")},
 		StepResult{Name: StepSuperuser, Title: superuserRow().Title,
 			Action: ActionAlreadyDone, Detail: "this operator can remove root-owned state; got root with " + sudoOrRoot(sudo)},
 	)
@@ -366,9 +366,9 @@ func Wipe(ctx context.Context, o WipeOptions) (WipeResult, error) {
 // them, so a step added to the table with a path of its own shows up in the
 // question it changed.
 func wipePrompt(name string, steps []Step) string {
-	return "cafe box wipe " + name + ": remove cafaye's own artifacts, k3s and Docker with their data " +
+	return "cafe box wipe " + name + ": remove anywaye's own artifacts, k3s and Docker with their data " +
 		"(" + strings.Join(wipeRemovablePaths(), ", ") + ") " +
-		"— keeping " + strings.Join(wipeKeptPaths, ", ") + " and everything cafaye did not create. Remove? [y/N] "
+		"— keeping " + strings.Join(wipeKeptPaths, ", ") + " and everything anywaye did not create. Remove? [y/N] "
 }
 
 // wipeFingerprintRow is the first read-only question: is this a box cafe set
@@ -380,7 +380,7 @@ func wipeFingerprintRow() Step {
 		Name:  StepWipeFingerprint,
 		Title: "this host is a box cafe set up, not a stranger's machine",
 		Check: wipeFingerprintProbe,
-		Refusal: "no cafe binary, no cafaye state and no enrollment were found on this host, " +
+		Refusal: "no cafe binary, no anywaye state and no enrollment were found on this host, " +
 			"so it is not a box `cafe box setup` set up. cafe will not uninstall a k3s or a " +
 			"Docker it did not install. NOTHING WAS REMOVED.",
 	}
@@ -391,7 +391,7 @@ func wipeFingerprintRow() Step {
 // removing anything and a test can build one and read it.
 //
 // The order is the dependency order of a teardown: stop the daemon before its
-// binary goes, remove cafaye's own state before the substrate directories it
+// binary goes, remove anywaye's own state before the substrate directories it
 // sits beside, and take Docker last because a half-removed Docker is the one
 // state that leaves processes behind. Every step's check makes the order
 // forgiving of a re-run: a wipe that died at k3s converges on the next attempt
@@ -434,9 +434,9 @@ func wipePlan(sudo string) []Step {
 		},
 		{
 			Name:  StepWipeState,
-			Title: "cafaye's state is removed, keeping " + CafayeReleases,
+			Title: "anywaye's state is removed, keeping " + AnywayeReleases,
 			Check: root(wipeStateCheck),
-			// The exact list, never `rm -rf /var/lib/cafaye`: releases lives
+			// The exact list, never `rm -rf /var/lib/anywaye`: releases lives
 			// under it and is the operator's deployed artifact.
 			Apply: apply{Command: root(wipeStateApply)},
 		},
@@ -459,9 +459,9 @@ func wipePlan(sudo string) []Step {
 }
 
 // wipeFingerprintProbe answers "is this a box cafe set up?" by PRINTING every
-// cafaye artifact it finds, one path per line, and nothing when there are none.
+// anywaye artifact it finds, one path per line, and nothing when there are none.
 // It counts the artifacts the wipe would remove plus the releases directory it
-// keeps: a box whose only remaining cafaye artifact is its release history is
+// keeps: a box whose only remaining anywaye artifact is its release history is
 // still a box, which is what makes the second wipe of an already-wiped host an
 // idempotent no-op rather than a refusal.
 //
@@ -470,7 +470,7 @@ func wipePlan(sudo string) []Step {
 // exactly these five things". The leading comment is a marker the CLI-level
 // simulator matches on, so the two cannot drift onto different commands.
 const wipeFingerprintProbe = `# cafe-box-wipe-fingerprint
-for p in ` + CafeBinPath + ` ` + EtcCafeDir + ` ` + EnrolledDir + ` ` + KitStatePath + ` ` + CafayeStateDir + `; do [ -e "$p" ] && echo "$p"; done
+for p in ` + CafeBinPath + ` ` + EtcCafeDir + ` ` + EnrolledDir + ` ` + KitStatePath + ` ` + AnywayeStateDir + `; do [ -e "$p" ] && echo "$p"; done
 true`
 
 // The destructive steps. The check succeeds when the thing is ALREADY gone, so
@@ -487,9 +487,9 @@ const (
 	wipeBinaryApply = `rm -f -- ` + CafeBinPath
 
 	wipeStateCheck = `test ! -e ` + EtcCafeDir + ` && test ! -e ` + EnrolledDir + ` && test ! -e ` + KitStatePath +
-		` && test ! -e ` + CafayeBinDir + ` && test ! -e ` + CafayeSubstrate + ` && test ! -e ` + CafayeEdge
+		` && test ! -e ` + AnywayeBinDir + ` && test ! -e ` + AnywayeSubstrate + ` && test ! -e ` + AnywayeEdge
 	wipeStateApply = `rm -rf -- ` + EtcCafeDir + ` ` + EnrolledDir + ` ` + KitStatePath + ` ` +
-		CafayeBinDir + ` ` + CafayeSubstrate + ` ` + CafayeEdge
+		AnywayeBinDir + ` ` + AnywayeSubstrate + ` ` + AnywayeEdge
 
 	// The k3s check asks whether k3s is present at all, and it deliberately
 	// does NOT ask about `~/.kube`: a stray kubeconfig on a host with no k3s is

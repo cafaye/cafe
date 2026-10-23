@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // The four ways a stack cannot be planned. Each is a distinct sentinel because
@@ -354,7 +354,7 @@ type dependency struct {
 // from the manifest, a registry entry's from the registry.
 func (r *resolver) dependenciesOf(name string) ([]dependency, error) {
 	// Postgres and redis have no dependencies, and asking the registry about
-	// one is a question with no answer — they are not cafaye services, so no
+	// one is a question with no answer — they are not anywaye services, so no
 	// catalog describes them, and none ever will. This is the third place that
 	// has to know it, after add and wire, and it was the one missing.
 	//
@@ -584,7 +584,7 @@ func (r *resolver) wire() {
 				}
 			}
 		}
-		// A project service that depends on another cafaye service reaches it by
+		// A project service that depends on another anywaye service reaches it by
 		// service name on the compose network. The manifest names the
 		// dependency; the registry names the port. Hand the project the URL it
 		// reads that address from, unless it already declared one, so a local

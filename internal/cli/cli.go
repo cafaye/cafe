@@ -16,9 +16,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/cafaye/cafe/internal/emitter"
-	"github.com/cafaye/cafe/internal/features"
-	"github.com/cafaye/cafe/internal/skills"
+	"github.com/anywaye/cafe/internal/emitter"
+	"github.com/anywaye/cafe/internal/features"
+	"github.com/anywaye/cafe/internal/skills"
 )
 
 // errUsage marks a mistake in how cafe was invoked, as opposed to a command
@@ -322,7 +322,7 @@ func unknownCommand(name string) error {
 // printRootHelp writes the top-level usage: what cafe is, the command table and
 // the two global flags.
 func printRootHelp(commands []*Command, w io.Writer) {
-	_, _ = fmt.Fprint(w, "cafe - the cafaye platform CLI\n\n")
+	_, _ = fmt.Fprint(w, "cafe - the anywaye platform CLI\n\n")
 	_, _ = fmt.Fprint(w, "Usage:\n  cafe <command> [flags] [arguments]\n  cafe help <command>\n\n")
 	_, _ = fmt.Fprint(w, "Commands:\n")
 

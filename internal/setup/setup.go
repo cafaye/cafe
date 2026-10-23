@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // Options is one `cafe box setup`. It is a struct of parameters rather than a

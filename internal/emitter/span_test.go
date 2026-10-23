@@ -19,7 +19,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 
-	"github.com/cafaye/cafe/internal/telemetry"
+	"github.com/anywaye/cafe/internal/telemetry"
 )
 
 // This file asserts four things and no more, because those four are the packet's
@@ -241,8 +241,8 @@ func TestAMalformedResourceIsReportedRatherThanSwallowed(t *testing.T) {
 	// The merge itself, driven with two resources whose schema URLs differ —
 	// the only way to make it fail — through the same helper Install uses.
 	if _, err := mergeResource(
-		sdkresource.NewWithAttributes("https://cafaye.com/a", attribute.String("x", "1")),
-		sdkresource.NewWithAttributes("https://cafaye.com/b", attribute.String("y", "2")),
+		sdkresource.NewWithAttributes("https://anywaye.com/a", attribute.String("x", "1")),
+		sdkresource.NewWithAttributes("https://anywaye.com/b", attribute.String("y", "2")),
 	); err == nil {
 		t.Fatal("merging resources with different schema URLs succeeded, so the " +
 			"conflict Install has to survive is not the one this test thinks it is")
@@ -316,7 +316,7 @@ func TestOneInvocationProducesOneRootSpanNamedPerCoresGrammar(t *testing.T) {
 			// characters "so no segment can hold an identifier, a trace id, a
 			// ULID, a URL or a path".
 			name:     "a path is never a span name",
-			args:     []string{"/Users/someone/Code/cafaye/caf-wt-otel/internal/emitter"},
+			args:     []string{"/Users/someone/Code/anywaye/caf-wt-otel/internal/emitter"},
 			wantName: "cafe.cli.run",
 		},
 	} {
@@ -451,7 +451,7 @@ func TestAnUnknownVersionOrEnvironmentIsAbsentRatherThanGuessed(t *testing.T) {
 		}
 	}
 	// service.name is not optional: it is "what makes a span attributable to a
-	// service in a backend that has never heard of cafaye".
+	// service in a backend that has never heard of anywaye".
 	if _, ok := res.Set().Value("service.name"); !ok {
 		t.Error("the resource has no service.name")
 	}
@@ -623,7 +623,7 @@ func TestACommandCanNameItsOwnClassWithoutBreakingErrorInspection(t *testing.T) 
 // 3. inbound traceparent
 // ---------------------------------------------------------------------------
 
-// A cafe invocation started by another cafaye process — `cafe env up` running a
+// A cafe invocation started by another anywaye process — `cafe env up` running a
 // command under test, a CI job, a shell script — continues the caller's trace
 // when one is in the context. That is the property kit's codec exists for.
 func TestAnInboundTraceparentIsContinued(t *testing.T) {
@@ -867,7 +867,7 @@ func TestTheEndpointPrecedence(t *testing.T) {
 		want string
 	}{
 		{
-			name: "the cafaye variable wins",
+			name: "the anywaye variable wins",
 			env: map[string]string{
 				telemetry.EndpointVariable:    "mine:4317",
 				"OTEL_EXPORTER_OTLP_ENDPOINT": "theirs:4317",

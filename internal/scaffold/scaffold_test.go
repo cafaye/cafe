@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
-	"github.com/cafaye/cafe/internal/dev"
+	"github.com/anywaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/dev"
 )
 
 // The catalog resolves every entry it indexes. An index that names a template
@@ -265,7 +265,7 @@ func TestInitDerivesTheNameFromTheDirectory(t *testing.T) {
 
 		if _, err := Init(Options{Dir: dir}); err == nil {
 			t.Fatal("Init derived a service name from a directory that cannot hold one")
-		} else if !strings.Contains(err.Error(), "cafaye namespace name") {
+		} else if !strings.Contains(err.Error(), "anywaye namespace name") {
 			t.Errorf("the refusal does not name the rule: %v", err)
 		}
 	})
@@ -295,7 +295,7 @@ func TestAnIllegalNameIsRefusedAndTheSchemaAgrees(t *testing.T) {
 		{name: "acme-"},
 		{name: "a"},
 		{name: strings.Repeat("a", 41)},
-		{name: "cafaye", legal: true, reserved: true},
+		{name: "anywaye", legal: true, reserved: true},
 		{name: "cafe", legal: true, reserved: true},
 		{name: "core", legal: true, reserved: true},
 		{name: "kit", legal: true, reserved: true},
@@ -391,22 +391,22 @@ func TestThePlatformTemplatePlansAStackWithTheLaunchFour(t *testing.T) {
 	reg := dev.Catalog{
 		"identity": {
 			Name:  "identity",
-			Image: "ghcr.io/cafaye/identity:latest",
+			Image: "ghcr.io/anywaye/identity:latest",
 			Port:  8080,
 		},
 		"gateway": {
 			Name:  "gateway",
-			Image: "ghcr.io/cafaye/gateway:latest",
+			Image: "ghcr.io/anywaye/gateway:latest",
 			Port:  8080,
 		},
 		"courier": {
 			Name:  "courier",
-			Image: "ghcr.io/cafaye/courier:latest",
+			Image: "ghcr.io/anywaye/courier:latest",
 			Port:  4000,
 		},
 		"parlor": {
 			Name:  "parlor",
-			Image: "ghcr.io/cafaye/parlor:latest",
+			Image: "ghcr.io/anywaye/parlor:latest",
 			Port:  3000,
 		},
 	}

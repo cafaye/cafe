@@ -11,7 +11,7 @@ import (
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"github.com/cafaye/cafe/internal/emitter"
+	"github.com/anywaye/cafe/internal/emitter"
 )
 
 // These are the tests that answer the packet's question at the level that
@@ -383,7 +383,7 @@ func TestEveryTelemetryVariableTheWiringReadsHasAnObservableEffect(t *testing.T)
 		},
 		{
 			name:      "OTEL_EXPORTER_OTLP_ENDPOINT",
-			why:       "the standard fallback, so cafe works with tooling that knows nothing about cafaye",
+			why:       "the standard fallback, so cafe works with tooling that knows nothing about anywaye",
 			env:       map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:1"},
 			wantQuiet: true,
 		},

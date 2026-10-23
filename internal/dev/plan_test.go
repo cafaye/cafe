@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // The manifest used by most of these cases: a Go API service that depends on
@@ -25,7 +25,7 @@ dependencies:
     version: ^0.1.0
     required: true
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `
@@ -37,7 +37,7 @@ func alphaRegistry() Catalog {
 	return Catalog{
 		"alpha": {
 			Name:        "alpha",
-			Image:       "ghcr.io/cafaye/alpha:1.2.3",
+			Image:       "ghcr.io/anywaye/alpha:1.2.3",
 			Command:     []string{"/app/alpha", "serve"},
 			Port:        8081,
 			Environment: []Env{{Name: "ALPHA_MODE", Value: "local"}},
@@ -67,7 +67,7 @@ dependencies:
   - name: beta
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `
@@ -127,14 +127,14 @@ func depsOf(svc Service) map[string]string {
 func TestPlanRendersTheComposeDocument(t *testing.T) {
 	stack := mustPlan(t, stackManifest, alphaRegistry(), Options{Build: buildGo})
 
-	want := `# cafe dev — the local stack for "stack-dev", generated from cafaye.yml.
+	want := `# cafe dev — the local stack for "stack-dev", generated from anywaye.yml.
 # Do not edit: every run rewrites this file. The manifest is the
 # source of truth; this is what it turned into.
 name: stack-dev
 
 services:
   alpha:
-    image: ghcr.io/cafaye/alpha:1.2.3
+    image: ghcr.io/anywaye/alpha:1.2.3
     command:
       - /app/alpha
       - serve
@@ -308,7 +308,7 @@ func TestPlanRendersDependsOn(t *testing.T) {
 			name: "a dependency without a healthcheck is only waited on until started",
 			registry: Catalog{"alpha": {
 				Name:  "alpha",
-				Image: "ghcr.io/cafaye/alpha:1.2.3",
+				Image: "ghcr.io/anywaye/alpha:1.2.3",
 				Port:  8081,
 			}},
 			wantAlpha:    "service_started",
@@ -441,7 +441,7 @@ dependencies:
   - name: stack
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `), alphaRegistry(), Options{Build: buildGo})
@@ -470,7 +470,7 @@ func TestPlanReportsAPortConflict(t *testing.T) {
 		{
 			name: "the project collides with a published dependency",
 			registry: Catalog{
-				"alpha": {Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.2.3", Port: 8080, Publish: true},
+				"alpha": {Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.2.3", Port: 8080, Publish: true},
 			},
 			hostPort: 8080,
 			wantPort: 8080,
@@ -479,8 +479,8 @@ func TestPlanReportsAPortConflict(t *testing.T) {
 		{
 			name: "two dependencies collide with each other",
 			registry: Catalog{
-				"alpha": {Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.2.3", Port: 8080, Publish: true},
-				"beta":  {Name: "beta", Image: "ghcr.io/cafaye/beta:2.0.0", Port: 8080, Publish: true},
+				"alpha": {Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.2.3", Port: 8080, Publish: true},
+				"beta":  {Name: "beta", Image: "ghcr.io/anywaye/beta:2.0.0", Port: 8080, Publish: true},
 			},
 			manifest: twoDependencyManifest,
 			hostPort: 3000,
@@ -520,8 +520,8 @@ func TestPlanReportsAPortConflict(t *testing.T) {
 // commonest stack there is.
 func TestPlanAllowsASharedContainerPort(t *testing.T) {
 	registry := Catalog{
-		"alpha": {Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.2.3", Port: 8080},
-		"beta":  {Name: "beta", Image: "ghcr.io/cafaye/beta:2.0.0", Port: 8080},
+		"alpha": {Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.2.3", Port: 8080},
+		"beta":  {Name: "beta", Image: "ghcr.io/anywaye/beta:2.0.0", Port: 8080},
 	}
 
 	stack := mustPlan(t, twoDependencyManifest, registry, Options{Build: buildGo})
@@ -564,7 +564,7 @@ dependencies:
     version: ^0.1.0
     required: false
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
 owner:
   team: courier
 `, Catalog{}, Options{Build: buildElixir})
@@ -616,7 +616,7 @@ description: The contract itself.
 language: spec
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/core.git
+  url: git@github.com:anywaye/core.git
 owner:
   team: core
 `, Catalog{}, Options{})
@@ -718,7 +718,7 @@ func TestPlanUsesTheRegistryImageForTheProjectService(t *testing.T) {
 	registry := alphaRegistry()
 	registry["stack"] = Entry{
 		Name:  "stack",
-		Image: "ghcr.io/cafaye/stack:0.9.0",
+		Image: "ghcr.io/anywaye/stack:0.9.0",
 		Port:  9000,
 		Healthcheck: &Healthcheck{
 			Test:     []string{"CMD", "/app/stack", "healthz"},
@@ -729,7 +729,7 @@ func TestPlanUsesTheRegistryImageForTheProjectService(t *testing.T) {
 	stack := mustPlan(t, stackManifest, registry, Options{})
 
 	project := service(t, stack, "stack")
-	if project.Image != "ghcr.io/cafaye/stack:0.9.0" {
+	if project.Image != "ghcr.io/anywaye/stack:0.9.0" {
 		t.Errorf("image = %q, want the registry image", project.Image)
 	}
 	if project.Build != nil {
@@ -743,7 +743,7 @@ func TestPlanUsesTheRegistryImageForTheProjectService(t *testing.T) {
 	if project.Healthcheck == nil {
 		t.Error("the project service lost its healthcheck")
 	}
-	if !strings.Contains(stack.Compose, "image: ghcr.io/cafaye/stack:0.9.0") {
+	if !strings.Contains(stack.Compose, "image: ghcr.io/anywaye/stack:0.9.0") {
 		t.Errorf("compose does not carry the registry image\n%s", stack.Compose)
 	}
 }
@@ -877,7 +877,7 @@ func cycleRegistry(names ...string) Catalog {
 	for i, name := range names {
 		registry[name] = Entry{
 			Name:         name,
-			Image:        "ghcr.io/cafaye/" + name + ":1.0.0",
+			Image:        "ghcr.io/anywaye/" + name + ":1.0.0",
 			Dependencies: []string{names[(i+1)%len(names)]},
 		}
 	}
@@ -892,7 +892,7 @@ func coreRegistry() Catalog {
 	registry := alphaRegistry()
 	registry["identity"] = Entry{
 		Name:        "identity",
-		Image:       "ghcr.io/cafaye/identity:0.4.2",
+		Image:       "ghcr.io/anywaye/identity:0.4.2",
 		Command:     []string{"/app/identity", "serve"},
 		Port:        8080,
 		Environment: Environment{{Name: "DATABASE_URL", Value: "postgres://identity:identity@identity-db:5432/identity"}},
@@ -912,7 +912,7 @@ func chainRegistry() Catalog {
 	registry["alpha"] = withDeps(registry["alpha"], "cache")
 	registry["cache"] = Entry{
 		Name:        "cache",
-		Image:       "ghcr.io/cafaye/cache:0.4.0",
+		Image:       "ghcr.io/anywaye/cache:0.4.0",
 		Port:        6379,
 		Environment: Environment{{Name: "ZED", Value: "1"}, {Name: "ALPHA", Value: "2"}},
 		Volumes:     []string{"cache-data:/data"},
@@ -966,27 +966,27 @@ func TestPlanAcceptsCoreExamples(t *testing.T) {
 	}{
 		{
 			name:     "an api service",
-			fixture:  "valid/identity.cafaye.yml",
+			fixture:  "valid/identity.anywaye.yml",
 			language: "go",
 			wantPort: 8080,
 		},
 		{
 			name:     "a worker that publishes",
-			fixture:  "valid/worker.cafaye.yml",
+			fixture:  "valid/worker.anywaye.yml",
 			language: "elixir",
 			wantPort: 4000,
 			wantDeps: []string{"identity"},
 		},
 		{
 			name:     "a worker that only consumes",
-			fixture:  "valid/worker-only.cafaye.yml",
+			fixture:  "valid/worker-only.anywaye.yml",
 			language: "rust",
 			wantPort: 8080,
 			wantDeps: []string{"identity"},
 		},
 		{
 			name:     "core itself",
-			fixture:  "valid/spec.cafaye.yml",
+			fixture:  "valid/spec.anywaye.yml",
 			language: "spec",
 			wantPort: 0,
 		},
@@ -1061,7 +1061,7 @@ core: ^0.2.0
 exposes:
   api: openapi/openapi.yaml
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `,
@@ -1076,7 +1076,7 @@ description: A command line, not a service.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/cafe.git
+  url: git@github.com:anywaye/cafe.git
 owner:
   team: cafe
 `,
@@ -1094,7 +1094,7 @@ exposes:
   events:
     - courier.email.queued
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
 owner:
   team: courier
 `,
@@ -1128,7 +1128,7 @@ description: A command line.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/cafe.git
+  url: git@github.com:anywaye/cafe.git
 owner:
   team: cafe
 `, alphaRegistry(), Options{Build: buildGo, HostPort: 8080})
@@ -1151,7 +1151,7 @@ owner:
 //	cafe dev: unknown dependency: postgres depends on postgres, and no
 //	registry says how to run it
 //
-// Postgres is not a cafaye service, so no catalog can answer for it and none
+// Postgres is not a anywaye service, so no catalog can answer for it and none
 // ever will. The planner asked anyway, in `dependenciesOf` — the third place
 // that treats local infrastructure specially, after `add` and `wire`, and the
 // only one that had not learned to. It then formatted its own refusal with the
@@ -1161,7 +1161,7 @@ func TestACatalogMayNameLocalInfrastructureAsADependency(t *testing.T) {
 	catalog := Catalog{
 		"alpha": Entry{
 			Name:         "alpha",
-			Image:        "ghcr.io/cafaye/alpha:1.0.0",
+			Image:        "ghcr.io/anywaye/alpha:1.0.0",
 			Port:         8080,
 			Dependencies: []string{"postgres"},
 		},
@@ -1189,7 +1189,7 @@ func TestACatalogMayNameRedisAsADependency(t *testing.T) {
 	catalog := Catalog{
 		"alpha": Entry{
 			Name:         "alpha",
-			Image:        "ghcr.io/cafaye/alpha:1.0.0",
+			Image:        "ghcr.io/anywaye/alpha:1.0.0",
 			Port:         8080,
 			Dependencies: []string{"redis"},
 		},
@@ -1208,7 +1208,7 @@ func TestNoInfraStillWinsOverACatalogThatNamesPostgres(t *testing.T) {
 	catalog := Catalog{
 		"alpha": Entry{
 			Name:         "alpha",
-			Image:        "ghcr.io/cafaye/alpha:1.0.0",
+			Image:        "ghcr.io/anywaye/alpha:1.0.0",
 			Port:         8080,
 			Dependencies: []string{"postgres"},
 		},
@@ -1227,7 +1227,7 @@ func TestNoInfraStillWinsOverACatalogThatNamesPostgres(t *testing.T) {
 // the fix above must not have made the unmentioned case an error.
 func TestACatalogNeedNotNameInfrastructureToGetIt(t *testing.T) {
 	catalog := Catalog{
-		"alpha": Entry{Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.0.0", Port: 8080},
+		"alpha": Entry{Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.0.0", Port: 8080},
 	}
 
 	stack := mustPlan(t, stackManifest, catalog, Options{Build: buildGo})
@@ -1249,7 +1249,7 @@ func TestACatalogNeedNotNameInfrastructureToGetIt(t *testing.T) {
 // other one rather than pretending a test can reach it.
 func TestAnUnknownDependencyIsNamedOnceInTheRefusal(t *testing.T) {
 	catalog := Catalog{
-		"alpha": Entry{Name: "alpha", Image: "ghcr.io/cafaye/alpha:1.0.0", Dependencies: []string{"nowhere"}},
+		"alpha": Entry{Name: "alpha", Image: "ghcr.io/anywaye/alpha:1.0.0", Dependencies: []string{"nowhere"}},
 	}
 
 	_, err := Plan(mustManifest(t, stackManifest), catalog, Options{Build: buildGo})
@@ -1276,7 +1276,7 @@ func TestADependencyIsNotRenderedTwice(t *testing.T) {
 	catalog := Catalog{
 		"alpha": Entry{
 			Name:         "alpha",
-			Image:        "ghcr.io/cafaye/alpha:1.0.0",
+			Image:        "ghcr.io/anywaye/alpha:1.0.0",
 			Port:         8080,
 			Dependencies: []string{"postgres"},
 		},
@@ -1355,7 +1355,7 @@ func pantryRegistry() Catalog {
 	return Catalog{
 		"pantry": {
 			Name:        "pantry",
-			Image:       "ghcr.io/cafaye/pantry:0.4.1",
+			Image:       "ghcr.io/anywaye/pantry:0.4.1",
 			Port:        8080,
 			Connections: map[string]string{"postgres": "PANTRY_DATABASE_URL"},
 		},
@@ -1376,7 +1376,7 @@ dependencies:
     version: ^0.1.0
     required: true
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `
@@ -1444,7 +1444,7 @@ func TestAServiceThatDeclaresNothingStillGetsTheConventionalName(t *testing.T) {
 	// The count, and it is a count rather than a set because the point is that
 	// cafe adds no name beyond the ones it means to add. ALPHA_OTEL_ENDPOINT is
 	// one of those — it is core's only endpoint contract, rendered for every
-	// cafaye service — so it is in the four and its absence would be the defect
+	// anywaye service — so it is in the four and its absence would be the defect
 	// `internal/dev/telemetry_test.go` covers. What must not appear is a fifth
 	// variable derived from something nobody asked for.
 	if got := len(envOf(service(t, stack, "alpha"))); got != 4 {
@@ -1470,7 +1470,7 @@ dependencies:
   - name: alpha
     version: ^0.1.0
 repository:
-  url: git@github.com:cafaye/stack.git
+  url: git@github.com:anywaye/stack.git
 owner:
   team: stack
 `
@@ -1512,7 +1512,7 @@ func TestTheProjectServiceHonoursItsOwnDeclaredName(t *testing.T) {
 	registry := pantryRegistry()
 	registry["stack"] = Entry{
 		Name:        "stack",
-		Image:       "ghcr.io/cafaye/stack:0.1.0",
+		Image:       "ghcr.io/anywaye/stack:0.1.0",
 		Connections: map[string]string{"postgres": "STACK_DATABASE_URL"},
 	}
 

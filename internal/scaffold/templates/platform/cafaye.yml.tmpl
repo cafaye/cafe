@@ -1,4 +1,4 @@
-# cafaye.yml — {{ .Name }}: a cafaye platform app scaffolded by `cafe new --template platform`.
+# anywaye.yml — {{ .Name }}: a anywaye platform app scaffolded by `cafe new --template platform`.
 #
 # This file is the app's IDENTITY and never its configuration. Core's schema is
 # `additionalProperties: false`, so a credential written here is a lint failure
@@ -14,7 +14,7 @@
 #
 #   cafe contract lint .
 name: {{ .Name }}
-description: "A cafaye platform app composing identity, gateway, courier, and parlor into a starting product."
+description: "A anywaye platform app composing identity, gateway, courier, and parlor into a starting product."
 
 language: go
 
@@ -27,7 +27,7 @@ core: {{ .CoreConstraint }}
 # official catalog. All four are required: the app is a starting product, not
 # a degraded one.
 #
-# `version` is deliberately absent from each: no cafaye service has tagged a
+# `version` is deliberately absent from each: no anywaye service has tagged a
 # release yet, and inventing a contract version would be a guess rather than a
 # fact. The core constraint above is the one version this app declares.
 dependencies:

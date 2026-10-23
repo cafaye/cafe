@@ -144,7 +144,7 @@ func numericViolations(node map[string]any, at string) []Violation {
 
 	// Two spellings, because a document uses both. `type: number` is what a
 	// generator reads, and `format: float` / `format: double` is what OpenAPI 3.0
-	// documents — and a real cafaye document — wrote, often with no `type` beside
+	// documents — and a real anywaye document — wrote, often with no `type` beside
 	// it at all. A rule that matched only the first would pass on every field a
 	// 3.0-era document still carries.
 	if slicesContains(types, "number") || format == "float" || format == "double" {

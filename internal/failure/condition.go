@@ -44,7 +44,7 @@ const (
 
 	// PredDatabaseDeclaredTwice: Name is declared by more than one service.
 	// Two services one database is two pockets of Postgres, five services
-	// (CAFAYE-OPS.md:743).
+	// (ANYWAYE-OPS.md:743).
 	PredDatabaseDeclaredTwice PredicateKind = "database-declared-twice"
 
 	// PredOutboxRowsOver: the service has more than Value unprocessed rows.
@@ -95,7 +95,7 @@ type Predicate struct {
 // exactly this much and an expression tree would be machinery the library's
 // growth does not need. The conjunction covers "this fact and that fact" (a
 // slow readiness answer while the dependency is gone); the disjunction covers
-// "either frozen key is in use" (CAFAYE-OPS.md:748).
+// "either frozen key is in use" (ANYWAYE-OPS.md:748).
 type Condition struct {
 	All []Predicate
 	Any []Predicate
@@ -155,7 +155,7 @@ func (p Predicate) evaluate(o Observation) (held, known bool) {
 	case PredDatabaseDeclaredTwice:
 		// An empty Name is "some database is declared twice", which is the
 		// form the seed uses: the doc records that the merge is
-		// last-one-wins (CAFAYE-OPS.md:743) and does not name the database,
+		// last-one-wins (ANYWAYE-OPS.md:743) and does not name the database,
 		// so naming one here would be inventing it.
 		counts := map[string]int{}
 		for _, db := range o.Databases {

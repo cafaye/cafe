@@ -67,10 +67,10 @@
 // `cafe box wipe` is the inverse and shares every rule above, applied
 // backwards: its rows are read by wipe.go, its steps are check-and-apply so a
 // second run is a no-op, and its first read-only question is a FINGERPRINT —
-// does this host hold any of cafaye's artifacts? A host that does not is
+// does this host hold any of anywaye's artifacts? A host that does not is
 // refused before the confirmation and before a single removal, which is what
 // keeps the command from uninstalling a k3s it did not install. What it removes
-// is a list of cafaye's own artifacts, never an `rm -rf` over a shared
+// is a list of anywaye's own artifacts, never an `rm -rf` over a shared
 // directory, and what it keeps — the operator's SSH keys and the deploy path's
 // releases — is named in the result and in the help so the safety argument is
 // readable rather than implied.

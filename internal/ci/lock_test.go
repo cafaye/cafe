@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/lock"
+	"github.com/anywaye/cafe/internal/lock"
 )
 
 // `cafe.lock` is this repository's own lock, and this file is the check that it
@@ -105,7 +105,7 @@ func TestTheTreeMatchesItsCommittedLock(t *testing.T) {
 // So for the `vendored-schema` and `generated-client` kinds this repository has
 // two checks that agree, and the one this test drives is the second. The kinds
 // `cafe lock` is genuinely the first check for here are `spec` and `rule-bundle` —
-// `cafaye.yml` and `gate.yml`, neither of which anything in this repository
+// `anywaye.yml` and `gate.yml`, neither of which anything in this repository
 // hashed before it — and REPORT-caf-lock-01 is where that is written down in
 // full.
 func TestTheCommittedLockGoesRedWhenAPinnedFileMoves(t *testing.T) {

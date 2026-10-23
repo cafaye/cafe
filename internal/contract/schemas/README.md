@@ -1,12 +1,12 @@
 # Vendored schema
 
 `manifest-0.2.json` is a **copy** of the manifest schema owned by
-[cafaye/core](https://github.com/cafaye/core), pinned here so `cafe contract
+[anywaye/core](https://github.com/anywaye/core), pinned here so `cafe contract
 lint` validates against a known contract with no network at runtime.
 
 | | |
 | --- | --- |
-| Source | `schemas/cafaye.manifest.schema.json` in cafaye/core |
+| Source | `schemas/anywaye.manifest.schema.json` in anywaye/core |
 | Core commit | `3340e0f3171e09750f43e9f2974a3efb00f0ed82` (`core-02: spec v0.2`) |
 | Spec version | 0.2 |
 | File name | `manifest-<spec version>.json` |
@@ -46,7 +46,7 @@ Three things about *why these six*, because the directory holds ten and a
 reader will ask:
 
 - **`probes.schema.json` is not here.** `healthz` and `readyz` are a contract
-  about a service's dependency list, and no field in a `cafaye.yml` records
+  about a service's dependency list, and no field in a `anywaye.yml` records
   what a service depends on at runtime. Emitting a `readyz` that checked
   nothing is the exact failure that schema exists to prevent, so cafe emits
   nothing rather than emitting a guess.
@@ -104,7 +104,7 @@ table in the same commit:
 
 ```sh
 core=$(git -C ../core rev-parse HEAD)            # the core checkout, read-only
-cp ../core/schemas/cafaye.manifest.schema.json \
+cp ../core/schemas/anywaye.manifest.schema.json \
    internal/contract/schemas/manifest-0.3.json   # name it for the new spec version
 git rm internal/contract/schemas/manifest-0.2.json
 shasum -a 256 internal/contract/schemas/manifest-0.3.json
@@ -121,7 +121,7 @@ Then, in this order:
    changed meaning. A tightening that lands as prose first and as a pattern
    later is the normal shape of a core bump, and `conventions.go` is where it
    lands in cafe.
-4. Re-copy the fixtures from core's `examples/` and `cafaye.yml` — see
+4. Re-copy the fixtures from core's `examples/` and `anywaye.yml` — see
    [`../testdata/README.md`](../testdata/README.md).
 5. `go test ./...`, then `go run ./cmd/cafe contract lint .`
 

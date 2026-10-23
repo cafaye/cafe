@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cafaye/cafe/internal/scaffold"
+	"github.com/anywaye/cafe/internal/scaffold"
 
 	"github.com/google/uuid"
 )
@@ -23,16 +23,16 @@ func newInitCommand(deps shipDeps) *Command {
 	opts := &initOptions{}
 	c := &Command{
 		Name:    "init",
-		Summary: "create a cafaye.yml manifest for the current project",
+		Summary: "create a anywaye.yml manifest for the current project",
 		Usage:   "cafe init [flags]",
-		LongHelp: "Writes a cafaye.yml into -dir and nothing else: the manifest, validated\n" +
+		LongHelp: "Writes a anywaye.yml into -dir and nothing else: the manifest, validated\n" +
 			"against core's schema exactly as `cafe contract lint` will check it.\n" +
 			"\n" +
 			"The name is derived from the directory unless -name overrides it, which is the\n" +
 			"case for a repository whose directory is not its service name — a worktree\n" +
 			"holding one service is often named after the packet, not the service.\n" +
 			"\n" +
-			"An existing cafaye.yml is refused rather than overwritten, because it may be\n" +
+			"An existing anywaye.yml is refused rather than overwritten, because it may be\n" +
 			"one somebody wrote by hand. -force is the deliberate override.\n" +
 			"\n" +
 			"For a whole project scaffold — the service, the image, the README — see\n" +
@@ -40,7 +40,7 @@ func newInitCommand(deps shipDeps) *Command {
 		Flags: func(fs *flag.FlagSet) {
 			fs.StringVar(&opts.dir, "dir", ".", "directory to initialize")
 			fs.StringVar(&opts.name, "name", "", "override the service name; the directory's base name by default")
-			fs.BoolVar(&opts.force, "force", false, "overwrite an existing cafaye.yml")
+			fs.BoolVar(&opts.force, "force", false, "overwrite an existing anywaye.yml")
 		},
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -72,7 +72,7 @@ func newInitCommand(deps shipDeps) *Command {
 					}
 				}
 			}
-			owner := os.Getenv("CAFAYE_OWNER_ID")
+			owner := os.Getenv("ANYWAYE_OWNER_ID")
 			if owner == "" {
 				owner = os.Getenv("SHIP_OWNER_ID")
 			}

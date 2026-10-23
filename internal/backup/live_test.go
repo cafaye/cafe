@@ -217,7 +217,7 @@ func TestABrokenPairIsRefusedBeforeAnythingIsBooted(t *testing.T) {
 //
 // cafe carries no copy of the rule — that is kamal-backup's
 // (Config#production_like_target? in 0.5.2) and, in operator form,
-// cafaye/kit's templates/kamal/drill.sh. So the refusal here is the GEM's, fired
+// anywaye/kit's templates/kamal/drill.sh. So the refusal here is the GEM's, fired
 // by handing it a name, and the two things worth asserting are that it fired and
 // that cafe still cleaned up.
 func TestAProductionLookingScratchDatabaseIsRefusedByTheGemAndStillCleanedUp(t *testing.T) {

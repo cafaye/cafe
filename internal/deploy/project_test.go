@@ -89,7 +89,7 @@ func TestSecretsAreOptionalButReportedWhenPresent(t *testing.T) {
 // the error has to say which file and where the file comes from. "no config" is
 // a shrug.
 func TestReadRefusesAMissingConfigWithAnActionableMessage(t *testing.T) {
-	dir := fixtureProject(t, map[string]string{"cafaye.yml": "name: identity\n"})
+	dir := fixtureProject(t, map[string]string{"anywaye.yml": "name: identity\n"})
 
 	_, err := Read(dir, "identity", "")
 	if err == nil {
@@ -127,8 +127,8 @@ func TestReadRefusesSomethingThatIsNotAProject(t *testing.T) {
 	})
 
 	t.Run("a file where a directory was expected", func(t *testing.T) {
-		dir := fixtureProject(t, map[string]string{"cafaye.yml": "name: identity\n"})
-		_, err := Read(filepath.Join(dir, "cafaye.yml"), "identity", "")
+		dir := fixtureProject(t, map[string]string{"anywaye.yml": "name: identity\n"})
+		_, err := Read(filepath.Join(dir, "anywaye.yml"), "identity", "")
 		if err == nil {
 			t.Fatal("got no error for a path that is a file")
 		}

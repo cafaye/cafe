@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cafaye/cafe/internal/boxd"
+	"github.com/anywaye/cafe/internal/boxd"
 )
 
 // `cafe boxd` at the command layer: the wiring, the refusals, and the file
@@ -244,7 +244,7 @@ func TestTheIdentityFileIsTheSeam(t *testing.T) {
 	testKeypairFiles(t, dir)
 	path := writeIdentityIn(t, dir, identityDocument{
 		BoxID:        "box-seam",
-		ControlPlane: "box.svc.cafaye.com:443",
+		ControlPlane: "box.svc.anywaye.com:443",
 		Version:      "1.2.3",
 		Certificate:  "box.crt",
 		Key:          "box.key",
@@ -258,7 +258,7 @@ func TestTheIdentityFileIsTheSeam(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if id.BoxID != "box-seam" || id.ControlPlane != "box.svc.cafaye.com:443" {
+	if id.BoxID != "box-seam" || id.ControlPlane != "box.svc.anywaye.com:443" {
 		t.Fatalf("identity = %+v, want the document's own facts", id)
 	}
 	cert, err := store.Certificate(context.Background())

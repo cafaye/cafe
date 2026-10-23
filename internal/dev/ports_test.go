@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/contract"
+	"github.com/anywaye/cafe/internal/contract"
 )
 
 // The allocator is the seam that lets a stack publish ports the caller reserved
@@ -20,7 +20,7 @@ description: A process that serves no HTTP.
 language: go
 core: ^0.2.0
 repository:
-  url: git@github.com:cafaye/worker.git
+  url: git@github.com:anywaye/worker.git
 owner:
   team: worker
 `
@@ -29,7 +29,7 @@ owner:
 // assertions read as "the published port" rather than as a pile of setup.
 func planWithAllocator(t *testing.T, allocate PortAllocator, hostPort int) Stack {
 	t.Helper()
-	manifest, finding := contract.CheckData("cafaye.yml", []byte(stackManifest))
+	manifest, finding := contract.CheckData("anywaye.yml", []byte(stackManifest))
 	if !finding.OK() {
 		t.Fatalf("the fixture manifest is invalid: %v", finding)
 	}
@@ -42,7 +42,7 @@ func planWithAllocator(t *testing.T, allocate PortAllocator, hostPort int) Stack
 
 func planWorkerWithAllocator(t *testing.T, allocate PortAllocator) Stack {
 	t.Helper()
-	manifest, finding := contract.CheckData("cafaye.yml", []byte(workerManifest))
+	manifest, finding := contract.CheckData("anywaye.yml", []byte(workerManifest))
 	if !finding.OK() {
 		t.Fatalf("the fixture manifest is invalid: %v", finding)
 	}
@@ -120,7 +120,7 @@ func TestMorePortsThanReservedIsRefusedLoudly(t *testing.T) {
 // so a caller that already handles ErrPortConflict handles this without learning
 // a second error class.
 func TestAFailingAllocatorIsAPortConflict(t *testing.T) {
-	manifest, finding := contract.CheckData("cafaye.yml", []byte(stackManifest))
+	manifest, finding := contract.CheckData("anywaye.yml", []byte(stackManifest))
 	if !finding.OK() {
 		t.Fatalf("the fixture manifest is invalid: %v", finding)
 	}

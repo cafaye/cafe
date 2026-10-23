@@ -3,7 +3,7 @@
   "tool": "cafe 0.0.0-dev",
   "hash": "sha256",
   "files": [
-    {"path": "cafaye.yml", "kind": "spec", "sha256": "7e938aaefc49d4cf1cbc809d7cac65ac28c12d0155bcb72ec64ddcf1c8dec630"},
+    {"path": "anywaye.yml", "kind": "spec", "sha256": "7e938aaefc49d4cf1cbc809d7cac65ac28c12d0155bcb72ec64ddcf1c8dec630"},
     {"path": "gate.yml", "kind": "rule-bundle", "sha256": "87c597ff7fda51933430971b17248557f4d28ce3c6554b46521759bd4942286c"},
     {"path": "internal/contract/schemas/manifest-0.2.json", "kind": "vendored-schema", "sha256": "1b15bbe09d33149fffaf68390d86e2489bae3199881dd943392f31e7f61004c5"},
     {"path": "internal/contract/schemas/telemetry/logs.schema.json", "kind": "vendored-schema", "sha256": "816cb1066d17bc13cef82d095208bb895b75bb347bb897771bda7890b08f78e6"},

@@ -30,7 +30,7 @@ const manifestSchemaPin = "1b15bbe09d33149fffaf68390d86e2489bae3199881dd943392f3
 // The resource name the schema is compiled under. The schema's own $id is an
 // https URL, and nothing may be fetched to resolve it, so the document is
 // registered under a local name and compiled from there.
-const manifestSchemaResource = "cafaye.manifest.schema.json"
+const manifestSchemaResource = "anywaye.manifest.schema.json"
 
 // manifestSchema compiles the vendored schema once. Compiling is the only
 // expensive thing this package does, and the schema cannot change while the

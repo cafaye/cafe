@@ -47,7 +47,7 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official cafaye service is registered under that name","instance":"/v1/services/nope","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.anywaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official anywaye service is registered under that name","instance":"/v1/services/nope","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
@@ -66,7 +66,7 @@ func TestHTTPPantryTier1NotFoundIsNamed(t *testing.T) {
 	if pe.Status != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", pe.Status)
 	}
-	if pe.Detail != "no official cafaye service is registered under that name" {
+	if pe.Detail != "no official anywaye service is registered under that name" {
 		t.Errorf("detail = %q, want the sentence pantry sends (and it must not echo the name)", pe.Detail)
 	}
 	// The trace id is the field pantry's own support starts from, and dropping
@@ -84,20 +84,20 @@ func TestHTTPPantryTier2ServesCoordinatesWithTheToken(t *testing.T) {
 		if r.URL.Path != "/v1/services/identity/coordinates" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
-		if got := r.Header.Get("Authorization"); got != "Bearer cafaye_x" {
+		if got := r.Header.Get("Authorization"); got != "Bearer anywaye_x" {
 			t.Errorf("bearer = %q, want the caller's token", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"name":"identity","repository":{"url":"git@github.com:cafaye/identity.git","defaultBranch":"master"}}`))
+		_, _ = w.Write([]byte(`{"name":"identity","repository":{"url":"git@github.com:anywaye/identity.git","defaultBranch":"master"}}`))
 	}))
 	defer srv.Close()
 
 	p := HTTPPantry{BaseURL: srv.URL}
-	coords, err := p.Coordinates(context.Background(), "identity", "cafaye_x")
+	coords, err := p.Coordinates(context.Background(), "identity", "anywaye_x")
 	if err != nil {
 		t.Fatalf("coordinates: %v", err)
 	}
-	if coords.Repository.URL != "git@github.com:cafaye/identity.git" {
+	if coords.Repository.URL != "git@github.com:anywaye/identity.git" {
 		t.Errorf("url = %q", coords.Repository.URL)
 	}
 	if coords.Repository.DefaultBranch != "master" {
@@ -115,11 +115,11 @@ func TestHTTPPantryTier2UnauthorizedIsNamed(t *testing.T) {
 	const noEntitlementYet = "this operation requires a cafe token and none was presented. A service's " +
 		"repository coordinates are tier 2: `GET /v1/services` and `GET /v1/services/{name}` publish what a " +
 		"service is, and this operation alone publishes where its code lives. Present `Authorization: Bearer " +
-		"cafaye_…` with a live cafe token"
+		"anywaye_…` with a live cafe token"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"` + noEntitlementYet + `","instance":"/v1/services/identity/coordinates","code":"unauthorized","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.anywaye.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"` + noEntitlementYet + `","instance":"/v1/services/identity/coordinates","code":"unauthorized","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
@@ -152,12 +152,12 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/unavailable","title":"Service unavailable","status":503,"detail":"the presented cafe token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/services/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.anywaye.com/errors/unavailable","title":"Service unavailable","status":503,"detail":"the presented cafe token could not be verified: identity could not be reached, so this operation was refused rather than answered. This is a deployment problem rather than a problem with your token","instance":"/v1/services/identity/coordinates","code":"unavailable","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 
 	p := HTTPPantry{BaseURL: srv.URL}
-	_, err := p.Coordinates(context.Background(), "identity", "cafaye_x")
+	_, err := p.Coordinates(context.Background(), "identity", "anywaye_x")
 	if err == nil {
 		t.Fatalf("a 503 resolved without an error")
 	}
@@ -180,8 +180,8 @@ func TestHTTPPantryTier2IdentityUnreachableIsAnUnavailable(t *testing.T) {
 // 404 would name a name the caller never typed.
 func TestHTTPPantryProjectByAddressServesTheProject(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/services/cafaye/identity" {
-			t.Errorf("path = %q, want /v1/services/cafaye/identity", r.URL.Path)
+		if r.URL.Path != "/v1/services/anywaye/identity" {
+			t.Errorf("path = %q, want /v1/services/anywaye/identity", r.URL.Path)
 		}
 		if r.URL.RawQuery != "" {
 			t.Errorf("query = %q, want none — the address is the path", r.URL.RawQuery)
@@ -190,17 +190,17 @@ func TestHTTPPantryProjectByAddressServesTheProject(t *testing.T) {
 			t.Errorf("tier 1 is anonymous but a bearer was presented")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go","repository":{"visibility":"private"},"owner_slug":"cafaye","owner":{"team":"identity"}}`))
+		_, _ = w.Write([]byte(`{"name":"identity","description":"Authentication","language":"go","repository":{"visibility":"private"},"owner_slug":"anywaye","owner":{"team":"identity"}}`))
 	}))
 	defer srv.Close()
 
 	p := HTTPPantry{BaseURL: srv.URL}
-	proj, err := p.ProjectByAddress(context.Background(), "cafaye", "identity")
+	proj, err := p.ProjectByAddress(context.Background(), "anywaye", "identity")
 	if err != nil {
 		t.Fatalf("project by address: %v", err)
 	}
-	if proj.OwnerSlug != "cafaye" {
-		t.Errorf("owner_slug = %q, want cafaye — the field that makes the name addressable", proj.OwnerSlug)
+	if proj.OwnerSlug != "anywaye" {
+		t.Errorf("owner_slug = %q, want anywaye — the field that makes the name addressable", proj.OwnerSlug)
 	}
 	if proj.Name != "identity" {
 		t.Errorf("name = %q", proj.Name)
@@ -215,7 +215,7 @@ func TestHTTPPantryProjectByAddressNotFoundNamesTheAddress(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"type":"https://docs.cafaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official cafaye project is registered under the address alice/widget","instance":"/v1/services/alice/widget","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
+		_, _ = w.Write([]byte(`{"type":"https://docs.anywaye.com/errors/not_found","title":"Not found","status":404,"detail":"no official anywaye project is registered under the address alice/widget","instance":"/v1/services/alice/widget","code":"not_found","trace_id":"0af7651916cd43dd8448eb211c80319c"}`))
 	}))
 	defer srv.Close()
 

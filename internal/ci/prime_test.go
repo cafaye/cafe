@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/gate"
+	"github.com/anywaye/cafe/internal/gate"
 	"github.com/goccy/go-yaml"
 )
 

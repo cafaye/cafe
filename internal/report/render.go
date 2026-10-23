@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cafaye/cafe/internal/cve"
-	"github.com/cafaye/cafe/internal/secret"
+	"github.com/anywaye/cafe/internal/cve"
+	"github.com/anywaye/cafe/internal/secret"
 )
 
 // Render writes the human page: markdown, because the three places this goes —

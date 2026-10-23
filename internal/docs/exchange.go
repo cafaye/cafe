@@ -94,7 +94,7 @@ const DefaultExchangeTimeout = 30 * time.Second
 // same bearer discipline, same problem envelope — because a publish that had
 // two ideas about identity's wire shape would eventually have two shapes.
 type HTTPIdentity struct {
-	// BaseURL is identity's origin, e.g. https://identity.cafaye.com. Empty
+	// BaseURL is identity's origin, e.g. https://identity.anywaye.com. Empty
 	// is refused rather than defaulted: a client with no endpoint is a client
 	// that would GET a relative path. The origin comes from CAF_IDENTITY_URL
 	// or --base-url, the rule the agent verbs and `cafe login` hold.

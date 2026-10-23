@@ -8,7 +8,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/cafaye/cafe/internal/telemetry"
+	"github.com/anywaye/cafe/internal/telemetry"
 )
 
 // newGRPCExporter is the one real exporter.
@@ -51,7 +51,7 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 	// only when it wanted plaintext. With no option appended, the config keeps
 	// whatever `ApplyGRPCEnvConfigs` decided, and that function calls
 	// `withEndpointScheme(u)` on the value of `OTEL_EXPORTER_OTLP_ENDPOINT` —
-	// the standard variable the cafaye one is documented to beat. MEASURED, over
+	// the standard variable the anywaye one is documented to beat. MEASURED, over
 	// the wire, on a plain socket reading the first bytes a dial produces:
 	//
 	//	CAFE_OTEL_ENDPOINT=https://127.0.0.1:PORT     (cafe's own answer: TLS)
@@ -62,7 +62,7 @@ func newGRPCExporter(ctx context.Context, endpoint string, secure bool) (sdktrac
 	// So the standard variable won the scheme while losing the address, and a
 	// self-hoster who set `OTEL_EXPORTER_OTLP_ENDPOINT=http://…` next to their own
 	// `https://` endpoint silently downgraded the connection to plaintext. The
-	// converse — a cafaye `http://` beside a standard `https://` — was already
+	// converse — a anywaye `http://` beside a standard `https://` — was already
 	// right, and stayed right, because that direction appends an option.
 	//
 	// `WithTLSCredentials` is how the secure case is stated rather than assumed.

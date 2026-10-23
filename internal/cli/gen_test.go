@@ -18,10 +18,10 @@ import (
 // copy of them is compiled and run by this tree's ordinary gate. Nothing here
 // re-asserts a list core owns.
 
-// genProject is a minimal cafaye.yml for a directory a test owns.
+// genProject is a minimal anywaye.yml for a directory a test owns.
 //
 // Written as a literal rather than read from this repository's manifest, so a
-// change to cafe's own `cafaye.yml` cannot move every table in this file.
+// change to cafe's own `anywaye.yml` cannot move every table in this file.
 const genProject = `name: courier
 description: Transactional email and push delivery.
 language: go
@@ -32,13 +32,13 @@ exposes:
     - courier.email.queued
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com
 `
 
 // inProject creates a project directory holding a manifest and makes it the
@@ -49,7 +49,7 @@ func inProject(t *testing.T, manifest string) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cafaye.yml"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "anywaye.yml"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write the manifest: %v", err)
 	}
 	t.Chdir(dir)
@@ -377,13 +377,13 @@ exposes:
     - courier.email.queued
 
 repository:
-  url: git@github.com:cafaye/courier.git
+  url: git@github.com:anywaye/courier.git
   defaultBranch: master
   visibility: public
 
 owner:
   team: courier
-  contact: courier@cafaye.com
+  contact: courier@anywaye.com
 `
 
 // The happy path: six files, written, each one printed in full.
@@ -534,7 +534,7 @@ func TestGenTelemetryRefusesADirectoryItCannotReadAProjectFrom(t *testing.T) {
 		{
 			name:    "no manifest at all",
 			prepare: func(t *testing.T) { t.Chdir(t.TempDir()) },
-			want:    []string{"no cafaye.yml", "cafe init"},
+			want:    []string{"no anywaye.yml", "cafe init"},
 		},
 		{
 			name: "an invalid manifest",
@@ -543,7 +543,7 @@ func TestGenTelemetryRefusesADirectoryItCannotReadAProjectFrom(t *testing.T) {
 				// A name the schema refuses, which is a contract violation rather
 				// than a syntax error: the point is that the generator reports it
 				// in the linter's own words.
-				write(t, "cafaye.yml", strings.Replace(genProject, "name: courier", "name: Courier", 1))
+				write(t, "anywaye.yml", strings.Replace(genProject, "name: courier", "name: Courier", 1))
 			},
 			want: []string{"INVALID", "name"},
 		},

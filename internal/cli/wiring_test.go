@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cafaye/cafe/internal/ledger"
-	"github.com/cafaye/cafe/internal/ports"
+	"github.com/anywaye/cafe/internal/ledger"
+	"github.com/anywaye/cafe/internal/ports"
 )
 
 // The wiring: the paths a test that builds a command by hand does not exercise.

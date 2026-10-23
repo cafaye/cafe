@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cafaye/cafe/internal/cve"
+	"github.com/anywaye/cafe/internal/cve"
 )
 
 // cveDeps is what `cafe cve` needs from the world, and it is a struct of

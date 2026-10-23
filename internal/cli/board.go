@@ -23,7 +23,7 @@ func newBoardCommand(deps boardDeps) *Command {
 		Name:    "board",
 		Summary: "board view and attention tracking",
 		Usage:   "cafe board <subcommand> [args]",
-		LongHelp: "Board view and attention tracking on cafaye ship.\n\n" +
+		LongHelp: "Board view and attention tracking on anywaye ship.\n\n" +
 			"Subcommands:\n" +
 			"  view <project-id>       Record that you viewed the board\n" +
 			"  attention <project-id>  Check if attention is needed\n\n" +

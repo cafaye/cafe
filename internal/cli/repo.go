@@ -7,12 +7,12 @@ import (
 	"strings"
 )
 
-// `cafe repo` manages the repositories in your Cafaye account.
+// `cafe repo` manages the repositories in your Anywaye account.
 //
 // IT TALKS TO SHIP, NOT TO THE GIT HOST, and that is the whole point of it.
 //
 // The old version of this command took a token for the git host from the
-// environment — FORGEJO_TOKEN, or CAFAYE_GIT_TOKEN — and sent it to the git
+// environment — FORGEJO_TOKEN, or ANYWAYE_GIT_TOKEN — and sent it to the git
 // host's API. That put a credential that could reach every repository on the
 // host into every developer's shell, every CI runner and every dev box, and
 // it meant the answer to "who may touch this repository" was decided by
@@ -30,7 +30,7 @@ import (
 //
 // Environment:
 //
-//   SHIP_URL   Base URL of the deployment (default: https://cafaye.com)
+//   SHIP_URL   Base URL of the deployment (default: https://anywaye.com)
 //   SHIP_TOKEN Service token, sent as `Authorization: Bearer …`
 //
 // Without a service token the command uses the credential `cafe login` stored,
@@ -42,16 +42,16 @@ func newRepoCommand(deps repoDeps) *Command {
 	deps, _ = deps.withDefaults()
 	c := &Command{
 		Name:    "repo",
-		Summary: "manage the repositories in your Cafaye account",
+		Summary: "manage the repositories in your Anywaye account",
 		Usage:   "cafe repo <subcommand> [args]",
-		LongHelp: "Manage the repositories in your Cafaye account.\n\n" +
+		LongHelp: "Manage the repositories in your Anywaye account.\n\n" +
 			"Subcommands:\n" +
 			"  create <name>   Create a project and its repository\n" +
 			"  list            List the repositories in your account\n" +
 			"  token [name]    Mint a credential for your own machine\n" +
 			"  delete <name>   Delete a repository from your account\n\n" +
 			"Environment:\n" +
-			"  SHIP_URL   Base URL of the deployment (default: https://cafaye.com)\n" +
+			"  SHIP_URL   Base URL of the deployment (default: https://anywaye.com)\n" +
 			"  SHIP_TOKEN Service token, sent as `Authorization: Bearer …`\n",
 	}
 	c.Run = func(args []string, env *Env) error {
@@ -145,7 +145,7 @@ func repoCreate(deps repoDeps, env *Env, args []string) error {
 	var project struct {
 		Name             string `json:"name"`
 		RepoFullName     string `json:"repo_full_name"`
-		CafayeGitRepoURL string `json:"cafaye_git_repo_url"`
+		AnywayeGitRepoURL string `json:"anywaye_git_repo_url"`
 	}
 	if err := json.Unmarshal(body, &project); err != nil {
 		return fmt.Errorf("cafe repo: read the created project: %w", err)
@@ -153,7 +153,7 @@ func repoCreate(deps repoDeps, env *Env, args []string) error {
 	_, _ = fmt.Fprintf(env.Stdout, "created: %s\n", project.Name)
 	if project.RepoFullName != "" {
 		_, _ = fmt.Fprintf(env.Stdout, "  repo:  %s\n", project.RepoFullName)
-		_, _ = fmt.Fprintf(env.Stdout, "  clone: %s\n", project.CafayeGitRepoURL)
+		_, _ = fmt.Fprintf(env.Stdout, "  clone: %s\n", project.AnywayeGitRepoURL)
 	}
 	return nil
 }

@@ -11,7 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cafaye/cafe/internal/secret"
+	"github.com/anywaye/cafe/internal/secret"
 )
 
 // `cafe secret` is a verb group, for the same reason `cafe contract` and `cafe gen`
